@@ -257,8 +257,7 @@ obstacles.push({ x: -50, y: -50, w: WORLD.w + 100, h: 60 }, { x: -50, y: WORLD.h
 }
 
 /* 藏品点造型注册为精灵 */
-for (const s of spots) sprites.push({ y: s.y + (s.type === 'painting' ? -900 : 0), draw: (c, t) => drawSpot(c, s, t) });
-// 挂画属于墙面,提前画(y 设得很小即可排前)
+for (const s of spots) sprites.push({ y: s.y, draw: (c, t) => drawSpot(c, s, t) });
 
 /* ---------- 造型绘制 ---------- */
 function drawTree(c, x, y, scale = 1, birdCol) {
@@ -349,7 +348,15 @@ function drawSpot(c, s, t) {
     c.fillStyle = '#3a2415'; c.beginPath(); c.arc(bx, by - 19, 8, Math.PI, 0); c.fill();
     c.fillStyle = '#fff'; c.fillRect(bx - 7, by - 4, 14, 10);
   }
+  // 已收录角标
+  if (s.item && seen[s.cat] && seen[s.cat].includes(s.item.id)) {
+    const off = BADGE_OFF[s.type] ?? 40;
+    c.fillStyle = '#ffd76a'; c.beginPath(); c.arc(x + 16, y - off, 7, 0, 7); c.fill();
+    c.strokeStyle = '#6b4f10'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x + 13, y - off); c.lineTo(x + 15.5, y - off + 3); c.lineTo(x + 20, y - off - 3); c.stroke();
+  }
 }
+const BADGE_OFF = { painting: 38, shelf: 64, tree: 96, bed: 78, keg: 32, table: 30, tank: 86, crate: 52, stand: 54, tent: 70, board: 46 };
 function roundRect(c, x, y, w, h, r) {
   c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
   c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
@@ -432,6 +439,64 @@ function drawPlayer(c, t) {
   c.beginPath(); c.arc(x + 3 + ex, y - 17 + ey + bob, 1.4, 0, 7); c.fill();
 }
 
+/* ---------- 镇民 NPC ---------- */
+const NPC_HUB = [1700, 1400];   // 绕开喷泉的中转点
+const NPC_WPS = [[600, 850], [1590, 730], [2500, 970], [2230, 1310], [1420, 1750], [2060, 1750], [2820, 1680]];
+const NPC_LINES = [
+  '听说酒馆新到了一批世涛。', '百鸟林今天飞来了新客人。', '美术馆里我最爱那幅睡莲。',
+  '图书馆的书,一辈子也读不完呢。', '水族馆的灯光,晚上最好看。', '爵士俱乐部今晚有演出!',
+  '音乐厅在排巴赫,快去听听。', '营地的篝火一直烧到天亮。', '植物园的花,又开了几株。',
+  '你的图鉴集了多少啦?', '广场的路牌可以带你去任何地方。',
+];
+const npcs = [
+  { x: 1650, y: 1420, col: '#7d3c98', hat: '#f4d03f' },
+  { x: 1740, y: 1380, col: '#1f618d', hat: '#e74c3c' },
+  { x: 1700, y: 1460, col: '#7e5109', hat: '#58d68d' },
+].map((n, i) => Object.assign(n, { wp: null, route: null, leg: 0, pause: 1 + i * 2, phase: i * 2, talk: false, line: '' }));
+function updateNpcs(dt) {
+  for (const n of npcs) {
+    if (n.pause > 0) { n.pause -= dt; continue; }
+    if (!n.wp) {
+      const target = NPC_WPS[Math.floor(Math.random() * NPC_WPS.length)];
+      n.route = [NPC_HUB, target]; n.leg = 0; n.wp = n.route[0];
+    }
+    const dx = n.wp[0] - n.x, dy = n.wp[1] - n.y, d = Math.hypot(dx, dy);
+    if (d < 8) {
+      if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
+      else { n.wp = null; n.pause = 2.5 + Math.random() * 4; }
+      continue;
+    }
+    const sp = 105 * dt;
+    n.x += dx / d * sp; n.y += dy / d * sp; n.phase += dt * 9;
+    // 靠近玩家时搭话
+    const pd = Math.hypot(player.x - n.x, player.y - n.y);
+    if (pd < 95 && !n.talk) { n.talk = true; n.line = NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)]; }
+    else if (pd > 150) n.talk = false;
+  }
+}
+function drawNpc(c, n) {
+  const bob = n.wp ? Math.sin(n.phase) * 2 : 0;
+  c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(n.x, n.y + 10, 11, 5, 0, 0, 7); c.fill();
+  c.fillStyle = n.col; c.beginPath(); c.ellipse(n.x, n.y - 2 + bob * .4, 10, 12, 0, 0, 7); c.fill();
+  c.fillStyle = '#f2c9a0'; c.beginPath(); c.arc(n.x, n.y - 17 + bob, 8, 0, 7); c.fill();
+  c.fillStyle = n.hat; c.beginPath(); c.arc(n.x, n.y - 20 + bob, 8, Math.PI, 0); c.fill();
+  c.fillStyle = '#222';
+  c.beginPath(); c.arc(n.x - 3, n.y - 16 + bob, 1.3, 0, 7); c.fill();
+  c.beginPath(); c.arc(n.x + 3, n.y - 16 + bob, 1.3, 0, 7); c.fill();
+}
+function drawNpcBubbles(c) {
+  c.font = '13px "Microsoft YaHei", sans-serif';
+  for (const n of npcs) {
+    if (!n.talk || Math.hypot(player.x - n.x, player.y - n.y) > 150) continue;
+    const w = c.measureText(n.line).width + 20;
+    const bx = n.x - w / 2, by = n.y - 66;
+    c.fillStyle = 'rgba(255,255,252,.95)';
+    roundRect(c, bx, by, w, 26, 12); c.fill();
+    c.beginPath(); c.moveTo(n.x - 5, by + 26); c.lineTo(n.x, by + 34); c.lineTo(n.x + 5, by + 26); c.fill();
+    c.fillStyle = '#3a3226'; c.fillText(n.line, bx + 10, by + 18);
+  }
+}
+
 /* ---------- 氛围粒子 ---------- */
 const parts = [];
 function spawnParts(t) {
@@ -448,6 +513,7 @@ function updateParts(dt) {
     const p = parts[i];
     p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
     if (p.ty === 'petal') p.x += Math.sin(p.y / 30) * .6;
+    if (p.ty === 'conf') { p.vy += 260 * dt; p.vx *= .99; }
     if (p.life <= 0 || p.x > WORLD.w + 60) parts.splice(i, 1);
   }
 }
@@ -460,8 +526,60 @@ function drawParts(c, t) {
     } else if (p.ty === 'petal') { c.fillStyle = p.col; c.beginPath(); c.ellipse(p.x, p.y, 3, 2, p.y / 20, 0, 7); c.fill(); }
     else if (p.ty === 'note') { c.fillStyle = p.col; c.font = '16px serif'; c.globalAlpha = clamp(p.life / 3, 0, 1); c.fillText(Math.floor(p.x) % 2 ? '♪' : '♫', p.x, p.y); c.globalAlpha = 1; }
     else if (p.ty === 'smoke') { c.fillStyle = p.col; c.globalAlpha = clamp(p.life / 5, 0, .6); c.beginPath(); c.arc(p.x, p.y, 8 + (5 - p.life) * 3, 0, 7); c.fill(); c.globalAlpha = 1; }
+    else if (p.ty === 'conf') {
+      c.save(); c.translate(p.x, p.y); c.rotate(p.x / 18 + p.life * 6);
+      c.globalAlpha = clamp(p.life / 1.5, 0, 1); c.fillStyle = p.col; c.fillRect(-4, -2.5, 8, 5);
+      c.restore(); c.globalAlpha = 1;
+    }
   }
 }
+
+function confettiBurst() {
+  for (let i = 0; i < 46; i++) {
+    const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 200;
+    parts.push({ ty: 'conf', x: player.x, y: player.y - 20, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 140, life: 1.5 + Math.random(), col: PALETTE[i % PALETTE.length] });
+  }
+}
+
+/* ---------- 今日委托 ---------- */
+const QUEST_TPL = {
+  art: [3, '在美术馆欣赏 3 幅名画'], birds: [3, '在百鸟林认识 3 种鸟'], plants: [3, '在植物园看 3 株植物'],
+  beers: [2, '在酒馆品尝 2 款新精酿'], fish: [3, '在水族馆认识 3 种鱼'], jazz: [2, '在爵士俱乐部听 2 张唱片'],
+  classical: [2, '在音乐厅听 2 份录音'], books: [2, '在图书馆翻 2 本书'], outdoor: [2, '在营地了解 2 种玩法'],
+};
+let quest = null, stars = parseInt(localStorage.getItem('w1001.stars') || '0', 10) || 0;
+function saveQuest() { try { localStorage.setItem('w1001.quest', JSON.stringify(quest)); localStorage.setItem('w1001.stars', String(stars)); } catch (e) {} }
+function initQuest() {
+  const today = new Date().toISOString().slice(0, 10);
+  try { quest = JSON.parse(localStorage.getItem('w1001.quest')); } catch (e) { quest = null; }
+  if (!quest || quest.date !== today) {
+    const r = mulberry32([...today].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
+    const picks = shuffled(Object.keys(QUEST_TPL), r).slice(0, 3);
+    quest = { date: today, cats: picks, prog: Object.fromEntries(picks.map(c => [c, 0])), done: false };
+    saveQuest();
+  }
+  updateQuestHUD();
+}
+function questBump(cat) {
+  if (!quest || quest.done || !(cat in quest.prog)) return;
+  if (quest.prog[cat] >= QUEST_TPL[cat][0]) return;
+  quest.prog[cat]++;
+  if (quest.cats.every(c => quest.prog[c] >= QUEST_TPL[c][0])) {
+    quest.done = true; stars++;
+    confettiBurst();
+    setTimeout(() => { toast(`🎉 今日委托完成!星星 ×${stars}`); blip(660); setTimeout(() => blip(990), 120); }, 350);
+  }
+  saveQuest(); updateQuestHUD();
+}
+function updateQuestHUD() {
+  const el = document.getElementById('hudQuest');
+  if (!quest) return;
+  const cur = quest.cats.reduce((a, c) => a + Math.min(quest.prog[c], QUEST_TPL[c][0]), 0);
+  const tot = quest.cats.reduce((a, c) => a + QUEST_TPL[c][0], 0);
+  el.textContent = quest.done ? `📜 委托完成 · ⭐×${stars}` : `📜 今日委托 ${cur}/${tot}`;
+  el.classList.toggle('done', quest.done);
+}
+initQuest();
 
 /* ---------- 收藏进度 ---------- */
 let seen = {};
@@ -476,6 +594,7 @@ function markSeen(cat, id, title) {
     document.getElementById('seenCount').textContent = seenCount();
     toast(`✦ 收录图鉴:${title}`);
     blip(660); setTimeout(() => blip(880), 90);
+    questBump(cat);
   }
 }
 document.getElementById('seenCount').textContent = seenCount();
@@ -577,9 +696,19 @@ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click
 modal.addEventListener('click', e => { if (e.target === modal) closeModals(); });
 $('journal').addEventListener('click', e => { if (e.target === $('journal')) closeModals(); });
 
+function rotateExhibits() {
+  for (const s of spots) if (s.item) s.item = pickers[s.cat]();
+  closeModals(); toast('🔄 小镇换了一批新展品,再去逛逛吧!'); blip(520);
+}
 function openJournal() {
   const list = $('journalList');
-  list.innerHTML = Object.keys(CATS).map(k => {
+  const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
+    ${quest.cats.map(c => {
+      const need = QUEST_TPL[c][0], p = Math.min(quest.prog[c], need), ok = p >= need;
+      return `<div class="qRow${ok ? ' ok' : ''}"><span>${ok ? '✅' : CATS[c].icon}</span><span>${QUEST_TPL[c][1]}</span><span class="qn">${p}/${need}</span></div>`;
+    }).join('')}
+    <button id="btnRotate">🔄 给小镇换一批展品</button></div>` : '';
+  list.innerHTML = qHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     return `<div class="jRow"><div class="ico">${cfg.icon}</div>
@@ -590,14 +719,76 @@ function openJournal() {
       <a href="${cfg.link}" target="_blank" rel="noopener">网站 →</a></div>`;
   }).join('');
   $('journal').classList.remove('hidden'); modalOpen = true;
+  list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
 }
 $('btnJournal').addEventListener('click', openJournal);
+$('hudQuest').addEventListener('click', openJournal);
 $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidden'); });
 $('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
 
-/* ---------- 音效 ---------- */
-let actx = null;
-function initAudio() { if (!actx) try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+/* ---------- 音效与音乐 ---------- */
+let actx = null, musicGain = null, musicOn = true;
+let musicZone = 'street', nextBeat = 0, beatCount = 0, melIdx = 3;
+/* 每个区域一种"心情":音阶 · 速度 · 音色 */
+const THEMES = {
+  street:    { tempo: 96,  wave: 'triangle', scale: [0, 2, 4, 7, 9, 12],    base: 220,   dens: .5,  bass: true },
+  art:       { tempo: 64,  wave: 'sine',     scale: [0, 4, 7, 11, 12],      base: 330,   dens: .38 },
+  books:     { tempo: 70,  wave: 'sine',     scale: [0, 2, 3, 7, 8, 12],    base: 294,   dens: .4 },
+  birds:     { tempo: 84,  wave: 'sine',     scale: [0, 2, 4, 7, 9],        base: 392,   dens: .22, chirp: true },
+  plants:    { tempo: 84,  wave: 'sine',     scale: [0, 2, 4, 7, 9, 12],    base: 262,   dens: .45 },
+  beers:     { tempo: 148, wave: 'square',   scale: [0, 2, 4, 5, 7, 9],     base: 196,   dens: .8,  bass: true, vol: .55 },
+  fish:      { tempo: 52,  wave: 'sine',     scale: [0, 3, 7, 10, 12],      base: 147,   dens: .35, pad: true },
+  jazz:      { tempo: 138, wave: 'sine',     scale: [0, 3, 5, 6, 7, 10],    base: 175,   dens: .72, swing: true, bass: true },
+  classical: { tempo: 106, wave: 'sine',     scale: [0, 4, 7, 12, 16, 19],  base: 262,   dens: .85, arp: true },
+  outdoor:   { tempo: 100, wave: 'triangle', scale: [0, 7, 12, 14, 19],     base: 165,   dens: .5,  bass: true },
+};
+function note(freq, t, dur, wave, vol) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = wave; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + .02);
+  g.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  o.connect(g).connect(musicGain); o.start(t); o.stop(t + dur + .05);
+}
+function chirp(t) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sine';
+  const f = 2400 + Math.random() * 1400;
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * .62, t + .12);
+  g.gain.setValueAtTime(.028, t); g.gain.exponentialRampToValueAtTime(.0008, t + .14);
+  o.connect(g).connect(musicGain); o.start(t); o.stop(t + .16);
+}
+function scheduler() {
+  if (!actx || !musicOn) return;
+  const th = THEMES[musicZone] || THEMES.street;
+  const spb = 60 / th.tempo, vol = .042 * (th.vol || 1);
+  if (nextBeat < actx.currentTime) nextBeat = actx.currentTime + .06;
+  while (nextBeat < actx.currentTime + .38) {
+    const t = nextBeat;
+    if (Math.random() < th.dens) {
+      melIdx = clamp(melIdx + (Math.random() < .5 ? -1 : 1), 0, th.scale.length - 1);
+      const freq = th.base * Math.pow(2, th.scale[melIdx] / 12);
+      note(freq, t, spb * (th.arp ? .95 : 1.7), th.wave, vol);
+      if (th.arp && Math.random() < .7)
+        note(th.base * Math.pow(2, th.scale[(melIdx + 2) % th.scale.length] / 12), t + spb / 2, spb * .9, th.wave, vol * .7);
+    }
+    if (th.bass && beatCount % 4 === 0) note(th.base / 2, t, spb * 3.2, 'sine', vol * 1.25);
+    if (th.pad && beatCount % 8 === 0) note(th.base, t, spb * 7, 'sine', vol * .8);
+    if (th.chirp && Math.random() < .3) chirp(t + Math.random() * spb);
+    nextBeat += th.swing ? (beatCount % 2 ? spb * .64 : spb * 1.36) : spb;
+    beatCount++;
+  }
+}
+function initAudio() {
+  if (actx) return;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = actx.createGain(); musicGain.gain.value = musicOn ? 1 : 0;
+    musicGain.connect(actx.destination);
+    setInterval(scheduler, 140);
+  } catch (e) {}
+}
 function blip(freq) {
   if (!actx) return;
   const o = actx.createOscillator(), g = actx.createGain();
@@ -606,6 +797,12 @@ function blip(freq) {
   g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .18);
   o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + .2);
 }
+document.getElementById('btnMusic').addEventListener('click', () => {
+  initAudio();
+  musicOn = !musicOn;
+  if (musicGain) musicGain.gain.value = musicOn ? 1 : 0;
+  document.getElementById('btnMusic').textContent = musicOn ? '🎵' : '🔇';
+});
 
 /* ---------- 输入 ---------- */
 window.addEventListener('keydown', e => {
@@ -705,15 +902,19 @@ function render(t) {
   // 墙
   for (const w of wallRects) { ctx.fillStyle = '#4a3a2a'; ctx.fillRect(w.x, w.y, w.w, w.h); ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(w.x, w.y, w.w, 4); }
 
-  // 精灵(y 排序,含玩家)
-  let inserted = false;
+  // 精灵(y 排序,含玩家与镇民;视口外裁剪)
+  const yMin = cam.y - 340, yMax = cam.y + vh / view + 380;
+  const actors = [player, ...npcs].sort((a, b) => a.y - b.y);
+  let ai = 0;
+  const drawActor = a => a === player ? drawPlayer(ctx, t) : drawNpc(ctx, a);
   for (const s of spriteList) {
-    if (!inserted && player.y < s.y) { drawPlayer(ctx, t); inserted = true; }
-    s.draw(ctx, t);
+    while (ai < actors.length && actors[ai].y < s.y) drawActor(actors[ai++]);
+    if (s.y > yMin && s.y < yMax) s.draw(ctx, t);
   }
-  if (!inserted) drawPlayer(ctx, t);
+  while (ai < actors.length) drawActor(actors[ai++]);
 
   drawParts(ctx, t);
+  drawNpcBubbles(ctx);
 
   // 区域名牌
   ctx.textAlign = 'center';
@@ -746,6 +947,8 @@ function render(t) {
   const here = ZONES.find(z => player.x > z.x && player.x < z.x + z.w && player.y > z.y && player.y < z.y + z.h);
   $('zoneIcon').textContent = here ? CATS[here.key].icon : '🧭';
   $('zoneName').textContent = here ? CATS[here.key].name : '小镇街道';
+  const mz = here ? here.key : 'street';
+  if (mz !== musicZone) { musicZone = mz; melIdx = 3; }
 
   renderMinimap();
 }
@@ -766,6 +969,7 @@ let last = 0, partTimer = 0;
 function loop(t) {
   const dt = Math.min((t - last) / 1000, .05); last = t;
   if (!modalOpen) movePlayer(dt);
+  updateNpcs(dt);
   partTimer += dt;
   if (partTimer > .4) { partTimer = 0; spawnParts(t / 1000); }
   updateParts(dt);
@@ -775,5 +979,5 @@ function loop(t) {
 requestAnimationFrame(loop);
 
 // 调试句柄(供自动化测试/控制台使用)
-window.__w1001 = { player, spots, TRAVEL, openCard, openJournal, seen };
+window.__w1001 = { player, spots, TRAVEL, openCard, openJournal, seen, npcs, rotateExhibits, questBump: () => quest, confettiBurst };
 })();
