@@ -4,6 +4,12 @@
    与 2D 版共用 world-data.js 与 localStorage 进度。
    ============================================================ */
 import * as THREE from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { Water } from 'three/addons/objects/Water.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -79,8 +85,20 @@ function islandMask(x, z) {
   m = Math.max(m, capMask(x, z, 640, -15, 765, 105, 45, 16));     // 尾鳍南叶
   m = Math.max(m, capMask(x, z, 260, -200, 345, -310, 90, 60));   // 背鳍雪山连脊
   m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
+  m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
   m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
   return m;
+}
+/* 鲸的五官(用于地形与配色) */
+const WHALE_EYE = { x: -352, z: 118, r: 20 };      // 眼(圆湖)
+const WHALE_BLOW = { x: -300, z: -78, r: 9 };      // 喷水孔(小潭)
+function mouthDist(x, z) {                          // 嘴线(头部南缘的弧)
+  const seg = (ax, az, bx, bz) => {
+    const abx = bx - ax, abz = bz - az;
+    const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
+    return Math.hypot(x - (ax + abx * t), z - (az + abz * t));
+  };
+  return Math.min(seg(-462, 20, -400, 105), seg(-400, 105, -305, 152));
 }
 function height(x, z) {
   const fall = smooth01(clamp(islandMask(x, z), 0, 1));
@@ -95,6 +113,11 @@ function height(x, z) {
   const ld = Math.hypot(x - IS2.x, z - IS2.z);         // 灯塔基座整平
   const lw = smooth01(clamp(1 - ld / 45, 0, 1));
   h = h * (1 - lw * .9) + 8 * lw * .9;
+  // 鲸眼(圆湖)与喷水孔(小潭):向下压出水面
+  const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
+  h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
+  const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
+  h -= smooth01(clamp(1 - bd2 / WHALE_BLOW.r, 0, 1)) * 11;
   return h;
 }
 
@@ -363,17 +386,50 @@ $('btnMusic').addEventListener('click', () => {
 const MOBILE = matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !MOBILE });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MOBILE ? 1.5 : 1.75));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .68;
+if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1100);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+let composer = null;
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  if (composer) composer.setSize(innerWidth, innerHeight);
+}
 addEventListener('resize', resize); resize();
+/* --- 后期处理:泛光 + ACES 输出(桌面) --- */
+if (!MOBILE) {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
+  composer.addPass(new OutputPass());
+}
 
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff1cf, 1.5);
+const sun = new THREE.DirectionalLight(0xfff1cf, 2.6);
 sun.position.set(180, 260, 120); scene.add(sun);
+scene.add(sun.target);
+const sunDirN = new THREE.Vector3(.5, .6, .3).normalize();
+if (!MOBILE) {
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const sc = sun.shadow.camera;
+  sc.left = -170; sc.right = 170; sc.top = 170; sc.bottom = -170; sc.near = 10; sc.far = 900;
+  sun.shadow.bias = -0.0006;
+}
+/* --- 物理大气天空 --- */
+const sky = new Sky();
+sky.scale.setScalar(2100);
+scene.add(sky);
+const skyUni = sky.material.uniforms;
+skyUni.turbidity.value = 7;
+skyUni.rayleigh.value = 1.6;
+skyUni.mieCoefficient.value = .004;
+skyUni.mieDirectionalG.value = .8;
 /* --- 星空(夜晚可见) --- */
 let starField;
 {
@@ -402,10 +458,15 @@ function updateDayNight(t) {
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
-  sun.intensity = .08 + 1.45 * da;
-  hemi.intensity = .22 + .75 * da;
+  sun.intensity = .06 + 2.7 * da;
+  hemi.intensity = .16 + .62 * da;
   const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
-  sun.position.set(Math.cos(sa) * 300, Math.max(Math.sin(sa) * 280, -60), 120);
+  const elev = Math.sin(sa) * da - .32 * (1 - da);   // 夜里太阳沉入地平线下
+  sunDirN.set(Math.cos(sa), Math.max(elev, -0.4), .42).normalize();
+  skyUni.sunPosition.value.copy(sunDirN);            // 驱动大气散射
+  sun.position.copy(player.position).addScaledVector(sunDirN, 330);
+  sun.target.position.copy(player.position);
+  if (oceanWater) oceanWater.material.uniforms.sunDirection.value.copy(sunDirN);
   starField.material.opacity = (1 - da) * .95;
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
@@ -422,7 +483,7 @@ const TER = 1900, SEG = MOBILE ? 150 : 240;
   const pos = g.attributes.position, colors = [];
   const cSand = new THREE.Color(0xe4d5a2), cGrass1 = new THREE.Color(0x74ad58), cGrass2 = new THREE.Color(0x639b4c),
         cRock = new THREE.Color(0x8d8577), cSnow = new THREE.Color(0xeef3f5), cSea = new THREE.Color(0xcdbf92),
-        cPath = new THREE.Color(0xcdb98c);
+        cPath = new THREE.Color(0xcdb98c), cMouth = new THREE.Color(0x54453a);
   // 泥土小路:广场辐射到各区入口
   const PATH_A = [0, 14];
   const PATH_B = Object.entries(TRAVEL3D).filter(([k]) => k !== 'plaza').map(([, v]) => v);
@@ -445,6 +506,8 @@ const TER = 1900, SEG = MOBILE ? 150 : 240;
     let c;
     if (h > 34) c = cSnow;
     else if (sl > 3.4 || h > 26) c = cRock;
+    else if (h > -1 && mouthDist(x, z) < 5) c = cMouth;                                         // 鲸嘴线
+    else if (h > 0 && Math.abs(Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z) - WHALE_EYE.r) < 5) c = cMouth;  // 眼圈
     else if (h < 1.8) c = h < -2 ? cSea : cSand;
     else {
       c = fbm(x * .05, z * .05) > .52 ? cGrass1 : cGrass2;
@@ -456,11 +519,46 @@ const TER = 1900, SEG = MOBILE ? 150 : 240;
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const terrainMat = MOBILE
+    ? new THREE.MeshLambertMaterial({ vertexColors: true })
+    : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .96, metalness: 0 });
+  const terrain = new THREE.Mesh(g, terrainMat);
+  terrain.receiveShadow = true; terrain.castShadow = !MOBILE;
+  scene.add(terrain);
 }
-/* --- 海洋 --- */
-let waterGeo;
-{
+/* --- 海洋:桌面用反射水面着色器,手机用轻量波浪 --- */
+let waterGeo = null, oceanWater = null;
+function makeWaterNormals() {   // 程序化水面法线贴图(免外部纹理)
+  const S = 256, cv2 = document.createElement('canvas'); cv2.width = cv2.height = S;
+  const c = cv2.getContext('2d'), img = c.createImageData(S, S);
+  const hgt = (x, y) => fbm(x * .06, y * .06) + fbm(x * .17 + 40, y * .17 + 40) * .4;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (hgt(x + 1, y) - hgt(x - 1, y)) * 2.2;
+    const dy = (hgt(x, y + 1) - hgt(x, y - 1)) * 2.2;
+    const inv = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+    const o = (y * S + x) * 4;
+    img.data[o] = (-dx * inv * .5 + .5) * 255;
+    img.data[o + 1] = (-dy * inv * .5 + .5) * 255;
+    img.data[o + 2] = inv * 255;
+    img.data[o + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cv2);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+if (!MOBILE) {
+  oceanWater = new Water(new THREE.PlaneGeometry(3200, 3200), {
+    textureWidth: 512, textureHeight: 512,
+    waterNormals: makeWaterNormals(),
+    sunDirection: new THREE.Vector3(.5, .6, .3).normalize(),
+    sunColor: 0xffffff, waterColor: 0x0e3a52,
+    distortionScale: 2.6, fog: true,
+  });
+  oceanWater.rotation.x = -Math.PI / 2;
+  oceanWater.position.y = .15;
+  scene.add(oceanWater);
+} else {
   waterGeo = new THREE.PlaneGeometry(3200, 3200, 72, 72);
   waterGeo.rotateX(-Math.PI / 2);
   const water = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
@@ -498,16 +596,20 @@ function addSpot(x, z, cat, type, extra) {
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
+/* PBR:桌面用 Standard(粗糙度/金属度),手机用便宜的 Lambert */
+const lam = c => MOBILE
+  ? new THREE.MeshLambertMaterial({ color: c })
+  : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 });
 const M = {
-  wood: new THREE.MeshLambertMaterial({ color: 0x8a6238 }),
-  woodDark: new THREE.MeshLambertMaterial({ color: 0x5e4023 }),
-  stone: new THREE.MeshLambertMaterial({ color: 0xb9b2a4 }),
-  gold: new THREE.MeshLambertMaterial({ color: 0xd9b26a }),
-  white: new THREE.MeshLambertMaterial({ color: 0xf5efdc }),
+  wood: lam(0x8a6238),
+  woodDark: lam(0x5e4023),
+  stone: lam(0xb9b2a4),
+  gold: MOBILE ? new THREE.MeshLambertMaterial({ color: 0xd9b26a })
+               : new THREE.MeshStandardMaterial({ color: 0xd9b26a, roughness: .38, metalness: .75 }),
+  white: lam(0xf5efdc),
 };
 const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
 const cyl = (rT, rB, h, mat, seg = 10) => new THREE.Mesh(new THREE.CylinderGeometry(rT, rB, h, seg), mat);
-const lam = c => new THREE.MeshLambertMaterial({ color: c });
 
 /* --- 亭台建筑 --- */
 function pavilion(zn, opt) {
@@ -1099,6 +1201,49 @@ function renderMinimap() {
   mctx.restore();
 }
 
+/* --- 指南针(顶部罗盘条) --- */
+const cpCv = $('compass'), cpCtx = cpCv ? cpCv.getContext('2d') : null;
+const CP_MARKS = ZONES3D.filter(z => z.key !== 'plaza').map(z => ({ x: z.x, z: z.z, col: CATS[z.key].color }));
+CP_MARKS.push({ x: IS2.x, z: IS2.z, col: '#ffe9a8' });
+const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
+function renderCompass() {
+  if (!cpCtx) return;
+  const W = cpCv.width, H = cpCv.height;
+  cpCtx.clearRect(0, 0, W, H);
+  const face = camYaw + Math.PI;                       // 相机朝向的方位角
+  const span = Math.PI * .85;                          // 可见 ±76°
+  const off = a => (a - face + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+  cpCtx.textAlign = 'center'; cpCtx.textBaseline = 'middle';
+  for (let k = 0; k < 24; k++) {                       // 刻度
+    const d = off(k * Math.PI / 12);
+    if (Math.abs(d) > span) continue;
+    const x = W / 2 + d / span * (W / 2 - 18);
+    cpCtx.globalAlpha = (1 - Math.abs(d) / span) * .8;
+    cpCtx.fillStyle = '#cfd8bd';
+    cpCtx.fillRect(x - 1, 6, 2, k % 6 === 0 ? 10 : 6);
+  }
+  for (const [txt, ang, col] of CP_CARDS) {            // 四方位
+    const d = off(ang);
+    if (Math.abs(d) > span) continue;
+    const x = W / 2 + d / span * (W / 2 - 18);
+    cpCtx.globalAlpha = 1 - Math.abs(d) / span * .55;
+    cpCtx.fillStyle = col;
+    cpCtx.font = 'bold 19px "Microsoft YaHei", sans-serif';
+    cpCtx.fillText(txt, x, 22);
+  }
+  for (const mk of CP_MARKS) {                         // 各区域方位点
+    const d = off(Math.atan2(mk.x - player.position.x, mk.z - player.position.z));
+    if (Math.abs(d) > span) continue;
+    const x = W / 2 + d / span * (W / 2 - 18);
+    cpCtx.globalAlpha = .95;
+    cpCtx.fillStyle = mk.col;
+    cpCtx.beginPath(); cpCtx.arc(x, 37, 3.6, 0, 7); cpCtx.fill();
+  }
+  cpCtx.globalAlpha = 1;
+  cpCtx.fillStyle = '#ffd76a';                          // 中央准星
+  cpCtx.beginPath(); cpCtx.moveTo(W / 2 - 5, 0); cpCtx.lineTo(W / 2 + 5, 0); cpCtx.lineTo(W / 2, 8); cpCtx.closePath(); cpCtx.fill();
+}
+
 /* --- 海里的鱼群 & 海鸥 --- */
 const seaFish = [];
 {
@@ -1230,6 +1375,11 @@ makeBoat(0xf5efdc, 1.25).userData = { cruise: { cx: 380, cz: 480, r: 155, sp: .1
 makeBoat(0xd94f6b, 1).userData = { cruise: { cx: 380, cz: 480, r: 105, sp: -.17, ph: 2.2 } };
 makeBoat(0xffd76a, 1.1).userData = { anchor: [-350, 300] };
 makeBoat(null, .7).userData = { anchor: [14, 408] };   // 栈桥边的小舢板
+/* 喷水孔的水雾(周期性喷发) */
+const spray = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 9),
+  new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0, depthWrite: false }));
+spray.position.set(WHALE_BLOW.x, 3, WHALE_BLOW.z);
+scene.add(spray);
 
 /* ---------- 玩家 ---------- */
 const player = new THREE.Group();
@@ -1386,11 +1536,14 @@ function loop() {
   camera.lookAt(player.position.x, player.position.y + 2.4, player.position.z);
 
   /* 动画:水 / 云 / 鱼 / 海鸥 / 篝火 / 鸟 */
-  const wp = waterGeo.attributes.position;
-  for (let i = 0; i < wp.count; i += 3) {
-    wp.setY(i, Math.sin(t * 1.4 + wp.getX(i) * .02 + wp.getZ(i) * .017) * .5);
+  if (oceanWater) oceanWater.material.uniforms.time.value = t * .55;
+  if (waterGeo) {
+    const wp = waterGeo.attributes.position;
+    for (let i = 0; i < wp.count; i += 3) {
+      wp.setY(i, Math.sin(t * 1.4 + wp.getX(i) * .02 + wp.getZ(i) * .017) * .5);
+    }
+    wp.needsUpdate = true;
   }
-  wp.needsUpdate = true;
   for (const c of clouds) { c.position.x += dt * 2.2; if (c.position.x > 850) c.position.x = -850; }
   for (const f of seaFish) {
     const u = f.userData;
@@ -1447,9 +1600,20 @@ function loop() {
     saveT = 0;
     try { localStorage.setItem('w1001.pos3d', JSON.stringify([+player.position.x.toFixed(1), +player.position.z.toFixed(1)])); } catch (e) {}
   }
+  /* 鲸的喷水孔喷雾 */
+  {
+    const cyc = t % 9;
+    if (cyc < 1.6) {
+      const k = cyc / 1.6;
+      spray.material.opacity = Math.sin(k * Math.PI) * .7;
+      spray.scale.set(1 + k * 1.3, .4 + k * 1.8, 1 + k * 1.3);
+      spray.position.y = 2 + k * 5;
+    } else spray.material.opacity = 0;
+  }
   updateNpcs3(dt);
   updateDayNight(t);
   renderMinimap();
+  renderCompass();
 
   /* 最近藏品点 + 提示 */
   nearSpot = null; let best = 1e9;
@@ -1479,7 +1643,15 @@ function loop() {
   $('zoneIcon').textContent = swimming ? '🌊' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')));
   $('zoneName').textContent = swimming ? '大海' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')));
 
-  renderer.render(scene, camera);
+  if (composer) composer.render(); else renderer.render(scene, camera);
+}
+/* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外 */
+if (!MOBILE) {
+  scene.traverse(o => {
+    if (o.isMesh && o.material && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; }
+  });
+  sky.castShadow = sky.receiveShadow = false;
+  if (oceanWater) { oceanWater.castShadow = false; oceanWater.receiveShadow = false; }
 }
 loop();
 

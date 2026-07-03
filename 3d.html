@@ -19,6 +19,13 @@
     box-shadow: 0 4px 14px rgba(0,0,0,.3);
   }
   .npcBub b { color: #8c3b2e; }
+  #compass {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 19;
+    width: min(340px, 56vw); height: 34px; pointer-events: none;
+    background: rgba(20,26,16,.58); border: 1px solid rgba(255,255,255,.16); border-radius: 999px;
+    backdrop-filter: blur(3px);
+  }
+  @media (max-width: 640px) { #compass { top: 56px; } }
 </style>
 </head>
 <body>
@@ -41,6 +48,7 @@
 <div id="hint" class="hidden"></div>
 <div id="toast" class="hidden"></div>
 <canvas id="minimap" width="192" height="144"></canvas>
+<canvas id="compass" width="440" height="44"></canvas>
 
 <!-- 藏品卡片 -->
 <div id="modal" class="overlay hidden">
@@ -87,8 +95,11 @@
 
 <script src="world-data.js?v=3"></script>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
 </script>
-<script type="module" src="game3d.js?v=5"></script>
+<script type="module" src="game3d.js?v=6"></script>
 </body>
 </html>
