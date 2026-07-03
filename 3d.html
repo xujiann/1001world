@@ -26,6 +26,17 @@
     backdrop-filter: blur(3px);
   }
   @media (max-width: 640px) { #compass { top: 56px; } }
+  /* 万神殿日报 */
+  .paper { background: #f7f2e6; color: #26211a; padding: 20px 22px 16px; font-family: Georgia, "Noto Serif SC", "SimSun", serif; }
+  .pMast { font-size: 34px; font-weight: 900; text-align: center; letter-spacing: 6px; border-bottom: 3px double #26211a; padding-bottom: 8px; }
+  .pSub { text-align: center; font-size: 10.5px; letter-spacing: 1px; color: #6b6152; padding: 6px 0 10px; border-bottom: 1px solid #b9ae98; }
+  .pHead { font-size: 18.5px; font-weight: 800; line-height: 1.45; margin: 12px 0 6px; }
+  .pBody { font-size: 13px; line-height: 1.8; color: #3a332a; border-bottom: 1px solid #b9ae98; padding-bottom: 12px; }
+  .pCols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 12px 0; font-size: 12px; line-height: 1.7; color: #3a332a; }
+  .pCols b { font-size: 12.5px; }
+  .pCols > div { border-left: 2px solid #d5cab2; padding-left: 8px; }
+  .pFoot { border-top: 3px double #26211a; padding-top: 8px; font-size: 10.5px; color: #6b6152; line-height: 1.7; }
+  .paperRoll { font-size: 84px; }
 </style>
 </head>
 <body>
@@ -38,7 +49,7 @@
     <div id="hudQuest" title="今日委托(点击查看)">📜 今日委托</div>
   </div>
   <div id="hudRight">
-    <div id="hudCount" title="已收录 · 星之碎片">✦ <b id="seenCount">0</b> · ✨<b id="shardCount">0</b>/24</div>
+    <div id="hudCount" title="已收录 · 星之碎片 · 算力币">✦ <b id="seenCount">0</b> · ✨<b id="shardCount">0</b>/24 · ⚡<b id="sbCount">0</b></div>
     <button id="btnMusic" title="音乐开关">🎵</button>
     <button id="btnJournal" title="图鉴 (J)">📖 图鉴</button>
     <button id="btnHelp" title="帮助 (H)">?</button>
@@ -81,6 +92,7 @@
       <span><kbd>空格</kbd> 跳跃 · <kbd>E</kbd> 查看·互动 · <kbd>J</kbd> 图鉴</span>
       <span>🌙 岛上有昼夜:黄昏看晚霞,夜里守着篝火看星星</span>
       <span>✨ 岛上散落着 24 枚星之碎片,走近即可拾取</span>
+      <span>⚡ 看藏品赚算力币(SB):酒馆买酒 · 广场报亭买《万神殿日报》</span>
       <span>🌊 可以游进大海 · 水族馆在南岸栈桥 · 营地在雪山上</span>
       <span>📱 手机:左半屏摇杆 · 右半屏转视角 · 右下按钮互动</span>
     </div>
@@ -100,6 +112,6 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=6"></script>
+<script type="module" src="game3d.js?v=7"></script>
 </body>
 </html>

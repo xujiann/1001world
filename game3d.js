@@ -159,8 +159,8 @@ function questBump(cat) {
   if (quest.prog[cat] >= QUEST_TPL[cat][0]) return;
   quest.prog[cat]++;
   if (quest.cats.every(c => quest.prog[c] >= QUEST_TPL[c][0])) {
-    quest.done = true; stars++;
-    setTimeout(() => { toast(`🎉 今日委托完成!星星 ×${stars}`); blip(660); setTimeout(() => blip(990), 120); }, 350);
+    quest.done = true; stars++; earnSB(50);
+    setTimeout(() => { toast(`🎉 今日委托完成!星星 ×${stars} · ⚡+50`); blip(660); setTimeout(() => blip(990), 120); }, 350);
   }
   saveQuest(); updateQuestHUD();
 }
@@ -172,13 +172,27 @@ function updateQuestHUD() {
   $('hudQuest').classList.toggle('done', quest.done);
 }
 initQuest();
+/* --- 算力币(SB)钱包 --- */
+let sb = parseInt(localStorage.getItem('w1001.sb') ?? 'x', 10);
+if (!Number.isFinite(sb)) sb = 101;   // 新玩家启动资金
+let drinks = parseInt(localStorage.getItem('w1001.drinks') || '0', 10) || 0;
+function saveSB() { try { localStorage.setItem('w1001.sb', String(sb)); localStorage.setItem('w1001.drinks', String(drinks)); } catch (e) {} }
+function updateSB() { const el = $('sbCount'); if (el) el.textContent = sb; }
+function earnSB(n) { sb += n; saveSB(); updateSB(); }
+function spendSB(n) {
+  if (sb < n) { toast(`⚡ 算力不足:需要 ${n} SB,还差 ${n - sb}——去看看藏品赚点算力吧`); blip(220); return false; }
+  sb -= n; saveSB(); updateSB(); return true;
+}
+updateSB();
+
 function markSeen(cat, id, title) {
   if (!CATS[cat]) return;
   if (!seen[cat].includes(id)) {
     seen[cat].push(id);
     try { localStorage.setItem('w1001.seen.v1', JSON.stringify(seen)); } catch (e) {}
     $('seenCount').textContent = seenCount();
-    toast(`✦ 收录图鉴:${title}`);
+    earnSB(2);
+    toast(`✦ 收录图鉴:${title} · ⚡+2`);
     blip(660); setTimeout(() => blip(880), 90);
     questBump(cat);
   }
@@ -194,8 +208,46 @@ function cardHTML(cat, inner) {
   <div class="cardFoot"><span class="collected">✓ 已收录 ${seen[cat].length} / ${D[cat].length}(全馆 ${cfg.tot} ${cfg.unit})</span>
   <a href="${cfg.link}" target="_blank" rel="noopener">去 1001 网站 →</a></div>`;
 }
+/* --- 万神殿日报 --- */
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const paperBought = () => { try { return localStorage.getItem('w1001.paper') === todayStr(); } catch (e) { return false; } };
+function paperHTML() {
+  const ds = todayStr();
+  const r = mulberry32([...ds].reduce((a, c) => (a * 33 + c.charCodeAt(0)) | 0, 5));
+  const pick = arr => arr[Math.floor(r() * arr.length)];
+  const art = pick(D.art), beer = pick(D.beers), bird = pick(D.birds), book = pick(D.books),
+        alb = pick(D.jazz), plant = pick(D.plants), sport = pick(D.outdoor);
+  const issue = Math.floor((Date.now() - new Date('2026-01-01').getTime()) / 86400000);
+  const shardLeft = 24 - shardsGot.length;
+  return `<div class="paper">
+    <div class="pMast">万神殿日报</div>
+    <div class="pSub">THE PANTHEON DAILY · ${ds} · 第 ${issue} 期 · 收藏之岛唯一日报 · 售价 2 SB</div>
+    <div class="pHead">《${esc(art.title)}》真迹今日在一〇〇一美术馆展出</div>
+    <div class="pBody">${esc(art.artist)}(${esc(art.artist_en)})作于${esc(art.year)},馆藏来自${esc(art.loc)}。策展人称:"错过要再等一千零一夜。"</div>
+    <div class="pCols">
+      <div><b>🍺 酒馆快讯</b><br>等待戈多酒馆新到「${esc(beer.name)}」(${esc(beer.style)} · ${esc(beer.abv)})。天哥已代表大家试过:"戈多没来,酒很好。"</div>
+      <div><b>🐦 自然观察</b><br>百鸟林目击「${esc(bird.zh)}」(<i>${esc(bird.sci)}</i>)。观鸟协会提醒:请勿投喂,它比你懂吃。</div>
+      <div><b>🎷 今夜乐评</b><br>蓝调俱乐部放送《${esc(alb.title)}》(${esc(alb.artist)},${alb.year})。剑敏大师短评:"留白极佳。"</div>
+      <div><b>📚 一日一书</b><br>博尔赫斯荐《${esc(book.zh)}》(${esc(book.author)}):"${esc(String(book.desc)).slice(0, 38)}…"</div>
+      <div><b>🌿 花讯</b><br>植物园「${esc(plant.zh)}」(${esc(plant.family)})正当时,解说牌照片已更新。</div>
+      <div><b>⛰️ 户外专栏</b><br>雪峰营地本周主推:${esc(sport.name)}(难度 ${'●'.repeat(sport.diff)}${'○'.repeat(5 - sport.diff)})。</div>
+    </div>
+    <div class="pFoot">天气:恒晴,傍晚有物理正确的晚霞,夜间星空营业,灯塔照常旋转 ·
+    寻物启事:全岛尚有 ${shardLeft} 枚星之碎片下落不明,拾获者奖 10 SB ·
+    广告位招租(请洽报亭墨丘利)</div>
+  </div>`;
+}
+function newsCard() {
+  if (paperBought()) return paperHTML();
+  return `<div class="cardHead" style="background:#4a4438">🗞️ 报亭 · Newsstand</div>
+    <div class="cardMedia"><div class="paperRoll">📰</div></div>
+    <div class="cardTitle"><h3>万神殿日报</h3><div class="en">The Pantheon Daily · 今日刊</div></div>
+    <div class="cardDesc">墨丘利:"号外!全岛大事,尽在一纸。今天买过的,全天免费重读。"</div>
+    <div style="text-align:center;padding:0 0 16px"><button class="again" data-buypaper>🗞️ 买一份(2 SB)</button></div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
+  if (cat === 'news') return newsCard();
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -248,7 +300,7 @@ function buildCard(s) {
     desc = it.desc;
   }
   if (CATS[cat]) markSeen(cat, it.id, title);
-  const again = s.type === 'bar' ? '<div style="text-align:center;padding:0 0 16px"><button class="again" data-again>🍺 再来一杯</button></div>' : '';
+  const again = s.type === 'bar' ? `<div style="text-align:center;padding:0 0 16px"><button class="again" data-again>🍺 买一杯(6 SB)${drinks ? ` · 已饮 ${drinks} 杯` : ''}</button></div>` : '';
   return cardHTML(cat, `<div class="cardMedia">${media}</div>
     <div class="cardTitle"><h3>${esc(title)}</h3><div class="en">${en}</div></div>${meta}
     ${desc ? `<div class="cardDesc">${desc}</div>` : ''}${again}`);
@@ -260,7 +312,19 @@ function openCard(s) {
   cardBody.querySelectorAll('img').forEach(im => {
     im.onerror = () => { im.outerHTML = `<div class="medallion"><div class="g">${CATS[s.cat]?.icon || '✦'}</div><div class="e">图片加载中断</div></div>`; };
   });
-  cardBody.querySelector('[data-again]')?.addEventListener('click', () => openCard(s));
+  cardBody.querySelector('[data-again]')?.addEventListener('click', () => {
+    if (!spendSB(6)) return;
+    drinks++; saveSB();
+    toast(`🍻 干杯!这是你的第 ${drinks} 杯 · ⚡-6`);
+    openCard(s);
+  });
+  cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
+    if (!spendSB(2)) return;
+    try { localStorage.setItem('w1001.paper', todayStr()); } catch (e) {}
+    toast('🗞️ 墨丘利:"慢用,今日的世界。" ⚡-2');
+    blip(740);
+    openCard(s);
+  });
   cardBody.querySelectorAll('[data-travel]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.travel, p = TRAVEL3D[k];
     player.position.set(p[0], height(p[0], p[1]) + 1, p[1]); vy = 0;
@@ -592,7 +656,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (type === 'bar' || type === 'sign') ? null : pickers[cat]();
+  const item = (type === 'bar' || type === 'sign' || type === 'news') ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -968,6 +1032,25 @@ function makeTree(x, z, scale, birdCol) {
   cirObs.push({ x: -14, z: -10, r: .8 });
   addSpot(-14, -10, 'sign', 'sign', { r: 7 });
 }
+/* --- 报亭:万神殿日报(广场东南角) --- */
+{
+  const kx = 38, kz = 52, kh = 6;
+  const booth = box(5, 3.4, 4, lam(0x2e7d4f)); booth.position.set(kx, kh + 1.7, kz); scene.add(booth);
+  const kroof = box(5.8, .4, 4.8, lam(0x1e5c38)); kroof.position.set(kx, kh + 3.6, kz); scene.add(kroof);
+  for (let i = 0; i < 5; i++) {   // 条纹雨棚
+    const seg = box(1.05, .18, 1.7, lam(i % 2 ? 0xf5efdc : 0xc0392b));
+    seg.rotation.x = .5; seg.position.set(kx - 2.1 + i * 1.05, kh + 3.35, kz + 2.6); scene.add(seg);
+  }
+  const counter = box(4.6, .3, .9, M.wood); counter.position.set(kx, kh + 1.5, kz + 2.25); scene.add(counter);
+  for (let i = 0; i < 3; i++) {   // 一摞摞报纸
+    const pp = box(.95, .1, 1.25, lam(0xf0ead8));
+    pp.position.set(kx - 1.4 + i * 1.4, kh + 1.72, kz + 2.25); pp.rotation.y = (i - 1) * .18; scene.add(pp);
+  }
+  const ks = makeSign('万神殿日报', 5.2, '#f0ead8', '#2c2418');
+  ks.position.set(kx, kh + 4.5, kz + .3); scene.add(ks);
+  boxObs.push({ x1: kx - 2.7, z1: kz - 2.2, x2: kx + 2.7, z2: kz + 2.2 });
+  addSpot(kx, kz + 4.4, 'news', 'news', { r: 7 });
+}
 /* --- 星之碎片(24 枚,收集玩法) --- */
 const SHARD_POS = [
   [340, -320], [300, -210], [0, 428], [60, 300], [-60, 300], [230, -40], [280, -140], [190, -200],
@@ -997,13 +1080,14 @@ function collectShard(s) {
   scene.remove(s.m);
   shards.splice(shards.indexOf(s), 1);
   updateShardHUD();
+  earnSB(10);
   blip(880); setTimeout(() => blip(1320), 100);
   const n = shardsGot.length;
   if (n === 8 || n === 16 || n === 24) {
     stars++; saveQuest(); updateQuestHUD();
-    toast(`🌟 集齐 ${n} 枚星之碎片,获得 1 颗星!`);
+    toast(`🌟 集齐 ${n} 枚星之碎片,获得 1 颗星!⚡+10`);
   } else {
-    toast(`✨ 星之碎片 ${n} / 24`);
+    toast(`✨ 星之碎片 ${n} / 24 · ⚡+10`);
   }
 }
 
@@ -1100,6 +1184,8 @@ function addNpc(cfg) {
     lines: ['这本我读了三遍,每遍都不一样。', '想入门?先从《小王子》开始。', '嘘——这里是图书馆哦。'] });
   addNpc({ x: 68, z: -218, y: hBooks, name: '博尔赫斯', body: 0x707b7c, hat: 0x515a5a, opts: { cane: true },
     lines: ['我一直暗暗设想,天堂应该是图书馆的模样。', '我写作,是为了时光流逝使我心安。', '任何一本书,都是一座小径分岔的花园。'] });
+  addNpc({ x: 32, z: 57, name: '墨丘利', body: 0x5d7a99, hat: 0xd9b26a,
+    lines: ['号外号外!万神殿日报,今日新鲜出炉!', '两个算力币,知晓全岛大事。', '诸神也订这份报,你还在等什么?'] });
 }
 /* 游荡的文豪(1001books 的作者们,说他们的话) */
 const AUTHORS = [
@@ -1464,7 +1550,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '万神殿日报(2 SB)' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0;
@@ -1655,4 +1741,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML };
