@@ -14,9 +14,11 @@
   .back2d { display: inline-block; margin-top: 14px; color: #9fc2d8; font-size: 13px; text-decoration: none; }
   .npcBub {
     position: fixed; transform: translate(-50%, -100%); z-index: 14; pointer-events: none;
-    background: rgba(255,255,252,.94); color: #3a3226; padding: 6px 12px; border-radius: 10px;
-    font-size: 13px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+    background: rgba(255,255,252,.94); color: #3a3226; padding: 7px 13px; border-radius: 10px;
+    font-size: 13px; max-width: 280px; text-align: center; line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
   }
+  .npcBub b { color: #8c3b2e; }
 </style>
 </head>
 <body>
@@ -86,6 +88,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
 </script>
-<script type="module" src="game3d.js?v=2"></script>
+<script type="module" src="game3d.js?v=3"></script>
 </body>
 </html>

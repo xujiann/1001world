@@ -18,7 +18,7 @@ const CATS = {
   books:     { icon: '📚', name: '千夜图书馆',     en: 'Grand Library',    color: '#b5651d', link: 'https://xujiann.github.io/',               tot: D.totals.books,     unit: '本经典' },
   birds:     { icon: '🐦', name: '百鸟林',         en: 'Bird Forest',      color: '#2e86ab', link: 'https://xujiann.github.io/',               tot: 1001,               unit: '种飞鸟' },
   plants:    { icon: '🌿', name: '奇花植物园',     en: 'Botanical Garden', color: '#27ae60', link: 'https://xujiann.github.io/1001plants/',    tot: D.totals.plants,    unit: '种植物' },
-  beers:     { icon: '🍺', name: '1001 酒馆',      en: 'The 1001 Tavern',  color: '#d35400', link: 'https://xujiann.github.io/1001craft/',     tot: 1001,               unit: '款精酿' },
+  beers:     { icon: '🍺', name: '等待戈多酒馆',   en: 'Waiting for Godot', color: '#d35400', link: 'https://xujiann.github.io/1001craft/',    tot: 1001,               unit: '款精酿' },
   fish:      { icon: '🐠', name: '深蓝水族馆',     en: 'Aquarium',         color: '#16a085', link: 'https://xujiann.github.io/',               tot: D.totals.fish,      unit: '种鱼' },
   jazz:      { icon: '🎷', name: '蓝调爵士俱乐部', en: 'Jazz Club',        color: '#c0392b', link: 'https://xujiann.github.io/1001jazz/',      tot: D.totals.jazz,      unit: '张专辑' },
   classical: { icon: '🎻', name: '黄金音乐厅',     en: 'Concert Hall',     color: '#c8912a', link: 'https://xujiann.github.io/1001classical/', tot: D.totals.classical, unit: '份录音' },
@@ -182,7 +182,7 @@ function buildCard(s) {
     media = `<div class="beerGlass" style="background:linear-gradient(180deg,${col},#00000033 160%);"><div class="foam"></div><div class="abv">${esc(it.abv)}</div></div>`;
     title = it.name; en = it.name_en;
     meta = metaRows([['酒厂', it.brewery_en ? `${it.brewery} · ${it.brewery_en}` : it.brewery], ['风格', it.style_en ? `${it.style} · ${it.style_en}` : it.style], ['产地', it.origin]]);
-    desc = it.desc + (s.type === 'bar' ? '<br><br>🍻 酒保:“海风里喝一杯,再好不过!”' : '');
+    desc = it.desc + (s.type === 'bar' ? '<br><br>🍻 酒保:“戈多还没来。再等等,先喝一杯。”' : '');
   } else if (cat === 'fish') {
     const col = FISH_COLOR[it.cat] || '#4a90d9';
     media = `<svg class="fishSvg" width="200" height="120" viewBox="0 0 200 120"><ellipse cx="90" cy="60" rx="58" ry="30" fill="${col}"/><polygon points="140,60 180,35 180,85" fill="${col}"/><polygon points="80,32 100,8 108,34" fill="${col}" opacity=".8"/><circle cx="58" cy="52" r="6" fill="#fff"/><circle cx="58" cy="52" r="3" fill="#222"/><path d="M40 68 Q52 74 64 68" stroke="#00000044" fill="none" stroke-width="3"/></svg>`;
@@ -479,6 +479,25 @@ function pavilion(zn, opt) {
 }
 const texLoader = new THREE.TextureLoader();
 texLoader.crossOrigin = 'anonymous';
+/* 中文招牌(canvas 纹理,夜里也发亮) */
+function makeSign(text, w = 9, bg = '#3a2a18', fg = '#ffd76a') {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 120;
+  const c = cv.getContext('2d');
+  c.fillStyle = bg; c.fillRect(0, 0, 512, 120);
+  c.strokeStyle = fg; c.lineWidth = 6; c.strokeRect(8, 8, 496, 104);
+  c.fillStyle = fg; c.font = 'bold 58px "Microsoft YaHei", sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, w * 120 / 512),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+}
+/* 山墙三角(古典建筑) */
+function pediment(w, h, depth, color) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(0, h); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false });
+  return new THREE.Mesh(g, lam(color));
+}
 function paintingMesh(grp, lx, lz, ry, spot) {
   const frame = box(4.6, 3.8, .3, M.gold); frame.position.set(lx, 4, lz); frame.rotation.y = ry; grp.add(frame);
   const mat = new THREE.MeshLambertMaterial({ color: 0x777777 });
@@ -493,7 +512,15 @@ function paintingMesh(grp, lx, lz, ry, spot) {
 /* --- 美术馆 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'art');
-  const grp = pavilion(zn, { w: 46, d: 30, walls: 'three', roof: 0x8e5bd6, floor: 0xe8e2d4 });
+  const grp = pavilion(zn, { w: 46, d: 30, walls: 'three', roof: 0xd8d2c4, floor: 0xe8e2d4 });
+  // 古典博物馆立面:柱廊 + 檐部 + 三角山墙(参考大英博物馆)
+  for (let i = 0; i < 6; i++) {
+    const col = cyl(.75, .85, 7.4, M.white); col.position.set(-17.5 + i * 7, 3.9, 14.2); grp.add(col);
+    cirObs.push({ x: zn.x - 17.5 + i * 7, z: zn.z + 14.2, r: 1.1 });
+  }
+  const entab = box(50, 1.3, 3.4, M.white); entab.position.set(0, 8.1, 14.2); grp.add(entab);
+  const ped = pediment(50, 5.5, 1.6, 0xe8e2d4); ped.position.set(0, 8.7, 13.6); grp.add(ped);
+  const sign = makeSign('一〇〇一美术馆', 10); sign.position.set(0, 10.6, 15.4); grp.add(sign);
   for (let i = 0; i < 6; i++) {
     const s = addSpot(zn.x - 17.5 + i * 7, zn.z - 11, 'art', 'painting'); s.y = zn.h;
     paintingMesh(grp, -17.5 + i * 7, -14.4, 0, s);
@@ -508,7 +535,18 @@ function paintingMesh(grp, lx, lz, ry, spot) {
 /* --- 图书馆 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'books');
-  const grp = pavilion(zn, { w: 32, d: 24, walls: 'three', roof: 0xb5651d, floor: 0xd8c49c });
+  const grp = pavilion(zn, { w: 32, d: 24, walls: 'three', roof: 0xcfc0a2, floor: 0xd8c49c });
+  // 古典图书馆:鼓座 + 铜绿穹顶(参考老图书馆圆顶)
+  const drum = cyl(9.5, 10, 2.2, M.white); drum.position.y = 8.9; grp.add(drum);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(9.4, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x4f9e8f));
+  dome.position.y = 10; grp.add(dome);
+  const finial = cyl(.3, .3, 2, M.gold); finial.position.y = 20; grp.add(finial);
+  for (const sgn of [-1, 1]) {
+    const col = cyl(.65, .75, 7, M.white); col.position.set(sgn * 4.5, 3.8, 12.6); grp.add(col);
+    cirObs.push({ x: zn.x + sgn * 4.5, z: zn.z + 12.6, r: 1 });
+  }
+  const arch = box(11, 1.4, 2, M.white); arch.position.set(0, 7.6, 12.6); grp.add(arch);
+  const sign = makeSign('千夜图书馆', 8, '#2c2418', '#ffe9a8'); sign.position.set(0, 9.4, 13.4); grp.add(sign);
   let n = 0;
   for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
     if (n++ >= 12) break;
@@ -574,14 +612,53 @@ function makeTree(x, z, scale, birdCol) {
       scene.add(fm); flowers.push(fm);
       const st = cyl(.06, .06, 1, lam(0x3e7a3a)); st.position.set(fm.position.x, h + .95, fm.position.z); scene.add(st);
     }
-    s.updateVisual = () => flowers.forEach(f => f.material.color.set(hashCol(s.item.id)));
+    // 真实植物照片解说牌(1001plants 图库)
+    const bMat = new THREE.MeshLambertMaterial({ color: 0x9aa08a });
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.1), bMat);
+    board.position.set(x, h + 3, z - 1.6); scene.add(board);
+    const bFrame = box(3.15, 2.45, .15, M.wood); bFrame.position.set(x, h + 3, z - 1.7); scene.add(bFrame);
+    for (const sgn of [-1, 1]) {
+      const post = cyl(.12, .12, 3.2, M.woodDark); post.position.set(x + sgn * 1.35, h + 1.5, z - 1.7); scene.add(post);
+    }
+    const loadTex = () => texLoader.load(CDN.plants + s.item.thumb, tx => {
+      tx.colorSpace = THREE.SRGBColorSpace; bMat.map = tx; bMat.color.set(0xffffff); bMat.needsUpdate = true;
+    });
+    loadTex();
+    s.updateVisual = () => { flowers.forEach(f => f.material.color.set(hashCol(s.item.id))); loadTex(); };
     cirObs.push({ x, z, r: 2.6 });
+  }
+  const gSign = makeSign('奇花植物园', 8, '#1e3a1e', '#bff09a');
+  const gsh = height(zn.x, zn.z + 46);
+  gSign.position.set(zn.x, gsh + 4.6, zn.z + 46); scene.add(gSign);
+  for (const sgn of [-1, 1]) {
+    const post = cyl(.15, .15, 5, M.woodDark); post.position.set(zn.x + sgn * 3.6, gsh + 2.4, zn.z + 46); scene.add(post);
   }
 }
 /* --- 酒馆 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'beers');
-  const grp = pavilion(zn, { w: 28, d: 22, walls: 'back', roof: 0xd35400, floor: 0x9c6b39 });
+  const grp = pavilion(zn, { w: 28, d: 22, walls: 'back', roof: 0x7a4a26, floor: 0x9c6b39 });
+  // 欧式老酒馆:人字坡顶 + 悬挂招牌 + 门口一棵戈多枯树
+  for (const sgn of [-1, 1]) {
+    const slope = box(31, .6, 13.2, lam(0x6e3f1e));
+    slope.rotation.x = sgn * .52; slope.position.set(0, 10, sgn * 5.2); grp.add(slope);
+  }
+  const ridge = box(31.5, .7, 1, M.woodDark); ridge.position.set(0, 12.9, 0); grp.add(ridge);
+  const sPost = cyl(.22, .22, 6, M.woodDark); sPost.position.set(16, 3, 11); grp.add(sPost);
+  const sArm = box(4, .3, .3, M.woodDark); sArm.position.set(14.2, 5.8, 11); grp.add(sArm);
+  const sign = makeSign('等待戈多', 4.6, '#26160a', '#ffd76a'); sign.position.set(13.6, 4.6, 11); grp.add(sign);
+  cirObs.push({ x: zn.x + 16, z: zn.z + 11, r: .7 });
+  // 戈多枯树(那棵著名的树)
+  {
+    const tx = zn.x + 22, tz = zn.z + 16, th = height(zn.x + 22, zn.z + 16);
+    const t = new THREE.Group(); t.position.set(tx, th, tz);
+    const trunk = cyl(.35, .55, 6.5, lam(0x5b5148)); trunk.position.y = 3.2; t.add(trunk);
+    [[.7, 1.4, 5.2, .28], [-.6, 1.1, 5.8, -.4], [.2, -1, 6.4, .9]].forEach(([bx, bz, by, rot]) => {
+      const br = cyl(.12, .2, 3, lam(0x5b5148));
+      br.position.set(bx, by, bz); br.rotation.z = rot + .8; br.rotation.x = bz * .3; t.add(br);
+    });
+    scene.add(t); cirObs.push({ x: tx, z: tz, r: .9 });
+  }
   const bar = box(16, 1.8, 2.4, M.woodDark); bar.position.set(0, 1.5, -6); grp.add(bar);
   boxObs.push({ x1: zn.x - 8, z1: zn.z - 7.4, x2: zn.x + 8, z2: zn.z - 4.6 });
   // 酒保小人
@@ -631,11 +708,22 @@ function makeTree(x, z, scale, birdCol) {
       const post = cyl(.35, .35, 4, M.woodDark); post.position.set(zn.x + sgn * 2.6, 0, pz); scene.add(post);
     }
   }
+  const aqSign = makeSign('深蓝水族馆', 7, '#0a2438', '#8fd3ff');
+  aqSign.position.set(zn.x, 5.4, zn.z + 17); scene.add(aqSign);
+  for (const sgn of [-1, 1]) {
+    const post = cyl(.16, .16, 5, M.woodDark); post.position.set(zn.x + sgn * 3.2, 2.5, zn.z + 17); scene.add(post);
+  }
 }
 /* --- 爵士俱乐部 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'jazz');
-  const grp = pavilion(zn, { w: 24, d: 20, walls: 'back', roof: 0x6e2436, floor: 0x4a2f3e });
+  const grp = pavilion(zn, { w: 24, d: 20, walls: 'back', roof: 0x33202e, floor: 0x4a2f3e });
+  // 新奥尔良风:条纹雨棚 + 霓虹招牌
+  for (let i = 0; i < 8; i++) {
+    const seg = box(3.1, .25, 3.6, lam(i % 2 ? 0xc0392b : 0xf5efdc));
+    seg.rotation.x = .3; seg.position.set(-10.8 + i * 3.1, 6.9, 10.6); grp.add(seg);
+  }
+  const sign = makeSign('蓝调爵士俱乐部', 9, '#150a18', '#ff7ab0'); sign.position.set(0, 9.2, 10.2); grp.add(sign);
   const stage = box(14, 1.2, 6, lam(0x241422)); stage.position.set(0, 1.2, -6); grp.add(stage);
   boxObs.push({ x1: zn.x - 7, z1: zn.z - 9, x2: zn.x + 7, z2: zn.z - 3 });
   for (let i = 0; i < 5; i++) for (let r = 0; r < 2; r++) {
@@ -649,7 +737,17 @@ function makeTree(x, z, scale, birdCol) {
 /* --- 音乐厅 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'classical');
-  const grp = pavilion(zn, { w: 26, d: 22, walls: 'back', roof: 0xc8912a, floor: 0xd9cdb2 });
+  const grp = pavilion(zn, { w: 26, d: 22, walls: 'back', roof: 0x8a6238, floor: 0xd9cdb2 });
+  // 金色大厅风:一排金拱窗 + 坡顶(参考维也纳金色大厅)
+  for (let i = 0; i < 5; i++) {
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), new THREE.MeshBasicMaterial({ color: 0xffd76a, side: THREE.DoubleSide }));
+    win.position.set(-8 + i * 4, 4, -10.6); grp.add(win);
+  }
+  for (const sgn of [-1, 1]) {
+    const slope = box(29, .6, 12.6, lam(0xb5872e));
+    slope.rotation.x = sgn * .48; slope.position.set(0, 9.8, sgn * 5.2); grp.add(slope);
+  }
+  const sign = makeSign('黄金音乐厅', 8, '#3a2a08', '#ffe9a8'); sign.position.set(0, 8.6, 11.2); grp.add(sign);
   const stage = box(16, 1.2, 6, lam(0x8a6238)); stage.position.set(0, 1.2, -7); grp.add(stage);
   boxObs.push({ x1: zn.x - 8, z1: zn.z - 10, x2: zn.x + 8, z2: zn.z - 4 });
   for (let i = 0; i < 5; i++) for (let r = 0; r < 2; r++) {
@@ -690,6 +788,12 @@ function makeTree(x, z, scale, birdCol) {
     const log = box(2, .4, .4, M.woodDark); log.rotation.y = a; log.position.set(fx + Math.cos(a), fh + .3, fz + Math.sin(a)); scene.add(log);
   }
   cirObs.push({ x: fx, z: fz, r: 1.8 });
+  const cSign = makeSign('雪峰营地', 6, '#1e3226', '#bfe8cf');
+  const csh = height(zn.x, zn.z + 34);
+  cSign.position.set(zn.x, csh + 4.4, zn.z + 34); scene.add(cSign);
+  for (const sgn of [-1, 1]) {
+    const post = cyl(.15, .15, 4.6, M.woodDark); post.position.set(zn.x + sgn * 2.7, csh + 2.2, zn.z + 34); scene.add(post);
+  }
 }
 /* --- 中央广场 --- */
 {
@@ -758,55 +862,100 @@ function makeTree(x, z, scale, birdCol) {
   if (grass.instanceColor) grass.instanceColor.needsUpdate = true;
   scene.add(grass);
 }
-/* --- 岛民 NPC --- */
+/* --- 人物与 NPC --- */
+function makePerson(bodyCol, hatCol, opts = {}) {
+  const g = new THREE.Group();
+  const wide = opts.wide || 1, tall = opts.tall || 1;
+  const body = cyl(.5 * wide, .62 * wide, 1.4 * tall, lam(bodyCol)); body.position.y = 1.1 * tall; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); head.position.y = 2.15 * tall; g.add(head);
+  if (opts.hat === 'cone') {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(.55, .7, 8), lam(hatCol)); h.position.y = 2.75 * tall; g.add(h);
+  } else {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(.52, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.3 * tall; g.add(h);
+  }
+  if (opts.cane) { const c1 = cyl(.05, .05, 1.8, M.woodDark); c1.position.set(.72, .9, .2); g.add(c1); }
+  return g;
+}
 const NPC_HUB3 = [14, 24];
-const NPC_LINES3 = ['雪山顶上风景最好。', '栈桥尽头能看到鱼群。', '美术馆新挂了一批画。', '夜里的篝火最暖和。', '游泳别游太远哦。', '酒馆的黑啤,一绝。', '你的图鉴集了多少啦?', '广场路牌能带你去任何地方。'];
-const npcs3 = [];
+const allNpcs = [];
+function addNpc(cfg) {
+  const g = makePerson(cfg.body, cfg.hat ?? 0xf5efdc, cfg.opts || {});
+  const y = cfg.y != null ? cfg.y : Math.max(height(cfg.x, cfg.z), 0);
+  g.position.set(cfg.x, y, cfg.z);
+  scene.add(g);
+  if (!cfg.wander) cirObs.push({ x: cfg.x, z: cfg.z, r: .9 });
+  const bub = document.createElement('div');
+  bub.className = 'npcBub hidden'; document.body.appendChild(bub);
+  allNpcs.push(Object.assign({ g, bub, idx: -1, talk: false, phase: Math.random() * 6, pause: 1 + Math.random() * 4, wp: null, route: null, leg: 0 }, cfg));
+}
+/* 驻场人物 */
+{
+  const hBeers = ZONES3D.find(z => z.key === 'beers').h + .8;
+  const hJazz = ZONES3D.find(z => z.key === 'jazz').h + .8;
+  const hBooks = ZONES3D.find(z => z.key === 'books').h + .8;
+  addNpc({ x: 234, z: 76, y: hBeers, name: '天哥', body: 0x2471a3, hat: 0x1a5276,
+    lines: ['来来来,天哥请你喝一杯!', '这家的 IPA,比戈多靠谱多了。', '等戈多的时候,酒不能停。'] });
+  addNpc({ x: 247, z: 74, y: hBeers, name: '大肚皮老师', body: 0x9c640c, hat: 0x7d5109, opts: { wide: 1.5 },
+    lines: ['我这肚皮,装得下一百零一种精酿。', '世涛要慢慢品,人生要慢慢过。', '别催,戈多来了也得先喝完这杯。'] });
+  addNpc({ x: -176, z: 238, y: hJazz, name: '剑敏大师', body: 0x6c3483, hat: 0x4a235a, opts: { tall: 1.08 },
+    lines: ['听,这段即兴,像不像剑气?', '《Kind of Blue》,百听不厌。', '爵士的秘诀是留白,武学也是。'] });
+  addNpc({ x: 52, z: -222, y: hBooks, name: 'Jackie', body: 0xc0392b, hat: 0xe74c3c,
+    lines: ['这本我读了三遍,每遍都不一样。', '想入门?先从《小王子》开始。', '嘘——这里是图书馆哦。'] });
+  addNpc({ x: 68, z: -218, y: hBooks, name: '博尔赫斯', body: 0x707b7c, hat: 0x515a5a, opts: { cane: true },
+    lines: ['我一直暗暗设想,天堂应该是图书馆的模样。', '我写作,是为了时光流逝使我心安。', '任何一本书,都是一座小径分岔的花园。'] });
+}
+/* 游荡的文豪(1001books 的作者们,说他们的话) */
+const AUTHORS = [
+  { name: '鲁迅', body: 0x2c3e50, lines: ['其实地上本没有路,走的人多了,也便成了路。', '愿中国青年都摆脱冷气,只是向上走。'] },
+  { name: '海明威', body: 0x784212, lines: ['人可以被毁灭,但不能被打败。', '这个世界如此美好,值得人们为它奋斗。'] },
+  { name: '加西亚·马尔克斯', body: 0xb03a2e, lines: ['过去都是假的,回忆是一条没有归途的路。', '生命中所有的灿烂,终要用寂寞偿还。'] },
+  { name: '卡夫卡', body: 0x1b2631, lines: ['一本书,必须是劈开我们内心冰海的斧头。', '在你与世界的斗争中,请站在世界这边。'] },
+  { name: '加缪', body: 0x21618c, lines: ['在隆冬,我终于知道,我身上有一个不可战胜的夏天。', '登上顶峰的斗争,本身足以充实人的心灵。'] },
+  { name: '圣埃克苏佩里', body: 0xca6f1e, lines: ['真正重要的东西,用眼睛是看不见的。', '所有的大人,都曾经是小孩。'] },
+];
 {
   const wps = Object.entries(TRAVEL3D).filter(([k]) => k !== 'plaza').map(([, v]) => v);
-  const cols = [[0x7d3c98, 0xf4d03f], [0x1f618d, 0xe74c3c], [0x7e5109, 0x58d68d]];
-  for (let i = 0; i < 3; i++) {
-    const g = new THREE.Group();
-    const body = cyl(.5, .62, 1.4, lam(cols[i][0])); body.position.y = 1.1; g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); head.position.y = 2.15; g.add(head);
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(.55, .7, 8), lam(cols[i][1])); hat.position.y = 2.75; g.add(hat);
-    g.position.set(NPC_HUB3[0] + i * 4 - 4, height(NPC_HUB3[0] + i * 4 - 4, NPC_HUB3[1] + i * 3), NPC_HUB3[1] + i * 3);
-    scene.add(g);
-    const bub = document.createElement('div');
-    bub.className = 'npcBub hidden'; document.body.appendChild(bub);
-    npcs3.push({ g, bub, wps, wp: null, route: null, leg: 0, pause: 1 + i * 3, phase: i * 2, talk: false, line: '' });
-  }
+  AUTHORS.forEach((a, i) => addNpc({
+    x: NPC_HUB3[0] + (i % 3) * 5 - 5, z: NPC_HUB3[1] + Math.floor(i / 3) * 5,
+    name: a.name, body: a.body, hat: 0xf5efdc, opts: { hat: 'cone' },
+    lines: a.lines, wander: true, wps,
+  }));
 }
 function updateNpcs3(dt) {
-  for (const n of npcs3) {
+  for (const n of allNpcs) {
     const p = n.g.position;
-    if (n.pause > 0) { n.pause -= dt; }
-    else {
-      if (!n.wp) {
-        const target = n.wps[Math.floor(Math.random() * n.wps.length)];
-        n.route = [NPC_HUB3, target]; n.leg = 0; n.wp = n.route[0];
+    if (n.wander) {
+      if (n.pause > 0) { n.pause -= dt; }
+      else {
+        if (!n.wp) {
+          const target = n.wps[Math.floor(Math.random() * n.wps.length)];
+          n.route = [NPC_HUB3, target]; n.leg = 0; n.wp = n.route[0];
+        }
+        const dx = n.wp[0] - p.x, dz = n.wp[1] - p.z, d = Math.hypot(dx, dz);
+        if (d < 2) {
+          if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
+          else { n.wp = null; n.pause = 3 + Math.random() * 5; }
+        } else {
+          const sp = 6.5 * dt;
+          p.x += dx / d * sp; p.z += dz / d * sp;
+          n.g.rotation.y = Math.atan2(dx, dz);
+          n.phase += dt * 9;
+        }
       }
-      const dx = n.wp[0] - p.x, dz = n.wp[1] - p.z, d = Math.hypot(dx, dz);
-      if (d < 2) {
-        if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
-        else { n.wp = null; n.pause = 3 + Math.random() * 4; }
-      } else {
-        const sp = 6.5 * dt;
-        p.x += dx / d * sp; p.z += dz / d * sp;
-        n.g.rotation.y = Math.atan2(dx, dz);
-        n.phase += dt * 9;
-      }
-    }
-    p.y = Math.max(height(p.x, p.z), 0);
-    n.g.children[0].scale.y = 1 + (n.wp ? Math.sin(n.phase) * .05 : 0);
-    // 搭话
+      p.y = Math.max(height(p.x, p.z), 0);
+    } else { n.phase += dt * 2.2; }
+    n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (n.wander && n.wp ? .05 : .02);
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
-    if (pd < 11 && !n.talk) { n.talk = true; n.line = NPC_LINES3[Math.floor(Math.random() * NPC_LINES3.length)]; }
+    if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
     if (n.talk) {
-      v3.set(p.x, p.y + 3.6, p.z).project(camera);
+      if (!n.wander) {   // 驻场人物转身面向玩家
+        const want = Math.atan2(player.position.x - p.x, player.position.z - p.z);
+        n.g.rotation.y += ((want - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
+      }
+      v3.set(p.x, p.y + 3.8, p.z).project(camera);
       if (v3.z < 1) {
-        n.bub.textContent = n.line;
+        n.bub.innerHTML = `<b>${n.name}</b>:${n.lines[n.idx]}`;
         n.bub.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
         n.bub.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
         n.bub.classList.remove('hidden');
@@ -1076,4 +1225,4 @@ function loop() {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs };
