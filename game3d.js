@@ -330,7 +330,7 @@ $('btnMusic').addEventListener('click', () => {
 
 /* ================= 三维场景 ================= */
 const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1100);
@@ -338,9 +338,46 @@ const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
 function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
-scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95));
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1cf, 1.5);
 sun.position.set(180, 260, 120); scene.add(sun);
+/* --- 星空(夜晚可见) --- */
+let starField;
+{
+  const n = 500, posArr = new Float32Array(n * 3);
+  const r0 = mulberry32(99);
+  for (let i = 0; i < n; i++) {
+    const a = r0() * Math.PI * 2, e = Math.acos(r0() * .95);   // 上半球
+    posArr[i * 3] = Math.sin(e) * Math.cos(a) * 1000;
+    posArr[i * 3 + 1] = Math.cos(e) * 1000 + 40;
+    posArr[i * 3 + 2] = Math.sin(e) * Math.sin(a) * 1000;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  starField = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
+  scene.add(starField);
+}
+/* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
+let fireLight = null;
+const DAY_LEN = 480, DAY_START = .12;
+const cDaySky = new THREE.Color(0x9fd4ee), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
+const skyCol = new THREE.Color();
+function dayAmount(p) { if (p < .58) return 1; if (p < .7) return 1 - (p - .58) / .12; if (p < .9) return 0; return (p - .9) / .1; }
+function updateDayNight(t) {
+  const p = (t / DAY_LEN + DAY_START) % 1;
+  const da = dayAmount(p);
+  const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
+  skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
+  scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
+  sun.intensity = .08 + 1.45 * da;
+  hemi.intensity = .22 + .75 * da;
+  const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
+  sun.position.set(Math.cos(sa) * 300, Math.max(Math.sin(sa) * 280, -60), 120);
+  starField.material.opacity = (1 - da) * .95;
+  if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
+  return da;
+}
 
 /* --- 地形网格 --- */
 const TER = 1100, SEG = 190;
@@ -646,6 +683,8 @@ function makeTree(x, z, scale, birdCol) {
   const flame = new THREE.Mesh(new THREE.ConeGeometry(1, 2.6, 7), new THREE.MeshBasicMaterial({ color: 0xf39c12 }));
   flame.position.set(fx, fh + 1.5, fz); scene.add(flame);
   window.__flame = flame;
+  fireLight = new THREE.PointLight(0xff9a3c, 0, 70, 2);
+  fireLight.position.set(fx, fh + 3, fz); scene.add(fireLight);
   for (let i = 0; i < 5; i++) {
     const a = i / 5 * Math.PI * 2;
     const log = box(2, .4, .4, M.woodDark); log.rotation.y = a; log.position.set(fx + Math.cos(a), fh + .3, fz + Math.sin(a)); scene.add(log);
@@ -695,6 +734,125 @@ function makeTree(x, z, scale, birdCol) {
     f.position.set(x, h + .35, z); scene.add(f);
   }
 }
+/* --- 原野草丛(1 次绘制) --- */
+{
+  const gGeo = new THREE.ConeGeometry(.28, 1.5, 4);
+  const gMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const grass = new THREE.InstancedMesh(gGeo, gMat, 1600);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pv = new THREE.Vector3();
+  const gc = [new THREE.Color(0x6aa54e), new THREE.Color(0x7cb85e), new THREE.Color(0x5c9a45), new THREE.Color(0x8fc46b)];
+  let gi = 0, guard = 0;
+  while (gi < 1600 && guard++ < 9000) {
+    const x = rnd() * 860 - 430, z = rnd() * 860 - 430, h = height(x, z);
+    if (h < 2.2 || h > 24) continue;
+    if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r * .55)) continue;
+    q.setFromEuler(new THREE.Euler(rnd() * .22 - .11, rnd() * Math.PI, rnd() * .22 - .11));
+    sc.setScalar(.7 + rnd() * .9);
+    m4.compose(pv.set(x, h + .6, z), q, sc);
+    grass.setMatrixAt(gi, m4);
+    grass.setColorAt(gi, gc[gi % 4]);
+    gi++;
+  }
+  grass.count = gi;
+  grass.instanceMatrix.needsUpdate = true;
+  if (grass.instanceColor) grass.instanceColor.needsUpdate = true;
+  scene.add(grass);
+}
+/* --- 岛民 NPC --- */
+const NPC_HUB3 = [14, 24];
+const NPC_LINES3 = ['雪山顶上风景最好。', '栈桥尽头能看到鱼群。', '美术馆新挂了一批画。', '夜里的篝火最暖和。', '游泳别游太远哦。', '酒馆的黑啤,一绝。', '你的图鉴集了多少啦?', '广场路牌能带你去任何地方。'];
+const npcs3 = [];
+{
+  const wps = Object.entries(TRAVEL3D).filter(([k]) => k !== 'plaza').map(([, v]) => v);
+  const cols = [[0x7d3c98, 0xf4d03f], [0x1f618d, 0xe74c3c], [0x7e5109, 0x58d68d]];
+  for (let i = 0; i < 3; i++) {
+    const g = new THREE.Group();
+    const body = cyl(.5, .62, 1.4, lam(cols[i][0])); body.position.y = 1.1; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); head.position.y = 2.15; g.add(head);
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(.55, .7, 8), lam(cols[i][1])); hat.position.y = 2.75; g.add(hat);
+    g.position.set(NPC_HUB3[0] + i * 4 - 4, height(NPC_HUB3[0] + i * 4 - 4, NPC_HUB3[1] + i * 3), NPC_HUB3[1] + i * 3);
+    scene.add(g);
+    const bub = document.createElement('div');
+    bub.className = 'npcBub hidden'; document.body.appendChild(bub);
+    npcs3.push({ g, bub, wps, wp: null, route: null, leg: 0, pause: 1 + i * 3, phase: i * 2, talk: false, line: '' });
+  }
+}
+function updateNpcs3(dt) {
+  for (const n of npcs3) {
+    const p = n.g.position;
+    if (n.pause > 0) { n.pause -= dt; }
+    else {
+      if (!n.wp) {
+        const target = n.wps[Math.floor(Math.random() * n.wps.length)];
+        n.route = [NPC_HUB3, target]; n.leg = 0; n.wp = n.route[0];
+      }
+      const dx = n.wp[0] - p.x, dz = n.wp[1] - p.z, d = Math.hypot(dx, dz);
+      if (d < 2) {
+        if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
+        else { n.wp = null; n.pause = 3 + Math.random() * 4; }
+      } else {
+        const sp = 6.5 * dt;
+        p.x += dx / d * sp; p.z += dz / d * sp;
+        n.g.rotation.y = Math.atan2(dx, dz);
+        n.phase += dt * 9;
+      }
+    }
+    p.y = Math.max(height(p.x, p.z), 0);
+    n.g.children[0].scale.y = 1 + (n.wp ? Math.sin(n.phase) * .05 : 0);
+    // 搭话
+    const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
+    if (pd < 11 && !n.talk) { n.talk = true; n.line = NPC_LINES3[Math.floor(Math.random() * NPC_LINES3.length)]; }
+    else if (pd > 18) { n.talk = false; }
+    if (n.talk) {
+      v3.set(p.x, p.y + 3.6, p.z).project(camera);
+      if (v3.z < 1) {
+        n.bub.textContent = n.line;
+        n.bub.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
+        n.bub.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
+        n.bub.classList.remove('hidden');
+      } else n.bub.classList.add('hidden');
+    } else n.bub.classList.add('hidden');
+  }
+}
+/* --- 小地图 --- */
+const mm = $('minimap'), mctx = mm ? mm.getContext('2d') : null;
+let mmBase = null;
+function buildMinimapBase() {
+  mmBase = document.createElement('canvas'); mmBase.width = mm.width; mmBase.height = mm.height;
+  const c = mmBase.getContext('2d');
+  const img = c.createImageData(mm.width, mm.height);
+  for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
+    const x = (px / mm.width - .5) * 1100, z = (py / mm.height - .5) * 1100;
+    const h = height(x, z);
+    let r, g2, b;
+    if (h < -.5) { r = 29; g2 = 77; b = 112; }
+    else if (h < 1.8) { r = 216; g2 = 200; b = 150; }
+    else if (h > 34) { r = 238; g2 = 243; b = 245; }
+    else if (h > 26) { r = 141; g2 = 133; b = 119; }
+    else { r = 106; g2 = 165; b = 78; }
+    const o = (py * mm.width + px) * 4;
+    img.data[o] = r; img.data[o + 1] = g2; img.data[o + 2] = b; img.data[o + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+}
+function renderMinimap() {
+  if (!mctx) return;
+  if (!mmBase) buildMinimapBase();
+  mctx.drawImage(mmBase, 0, 0);
+  const W2X = x => (x / 1100 + .5) * mm.width, W2Y = z => (z / 1100 + .5) * mm.height;
+  for (const zn of ZONES3D) {
+    if (zn.key === 'plaza') continue;
+    mctx.fillStyle = CATS[zn.key].color;
+    mctx.beginPath(); mctx.arc(W2X(zn.x), W2Y(zn.z), 3, 0, 7); mctx.fill();
+  }
+  // 玩家朝向箭头
+  const px = W2X(player.position.x), py = W2Y(player.position.z);
+  mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
+  mctx.fillStyle = '#fff';
+  mctx.beginPath(); mctx.moveTo(0, -5); mctx.lineTo(3.4, 4); mctx.lineTo(-3.4, 4); mctx.closePath(); mctx.fill();
+  mctx.restore();
+}
+
 /* --- 海里的鱼群 & 海鸥 --- */
 const seaFish = [];
 {
@@ -813,7 +971,7 @@ function loop() {
       mx /= Math.max(len, 1); mz /= Math.max(len, 1);
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
       const rx = -fz, rz = fx;
-      const sp = (swimming ? 7.5 : 14) * dt;
+      const sp = (swimming ? 7.5 : (keys.shift ? 22 : 14)) * dt;
       let dx = (fx * -mz + rx * mx) * sp, dz = (fz * -mz + rz * mx) * sp;
       player.position.x += dx; player.position.z += dz;
       faceYaw = Math.atan2(dx, dz);
@@ -884,6 +1042,9 @@ function loop() {
   }
   if (window.__flame) window.__flame.scale.setScalar(1 + Math.sin(t * 9) * .18);
   for (const s of spots) if (s.birdRef) s.birdRef.position.y = 12.7 + Math.sin(t * 2 + s.x) * .18;
+  updateNpcs3(dt);
+  updateDayNight(t);
+  renderMinimap();
 
   /* 最近藏品点 + 提示 */
   nearSpot = null; let best = 1e9;
