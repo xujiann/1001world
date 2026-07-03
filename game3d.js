@@ -257,7 +257,7 @@ $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidd
 $('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
-let actx = null, musicGain = null, musicOn = true;
+let actx = null, musicGain = null, musicOn = true, waveGain = null;
 let musicZone = 'street', nextBeat = 0, beatCount = 0, melIdx = 3;
 const THEMES = {
   street:    { tempo: 96,  wave: 'triangle', scale: [0, 2, 4, 7, 9, 12],   base: 220, dens: .5, bass: true },
@@ -311,6 +311,15 @@ function initAudio() {
     actx = new (window.AudioContext || window.webkitAudioContext)();
     musicGain = actx.createGain(); musicGain.gain.value = musicOn ? 1 : 0;
     musicGain.connect(actx.destination);
+    // 海浪:循环白噪声 + 低通,靠近海边渐强
+    const buf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const filt = actx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 420;
+    waveGain = actx.createGain(); waveGain.gain.value = 0;
+    src.connect(filt).connect(waveGain).connect(actx.destination);
+    src.start();
     setInterval(scheduler, 140);
   } catch (e) {}
 }
@@ -329,8 +338,9 @@ $('btnMusic').addEventListener('click', () => {
 });
 
 /* ================= 三维场景 ================= */
-const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+const MOBILE = matchMedia('(pointer: coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !MOBILE });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MOBILE ? 1.5 : 1.75));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1100);
@@ -359,7 +369,7 @@ let starField;
   scene.add(starField);
 }
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
-let fireLight = null;
+let fireLight = null, lantern = null;
 const DAY_LEN = 480, DAY_START = .12;
 const cDaySky = new THREE.Color(0x9fd4ee), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
@@ -376,17 +386,33 @@ function updateDayNight(t) {
   sun.position.set(Math.cos(sa) * 300, Math.max(Math.sin(sa) * 280, -60), 120);
   starField.material.opacity = (1 - da) * .95;
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
+  if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   return da;
 }
 
 /* --- 地形网格 --- */
-const TER = 1100, SEG = 190;
+const TER = 1100, SEG = MOBILE ? 130 : 190;
 {
   const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
   g.rotateX(-Math.PI / 2);
   const pos = g.attributes.position, colors = [];
   const cSand = new THREE.Color(0xe4d5a2), cGrass1 = new THREE.Color(0x74ad58), cGrass2 = new THREE.Color(0x639b4c),
-        cRock = new THREE.Color(0x8d8577), cSnow = new THREE.Color(0xeef3f5), cSea = new THREE.Color(0xcdbf92);
+        cRock = new THREE.Color(0x8d8577), cSnow = new THREE.Color(0xeef3f5), cSea = new THREE.Color(0xcdbf92),
+        cPath = new THREE.Color(0xcdb98c);
+  // 泥土小路:广场辐射到各区入口
+  const PATH_A = [0, 14];
+  const PATH_B = Object.entries(TRAVEL3D).filter(([k]) => k !== 'plaza').map(([, v]) => v);
+  function pathDist(x, z) {
+    let best = 1e9;
+    for (const b of PATH_B) {
+      const abx = b[0] - PATH_A[0], abz = b[1] - PATH_A[1];
+      const t = clamp(((x - PATH_A[0]) * abx + (z - PATH_A[1]) * abz) / (abx * abx + abz * abz), 0, 1);
+      const dx = x - (PATH_A[0] + abx * t), dz = z - (PATH_A[1] + abz * t);
+      const d = dx * dx + dz * dz;
+      if (d < best) best = d;
+    }
+    return Math.sqrt(best);
+  }
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
     const h = height(x, z);
@@ -396,7 +422,12 @@ const TER = 1100, SEG = 190;
     if (h > 34) c = cSnow;
     else if (sl > 3.4 || h > 26) c = cRock;
     else if (h < 1.8) c = h < -2 ? cSea : cSand;
-    else c = fbm(x * .05, z * .05) > .52 ? cGrass1 : cGrass2;
+    else {
+      c = fbm(x * .05, z * .05) > .52 ? cGrass1 : cGrass2;
+      const pd = pathDist(x, z);
+      if (pd < 4.2) c = cPath;
+      else if (pd < 7.5) c = c.clone().lerp(cPath, (7.5 - pd) / 3.3 * .55);
+    }
     colors.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -811,6 +842,45 @@ function makeTree(x, z, scale, birdCol) {
   cirObs.push({ x: -14, z: -10, r: .8 });
   addSpot(-14, -10, 'sign', 'sign', { r: 7 });
 }
+/* --- 星之碎片(24 枚,收集玩法) --- */
+const SHARD_POS = [
+  [340, -320], [300, -210], [0, 428], [60, 300], [-60, 300], [230, -40], [280, -140], [190, -200],
+  [-250, -60], [-320, 60], [-230, -200], [-160, -90], [-100, -260], [130, -270], [20, -320], [-320, 220],
+  [-120, 300], [90, 180], [-90, 160], [350, 60], [150, 90], [-14, -60], [130, 460], [-140, 455],
+];
+let shardsGot = [];
+try { shardsGot = JSON.parse(localStorage.getItem('w1001.shards') || '[]'); } catch (e) { shardsGot = []; }
+const shards = [];
+{
+  const geo = new THREE.OctahedronGeometry(.85, 0);
+  SHARD_POS.forEach(([x, z], i) => {
+    if (shardsGot.includes(i)) return;
+    const h = height(x, z);
+    const baseY = h < 0 ? .7 : h + 1.6;
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: .92 }));
+    m.position.set(x, baseY, z);
+    scene.add(m);
+    shards.push({ i, m, x, z, baseY });
+  });
+}
+function updateShardHUD() { const el = $('shardCount'); if (el) el.textContent = shardsGot.length; }
+updateShardHUD();
+function collectShard(s) {
+  shardsGot.push(s.i);
+  try { localStorage.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
+  scene.remove(s.m);
+  shards.splice(shards.indexOf(s), 1);
+  updateShardHUD();
+  blip(880); setTimeout(() => blip(1320), 100);
+  const n = shardsGot.length;
+  if (n === 8 || n === 16 || n === 24) {
+    stars++; saveQuest(); updateQuestHUD();
+    toast(`🌟 集齐 ${n} 枚星之碎片,获得 1 颗星!`);
+  } else {
+    toast(`✨ 星之碎片 ${n} / 24`);
+  }
+}
+
 /* --- 散布树 / 岩石 / 花 --- */
 {
   let placed = 0, guard = 0;
@@ -842,11 +912,12 @@ function makeTree(x, z, scale, birdCol) {
 {
   const gGeo = new THREE.ConeGeometry(.28, 1.5, 4);
   const gMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  const grass = new THREE.InstancedMesh(gGeo, gMat, 1600);
+  const GN = MOBILE ? 900 : 1600;
+  const grass = new THREE.InstancedMesh(gGeo, gMat, GN);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pv = new THREE.Vector3();
   const gc = [new THREE.Color(0x6aa54e), new THREE.Color(0x7cb85e), new THREE.Color(0x5c9a45), new THREE.Color(0x8fc46b)];
   let gi = 0, guard = 0;
-  while (gi < 1600 && guard++ < 9000) {
+  while (gi < GN && guard++ < 9000) {
     const x = rnd() * 860 - 430, z = rnd() * 860 - 430, h = height(x, z);
     if (h < 2.2 || h > 24) continue;
     if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r * .55)) continue;
@@ -1027,6 +1098,20 @@ const gulls = [];
     scene.add(g); gulls.push(g);
   }
 }
+/* --- 植物园的蝴蝶 --- */
+const flies = [];
+{
+  const zn = ZONES3D.find(z => z.key === 'plants');
+  const cols = [0xe8b4c8, 0xffd76a, 0xffffff, 0xd94f6b];
+  for (let i = 0; i < 8; i++) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color: cols[i % 4], side: THREE.DoubleSide });
+    const wl = new THREE.Mesh(new THREE.PlaneGeometry(.55, .4), mat); wl.position.x = -.3; g.add(wl);
+    const wr = new THREE.Mesh(new THREE.PlaneGeometry(.55, .4), mat); wr.position.x = .3; g.add(wr);
+    g.userData = { cx: zn.x + (i % 4) * 18 - 27, cz: zn.z + Math.floor(i / 4) * 24 - 12, ph: i * 1.7, wl, wr };
+    scene.add(g); flies.push(g);
+  }
+}
 
 /* ---------- 玩家 ---------- */
 const player = new THREE.Group();
@@ -1037,12 +1122,21 @@ const player = new THREE.Group();
   cap.position.y = 2.5; player.add(cap);
   const brim = box(.7, .1, .5, lam(0xc0392b)); brim.position.set(0, 2.5, .62); player.add(brim);
   const pack = box(.9, 1.1, .5, lam(0x7a5230)); pack.position.set(0, 1.5, -.62); player.add(pack);
+  lantern = new THREE.PointLight(0xffc978, 0, 22, 2);
+  lantern.position.set(0, 2.6, .6); player.add(lantern);
 }
 const blob = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3 }));
 blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
 scene.add(player);
 let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
+/* 恢复上次位置 */
+try {
+  const sv = JSON.parse(localStorage.getItem('w1001.pos3d') || 'null');
+  if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 900) {
+    player.position.set(sv[0], Math.max(height(sv[0], sv[1]), 0) + .5, sv[1]);
+  }
+} catch (e) {}
 
 /* ---------- 相机与输入 ---------- */
 let camYaw = Math.PI, camPitch = .42, camDist = 15;
@@ -1105,6 +1199,7 @@ addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001)
 const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
+let saveT = 0;
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
@@ -1191,6 +1286,34 @@ function loop() {
   }
   if (window.__flame) window.__flame.scale.setScalar(1 + Math.sin(t * 9) * .18);
   for (const s of spots) if (s.birdRef) s.birdRef.position.y = 12.7 + Math.sin(t * 2 + s.x) * .18;
+  /* 星之碎片:旋转 + 浮动 + 拾取 */
+  for (let i = shards.length - 1; i >= 0; i--) {
+    const s = shards[i];
+    s.m.rotation.y += dt * 2.2;
+    s.m.position.y = s.baseY + Math.sin(t * 2 + s.i) * .3;
+    const d2 = (s.x - player.position.x) ** 2 + (s.z - player.position.z) ** 2;
+    if (d2 < 12 && Math.abs(s.baseY - player.position.y) < 6) collectShard(s);
+  }
+  /* 蝴蝶 */
+  for (const f of flies) {
+    const u = f.userData;
+    const fx = u.cx + Math.sin(t * .5 + u.ph) * 9, fz = u.cz + Math.cos(t * .37 + u.ph) * 7;
+    f.position.set(fx, Math.max(height(fx, fz), 0) + 2.2 + Math.sin(t * 1.3 + u.ph) * .5, fz);
+    f.rotation.y = t * .5 + u.ph + Math.PI / 2;
+    u.wl.rotation.y = Math.sin(t * 14 + u.ph) * .8;
+    u.wr.rotation.y = -Math.sin(t * 14 + u.ph) * .8;
+  }
+  /* 海浪声强度 */
+  if (waveGain) {
+    const target = clamp(1 - Math.abs(gh) / 7, 0, 1) * .05;
+    waveGain.gain.value += (target - waveGain.gain.value) * Math.min(1, dt * 3);
+  }
+  /* 位置存档(每 3 秒) */
+  saveT += dt;
+  if (saveT > 3) {
+    saveT = 0;
+    try { localStorage.setItem('w1001.pos3d', JSON.stringify([+player.position.x.toFixed(1), +player.position.z.toFixed(1)])); } catch (e) {}
+  }
   updateNpcs3(dt);
   updateDayNight(t);
   renderMinimap();
@@ -1225,4 +1348,4 @@ function loop() {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard };
