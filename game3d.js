@@ -62,17 +62,39 @@ function vnoise(x, z) {
 }
 const fbm = (x, z) => vnoise(x, z) * .55 + vnoise(x * 2.17, z * 2.17) * .28 + vnoise(x * 4.9, z * 4.9) * .17;
 const smooth01 = t => t * t * (3 - 2 * t);
+/* 主岛 = 一头俯瞰的鲸:头在西,尾鳍甩向东,雪山是背鳍,西南伸出胸鳍 */
+const IS2 = { x: -720, z: -420, r: 150 };   // 灯塔屿
+function capMask(x, z, ax, az, bx, bz, r0, r1) {
+  const abx = bx - ax, abz = bz - az;
+  const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
+  const d = Math.hypot(x - (ax + abx * t), z - (az + abz * t));
+  return (1 - d / (r0 + (r1 - r0) * t)) * 2.2;
+}
+function islandMask(x, z) {
+  let m = (1 - Math.sqrt(((x + 120) / 380) ** 2 + ((z + 20) / 400) ** 2)) * 2.2;          // 鲸头与前身
+  m = Math.max(m, (1 - Math.sqrt(((x - 190) / 280) ** 2 + ((z + 60) / 250) ** 2)) * 2.2); // 后身
+  m = Math.max(m, capMask(x, z, -80, 150, 170, 255, 175, 150));   // 腹部(南)
+  m = Math.max(m, capMask(x, z, 430, -70, 640, -15, 75, 42));     // 尾柄
+  m = Math.max(m, capMask(x, z, 640, -15, 765, -140, 45, 16));    // 尾鳍北叶
+  m = Math.max(m, capMask(x, z, 640, -15, 765, 105, 45, 16));     // 尾鳍南叶
+  m = Math.max(m, capMask(x, z, 260, -200, 345, -310, 90, 60));   // 背鳍雪山连脊
+  m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
+  m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
+  return m;
+}
 function height(x, z) {
-  const d = Math.hypot(x, z);
-  const fall = smooth01(clamp((430 - d) / 170, 0, 1));
+  const fall = smooth01(clamp(islandMask(x, z), 0, 1));
   let h = -9 + fall * (13 + fbm(x * .008, z * .008) * 14);
-  const md = Math.hypot(x - 340, z + 320);            // 东北雪山
+  const md = Math.hypot(x - 340, z + 320);            // 东北雪山(背鳍)
   h += smooth01(clamp(1 - md / 200, 0, 1)) ** 2 * 55;
   for (const zn of ZONES3D) {                          // 区域整平
     const zd = Math.hypot(x - zn.x, z - zn.z);
     const w = smooth01(clamp(1 - zd / (zn.r * 1.25), 0, 1));
     h = h * (1 - w * .95) + zn.h * w * .95;
   }
+  const ld = Math.hypot(x - IS2.x, z - IS2.z);         // 灯塔基座整平
+  const lw = smooth01(clamp(1 - ld / 45, 0, 1));
+  h = h * (1 - lw * .9) + 8 * lw * .9;
   return h;
 }
 
@@ -387,11 +409,13 @@ function updateDayNight(t) {
   starField.material.opacity = (1 - da) * .95;
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
+  if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
+  if (beacon) { beacon.material.opacity = (1 - da) * .32; beacon.rotation.y = t * .9; }
   return da;
 }
 
 /* --- 地形网格 --- */
-const TER = 1100, SEG = MOBILE ? 130 : 190;
+const TER = 1900, SEG = MOBILE ? 150 : 240;
 {
   const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
   g.rotateX(-Math.PI / 2);
@@ -845,18 +869,18 @@ function makeTree(x, z, scale, birdCol) {
 /* --- 星之碎片(24 枚,收集玩法) --- */
 const SHARD_POS = [
   [340, -320], [300, -210], [0, 428], [60, 300], [-60, 300], [230, -40], [280, -140], [190, -200],
-  [-250, -60], [-320, 60], [-230, -200], [-160, -90], [-100, -260], [130, -270], [20, -320], [-320, 220],
-  [-120, 300], [90, 180], [-90, 160], [350, 60], [150, 90], [-14, -60], [130, 460], [-140, 455],
+  [-250, -60], [-320, 60], [-230, -200], [-160, -90], [-100, -260], [130, -270], [20, -320], [-700, -350],
+  [-120, 300], [90, 180], [-90, 160], [-498, -277, 10.8], [150, 90], [-14, -60], [130, 460], [-140, 455],
 ];
 let shardsGot = [];
 try { shardsGot = JSON.parse(localStorage.getItem('w1001.shards') || '[]'); } catch (e) { shardsGot = []; }
 const shards = [];
 {
   const geo = new THREE.OctahedronGeometry(.85, 0);
-  SHARD_POS.forEach(([x, z], i) => {
+  SHARD_POS.forEach(([x, z, fy], i) => {
     if (shardsGot.includes(i)) return;
     const h = height(x, z);
-    const baseY = h < 0 ? .7 : h + 1.6;
+    const baseY = fy != null ? fy : (h < 0 ? .7 : h + 1.6);
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: .92 }));
     m.position.set(x, baseY, z);
     scene.add(m);
@@ -1042,7 +1066,7 @@ function buildMinimapBase() {
   const c = mmBase.getContext('2d');
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
-    const x = (px / mm.width - .5) * 1100, z = (py / mm.height - .5) * 1100;
+    const x = (px / mm.width - .5) * 1900, z = (py / mm.height - .5) * 1425;
     const h = height(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
@@ -1059,12 +1083,14 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 1100 + .5) * mm.width, W2Y = z => (z / 1100 + .5) * mm.height;
+  const W2X = x => (x / 1900 + .5) * mm.width, W2Y = z => (z / 1425 + .5) * mm.height;
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
     mctx.beginPath(); mctx.arc(W2X(zn.x), W2Y(zn.z), 3, 0, 7); mctx.fill();
   }
+  mctx.fillStyle = '#ffe9a8';   // 灯塔
+  mctx.beginPath(); mctx.arc(W2X(IS2.x), W2Y(IS2.z), 2.6, 0, 7); mctx.fill();
   // 玩家朝向箭头
   const px = W2X(player.position.x), py = W2Y(player.position.z);
   mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
@@ -1113,6 +1139,98 @@ const flies = [];
   }
 }
 
+/* --- 跨海大桥(鲸岛 ⇄ 灯塔屿,可步行) --- */
+const BR_A = [-360, -190], BR_B = [-637, -364];
+const brDX = BR_B[0] - BR_A[0], brDZ = BR_B[1] - BR_A[1];
+const brLen = Math.hypot(brDX, brDZ);
+const brAng = Math.atan2(brDX, brDZ);
+const deckY = t => 3 + Math.sin(t * Math.PI) * 6;
+function bridgeHeight(x, z) {
+  const t = ((x - BR_A[0]) * brDX + (z - BR_A[1]) * brDZ) / (brDX * brDX + brDZ * brDZ);
+  if (t < 0 || t > 1) return null;
+  const d = Math.hypot(x - (BR_A[0] + brDX * t), z - (BR_A[1] + brDZ * t));
+  return d < 4.6 ? deckY(t) : null;
+}
+{
+  const N = 30, segL = brLen / N + .6;
+  for (let i = 0; i < N; i++) {
+    const t = (i + .5) / N;
+    const x = BR_A[0] + brDX * t, z = BR_A[1] + brDZ * t;
+    const pitch = -Math.cos(t * Math.PI) * (6 * Math.PI / brLen);
+    const seg = box(9.4, .7, segL, M.wood);
+    seg.position.set(x, deckY(t), z); seg.rotation.y = brAng; seg.rotation.x = pitch;
+    scene.add(seg);
+    for (const sgn of [-1, 1]) {
+      const rail = box(.35, 1.2, segL, M.woodDark);
+      rail.position.set(x + Math.cos(brAng) * 4.5 * sgn, deckY(t) + .95, z - Math.sin(brAng) * 4.5 * sgn);
+      rail.rotation.y = brAng; rail.rotation.x = pitch;
+      scene.add(rail);
+    }
+  }
+  for (const tt of [.28, .72]) {   // 双塔
+    const x = BR_A[0] + brDX * tt, z = BR_A[1] + brDZ * tt;
+    for (const sgn of [-1, 1]) {
+      const py = cyl(.9, 1.4, 42, lam(0xb03a2e));
+      py.position.set(x + Math.cos(brAng) * 5.6 * sgn, 12, z - Math.sin(brAng) * 5.6 * sgn);
+      scene.add(py);
+    }
+    const cross = box(14, 1.3, 1.3, lam(0xb03a2e)); cross.position.set(x, 30, z); cross.rotation.y = brAng + Math.PI / 2; scene.add(cross);
+  }
+  for (const sgn of [-1, 1]) {     // 主缆
+    const pts = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = i / 24;
+      const x = BR_A[0] + brDX * t + Math.cos(brAng) * 5.6 * sgn;
+      const z = BR_A[1] + brDZ * t - Math.sin(brAng) * 5.6 * sgn;
+      const dt = Math.min(Math.abs(t - .28), Math.abs(t - .72));
+      const y = 32 - Math.min(dt / .28, 1) ** 2 * 21;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, .28, 5), lam(0x8c2f24));
+    scene.add(tube);
+  }
+}
+/* --- 灯塔屿 --- */
+let lightLamp = null, beacon = null;
+{
+  const bx = IS2.x, bz = IS2.z, bh0 = height(bx, bz);
+  const base = cyl(6, 7.2, 3, M.stone); base.position.set(bx, bh0 + 1.2, bz); scene.add(base);
+  for (let i = 0; i < 5; i++) {
+    const band = cyl(3.4 - i * .16, 3.56 - i * .16, 3.6, lam(i % 2 ? 0xc0392b : 0xf5efdc));
+    band.position.set(bx, bh0 + 4.4 + i * 3.5, bz); scene.add(band);
+  }
+  const lampRoom = cyl(2.2, 2.4, 2.6, new THREE.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: .55 }));
+  lampRoom.position.set(bx, bh0 + 22.6, bz); scene.add(lampRoom);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(2.9, 2.4, 10), lam(0xc0392b)); cap.position.set(bx, bh0 + 25.1, bz); scene.add(cap);
+  lightLamp = new THREE.PointLight(0xfff2b0, 0, 180, 1.8); lightLamp.position.set(bx, bh0 + 22.6, bz); scene.add(lightLamp);
+  beacon = new THREE.Mesh(new THREE.PlaneGeometry(80, 2.4), new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, side: THREE.DoubleSide }));
+  beacon.position.set(bx, bh0 + 22.6, bz); scene.add(beacon);
+  cirObs.push({ x: bx, z: bz, r: 4.2 });
+  makeTree(bx + 24, bz + 16, 1.1, null); makeTree(bx - 20, bz + 24, .9, null); makeTree(bx + 8, bz - 28, 1.2, null);
+  const sg = makeSign('灯塔屿', 5.5, '#12242e', '#bfe8ff');
+  sg.position.set(bx + 14, height(bx + 14, bz + 30) + 3.6, bz + 30); scene.add(sg);
+}
+/* --- 海上的船 --- */
+const boats = [];
+function makeBoat(sailCol, scale = 1) {
+  const g = new THREE.Group();
+  const hull = box(7 * scale, 1.6 * scale, 2.6 * scale, lam(0x7a4a26));
+  hull.position.y = .5 * scale; g.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(1.3 * scale, 2.6 * scale, 4), lam(0x7a4a26));
+  bow.rotation.z = -Math.PI / 2; bow.position.set(4.6 * scale, .5 * scale, 0); g.add(bow);
+  if (sailCol) {
+    const mast = cyl(.13, .16, 7.5 * scale, M.woodDark); mast.position.y = 4.4 * scale; g.add(mast);
+    const sail = new THREE.Mesh(new THREE.PlaneGeometry(3.4 * scale, 4.8 * scale),
+      new THREE.MeshLambertMaterial({ color: sailCol, side: THREE.DoubleSide }));
+    sail.position.set(1.9 * scale, 4.6 * scale, 0); g.add(sail);
+  }
+  scene.add(g); boats.push(g); return g;
+}
+makeBoat(0xf5efdc, 1.25).userData = { cruise: { cx: 380, cz: 480, r: 155, sp: .12, ph: 0 } };
+makeBoat(0xd94f6b, 1).userData = { cruise: { cx: 380, cz: 480, r: 105, sp: -.17, ph: 2.2 } };
+makeBoat(0xffd76a, 1.1).userData = { anchor: [-350, 300] };
+makeBoat(null, .7).userData = { anchor: [14, 408] };   // 栈桥边的小舢板
+
 /* ---------- 玩家 ---------- */
 const player = new THREE.Group();
 {
@@ -1133,7 +1251,7 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 /* 恢复上次位置 */
 try {
   const sv = JSON.parse(localStorage.getItem('w1001.pos3d') || 'null');
-  if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 900) {
+  if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 1020) {
     player.position.set(sv[0], Math.max(height(sv[0], sv[1]), 0) + .5, sv[1]);
   }
 } catch (e) {}
@@ -1223,7 +1341,7 @@ function loop() {
     }
     // 边界
     const pd = Math.hypot(player.position.x, player.position.z);
-    if (pd > 900) { player.position.x *= 900 / pd; player.position.z *= 900 / pd; }
+    if (pd > 1020) { player.position.x *= 1020 / pd; player.position.z *= 1020 / pd; }
     // 障碍推离
     const pr = .9;
     for (const o of cirObs) {
@@ -1240,8 +1358,10 @@ function loop() {
       }
     }
   }
-  /* 重力 / 游泳 */
-  const gh = height(player.position.x, player.position.z);
+  /* 重力 / 游泳(桥面可行走) */
+  let gh = height(player.position.x, player.position.z);
+  const bh = bridgeHeight(player.position.x, player.position.z);
+  if (bh != null && player.position.y > bh - 1.6) gh = Math.max(gh, bh);
   swimming = gh < -.6;
   if (swimming) {
     vy = 0; grounded = false;
@@ -1303,6 +1423,19 @@ function loop() {
     u.wl.rotation.y = Math.sin(t * 14 + u.ph) * .8;
     u.wr.rotation.y = -Math.sin(t * 14 + u.ph) * .8;
   }
+  /* 船只起伏 / 巡航 */
+  for (const b of boats) {
+    const u = b.userData;
+    if (u.cruise) {
+      const a = t * u.cruise.sp + u.cruise.ph;
+      b.position.set(u.cruise.cx + Math.cos(a) * u.cruise.r, Math.sin(t * 1.1 + a) * .3, u.cruise.cz + Math.sin(a) * u.cruise.r);
+      b.rotation.y = -a - Math.PI / 2 * Math.sign(u.cruise.sp);
+    } else {
+      b.position.set(u.anchor[0], Math.sin(t * 1.2 + u.anchor[0]) * .35, u.anchor[1]);
+      b.rotation.y = Math.sin(t * .18 + u.anchor[1]) * .5;
+    }
+    b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
+  }
   /* 海浪声强度 */
   if (waveGain) {
     const target = clamp(1 - Math.abs(gh) / 7, 0, 1) * .05;
@@ -1341,11 +1474,13 @@ function loop() {
   }
   const mz2 = swimming ? 'fish' : (hereKey || 'street');
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
-  $('zoneIcon').textContent = swimming ? '🌊' : (hereKey ? CATS[hereKey].icon : '🧭');
-  $('zoneName').textContent = swimming ? '大海' : (hereKey ? CATS[hereKey].name : '收藏之岛 · 旷野');
+  const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
+  const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
+  $('zoneIcon').textContent = swimming ? '🌊' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')));
+  $('zoneName').textContent = swimming ? '大海' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')));
 
   renderer.render(scene, camera);
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask };
