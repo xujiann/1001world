@@ -185,6 +185,60 @@ function spendSB(n) {
 }
 updateSB();
 
+/* --- 装备系统(每件自带品牌冠名位,便于日后接广告) --- */
+const GEAR = [
+  { id: 'swim',    icon: '🩱', name: '鲸泳衣',     en: 'Swimsuit',     slot: '身体', price: 20, desc: '专为鲸背海域设计,贴合流线。', effect: '解锁畅游:游泳恢复全速,不再受寒', brand: null },
+  { id: 'goggles', icon: '🥽', name: '深蓝泳镜',   en: 'Goggles',      slot: '眼部', price: 15, desc: '看清深蓝之下的一切。',       effect: '海中的星之碎片升起光柱指引', brand: null },
+  { id: 'boots',   icon: '🥾', name: '雪峰登山靴', en: 'Hiking Boots', slot: '脚部', price: 25, desc: '背鳍雪山特供防滑大底。',     effect: '奔跑 +18%,跳跃更高', brand: null },
+  { id: 'rod',     icon: '🎣', name: '专业鱼竿',   en: 'Pro Rod',      slot: '手部', price: 30, desc: '等戈多,不如等鱼。',         effect: '咬钩窗口更长,渔获价格 +2 SB', brand: null },
+];
+let gear = { owned: [], on: [] };
+try { const g0 = JSON.parse(localStorage.getItem('w1001.gear') || 'null'); if (g0 && Array.isArray(g0.owned) && Array.isArray(g0.on)) gear = g0; } catch (e) {}
+function saveGear() { try { localStorage.setItem('w1001.gear', JSON.stringify(gear)); } catch (e) {} }
+const gearOn = id => gear.on.includes(id);
+function gearRows(mode) {
+  return GEAR.map(g => {
+    const owned = gear.owned.includes(g.id), on = gearOn(g.id);
+    const brand = g.brand
+      ? `<span class="gBrand">🤝 由 ${esc(g.brand)} 冠名</span>`
+      : `<span class="gBrand vac">广告位招商中 · 详询墨丘利</span>`;
+    let btn;
+    if (!owned) btn = mode === 'shop'
+      ? `<button class="gBtn" data-gbuy="${g.id}">买 ${g.price} SB</button>`
+      : `<button class="gBtn" disabled>装备行有售 · ${g.price} SB</button>`;
+    else btn = `<button class="gBtn${on ? '' : ' off'}" data-gtog="${g.id}">${on ? '已装备 ✓' : '装备'}</button>`;
+    return `<div class="gRow"><div class="gi">${g.icon}</div>
+      <div class="gInfo"><b>${esc(g.name)}</b> <span style="color:#8a7c62;font-size:12px">${g.en} · ${g.slot}</span>
+      <div class="gEff">▲ ${esc(g.effect)}</div><div class="gDesc">${esc(g.desc)}</div>${brand}</div>${btn}</div>`;
+  }).join('');
+}
+function shopCard() {
+  return `<div class="cardHead" style="background:#2c7a4b">🧰 千岛装备行 · Gear Shop</div>
+    <div class="cardTitle"><h3>老装备的铺子</h3><div class="en">"要下海?先穿上泳衣。" · 余额 ⚡${sb}</div></div>
+    <div style="padding:4px 20px 18px">${gearRows('shop')}</div>`;
+}
+function bindGear(rerender) {
+  cardBody.querySelectorAll('[data-gbuy]').forEach(b => b.addEventListener('click', () => {
+    const g = GEAR.find(x => x.id === b.dataset.gbuy);
+    if (!g || !spendSB(g.price)) return;
+    gear.owned.push(g.id); gear.on.push(g.id); saveGear();
+    toast(`🧰 入手「${g.name}」,已自动装备 · ⚡-${g.price}`); blip(740);
+    rerender();
+  }));
+  cardBody.querySelectorAll('[data-gtog]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.gtog;
+    if (gearOn(id)) gear.on = gear.on.filter(x => x !== id); else gear.on.push(id);
+    saveGear(); rerender();
+  }));
+}
+function openBag() {
+  cardBody.innerHTML = `<div class="cardHead" style="background:#5a4a7a">🎒 背包 · Inventory</div>
+    <div class="cardTitle"><h3>随身装备</h3><div class="en">⚡ ${sb} SB · 点按钮切换装备</div></div>
+    <div style="padding:4px 20px 18px">${gearRows('bag')}</div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  bindGear(openBag);
+}
+
 function markSeen(cat, id, title) {
   if (!CATS[cat]) return;
   if (!seen[cat].includes(id)) {
@@ -248,6 +302,7 @@ function newsCard() {
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'news') return newsCard();
+  if (cat === 'shop') return shopCard();
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -318,6 +373,7 @@ function openCard(s) {
     toast(`🍻 干杯!这是你的第 ${drinks} 杯 · ⚡-6`);
     openCard(s);
   });
+  bindGear(() => openCard(s));
   cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
     if (!spendSB(2)) return;
     try { localStorage.setItem('w1001.paper', todayStr()); } catch (e) {}
@@ -362,6 +418,7 @@ function openJournal() {
 }
 $('btnJournal').addEventListener('click', openJournal);
 $('hudQuest').addEventListener('click', openJournal);
+$('btnBag').addEventListener('click', () => { modalOpen ? closeModals() : openBag(); });
 $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidden'); });
 $('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
 
@@ -656,7 +713,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (type === 'bar' || type === 'sign' || type === 'news') ? null : pickers[cat]();
+  const item = (type === 'bar' || type === 'sign' || type === 'news' || type === 'shop') ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -1069,7 +1126,14 @@ const shards = [];
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: .92 }));
     m.position.set(x, baseY, z);
     scene.add(m);
-    shards.push({ i, m, x, z, baseY });
+    const sd = { i, m, x, z, baseY };
+    if (baseY < 1.2) {   // 海中碎片:泳镜可见的光柱
+      sd.beam = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, 30, 8),
+        new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: .22, depthWrite: false }));
+      sd.beam.position.set(x, 15, z); sd.beam.visible = false;
+      scene.add(sd.beam);
+    }
+    shards.push(sd);
   });
 }
 function updateShardHUD() { const el = $('shardCount'); if (el) el.textContent = shardsGot.length; }
@@ -1078,6 +1142,7 @@ function collectShard(s) {
   shardsGot.push(s.i);
   try { localStorage.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
   scene.remove(s.m);
+  if (s.beam) scene.remove(s.beam);
   shards.splice(shards.indexOf(s), 1);
   updateShardHUD();
   earnSB(10);
@@ -1186,6 +1251,8 @@ function addNpc(cfg) {
     lines: ['我一直暗暗设想,天堂应该是图书馆的模样。', '我写作,是为了时光流逝使我心安。', '任何一本书,都是一座小径分岔的花园。'] });
   addNpc({ x: 32, z: 57, name: '墨丘利', body: 0x5d7a99, hat: 0xd9b26a,
     lines: ['号外号外!万神殿日报,今日新鲜出炉!', '两个算力币,知晓全岛大事。', '诸神也订这份报,你还在等什么?'] });
+  addNpc({ x: 19, z: 214, name: '老装备', body: 0x3e5c46, hat: 0x2c4436,
+    lines: ['要下海?先穿上泳衣,冷得很。', '这鱼竿,等得起戈多,更等得起鱼。', '装备上的广告位?去问墨丘利。'] });
 }
 /* 游荡的文豪(1001books 的作者们,说他们的话) */
 const AUTHORS = [
@@ -1471,6 +1538,26 @@ const spray = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 9),
 spray.position.set(WHALE_BLOW.x, 3, WHALE_BLOW.z);
 scene.add(spray);
 
+/* --- 千岛装备行(去水族馆的路边) --- */
+{
+  const sx = 26, szz = 218, sh = height(26, 218);
+  const stall = box(6, .5, 4, M.wood); stall.position.set(sx, sh + 1.4, szz); scene.add(stall);   // 柜台
+  for (const [ox, oz] of [[-2.6, -1.6], [2.6, -1.6], [-2.6, 1.6], [2.6, 1.6]]) {
+    const post = cyl(.18, .22, 4.6, M.woodDark); post.position.set(sx + ox, sh + 2.3, szz + oz); scene.add(post);
+  }
+  for (let i = 0; i < 6; i++) {   // 条纹雨棚
+    const seg = box(1.15, .16, 4.6, lam(i % 2 ? 0x2c7a4b : 0xf5efdc));
+    seg.position.set(sx - 2.9 + i * 1.16, sh + 4.7, szz); scene.add(seg);
+  }
+  // 货品:泳衣色布卷 / 靴子箱 / 鱼竿
+  const roll = cyl(.5, .5, 1.6, lam(0xe8702a)); roll.rotation.z = Math.PI / 2; roll.position.set(sx - 1.6, sh + 2, szz); scene.add(roll);
+  const crate = box(1.2, 1, 1.2, lam(0x7a5230)); crate.position.set(sx + .4, sh + 2.1, szz); scene.add(crate);
+  const rodM = cyl(.05, .05, 3.6, M.woodDark); rodM.rotation.z = .5; rodM.position.set(sx + 2, sh + 3, szz); scene.add(rodM);
+  const ssign = makeSign('千岛装备行', 5.4, '#1e3a2a', '#9fe8b8'); ssign.position.set(sx, sh + 5.6, szz + .3); scene.add(ssign);
+  boxObs.push({ x1: sx - 3.2, z1: szz - 2.2, x2: sx + 3.2, z2: szz + 2.2 });
+  addSpot(sx, szz + 4.4, 'shop', 'shop', { r: 7.5 });
+}
+
 /* --- 钓鱼系统(栈桥尽头 / 西湾滩头) --- */
 const FSPOTS = [
   { x: 0, z: 421, bx: 0, bz: 442 },        // 栈桥尽头
@@ -1495,7 +1582,7 @@ function startCast(fs) {
 function endFishing() { fishing.state = 'idle'; fishing.spot = null; bobber.visible = false; }
 function catchFish() {
   const f = D.fish[Math.floor(Math.random() * D.fish.length)];
-  const price = FISH_PRICE[f.cat] || 4;
+  const price = (FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0);
   openCard({ cat: 'fish', type: 'tank', item: f });   // 收进图鉴(+2)
   earnSB(price);
   toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}`);
@@ -1507,7 +1594,7 @@ function updateFishing(dt, t) {
   fishing.t -= dt;
   if (fishing.state === 'wait') {
     bobber.position.y = .35 + Math.sin(t * 2.2) * .1;
-    if (fishing.t <= 0) { fishing.state = 'bite'; fishing.t = 1.15; blip(1400); }
+    if (fishing.t <= 0) { fishing.state = 'bite'; fishing.t = gearOn('rod') ? 2.1 : 1.15; blip(1400); }
   } else if (fishing.state === 'bite') {
     bobber.position.y = -.25 + Math.sin(t * 18) * .12;   // 猛沉
     if (fishing.t <= 0) { toast('💨 鱼跑了……再试一次'); blip(260); endFishing(); }
@@ -1556,7 +1643,8 @@ addEventListener('keydown', e => {
   }
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
-  if (k === ' ') { e.preventDefault(); if (grounded && !swimming) vy = 11.5; return; }
+  if (k === ' ') { e.preventDefault(); if (grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
+  if (k === 'b') { modalOpen ? closeModals() : openBag(); return; }
   keys[k] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -1608,10 +1696,10 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '万神殿日报(2 SB)' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '万神殿日报(2 SB)', shop: '逛逛装备行' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
-let saveT = 0, whaleT = 20;
+let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5;
 /* 鲸鸣:低频滑音 */
 function whaleCall() {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -1641,7 +1729,7 @@ function loop() {
       mx /= Math.max(len, 1); mz /= Math.max(len, 1);
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
       const rx = -fz, rz = fx;
-      const sp = (swimming ? 7.5 : (keys.shift ? 22 : 14)) * dt;
+      const sp = (swimming ? (gearOn('swim') ? 7.5 : 3.2) : (keys.shift ? (gearOn('boots') ? 26 : 22) : 14)) * dt;
       let dx = (fx * -mz + rx * mx) * sp, dz = (fz * -mz + rz * mx) * sp;
       player.position.x += dx; player.position.z += dz;
       faceYaw = Math.atan2(dx, dz);
@@ -1724,6 +1812,7 @@ function loop() {
     const s = shards[i];
     s.m.rotation.y += dt * 2.2;
     s.m.position.y = s.baseY + Math.sin(t * 2 + s.i) * .3;
+    if (s.beam) s.beam.visible = gearOn('goggles');
     const d2 = (s.x - player.position.x) ** 2 + (s.z - player.position.z) ** 2;
     if (d2 < 12 && Math.abs(s.baseY - player.position.y) < 6) collectShard(s);
   }
@@ -1771,6 +1860,13 @@ function loop() {
     } else spray.material.opacity = 0;
   }
   updateFishing(dt, t);
+  /* 泳衣:受寒提示 + 换装配色 */
+  if (swimming && !gearOn('swim')) {
+    coldT += dt;
+    if (coldT > 7) { coldT = 0; toast('🥶 好冷!没泳衣游不快——去千岛装备行看看'); }
+  } else coldT = 0;
+  const tint = swimming && gearOn('swim') ? 0xe8702a : 0x3b6ea5;
+  if (tint !== lastTint) { lastTint = tint; player.children[0].material.color.set(tint); }
   /* 夜半鲸鸣(靠近喷水孔) */
   whaleT -= dt;
   if (whaleT <= 0) {
@@ -1830,4 +1926,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag };

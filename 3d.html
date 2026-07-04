@@ -37,6 +37,19 @@
   .pCols > div { border-left: 2px solid #d5cab2; padding-left: 8px; }
   .pFoot { border-top: 3px double #26211a; padding-top: 8px; font-size: 10.5px; color: #6b6152; line-height: 1.7; }
   .paperRoll { font-size: 84px; }
+  /* 装备行 / 背包 */
+  .gRow { display: flex; gap: 12px; align-items: center; padding: 11px 4px; border-bottom: 1px dashed #d8ceb8; }
+  .gRow:last-child { border-bottom: none; }
+  .gRow .gi { font-size: 30px; width: 38px; text-align: center; }
+  .gRow .gInfo { flex: 1; min-width: 0; }
+  .gRow .gInfo b { font-size: 15px; }
+  .gEff { font-size: 12px; color: #2c7a4b; margin-top: 2px; }
+  .gDesc { font-size: 12px; color: #8a7c62; }
+  .gBrand { display: inline-block; font-size: 10.5px; color: #9a8b6d; border: 1px dashed #c9bda0; border-radius: 6px; padding: 1px 8px; margin-top: 4px; }
+  .gBrand.vac { opacity: .7; font-style: italic; }
+  .gBtn { border: none; border-radius: 999px; padding: 8px 14px; background: #2c7a4b; color: #fff; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .gBtn.off { background: #98917e; }
+  .gBtn[disabled] { background: #d8cdb4; color: #8a7c62; cursor: default; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -50,6 +63,7 @@
   </div>
   <div id="hudRight">
     <div id="hudCount" title="已收录 · 星之碎片 · 算力币">✦ <b id="seenCount">0</b> · ✨<b id="shardCount">0</b>/24 · ⚡<b id="sbCount">0</b></div>
+    <button id="btnBag" title="背包 (B)">🎒</button>
     <button id="btnMusic" title="音乐开关">🎵</button>
     <button id="btnJournal" title="图鉴 (J)">📖 图鉴</button>
     <button id="btnHelp" title="帮助 (H)">?</button>
@@ -94,6 +108,7 @@
       <span>✨ 岛上散落着 24 枚星之碎片,走近即可拾取</span>
       <span>⚡ 看藏品赚算力币(SB):酒馆买酒 · 广场报亭买《万神殿日报》</span>
       <span>🎣 栈桥尽头与西湾可钓鱼卖钱 · <kbd>P</kbd> 照片模式</span>
+      <span>🧰 千岛装备行:泳衣下海不受寒 · 泳镜寻宝 · 登山靴 · 专业鱼竿 · <kbd>B</kbd> 背包</span>
       <span>🌊 可以游进大海 · 水族馆在南岸栈桥 · 营地在雪山上</span>
       <span>📱 手机:左半屏摇杆 · 右半屏转视角 · 右下按钮互动</span>
     </div>
@@ -113,6 +128,6 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=8"></script>
+<script type="module" src="game3d.js?v=9"></script>
 </body>
 </html>
