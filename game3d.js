@@ -1,7 +1,7 @@
 /* ============================================================
    1001 世界 3D · Isle of 1001 — 荒野之息风低多边形海岛
    Three.js 三维开放世界:雪山 · 平原 · 大海 · 九大收藏区域
-   与 2D 版共用 world-data.js 与 localStorage 进度。
+   与 2D 版共用 world-data.js;进度按账号(本机多档)隔离保存。
    ============================================================ */
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
@@ -17,6 +17,25 @@ const CDN = {
   plants: 'https://cdn.jsdelivr.net/gh/xujiann/1001plants-img@v1/',
 };
 const commonsImg = f => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=440';
+
+/* ---------- 账号系统(本机多档,进度按账号隔离) ---------- */
+const RAWLS = window.localStorage;
+let PROFILE_ID = '';
+try { PROFILE_ID = RAWLS.getItem('w1001.profile') || ''; } catch (e) {}
+const nsKey = k => (PROFILE_ID && k.startsWith('w1001.')) ? `w1001.p_${PROFILE_ID}.${k.slice(6)}` : k;
+const PSTORE = {
+  getItem: k => RAWLS.getItem(nsKey(k)),
+  setItem: (k, v) => RAWLS.setItem(nsKey(k), v),
+  removeItem: k => RAWLS.removeItem(nsKey(k)),
+};
+function profileList() { try { return JSON.parse(RAWLS.getItem('w1001.profiles') || '[]'); } catch (e) { return []; } }
+function saveProfiles(l) { try { RAWLS.setItem('w1001.profiles', JSON.stringify(l)); } catch (e) {} }
+function curProfileName() {
+  if (!PROFILE_ID) return '旅人(本机默认)';
+  const p = profileList().find(x => x.id === PROFILE_ID);
+  return p ? p.name : '未知账号';
+}
+const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -166,7 +185,7 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.add('hidden'), 2200);
 }
 let seen = {};
-try { seen = JSON.parse(localStorage.getItem('w1001.seen.v1') || '{}'); } catch (e) { seen = {}; }
+try { seen = JSON.parse(PSTORE.getItem('w1001.seen.v1') || '{}'); } catch (e) { seen = {}; }
 for (const k in CATS) if (!Array.isArray(seen[k])) seen[k] = [];
 const seenCount = () => Object.values(seen).reduce((a, v) => a + v.length, 0);
 $('seenCount').textContent = seenCount();
@@ -177,11 +196,11 @@ const QUEST_TPL = {
   beers: [2, '在酒馆品尝 2 款新精酿'], fish: [3, '在水族馆认识 3 种鱼'], jazz: [2, '在爵士俱乐部听 2 张唱片'],
   classical: [2, '在音乐厅听 2 份录音'], books: [2, '在图书馆翻 2 本书'], outdoor: [2, '在营地了解 2 种玩法'],
 };
-let quest = null, stars = parseInt(localStorage.getItem('w1001.stars') || '0', 10) || 0;
-function saveQuest() { try { localStorage.setItem('w1001.quest', JSON.stringify(quest)); localStorage.setItem('w1001.stars', String(stars)); } catch (e) {} }
+let quest = null, stars = parseInt(PSTORE.getItem('w1001.stars') || '0', 10) || 0;
+function saveQuest() { try { PSTORE.setItem('w1001.quest', JSON.stringify(quest)); PSTORE.setItem('w1001.stars', String(stars)); } catch (e) {} }
 function initQuest() {
   const today = new Date().toISOString().slice(0, 10);
-  try { quest = JSON.parse(localStorage.getItem('w1001.quest')); } catch (e) { quest = null; }
+  try { quest = JSON.parse(PSTORE.getItem('w1001.quest')); } catch (e) { quest = null; }
   if (!quest || quest.date !== today) {
     const r = mulberry32([...today].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
     const picks = shuffled(Object.keys(QUEST_TPL), r).slice(0, 3);
@@ -209,10 +228,10 @@ function updateQuestHUD() {
 }
 initQuest();
 /* --- 算力币(SB)钱包 --- */
-let sb = parseInt(localStorage.getItem('w1001.sb') ?? 'x', 10);
+let sb = parseInt(PSTORE.getItem('w1001.sb') ?? 'x', 10);
 if (!Number.isFinite(sb)) sb = 101;   // 新玩家启动资金
-let drinks = parseInt(localStorage.getItem('w1001.drinks') || '0', 10) || 0;
-function saveSB() { try { localStorage.setItem('w1001.sb', String(sb)); localStorage.setItem('w1001.drinks', String(drinks)); } catch (e) {} }
+let drinks = parseInt(PSTORE.getItem('w1001.drinks') || '0', 10) || 0;
+function saveSB() { try { PSTORE.setItem('w1001.sb', String(sb)); PSTORE.setItem('w1001.drinks', String(drinks)); } catch (e) {} }
 function updateSB() { const el = $('sbCount'); if (el) el.textContent = sb; }
 function earnSB(n) { sb += n; saveSB(); updateSB(); }
 function spendSB(n) {
@@ -229,8 +248,8 @@ const GEAR = [
   { id: 'rod',     icon: '🎣', name: '专业鱼竿',   en: 'Pro Rod',      slot: '手部', price: 30, desc: '等戈多,不如等鱼。',         effect: '咬钩窗口更长,渔获价格 +2 SB', brand: null },
 ];
 let gear = { owned: [], on: [] };
-try { const g0 = JSON.parse(localStorage.getItem('w1001.gear') || 'null'); if (g0 && Array.isArray(g0.owned) && Array.isArray(g0.on)) gear = g0; } catch (e) {}
-function saveGear() { try { localStorage.setItem('w1001.gear', JSON.stringify(gear)); } catch (e) {} }
+try { const g0 = JSON.parse(PSTORE.getItem('w1001.gear') || 'null'); if (g0 && Array.isArray(g0.owned) && Array.isArray(g0.on)) gear = g0; } catch (e) {}
+function saveGear() { try { PSTORE.setItem('w1001.gear', JSON.stringify(gear)); } catch (e) {} }
 const gearOn = id => gear.on.includes(id);
 function gearRows(mode) {
   return GEAR.map(g => {
@@ -275,11 +294,74 @@ function openBag() {
   bindGear(openBag);
 }
 
+/* --- 账号管理界面 --- */
+function accountCard() {
+  const list = profileList();
+  const rows = [{ id: '', name: '旅人(本机默认)' }, ...list].map(p => {
+    const cur = p.id === PROFILE_ID;
+    return `<div class="gRow"><div class="gi">${cur ? '👤' : '·'}</div>
+      <div class="gInfo"><b>${esc(p.name)}</b>${cur ? ' <span style="color:#2c7a4b;font-size:12px">当前账号</span>' : ''}</div>
+      ${cur ? '' : `<button class="gBtn" data-accswitch="${p.id}">切换</button>`}
+      ${p.id && !cur ? `<button class="gBtn off" data-accdel="${p.id}">删除</button>` : ''}</div>`;
+  }).join('');
+  return `<div class="cardHead" style="background:#3a4a5a">👤 账号 · Accounts</div>
+    <div class="cardTitle" style="padding-top:16px"><h3>${esc(curProfileName())}</h3><div class="en">每个账号独立保存进度(存于本机浏览器)</div></div>
+    <div style="padding:4px 20px 18px">${rows}
+      <div class="gRow"><div class="gi">➕</div>
+        <div class="gInfo"><input id="accName" placeholder="新账号名字…" style="width:100%;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:14px;box-sizing:border-box"></div>
+        <button class="gBtn" data-accnew>新建</button></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="gBtn off" data-accexport style="flex:1">📤 导出存档码</button>
+        <button class="gBtn off" data-accimport style="flex:1">📥 导入存档码</button>
+      </div>
+      <textarea id="accCode" placeholder="存档码会出现在这里;或把别的设备导出的存档码粘贴到这里,点导入" style="width:100%;height:70px;margin-top:8px;border:1px solid #d8ceb8;border-radius:8px;padding:8px;font-size:11px;box-sizing:border-box"></textarea>
+    </div>`;
+}
+function openAccount() {
+  cardBody.innerHTML = accountCard();
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelectorAll('[data-accswitch]').forEach(b => b.addEventListener('click', () => {
+    try { RAWLS.setItem('w1001.profile', b.dataset.accswitch); } catch (e) {}
+    location.reload();
+  }));
+  cardBody.querySelectorAll('[data-accdel]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.accdel;
+    const p = profileList().find(x => x.id === id);
+    if (!confirm(`删除账号「${p ? p.name : id}」及其全部进度?此操作不可恢复。`)) return;
+    saveProfiles(profileList().filter(x => x.id !== id));
+    SAVE_FIELDS.forEach(f => { try { RAWLS.removeItem(`w1001.p_${id}.${f}`); } catch (e) {} });
+    toast('账号已删除');
+    openAccount();
+  }));
+  cardBody.querySelector('[data-accnew]')?.addEventListener('click', () => {
+    const name = (document.getElementById('accName').value || '').trim().slice(0, 12);
+    if (!name) { toast('给新账号起个名字吧'); return; }
+    const id = Date.now().toString(36);
+    saveProfiles([...profileList(), { id, name }]);
+    try { RAWLS.setItem('w1001.profile', id); } catch (e) {}
+    location.reload();
+  });
+  cardBody.querySelector('[data-accexport]')?.addEventListener('click', () => {
+    const data = {};
+    SAVE_FIELDS.forEach(f => { const v = PSTORE.getItem('w1001.' + f); if (v != null) data[f] = v; });
+    document.getElementById('accCode').value = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    toast('📤 存档码已生成,请复制保存');
+  });
+  cardBody.querySelector('[data-accimport]')?.addEventListener('click', () => {
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('accCode').value.trim()))));
+      SAVE_FIELDS.forEach(f => { if (data[f] != null) PSTORE.setItem('w1001.' + f, data[f]); });
+      toast('📥 导入成功,正在重载…');
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { toast('存档码无效,请检查后重试'); }
+  });
+}
+
 function markSeen(cat, id, title) {
   if (!CATS[cat]) return;
   if (!seen[cat].includes(id)) {
     seen[cat].push(id);
-    try { localStorage.setItem('w1001.seen.v1', JSON.stringify(seen)); } catch (e) {}
+    try { PSTORE.setItem('w1001.seen.v1', JSON.stringify(seen)); } catch (e) {}
     $('seenCount').textContent = seenCount();
     earnSB(2);
     toast(`✦ 收录图鉴:${title} · ⚡+2`);
@@ -300,7 +382,7 @@ function cardHTML(cat, inner) {
 }
 /* --- 万神殿日报 --- */
 const todayStr = () => new Date().toISOString().slice(0, 10);
-const paperBought = () => { try { return localStorage.getItem('w1001.paper') === todayStr(); } catch (e) { return false; } };
+const paperBought = () => { try { return PSTORE.getItem('w1001.paper') === todayStr(); } catch (e) { return false; } };
 function paperHTML() {
   const ds = todayStr();
   const r = mulberry32([...ds].reduce((a, c) => (a * 33 + c.charCodeAt(0)) | 0, 5));
@@ -329,7 +411,7 @@ function paperHTML() {
 }
 /* 万神殿日报(真实日报,联网直供 https://news-dev.goood.space) */
 const NEWS_BASE = 'https://news-dev.goood.space';
-const paper2Bought = () => { try { return localStorage.getItem('w1001.paper2') === todayStr(); } catch (e) { return false; } };
+const paper2Bought = () => { try { return PSTORE.getItem('w1001.paper2') === todayStr(); } catch (e) { return false; } };
 function parsePantheon(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const date = (doc.querySelector('.masthead-v2__meta span') || { textContent: '' }).textContent.trim();
@@ -449,7 +531,7 @@ function trumanCard(type) {
 }
 /* --- 魔戒支线 --- */
 let hasRing = false;
-const ringDone = () => { try { return localStorage.getItem('w1001.ring') === '1'; } catch (e) { return false; } };
+const ringDone = () => { try { return PSTORE.getItem('w1001.ring') === '1'; } catch (e) { return false; } };
 function lotrCard(type) {
   if (type === 'ring') {
     if (ringDone()) return `<div class="cardHead" style="background:#2a3a22">💍 空基座</div>
@@ -498,7 +580,7 @@ function hpCard(type, s) {
   }
   if (type === 'castle') {
     let house = null;
-    try { house = localStorage.getItem('w1001.house'); } catch (e) {}
+    try { house = PSTORE.getItem('w1001.house'); } catch (e) {}
     return `<div class="cardHead" style="background:#2a2438">🏰 霍格沃茨城堡</div>
       <div class="cardMedia"><div class="paperRoll">${house ? (HOUSES.find(h => h[0] === house) || ['', '🎩'])[1] : '🎩'}</div></div>
       <div class="cardTitle"><h3>${house ? `你属于${house}` : '分院帽在等你'}</h3><div class="en">Hogwarts School of Witchcraft and Wizardry</div></div>
@@ -516,8 +598,8 @@ function hpCard(type, s) {
 }
 /* --- 莫比·迪克卡片(金币悬赏支线) --- */
 let dblState = '';
-try { dblState = localStorage.getItem('w1001.dbl') || ''; } catch (e) {}
-function setDbl(v) { dblState = v; try { localStorage.setItem('w1001.dbl', v); } catch (e) {} }
+try { dblState = PSTORE.getItem('w1001.dbl') || ''; } catch (e) {}
+function setDbl(v) { dblState = v; try { PSTORE.setItem('w1001.dbl', v); } catch (e) {} }
 function mobCard(type) {
   if (type === 'inn') return `<div class="cardHead" style="background:#1c2a30">🏨 喷水鲸客栈</div>
     <div class="cardMedia"><div class="paperRoll">🛏️</div></div>
@@ -662,7 +744,7 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-sorthat]')?.addEventListener('click', () => {
     const h2 = HOUSES[Math.floor(Math.random() * HOUSES.length)];
-    try { localStorage.setItem('w1001.house', h2[0]); } catch (e) {}
+    try { PSTORE.setItem('w1001.house', h2[0]); } catch (e) {}
     toast(`🎩 分院帽(沉吟片刻):"${h2[0]}!!" ${h2[1]}`);
     blip(660); setTimeout(() => blip(990), 130);
     const cs = spots.find(x2 => x2.type === 'castle');
@@ -677,7 +759,7 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-dropring]')?.addEventListener('click', () => {
     hasRing = false;
-    try { localStorage.setItem('w1001.ring', '1'); } catch (e) {}
+    try { PSTORE.setItem('w1001.ring', '1'); } catch (e) {}
     stars++; earnSB(20); saveQuest(); updateQuestHUD();
     closeModals();
     toast('🌋 魔戒已销毁!中土得救 · ⚡+20 ⭐+1');
@@ -686,7 +768,7 @@ function openCard(s) {
   cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
     if (!paperBought()) {
       if (!spendSB(2)) return;
-      try { localStorage.setItem('w1001.paper', todayStr()); } catch (e) {}
+      try { PSTORE.setItem('w1001.paper', todayStr()); } catch (e) {}
       toast('🗞️ 墨丘利:"1001日报,岛上的事都在这儿。" ⚡-2'); blip(740);
     }
     showPaper1(s);
@@ -694,7 +776,7 @@ function openCard(s) {
   cardBody.querySelector('[data-buyp2]')?.addEventListener('click', () => {
     if (!paper2Bought()) {
       if (!spendSB(3)) return;
-      try { localStorage.setItem('w1001.paper2', todayStr()); } catch (e) {}
+      try { PSTORE.setItem('w1001.paper2', todayStr()); } catch (e) {}
       toast('🏛️ 墨丘利:"万神殿日报,知天下。" ⚡-3'); blip(740);
     }
     openPantheon(s);
@@ -737,6 +819,7 @@ function openJournal() {
 $('btnJournal').addEventListener('click', openJournal);
 $('hudQuest').addEventListener('click', openJournal);
 $('btnBag').addEventListener('click', () => { modalOpen ? closeModals() : openBag(); });
+$('btnAcc').addEventListener('click', () => { modalOpen ? closeModals() : openAccount(); });
 $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidden'); });
 $('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
 
@@ -1478,7 +1561,7 @@ const SHARD_POS = [
   [-120, 300], [90, 180], [-90, 160], [-498, -277, 10.8], [150, 90], [-14, -60], [130, 460], [-140, 455],
 ];
 let shardsGot = [];
-try { shardsGot = JSON.parse(localStorage.getItem('w1001.shards') || '[]'); } catch (e) { shardsGot = []; }
+try { shardsGot = JSON.parse(PSTORE.getItem('w1001.shards') || '[]'); } catch (e) { shardsGot = []; }
 const shards = [];
 {
   const geo = new THREE.OctahedronGeometry(.85, 0);
@@ -1503,7 +1586,7 @@ function updateShardHUD() { const el = $('shardCount'); if (el) el.textContent =
 updateShardHUD();
 function collectShard(s) {
   shardsGot.push(s.i);
-  try { localStorage.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
+  try { PSTORE.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
   scene.remove(s.m);
   if (s.beam) scene.remove(s.beam);
   shards.splice(shards.indexOf(s), 1);
@@ -2369,7 +2452,7 @@ scene.add(player);
 let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 /* 恢复上次位置 */
 try {
-  const sv = JSON.parse(localStorage.getItem('w1001.pos3d') || 'null');
+  const sv = JSON.parse(PSTORE.getItem('w1001.pos3d') || 'null');
   if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 1020) {
     player.position.set(sv[0], Math.max(height(sv[0], sv[1]), 0) + .5, sv[1]);
   }
@@ -2647,7 +2730,7 @@ function loop() {
   saveT += dt;
   if (saveT > 3) {
     saveT = 0;
-    try { localStorage.setItem('w1001.pos3d', JSON.stringify([+player.position.x.toFixed(1), +player.position.z.toFixed(1)])); } catch (e) {}
+    try { PSTORE.setItem('w1001.pos3d', JSON.stringify([+player.position.x.toFixed(1), +player.position.z.toFixed(1)])); } catch (e) {}
   }
   /* 鲸的喷水孔喷雾 */
   {
@@ -2732,4 +2815,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID };
