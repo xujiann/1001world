@@ -2130,16 +2130,16 @@ function updateScoreboard(minute) {
       c.fillRect(20 + i * 87.5, 0, 87.5, 720);
     }
     c.fillStyle = '#2f7a3c'; c.fillRect(0, 0, 20, 720); c.fillRect(1070, 0, 20, 720);
-    c.strokeStyle = '#ffffff'; c.fillStyle = '#ffffff'; c.lineWidth = 5;
+    c.strokeStyle = '#ffffff'; c.fillStyle = '#ffffff'; c.lineWidth = 10;
     c.strokeRect(20, 20, 1050, 680);                                   // 边线与底线
     c.beginPath(); c.moveTo(545, 20); c.lineTo(545, 700); c.stroke();  // 中线
     c.beginPath(); c.arc(545, 360, 91.5, 0, 7); c.stroke();            // 中圈 9.15m
-    c.beginPath(); c.arc(545, 360, 5, 0, 7); c.fill();                 // 中点
+    c.beginPath(); c.arc(545, 360, 8, 0, 7); c.fill();                 // 中点
     for (const [x0, dir] of [[20, 1], [1070, -1]]) {
       c.strokeRect(dir > 0 ? x0 : x0 - 165, 158.4, 165, 403.2);        // 罚球区 16.5m
       c.strokeRect(dir > 0 ? x0 : x0 - 55, 268.4, 55, 183.2);          // 球门区 5.5m
       const px5 = x0 + dir * 110;
-      c.beginPath(); c.arc(px5, 360, 5, 0, 7); c.fill();               // 点球点 11m
+      c.beginPath(); c.arc(px5, 360, 8, 0, 7); c.fill();               // 点球点 11m
       const a0 = Math.acos(55 / 91.5);                                  // 罚球弧(区外部分)
       c.beginPath();
       if (dir > 0) c.arc(px5, 360, 91.5, -a0, a0);
@@ -2150,6 +2150,7 @@ function updateScoreboard(minute) {
       c.beginPath(); c.arc(cx5, cy5, 10, a1, a2); c.stroke();          // 角旗弧 1m
     }
     const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
+    ptex.anisotropy = renderer.capabilities.getMaxAnisotropy();   // 掠射角下画线不糊
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(44, 29), new THREE.MeshLambertMaterial({ map: ptex }));
     pitch.rotation.x = -Math.PI / 2; pitch.position.set(cx3, baseH + .12, cz3); scene.add(pitch);
     // —— 网状球门(门柱 + 横梁 + 线框网) ——
@@ -2163,8 +2164,8 @@ function updateScoreboard(minute) {
       const backNet = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.4, 16, 7), netMat);
       backNet.rotation.y = Math.PI / 2; backNet.position.set(gx2 + sgn * 1.4, baseH + 1.7, cz3); scene.add(backNet);
       const topNet = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 8, 3, 16), netMat);
-      topNet.rotation.z = Math.PI / 2; topNet.rotation.y = Math.PI / 2;
-      topNet.rotation.x = Math.PI / 2; topNet.position.set(gx2 + sgn * .7, baseH + 3.4, cz3); scene.add(topNet);
+      topNet.rotation.x = -Math.PI / 2;   // 水平顶网:x 向纵深 1.5,z 向跨度 8
+      topNet.position.set(gx2 + sgn * .7, baseH + 3.42, cz3); scene.add(topNet);
       for (const pz6 of [-4, 4]) {   // 侧网
         const sideNet = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.4, 3, 7), netMat);
         sideNet.position.set(gx2 + sgn * .7, baseH + 1.7, cz3 + pz6); scene.add(sideNet);
