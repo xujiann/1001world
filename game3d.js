@@ -70,6 +70,7 @@ const fbm = (x, z) => vnoise(x, z) * .55 + vnoise(x * 2.17, z * 2.17) * .28 + vn
 const smooth01 = t => t * t * (3 - 2 * t);
 /* 主岛 = 一头俯瞰的鲸:头在西,尾鳍甩向东,雪山是背鳍,西南伸出胸鳍 */
 const IS2 = { x: -720, z: -420, r: 150 };   // 灯塔屿
+const TRU = { x: 760, z: 560, r: 135 };     // 楚门的世界(多元宇宙 1 号岛)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -87,6 +88,7 @@ function islandMask(x, z) {
   m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
   m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
   m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
+  m = Math.max(m, (1 - Math.hypot(x - TRU.x, z - TRU.z) / TRU.r) * 1.8);  // 楚门的世界·桃源岛
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
@@ -114,6 +116,12 @@ function height(x, z) {
   const lw = smooth01(clamp(1 - ld / 45, 0, 1));
   h = h * (1 - lw * .9) + 8 * lw * .9;
   // 鲸眼(圆湖)与喷水孔(小潭):向下压出水面
+  const td = Math.hypot(x - TRU.x, z - TRU.z);         // 桃源岛小镇整平
+  const tw = smooth01(clamp(1 - td / 62, 0, 1));
+  h = h * (1 - tw * .92) + 7 * tw * .92;
+  const dd3 = Math.hypot(x - 618, z - 560);            // 天空之门前的浅滩
+  const dw3 = smooth01(clamp(1 - dd3 / 16, 0, 1));
+  h = h * (1 - dw3 * .9) + 1.6 * dw3 * .9;
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -376,10 +384,46 @@ function newsCard() {
         <button class="gBtn" data-buyp2>${paper2Bought() ? '再次翻阅' : '买一份 · 3 SB'}</button></div>
     </div>`;
 }
+/* --- 多元宇宙:世界列表与穿越 --- */
+const WORLDS = [
+  { key: 'truman', icon: '📺', name: '楚门的世界', en: 'The Truman Show', open: true, desc: '桃源岛 · 一座直播了三十年的摄影棚' },
+  { key: 'lotr', icon: '💍', name: '指环王 · 中土', en: 'Middle-earth', open: false, desc: '夏尔与魔多(在建)' },
+  { key: 'hp', icon: '⚡', name: '哈利·波特', en: 'Wizarding World', open: false, desc: '霍格沃茨(在建)' },
+  { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
+];
+function ferryCard() {
+  return `<div class="cardHead" style="background:#141826">⛵ 多元宇宙渡口 · Multiverse Ferry</div>
+    <div class="cardTitle" style="padding-top:16px"><h3>要渡去哪个世界?</h3><div class="en">卡戎:"船票免费,记忆自理。"</div></div>
+    <div style="padding:4px 20px 18px">
+      <div class="gRow"><div class="gi">🐋</div><div class="gInfo"><b>收藏之岛(主世界)</b><div class="gDesc">鲸背上的一千零一收藏</div></div><button class="gBtn" data-goworld="main">返回</button></div>
+      ${WORLDS.map(w => `<div class="gRow"><div class="gi">${w.icon}</div>
+        <div class="gInfo"><b>${w.name}</b> <span style="color:#8a7c62;font-size:12px">${w.en}</span><div class="gDesc">${w.desc}</div></div>
+        ${w.open ? `<button class="gBtn" data-goworld="${w.key}">前往</button>` : '<button class="gBtn" disabled>在建</button>'}</div>`).join('')}
+    </div>`;
+}
+function trumanCard(type) {
+  if (type === 'door') return `<div class="cardHead" style="background:#2a4456">🚪 天空之门 · Exit</div>
+    <div class="cardMedia"><div class="paperRoll">🚪</div></div>
+    <div class="cardTitle"><h3>世界的尽头是一堵墙</h3><div class="en">The Truman Show · 1998</div></div>
+    <div class="cardDesc">帆船撞破的"天空",原来是布景。门后是黑暗,也是真实。<br><br>
+    克里斯托弗(画外音):"你可以留下。这里没有真相,但也没有恐惧。"<br>
+    楚门:"以防再也见不到你——下午好、晚上好、晚安。"(鞠躬)</div>
+    <div style="text-align:center;padding:0 0 16px"><button class="again" data-goworld="main">🚪 走出这扇门(回到主世界)</button></div>`;
+  if (type === 'camera') return `<div class="cardHead" style="background:#2a2a2e">📹 隐藏摄像机 #${Math.floor(Math.random() * 4980) + 20}</div>
+    <div class="cardMedia"><div class="paperRoll">📹</div></div>
+    <div class="cardTitle"><h3>你正在被直播</h3><div class="en">LIVE · 全球 1.7 亿观众在线</div></div>
+    <div class="cardDesc">桃源岛共布设 5000 台摄像机,24 小时直播,已播出 10909 集。<br>你刚才在美术馆打的那个哈欠,收视率很高。</div>`;
+  return `<div class="cardHead" style="background:#1c1c20">💡 坠落的舞台灯</div>
+    <div class="cardMedia"><div class="paperRoll">💡</div></div>
+    <div class="cardTitle"><h3>「天狼星 · 大犬座 9 号」</h3><div class="en">Prop No. SIRIUS-9</div></div>
+    <div class="cardDesc">某个清晨,它从"天上"坠落在楚门家门前的街道。电台立刻解释:飞机在高空掉了零件。<br><br>一切怀疑,从这盏灯开始。</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'news') return newsCard();
   if (cat === 'shop') return shopCard();
+  if (cat === 'ferry') return ferryCard();
+  if (cat === 'truman') return trumanCard(s.type);
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -451,6 +495,13 @@ function openCard(s) {
     openCard(s);
   });
   bindGear(() => openCard(s));
+  cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.goworld;
+    const dest = k === 'truman' ? [694, 624] : [372, 12];
+    player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
+    closeModals(); blip(520);
+    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天' : '🐋 回到收藏之岛(主世界)');
+  }));
   cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
     if (!paperBought()) {
       if (!spendSB(2)) return;
@@ -522,6 +573,7 @@ const THEMES = {
   jazz:      { tempo: 138, wave: 'sine', scale: [0, 3, 5, 6, 7, 10], base: 175, dens: .72, swing: true, bass: true },
   classical: { tempo: 106, wave: 'sine', scale: [0, 4, 7, 12, 16, 19], base: 262, dens: .85, arp: true },
   outdoor:   { tempo: 100, wave: 'triangle', scale: [0, 7, 12, 14, 19], base: 165, dens: .5, bass: true },
+  truman:    { tempo: 118, wave: 'triangle', scale: [0, 4, 7, 9, 12], base: 294, dens: .68, bass: true, vol: .6 },
 };
 function note(freq, t, dur, wave, vol) {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -653,6 +705,26 @@ let starField;
   starField = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
   scene.add(starField);
 }
+/* --- 月亮(夜间升起,月光洒海) --- */
+let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0;
+const moonDirN = new THREE.Vector3(0, 1, 0);
+{
+  const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128;
+  const c = cv2.getContext('2d');
+  c.fillStyle = '#efeadb'; c.fillRect(0, 0, 128, 128);
+  const r0 = mulberry32(77);
+  for (let i = 0; i < 26; i++) {   // 月海与环形山
+    c.fillStyle = `rgba(150,148,138,${.18 + r0() * .3})`;
+    c.beginPath(); c.arc(r0() * 128, r0() * 128, 3 + r0() * 14, 0, 7); c.fill();
+  }
+  const tex = new THREE.CanvasTexture(cv2); tex.colorSpace = THREE.SRGBColorSpace;
+  moonMesh = new THREE.Mesh(new THREE.SphereGeometry(26, 24, 18), new THREE.MeshBasicMaterial({ map: tex, fog: false }));
+  moonGlow = new THREE.Mesh(new THREE.SphereGeometry(38, 20, 14),
+    new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: .16, fog: false, depthWrite: false }));
+  scene.add(moonMesh, moonGlow);
+  moonLight = new THREE.DirectionalLight(0xa8c0e8, 0);
+  scene.add(moonLight, moonLight.target);
+}
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
 let fireLight = null, lantern = null;
 const DAY_LEN = 480, DAY_START = .12;
@@ -673,8 +745,27 @@ function updateDayNight(t) {
   skyUni.sunPosition.value.copy(sunDirN);            // 驱动大气散射
   sun.position.copy(player.position).addScaledVector(sunDirN, 330);
   sun.target.position.copy(player.position);
-  if (oceanWater) oceanWater.material.uniforms.sunDirection.value.copy(sunDirN);
-  starField.material.opacity = (1 - da) * .95;
+  /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
+  const night = 1 - da;
+  const mp = clamp((p - .6) / .36, 0, 1);              // 夜段进度 0..1
+  const mElev = Math.sin(mp * Math.PI) * .85 + .06;
+  moonDirN.set(-Math.cos(mp * Math.PI), mElev, -.38).normalize();
+  moonMesh.position.copy(player.position).addScaledVector(moonDirN, 820);
+  moonGlow.position.copy(moonMesh.position);
+  moonMesh.visible = moonGlow.visible = night > .05;
+  moonGlow.material.opacity = night * .18;
+  moonLight.intensity = night * .5;
+  moonLight.position.copy(player.position).addScaledVector(moonDirN, 300);
+  moonLight.target.position.copy(player.position);
+  /* 潮汐:月升潮涨 */
+  tideY = night * mElev * .9;
+  if (oceanWater) {
+    oceanWater.position.y = .15 + tideY;
+    oceanWater.material.uniforms.sunDirection.value.copy(night > .5 ? moonDirN : sunDirN);
+    oceanWater.material.uniforms.sunColor.value.setHex(night > .5 ? 0xbdd8ff : 0xffffff);
+  }
+  if (mobileWater) mobileWater.position.y = tideY;
+  starField.material.opacity = night * .95;
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
@@ -734,7 +825,7 @@ const TER = 1900, SEG = MOBILE ? 150 : 240;
   scene.add(terrain);
 }
 /* --- 海洋:桌面用反射水面着色器,手机用轻量波浪 --- */
-let waterGeo = null, oceanWater = null;
+let waterGeo = null, oceanWater = null, mobileWater = null;
 function makeWaterNormals() {   // 程序化水面法线贴图(免外部纹理)
   const S = 256, cv2 = document.createElement('canvas'); cv2.width = cv2.height = S;
   const c = cv2.getContext('2d'), img = c.createImageData(S, S);
@@ -768,10 +859,10 @@ if (!MOBILE) {
 } else {
   waterGeo = new THREE.PlaneGeometry(3200, 3200, 72, 72);
   waterGeo.rotateX(-Math.PI / 2);
-  const water = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
+  mobileWater = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
     color: 0x2e7fb4, transparent: true, opacity: .82, shininess: 120, specular: 0x88c9ee,
   }));
-  water.position.y = 0; scene.add(water);
+  mobileWater.position.y = 0; scene.add(mobileWater);
 }
 /* --- 云 --- */
 const clouds = [];
@@ -799,7 +890,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (type === 'bar' || type === 'sign' || type === 'news' || type === 'shop') ? null : pickers[cat]();
+  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp'].includes(type) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -1357,6 +1448,88 @@ const AUTHORS = [
     lines: a.lines, wander: true, wps,
   }));
 }
+/* ================= 多元宇宙 1 号:楚门的世界(桃源岛) ================= */
+const trumanCams = [];
+{
+  const cx = TRU.x, cz = TRU.z, ch = 7;
+  // 摄影棚穹顶(内侧看是"画出来的天空")
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshPhongMaterial({ color: 0xcfe8f5, transparent: true, opacity: .1, side: THREE.DoubleSide, depthWrite: false }));
+  dome.position.set(cx, 0, cz); scene.add(dome);
+  // 穹顶内的摄影棚吊灯
+  for (const [lx, lz] of [[cx - 40, cz - 30], [cx + 45, cz + 20]]) {
+    const wire = cyl(.06, .06, 40, M.woodDark); wire.position.set(lx, 120, lz); scene.add(wire);
+    const lamp2 = new THREE.Mesh(new THREE.ConeGeometry(4, 6, 8), lam(0x222222)); lamp2.position.set(lx, 98, lz); scene.add(lamp2);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2cc })); bulb.position.set(lx, 95.5, lz); scene.add(bulb);
+  }
+  // 天空之门(穹顶西壁,海中浅滩尽头)
+  {
+    const frame = box(7.5, 11, 1.2, M.white); frame.position.set(612, 6.6, cz); scene.add(frame);
+    const doorM = box(5.6, 9, .8, lam(0x1a2430)); doorM.position.set(612.4, 6, cz); scene.add(doorM);
+    const steps = box(8, 1, 5, M.stone); steps.position.set(616, 1.7, cz); scene.add(steps);
+    addSpot(617, cz, 'truman', 'door', { r: 7 });
+    boxObs.push({ x1: 608, z1: cz - 4, x2: 611, z2: cz + 4 });
+  }
+  // 1950s 彩色小楼(围着草坪一圈)
+  const houseCols = [0xaee8d2, 0xf5c9d4, 0xf5ecc9, 0xbcd8f0, 0xd8c9ee];
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2 + .3, hx = cx + Math.cos(a) * 42, hz = cz + Math.sin(a) * 42;
+    const hh = height(hx, hz);
+    const bodyH = box(9, 6.5, 7, lam(houseCols[i])); bodyH.position.set(hx, hh + 3.2, hz); bodyH.rotation.y = -a; scene.add(bodyH);
+    const roofH = new THREE.Mesh(new THREE.ConeGeometry(7.4, 4.4, 4), lam(0x9c4a3a));
+    roofH.rotation.y = Math.PI / 4 - a; roofH.position.set(hx, hh + 8.6, hz); scene.add(roofH);
+    const doorH = box(1.8, 3.2, .3, M.woodDark);
+    doorH.position.set(hx - Math.cos(a) * 4.6, hh + 1.6, hz - Math.sin(a) * 4.6); doorH.rotation.y = -a; scene.add(doorH);
+    cirObs.push({ x: hx, z: hz, r: 6 });
+  }
+  // 隐藏摄像机(红灯闪烁)
+  [[cx - 20, cz + 26], [cx + 30, cz - 24], [cx - 44, cz - 8], [cx + 8, cz + 52]].forEach(([px2, pz2], i) => {
+    const hh = height(px2, pz2);
+    const pole = cyl(.14, .18, 4.6, M.woodDark); pole.position.set(px2, hh + 2.3, pz2); scene.add(pole);
+    const cam = box(1.4, .9, .9, lam(0x2a2a2e)); cam.position.set(px2, hh + 4.8, pz2); cam.rotation.y = i * 1.7; scene.add(cam);
+    const red = new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+    red.position.set(px2, hh + 5.4, pz2); scene.add(red);
+    trumanCams.push(red.material);
+    addSpot(px2, pz2, 'truman', 'camera', { r: 6 });
+  });
+  // 坠落的舞台灯「天狼星」——一切穿帮的开始
+  {
+    const hh = height(706, 508);
+    const lampBody = box(3, 2.2, 2.2, lam(0x1c1c20)); lampBody.rotation.z = .5; lampBody.position.set(706, hh + 1.1, 508); scene.add(lampBody);
+    const lens = cyl(1, 1, .4, new THREE.MeshBasicMaterial({ color: 0xfff2cc })); lens.rotation.z = Math.PI / 2 + .5; lens.position.set(707.5, hh + 1.7, 508); scene.add(lens);
+    cirObs.push({ x: 706, z: 508, r: 2.2 });
+    addSpot(706, 508, 'truman', 'lamp', { r: 6 });
+  }
+  // 返程渡口 + 岛名牌
+  {
+    const hh = height(694, 632);
+    const plank = box(5, .5, 9, M.wood); plank.position.set(694, hh + .9, 636); scene.add(plank);
+    const post = cyl(.3, .3, 3.6, M.woodDark); post.position.set(692, hh + 1.6, 640); scene.add(post);
+    addSpot(694, 634, 'ferry', 'ferry', { r: 8 });
+    const tsign = makeSign('楚门的世界', 6, '#e8f2f5', '#2a4456');
+    tsign.position.set(700, height(700, 610) + 4.4, 610); scene.add(tsign);
+  }
+  // 原著 NPC
+  addNpc({ x: cx + 6, z: cz - 6, name: '楚门', body: 0x3a6ea5, hat: 0x8a6238,
+    lines: ['早上好!以防见不到你——下午好、晚上好、晚安!', '我总觉得……天上有摄像机在看我。', '全世界只有我一个人被蒙在鼓里。', '如果这是梦,别叫醒我;如果是节目,请换台。'] });
+  addNpc({ x: 622, z: cz + 6, name: '克里斯托弗', body: 0x2a2a30, hat: 0x44444c,
+    lines: ['我是这个世界的创造者。', '外面的世界,和我给他的一样虚假。', '他随时可以离开——只要他真的想。', '摄像机五千台,直播三十年。'] });
+  addNpc({ x: cx + 14, z: cz + 30, name: '美露', body: 0xd46a8c, hat: 0xf5ecc9,
+    lines: ['(对空气微笑)这杯"摩可可",百分百天然可可豆!', '新款"厨师帮手",主妇的好朋友!', '生活嘛,就该被赞助。——你问镜头在哪?什么镜头?'] });
+  addNpc({ x: cx - 26, z: cz - 32, name: '马龙', body: 0x6b7a3a, hat: 0x4a5528,
+    lines: ['哥们,我会为你挡子弹。', '这话是我自己想说的,没人提词。真的。', '来瓶啤酒?这牌子……特别好喝(看向远方)。'] });
+}
+/* 多元宇宙渡口(鲸岛东滩) */
+{
+  const fh = height(380, 12);
+  const plank = box(5, .5, 10, M.wood); plank.position.set(384, fh + .9, 12); scene.add(plank);
+  const post = cyl(.3, .3, 4, M.woodDark); post.position.set(381, fh + 1.8, 17); scene.add(post);
+  const fsign = makeSign('多元宇宙渡口', 6.4, '#141826', '#9fb8e8');
+  fsign.position.set(380, fh + 4.6, 4); scene.add(fsign);
+  addSpot(382, 12, 'ferry', 'ferry', { r: 8 });
+  addNpc({ x: 376, z: 20, name: '卡戎', body: 0x3a3a44, hat: 0x1c1c26,
+    lines: ['渡一切想去别的世界的人。', '楚门的世界已通航;中土、霍格沃茨、花果山,在建。', '船票免费,回程也是——但记忆要自己带回来。'] });
+}
 function updateNpcs3(dt) {
   for (const n of allNpcs) {
     const p = n.g.position;
@@ -1407,7 +1580,7 @@ function buildMinimapBase() {
   const c = mmBase.getContext('2d');
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
-    const x = (px / mm.width - .5) * 1900, z = (py / mm.height - .5) * 1425;
+    const x = (px / mm.width - .5) * 1900, z = (py / mm.height - .5) * 1500;
     const h = height(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
@@ -1424,7 +1597,7 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 1900 + .5) * mm.width, W2Y = z => (z / 1425 + .5) * mm.height;
+  const W2X = x => (x / 1900 + .5) * mm.width, W2Y = z => (z / 1500 + .5) * mm.height;
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
@@ -1432,6 +1605,8 @@ function renderMinimap() {
   }
   mctx.fillStyle = '#ffe9a8';   // 灯塔
   mctx.beginPath(); mctx.arc(W2X(IS2.x), W2Y(IS2.z), 2.6, 0, 7); mctx.fill();
+  mctx.fillStyle = '#f5c9d4';   // 楚门的世界
+  mctx.beginPath(); mctx.arc(W2X(TRU.x), W2Y(TRU.z), 2.6, 0, 7); mctx.fill();
   // 玩家朝向箭头
   const px = W2X(player.position.x), py = W2Y(player.position.z);
   mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
@@ -1444,6 +1619,7 @@ function renderMinimap() {
 const cpCv = $('compass'), cpCtx = cpCv ? cpCv.getContext('2d') : null;
 const CP_MARKS = ZONES3D.filter(z => z.key !== 'plaza').map(z => ({ x: z.x, z: z.z, col: CATS[z.key].color }));
 CP_MARKS.push({ x: IS2.x, z: IS2.z, col: '#ffe9a8' });
+CP_MARKS.push({ x: TRU.x, z: TRU.z, col: '#f5c9d4' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -1782,7 +1958,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5;
@@ -1849,7 +2025,7 @@ function loop() {
   swimming = gh < -.6;
   if (swimming) {
     vy = 0; grounded = false;
-    player.position.y += ((-.55) - player.position.y) * Math.min(1, dt * 6);
+    player.position.y += ((-.55 + tideY) - player.position.y) * Math.min(1, dt * 6);
     player.rotation.x = Math.sin(t * 2.4) * .06;
   } else {
     player.rotation.x = 0;
@@ -1892,6 +2068,7 @@ function loop() {
     u.wl.rotation.z = Math.sin(t * 9 + u.ph) * .5; u.wr.rotation.z = -Math.sin(t * 9 + u.ph) * .5;
   }
   if (window.__flame) window.__flame.scale.setScalar(1 + Math.sin(t * 9) * .18);
+  trumanCams.forEach((m2, i) => m2.color.setHex(Math.sin(t * 4 + i * 2) > 0 ? 0xff2222 : 0x481414));
   for (const s of spots) if (s.birdRef) s.birdRef.position.y = 12.7 + Math.sin(t * 2 + s.x) * .18;
   /* 星之碎片:旋转 + 浮动 + 拾取 */
   for (let i = shards.length - 1; i >= 0; i--) {
@@ -1993,12 +2170,13 @@ function loop() {
   for (const zn of ZONES3D) {
     if (zn.key !== 'plaza' && Math.hypot(player.position.x - zn.x, player.position.z - zn.z) < zn.r) { hereKey = zn.key; break; }
   }
-  const mz2 = swimming ? 'fish' : (hereKey || 'street');
+  const onTruman = Math.hypot(player.position.x - TRU.x, player.position.z - TRU.z) < TRU.r + 20;
+  const mz2 = swimming ? 'fish' : (onTruman ? 'truman' : (hereKey || 'street'));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = swimming ? '🌊' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')));
-  $('zoneName').textContent = swimming ? '大海' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')));
+  $('zoneIcon').textContent = swimming ? '🌊' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))));
+  $('zoneName').textContent = swimming ? '大海' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))));
 
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
