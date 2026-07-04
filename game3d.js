@@ -1376,6 +1376,10 @@ const brDX = BR_B[0] - BR_A[0], brDZ = BR_B[1] - BR_A[1];
 const brLen = Math.hypot(brDX, brDZ);
 const brAng = Math.atan2(brDX, brDZ);
 const deckY = t => 3 + Math.sin(t * Math.PI) * 6;
+/* 水族馆栈桥桥面(可行走) */
+function pierHeight(x, z) {
+  return (Math.abs(x) < 3.2 && z > 346 && z < 427) ? 1.85 : null;
+}
 function bridgeHeight(x, z) {
   const t = ((x - BR_A[0]) * brDX + (z - BR_A[1]) * brDZ) / (brDX * brDX + brDZ * brDZ);
   if (t < 0 || t > 1) return null;
@@ -1467,6 +1471,49 @@ const spray = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 9),
 spray.position.set(WHALE_BLOW.x, 3, WHALE_BLOW.z);
 scene.add(spray);
 
+/* --- 钓鱼系统(栈桥尽头 / 西湾滩头) --- */
+const FSPOTS = [
+  { x: 0, z: 421, bx: 0, bz: 442 },        // 栈桥尽头
+  { x: -340, z: 295, bx: -368, bz: 322 },  // 西湾(黄帆船旁)
+];
+const fishing = { state: 'idle', t: 0, spot: null };
+const bobber = new THREE.Group();
+{
+  const top = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd94040 }));
+  const bot = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf5efdc }));
+  bobber.add(top, bot);
+  bobber.visible = false;
+  scene.add(bobber);
+}
+const FISH_PRICE = { deep: 9, rare: 9, pelagic: 7, special: 6, reef: 5 };
+function startCast(fs) {
+  fishing.state = 'wait'; fishing.spot = fs;
+  fishing.t = 2.2 + Math.random() * 4.5;
+  bobber.position.set(fs.bx, .35, fs.bz); bobber.visible = true;
+  blip(440);
+}
+function endFishing() { fishing.state = 'idle'; fishing.spot = null; bobber.visible = false; }
+function catchFish() {
+  const f = D.fish[Math.floor(Math.random() * D.fish.length)];
+  const price = FISH_PRICE[f.cat] || 4;
+  openCard({ cat: 'fish', type: 'tank', item: f });   // 收进图鉴(+2)
+  earnSB(price);
+  toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}`);
+  blip(880); setTimeout(() => blip(1180), 110);
+  endFishing();
+}
+function updateFishing(dt, t) {
+  if (fishing.state === 'idle') return;
+  fishing.t -= dt;
+  if (fishing.state === 'wait') {
+    bobber.position.y = .35 + Math.sin(t * 2.2) * .1;
+    if (fishing.t <= 0) { fishing.state = 'bite'; fishing.t = 1.15; blip(1400); }
+  } else if (fishing.state === 'bite') {
+    bobber.position.y = -.25 + Math.sin(t * 18) * .12;   // 猛沉
+    if (fishing.t <= 0) { toast('💨 鱼跑了……再试一次'); blip(260); endFishing(); }
+  }
+}
+
 /* ---------- 玩家 ---------- */
 const player = new THREE.Group();
 {
@@ -1495,20 +1542,31 @@ try {
 /* ---------- 相机与输入 ---------- */
 let camYaw = Math.PI, camPitch = .42, camDist = 15;
 const keys = {};
-let joy = { on: false, vx: 0, vy: 0 };
+let joy = { on: false, vx: 0, vy: 0 }, photoMode = false;
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 'escape') { closeModals(); return; }
   if (k === 'j') { modalOpen && !$('journal').classList.contains('hidden') ? closeModals() : openJournal(); return; }
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
+  if (k === 'p') {   // 照片模式:隐藏全部 UI
+    photoMode = !photoMode;
+    for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
+    if (!photoMode) toast('已退出照片模式');
+    return;
+  }
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
   if (k === ' ') { e.preventDefault(); if (grounded && !swimming) vy = 11.5; return; }
   keys[k] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-let nearSpot = null;
-function tryInteract() { if (nearSpot) openCard(nearSpot); }
+let nearSpot = null, nearFspot = null;
+function tryInteract() {
+  if (fishing.state === 'bite') { catchFish(); return; }
+  if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
+  if (nearSpot) { openCard(nearSpot); return; }
+  if (nearFspot) startCast(nearFspot);
+}
 hintEl.addEventListener('click', tryInteract);
 $('btnAct').addEventListener('click', () => { modalOpen ? closeModals() : tryInteract(); });
 
@@ -1553,7 +1611,21 @@ addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001)
 const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '万神殿日报(2 SB)' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
-let saveT = 0;
+let saveT = 0, whaleT = 20;
+/* 鲸鸣:低频滑音 */
+function whaleCall() {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'sine';
+  const t0 = actx.currentTime;
+  o.frequency.setValueAtTime(70, t0);
+  o.frequency.exponentialRampToValueAtTime(180, t0 + 1.4);
+  o.frequency.exponentialRampToValueAtTime(55, t0 + 3.2);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(.07, t0 + .6);
+  g.gain.exponentialRampToValueAtTime(.0008, t0 + 3.4);
+  o.connect(g).connect(actx.destination);
+  o.start(t0); o.stop(t0 + 3.5);
+}
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
@@ -1598,6 +1670,8 @@ function loop() {
   let gh = height(player.position.x, player.position.z);
   const bh = bridgeHeight(player.position.x, player.position.z);
   if (bh != null && player.position.y > bh - 1.6) gh = Math.max(gh, bh);
+  const ph2 = pierHeight(player.position.x, player.position.z);
+  if (ph2 != null && player.position.y > ph2 - 1.4) gh = Math.max(gh, ph2);
   swimming = gh < -.6;
   if (swimming) {
     vy = 0; grounded = false;
@@ -1696,21 +1770,36 @@ function loop() {
       spray.position.y = 2 + k * 5;
     } else spray.material.opacity = 0;
   }
+  updateFishing(dt, t);
+  /* 夜半鲸鸣(靠近喷水孔) */
+  whaleT -= dt;
+  if (whaleT <= 0) {
+    whaleT = 34 + Math.random() * 30;
+    if (actx && musicOn && Math.hypot(player.position.x - WHALE_BLOW.x, player.position.z - WHALE_BLOW.z) < 150) whaleCall();
+  }
   updateNpcs3(dt);
   updateDayNight(t);
   renderMinimap();
   renderCompass();
 
   /* 最近藏品点 + 提示 */
-  nearSpot = null; let best = 1e9;
+  nearSpot = null; nearFspot = null; let best = 1e9;
   for (const s of spots) {
     const d2 = (s.x - player.position.x) ** 2 + (s.z - player.position.z) ** 2;
     if (d2 < s.r * s.r && d2 < best && Math.abs((s.y ?? 0) - player.position.y) < 8) { best = d2; nearSpot = s; }
   }
-  if (nearSpot && !modalOpen) {
-    v3.set(nearSpot.x, (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2, nearSpot.z).project(camera);
+  for (const fs of FSPOTS) {
+    if ((fs.x - player.position.x) ** 2 + (fs.z - player.position.z) ** 2 < 36) nearFspot = fs;
+  }
+  let hintTxt = null, hx = 0, hy = 0, hz = 0;
+  if (fishing.state === 'bite') { hintTxt = '❗收竿!'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
+  else if (fishing.state === 'wait') { hintTxt = '…等鱼上钩(E 收竿)'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
+  else if (nearSpot) { hintTxt = HINTS[nearSpot.type] || '看看'; hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
+  else if (nearFspot) { hintTxt = '🎣 抛竿钓鱼'; hx = nearFspot.bx; hy = 3; hz = nearFspot.bz; }
+  if (hintTxt && !modalOpen) {
+    v3.set(hx, hy, hz).project(camera);
     if (v3.z < 1) {
-      hintEl.innerHTML = `<kbd>E</kbd>${HINTS[nearSpot.type] || '看看'}`;
+      hintEl.innerHTML = `<kbd>E</kbd>${hintTxt}`;
       hintEl.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
       hintEl.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
       hintEl.classList.remove('hidden');
@@ -1741,4 +1830,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight };
