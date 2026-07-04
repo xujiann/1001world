@@ -35,7 +35,8 @@ function curProfileName() {
   const p = profileList().find(x => x.id === PROFILE_ID);
   return p ? p.name : '未知账号';
 }
-const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket'];
+const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -101,6 +102,18 @@ const ANH = { x: -1020, z: 640, r: 130 };   // 一千零一夜·巴格达
 const NEM = { x: 720, z: 1060, r: 90 };     // 海底两万里·鹦鹉螺锚地
 const B612 = { x: 1120, z: 330, r: 62 };    // 小王子·B-612
 const JUR = { x: 1020, z: 920, r: 140 };    // 侏罗纪公园
+/* —— 名著十岛(路线图 ISLANDS-ROADMAP.md) —— */
+const HGS = { x: 150, z: -1250, r: 150 };   // 西游记·花果山
+const ALC = { x: -1250, z: 350, r: 130 };   // 爱丽丝梦游仙境
+const CBI = { x: 700, z: -1150, r: 140 };   // 三国·赤壁
+const LRS = { x: -950, z: -800, r: 120 };   // 聊斋·兰若寺
+const LSP = { x: -1250, z: -300, r: 150 };  // 水浒·梁山泊
+const SIR = { x: 1330, z: 640, r: 0 };      // 奥德赛·塞壬海域(礁石群,无岛)
+const FCY = { x: -600, z: 1150, r: 140 };   // 堂吉诃德·风车原野
+const YFB = { x: -130, z: 1250, r: 110 };   // 基督山·伊夫堡
+const MCD = { x: 80, z: 1360, r: 45 };      // 小基督山(宝藏屿)
+const RBX = { x: 420, z: 1300, r: 120 };    // 鲁滨逊·绝望岛
+const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -129,6 +142,18 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - NEM.x, z - NEM.z) / NEM.r) * 1.8);  // 鹦鹉螺锚地
   m = Math.max(m, (1 - Math.hypot(x - B612.x, z - B612.z) / B612.r) * 2.0); // B-612
   m = Math.max(m, (1 - Math.hypot(x - JUR.x, z - JUR.z) / JUR.r) * 1.8);  // 侏罗纪
+  m = Math.max(m, (1 - Math.hypot(x - HGS.x, z - HGS.z) / HGS.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - ALC.x, z - ALC.z) / ALC.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - CBI.x, z - CBI.z) / CBI.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - LRS.x, z - LRS.z) / LRS.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - LSP.x, z - LSP.z) / LSP.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - FCY.x, z - FCY.z) / FCY.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - YFB.x, z - YFB.z) / YFB.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - MCD.x, z - MCD.z) / MCD.r) * 1.7);
+  m = Math.max(m, (1 - Math.hypot(x - RBX.x, z - RBX.z) / RBX.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
+  for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
+    m = Math.max(m, (1 - Math.hypot(x - rx2, z - rz2) / 24) * 1.7);       // 塞壬礁
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
@@ -206,6 +231,20 @@ function height(x, z) {
   q(B612.x, B612.z - 54, 12, 2.2, .95);
   q(JUR.x, JUR.z, 80, 7);                                                                    // 侏罗纪园区
   q(JUR.x, JUR.z - 126, 16, 2.2, .95);
+  // —— 名著十岛 ——
+  q(HGS.x, HGS.z, 78, 8);                                                                    // 花果山山脚
+  h += smooth01(clamp(1 - Math.hypot(x - HGS.x, z - (HGS.z - 60)) / 70, 0, 1)) ** 2 * 26;    // 花果山主峰
+  q(HGS.x, HGS.z + 128, 16, 2.2, .95);
+  q(ALC.x, ALC.z, 72, 7); q(ALC.x, ALC.z + 112, 16, 2.2, .95);                               // 爱丽丝
+  q(CBI.x, CBI.z, 76, 7); q(CBI.x, CBI.z + 120, 16, 2.2, .95);                               // 赤壁
+  q(LRS.x, LRS.z, 66, 8); q(LRS.x, LRS.z + 102, 16, 2.2, .95);                               // 兰若寺
+  q(LSP.x, LSP.z, 80, 5); q(LSP.x + 128, LSP.z, 16, 2.2, .95);                               // 梁山泊(低洼水泊)
+  h -= smooth01(clamp(1 - Math.hypot(x - (LSP.x - 30), z - (LSP.z + 20)) / 45, 0, 1)) * 8;   // 泊心水面
+  q(FCY.x, FCY.z, 78, 8); q(FCY.x, FCY.z - 120, 16, 2.2, .95);                               // 风车原野
+  q(YFB.x, YFB.z, 56, 9); q(YFB.x, YFB.z - 96, 16, 2.2, .95);                                // 伊夫堡高台
+  q(MCD.x, MCD.z, 26, 5);                                                                    // 小基督山
+  q(RBX.x, RBX.z, 66, 6); q(RBX.x, RBX.z - 104, 16, 2.2, .95);                               // 绝望岛
+  q(DGY.x, DGY.z, 72, 7); q(DGY.x, DGY.z + 112, 16, 2.2, .95);                               // 大观园
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -283,6 +322,7 @@ const GEAR = [
   { id: 'goggles', icon: '🥽', name: '深蓝泳镜',   en: 'Goggles',      slot: '眼部', price: 15, desc: '看清深蓝之下的一切。',       effect: '海中的星之碎片升起光柱指引', brand: null },
   { id: 'boots',   icon: '🥾', name: '雪峰登山靴', en: 'Hiking Boots', slot: '脚部', price: 25, desc: '背鳍雪山特供防滑大底。',     effect: '奔跑 +18%,跳跃更高', brand: null },
   { id: 'rod',     icon: '🎣', name: '专业鱼竿',   en: 'Pro Rod',      slot: '手部', price: 30, desc: '等戈多,不如等鱼。',         effect: '咬钩窗口更长,渔获价格 +2 SB', brand: null },
+  { id: 'wax',     icon: '🕯️', name: '蜂蜡耳塞',   en: 'Beeswax Plugs', slot: '耳部', price: 12, desc: '奥德修斯同款,船员们都说好。', effect: '塞壬海域免疫歌声魅惑,可安全穿越', brand: null },
 ];
 let gear = { owned: [], on: [] };
 try { const g0 = JSON.parse(PSTORE.getItem('w1001.gear') || 'null'); if (g0 && Array.isArray(g0.owned) && Array.isArray(g0.on)) gear = g0; } catch (e) {}
@@ -543,6 +583,16 @@ const WORLDS = [
   { key: 'nem', icon: '🐚', name: '海底两万里', en: '20,000 Leagues', open: true, desc: '鹦鹉螺号锚地 · 尼摩船长' },
   { key: 'b612', icon: '🌹', name: 'B-612 小行星', en: 'The Little Prince', open: true, desc: '玫瑰 · 猴面包树 · 一盏路灯' },
   { key: 'jur', icon: '🦖', name: '侏罗纪公园', en: 'Jurassic Park', open: true, desc: '电网围场 · 生命总会找到出路' },
+  { key: 'hgs', icon: '🐒', name: '花果山', en: 'Journey to the West', open: true, desc: '水帘洞 · 蟠桃园 · 石中金箍棒' },
+  { key: 'alc', icon: '🎩', name: '爱丽丝梦游仙境', en: 'Wonderland', open: true, desc: '巨蘑菇 · 疯帽子茶会 · 柴郡猫' },
+  { key: 'cbi', icon: '🔥', name: '三国 · 赤壁', en: 'Red Cliffs', open: true, desc: '连环战船 · 七星坛借东风 · 夜借箭' },
+  { key: 'lrs', icon: '🏮', name: '聊斋 · 兰若寺', en: 'Liaozhai', open: true, desc: '昼夜两副面孔的荒寺(夜里再去)' },
+  { key: 'lsp', icon: '⚔️', name: '水浒 · 梁山泊', en: 'Water Margin', open: true, desc: '八百里水泊 · 聚义厅纳投名状' },
+  { key: 'fcy', icon: '🌀', name: '堂吉诃德 · 风车原野', en: 'Don Quixote', open: true, desc: '巨人(风车)阵 · 陪骑士冲锋' },
+  { key: 'yfb', icon: '⛓️', name: '基督山 · 伊夫堡', en: 'Monte Cristo', open: true, desc: '海上监狱 · 越狱 · 黑岩宝藏' },
+  { key: 'rbx', icon: '🏝️', name: '鲁滨逊 · 绝望岛', en: 'Robinson Crusoe', open: true, desc: '海难船骸 · 集五箱漂流物资' },
+  { key: 'dgy', icon: '🏮', name: '红楼梦 · 大观园', en: 'Dream of Red Chamber', open: true, desc: '潇湘竹影 · 海棠诗社 · 葬花冢' },
+  { key: 'sirinfo', icon: '🧜‍♀️', name: '塞壬海域', en: 'The Sirens', open: false, desc: '巴格达与侏罗纪之间的危险水道,备好蜂蜡耳塞', note: '无航线,凭勇气' },
   { key: 'thy', icon: '🌸', name: '桃花源 · ???', en: 'Peach Blossom Spring', open: false, desc: '寻向所志,遂迷,不复得路——此地无航线', note: '有缘自遇' },
   { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
 ];
@@ -674,7 +724,14 @@ function mobCard(type) {
     <div class="cardDesc">亚哈把它钉进桅杆,吼声传遍码头:<br>"谁第一个望见那头白头白背的鲸——这枚金币就是谁的!"</div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-dblaccept>🔭 接下悬赏,望向大海</button></div>`;
 }
-/* --- 六岛典藏卡(LORE 框架) --- */
+let scaleT = 0, curDA = 1;
+let windFlip = PSTORE.getItem('w1001.wind') === '1';
+const COUPLETS = [
+  ['寒塘渡鹤影', '冷月葬花魂'], ['芳情只自遣', '雅趣向谁言'], ['宝鼎茶闲烟尚绿', '幽窗棋罢指犹凉'],
+  ['绕堤柳借三篙翠', '隔岸花分一脉香'], ['吟成豆蔻才犹艳', '睡足酴醿梦亦香'], ['珠玉自应传盛世', '神仙何幸下瑶台'],
+  ['软衬三春草', '柔拖一缕香'], ['幽微灵秀地', '无可奈何天'],
+];
+/* --- 典藏卡(LORE 框架) --- */
 const LORE = {
   // 山海经
   jiuwei:  { icon: '🦊', color: '#b03a2e', title: '九尾狐', en: 'Nine-tailed Fox', hint: '青丘之兽',
@@ -726,6 +783,66 @@ const LORE = {
     desc: '二十二米长的温柔巨人,正踮起前脚去够树顶的嫩叶。看到它的第一眼,格兰特博士摘下了墨镜——你现在懂那种感觉了。' },
   raptor:  { icon: '🦎', color: '#6a5a2a', title: '迅猛龙', en: 'Velociraptor', hint: '聪明的女孩们',
     desc: '成对狩猎,会开门,会声东击西。饲养员马尔杜恩最后一句话是:"Clever girl."——所以别背对着围栏。' },
+  // 花果山
+  shuilian:{ icon: '💦', color: '#2e86ab', title: '水帘洞', en: 'Water Curtain Cave', hint: '瀑布后有洞天',
+    desc: '"一派白虹起,千寻雪浪飞。"帘后石碣上刻着十个大字:花果山福地,水帘洞洞天。石猴当年就是从这里跳进去的。' },
+  pantao:  { icon: '🍑', color: '#ef9fbc', title: '蟠桃园', en: 'Peach Orchard', hint: '摘个桃?(每日一次)',
+    desc: '三千年一熟的没有,三百年一熟的也没有——但今早刚熟的有。八戒说他"就闻闻",已经闻掉了两筐。' },
+  jingu:   { icon: '🥢', color: '#b8862e', title: '定海神针', en: 'The Golden Cudgel', hint: '石中金箍棒',
+    desc: '重一万三千五百斤,如意金箍棒。插在山顶石中,微微嗡鸣。碑文:"集齐三颗星辰者,可将其请出。"' },
+  // 爱丽丝
+  mushroom:{ icon: '🍄', color: '#c0392b', title: '双面蘑菇', en: 'The Mushroom', hint: '吃一口试试?',
+    desc: '毛毛虫留下的忠告:"一边让你变高,另一边让你变矮。"它没说哪边是哪边。(效果一分钟)' },
+  tinydoor:{ icon: '🚪', color: '#b8862e', title: '小小门', en: 'The Tiny Door', hint: '只有变小才进得去',
+    desc: '一扇十五厘米高的小门,门后金光闪闪。门把手打着哈欠:"变小再来敲,谢谢配合。"(每日一次)' },
+  cheshire:{ icon: '😼', color: '#6a3a8c', title: '柴郡猫', en: 'Cheshire Cat', hint: '树上有个笑',
+    desc: '"我们这儿全是疯子。"它一边说一边消失,最后只剩下笑容挂在树梢——没有猫,只有笑。' },
+  rabbithole:{ icon: '🐇', color: '#4a4438', title: '兔子洞', en: 'The Rabbit Hole', hint: '兔子先生迟到了',
+    desc: '洞口散落着一只怀表和一副白手套。里面传来渐远的喊声:"来不及了来不及了!"——别跳,你已经在仙境了。' },
+  // 赤壁
+  caochuan:{ icon: '🛶', color: '#4a5a6a', title: '草船', en: 'The Straw Boats', hint: '夜里来借箭',
+    desc: '二十只草船,束草千余。军师吩咐:雾夜近曹营擂鼓,天明前满载而归。白天去?白天去就是活靶子。(夜里每次+1 SB,每晚 20 支)' },
+  qixingtan:{ icon: '🌬️', color: '#2a3a5a', title: '七星坛', en: 'The Seven-Star Altar', hint: '借东风',
+    desc: '孔明沐浴斋戒,身披道衣,缓步登坛。"万事俱备,只欠东风。"——要替他把风借来吗?' },
+  // 兰若寺
+  well:    { icon: '🪣', color: '#2a3630', title: '寺后古井', en: 'The Old Well', hint: '夜里井下有物',
+    desc: '白日看只是枯井。入夜后,井底隐隐有白衣飘动——小倩的骨灰坛藏在井壁暗格里,取出它,才能送她投胎。' },
+  grave:   { icon: '🕯️', color: '#3a4436', title: '安魂之处', en: 'A Resting Place', hint: '白杨树下',
+    desc: '寺外白杨萧萧。燕赤霞说:"把骨灰葬在生人阳气旺处,姥姥就再也拿她无可奈何。"' },
+  // 梁山泊
+  juyi:    { icon: '⚔️', color: '#8c2f24', title: '聚义厅', en: 'Hall of Loyalty', hint: '上山要交投名状',
+    desc: '杏黄旗上"替天行道"四个大字。交椅一百单八把,还空着一把。王伦规矩:上山者,先纳投名状——钓满五尾鱼,即见诚心。' },
+  zhangshun:{ icon: '🐟', color: '#3a6a8a', title: '浪里白条', en: 'Zhang Shun', hint: '水边的好汉',
+    desc: '张顺,浑身雪白,水底伏得七日七夜。"兄弟,看你也是爱钓的——我教你个诀窍:提竿别急,数半拍。"(永久:咬钩窗口+0.35秒)' },
+  // 塞壬海域
+  sirenrock:{ icon: '🧜‍♀️', color: '#4a2a5a', title: '塞壬之礁', en: 'The Sirens', hint: '歌声危险',
+    desc: '礁石上白骨与竖琴并陈。她们唱的不是歌,是你最想听的那句话。塞好耳塞的人,才能看清礁顶的珍宝。' },
+  odysseus:{ icon: '⛵', color: '#3a4a5a', title: '奥德修斯之船', en: "Odysseus' Ship", hint: '桅杆上绑着人',
+    desc: '船员双耳封蜡,奋力划桨;桅杆上绑着他们的王。"无论我怎么哀求,都不要给我松绑——我要听完这支歌,并且活着。"' },
+  // 风车原野
+  windmill:{ icon: '🌀', color: '#8a7a5a', title: '巨人(风车)', en: 'The Giants', hint: '那是……风车吧?',
+    desc: '"命运指引我们走向比想象更伟大的冒险!看,三十多个狂暴的巨人!"——桑丘:"大人,那是风车。""闭嘴,胆小鬼。"' },
+  charge:  { icon: '🐎', color: '#b8862e', title: '冲锋起点', en: 'The Charge', hint: '陪骑士冲一次?',
+    desc: '堂吉诃德挺枪跨马,驽骍难得打了个喷嚏。"侍从!随我把这些巨人挑落马下,荣耀属于杜尔西内娅!"(就冲一次,真的就一次)' },
+  // 伊夫堡
+  cell:    { icon: '⛓️', color: '#2a2a30', title: '34 号牢房', en: 'Cell No. 34', hint: '墙后有敲击声',
+    desc: '法利亚长老用二十年凿通了这堵墙。"孩子,我把宝藏的秘密给你——基督山岛,黑岩之下。我出不去了,你替我看看海。"(获得藏宝图)' },
+  jumpsea: { icon: '🌊', color: '#16506a', title: '城堡崖缘', en: 'The Leap', hint: '越狱只有一条路',
+    desc: '狱卒把"尸袋"抛进海里的地方。三十米,黑浪,铁链。唐泰斯就是从这里获得自由的——带着图,跳。' },
+  digtreasure:{ icon: '💎', color: '#b8862e', title: '黑岩之下', en: 'The Treasure', hint: '按图索骥',
+    desc: '小基督山岛,黑色岩石的阴影里。挖开浮土,铁箱的锁早已锈蚀——"世界上最大的智慧,是等待和希望。"' },
+  // 大观园
+  zanghua: { icon: '🌺', color: '#c2185b', title: '葬花冢', en: 'Flower Grave', hint: '花冢添一抔(每日)',
+    desc: '"侬今葬花人笑痴,他年葬侬知是谁?"锦囊收艳骨,净土掩风流。替她添一抔落花吧。' },
+  shishe:  { icon: '📜', color: '#6a3a8c', title: '海棠诗社', en: 'The Poetry Club', hint: '今日诗题',
+    desc: '稻香老农社长立的规矩:每日一题,限韵不限体。对上了,社里出润笔。(每日一题)' },
+  // 绝望岛
+  wreck:   { icon: '🚢', color: '#5a4632', title: '海难船骸', en: 'The Wreck', hint: '搁浅的旧船',
+    desc: '桅杆折断,船身半埋沙中。鲁滨逊从这里搬走了木板、火药、饼干和一条狗。"我把能拆的都拆了,"他说,"包括绝望。"' },
+  footprint:{ icon: '👣', color: '#c8a86a', title: '沙滩脚印', en: 'The Footprint', hint: '沙滩上有什么',
+    desc: '一个赤裸的人的脚印,清清楚楚印在沙上。鲁滨逊盯着它看了整整一天——独居第十七年,这是他见过最可怕、也最动人的东西。' },
+  flotsam: { icon: '📦', color: '#7a5230', title: '漂流物资', en: 'Flotsam', hint: '海上漂来的箱子',
+    desc: '被海浪推上岸的木箱,裹着海藻。鲁滨逊说集齐五箱,他就把二十八年的生存术倾囊相授。(+2 SB)' },
 };
 function loreCard(k) {
   const L = LORE[k];
@@ -736,6 +853,27 @@ function loreCard(k) {
   if (k === 'genie') btn = '<button class="again" data-lampgift>🪔 擦亮神灯</button>';
   if (k === 'carpet') btn = '<button class="again" data-flycarpet>🧞 乘飞毯回收藏之岛</button>';
   if (k === 'rose') btn = '<button class="again" data-rosewater>💧 为玫瑰浇水</button>';
+  if (k === 'pantao') btn = '<button class="again" data-pantao>🍑 摘一个蟠桃</button>';
+  if (k === 'jingu') btn = PSTORE.getItem('w1001.jingu') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">神针已随你去,石中只余棒印。</span>'
+    : (stars >= 3 ? '<button class="again" data-jingu>🥢 双手握棒,请出神针!</button>'
+      : `<span style="color:#8a7c62;font-size:13px">(现有 ⭐×${stars},尚需集齐 3 颗)</span>`);
+  if (k === 'mushroom') btn = '<button class="again" data-grow>🍄 咬左边(变大)</button><button class="again" data-shrink style="margin-left:8px">🍄 咬右边(变小)</button>';
+  if (k === 'tinydoor') btn = '<button class="again" data-tiny>🚪 敲小小门</button>';
+  if (k === 'caochuan') btn = '<button class="again" data-arrow>🏹 擂鼓!受箭!</button>';
+  if (k === 'qixingtan') btn = '<button class="again" data-wind>🌬️ 登坛借风</button>';
+  if (k === 'well') btn = '<button class="again" data-well>🪣 探井</button>';
+  if (k === 'grave') btn = '<button class="again" data-bury>🕯️ 安葬骨灰坛</button>';
+  if (k === 'juyi') btn = '<button class="again" data-juyi>⚔️ 递上投名状</button>';
+  if (k === 'zhangshun') btn = '<button class="again" data-zhangshun>🐟 请教钓诀</button>';
+  if (k === 'sirenrock') btn = '<button class="again" data-siren>💎 取礁顶珍宝</button>';
+  if (k === 'charge') btn = '<button class="again" data-charge>🐎 冲啊——!</button>';
+  if (k === 'cell') btn = '<button class="again" data-cell>🗺️ 接过藏宝图</button>';
+  if (k === 'jumpsea') btn = '<button class="again" data-jumpsea>🌊 跳!</button>';
+  if (k === 'digtreasure') btn = '<button class="again" data-dig>💎 挖!</button>';
+  if (k === 'zanghua') btn = '<button class="again" data-flower>🌺 添一抔落花</button>';
+  if (k === 'shishe') btn = '<button class="again" data-poem>📜 领今日诗题</button>';
+  if (k === 'flotsam') btn = '<button class="again" data-flotsam>📦 撬开木箱</button>';
   return `<div class="cardHead" style="background:${L.color}">${L.icon} ${esc(L.title)}</div>
     <div class="cardMedia"><div class="paperRoll">${L.icon}</div></div>
     <div class="cardTitle"><h3>${esc(L.title)}</h3><div class="en">${L.en}</div></div>
@@ -855,7 +993,9 @@ function openCard(s) {
   cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.goworld;
     const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], sport: [-688, 122],
-      shj: [SHJ.x, SHJ.z + 112], anh: [ANH.x, ANH.z - 106], nem: [NEM.x, NEM.z - 70], b612: [B612.x, B612.z - 48], jur: [JUR.x, JUR.z - 120], main: [372, 12] };
+      shj: [SHJ.x, SHJ.z + 112], anh: [ANH.x, ANH.z - 106], nem: [NEM.x, NEM.z - 70], b612: [B612.x, B612.z - 48], jur: [JUR.x, JUR.z - 120],
+      hgs: [HGS.x, HGS.z + 118], alc: [ALC.x, ALC.z + 102], cbi: [CBI.x, CBI.z + 110], lrs: [LRS.x, LRS.z + 92], lsp: [LSP.x + 118, LSP.z],
+      fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102], main: [372, 12] };
     const dest = dests[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
@@ -869,7 +1009,16 @@ function openCard(s) {
       : k === 'anh' ? '🪔 巴格达到了。今夜,又是一千零一夜的开始'
       : k === 'nem' ? '🐚 锚地到了。那艘钢铁鲸鱼,就是鹦鹉螺号'
       : k === 'b612' ? '🌹 B-612 到了。小心猴面包树,替玫瑰盖好罩子'
-      : k === 'jur' ? '🦖 侏罗纪公园到了——电网是通电的,别摸' : '🐋 回到收藏之岛(主世界)');
+      : k === 'jur' ? '🦖 侏罗纪公园到了——电网是通电的,别摸'
+      : k === 'hgs' ? '🐒 花果山福地到了!山顶有神针,瀑后有洞天'
+      : k === 'alc' ? '🎩 仙境到了。这里全是疯子——包括渡你来的船'
+      : k === 'cbi' ? '🔥 赤壁到了。江风微紧,战船相连'
+      : k === 'lrs' ? '🏮 兰若寺到了。白日无妨——夜里,自己小心'
+      : k === 'lsp' ? '⚔️ 梁山泊到了。好汉,可带了投名状?'
+      : k === 'fcy' ? '🌀 风车原野到了。那位骑士又在跟"巨人"较劲'
+      : k === 'yfb' ? '⛓️ 伊夫堡到了。有人在墙里敲了二十年'
+      : k === 'rbx' ? '🏝️ 绝望岛到了。沙滩上,好像有脚印'
+      : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好' : '🐋 回到收藏之岛(主世界)');
   }));
   cardBody.querySelector('[data-taogo]')?.addEventListener('click', () => {
     player.position.set(THY.x - 90, height(THY.x - 90, THY.z) + 1, THY.z); vy = 0;
@@ -896,6 +1045,155 @@ function openCard(s) {
     closeModals();
     toast('🌹 玫瑰轻轻晃了晃:"……谢谢。别让小王子知道我说过。" ⚡+2');
     blip(740);
+  });
+  const daily = (key, gain, okMsg, dupMsg) => {
+    if (PSTORE.getItem('w1001.' + key) === todayStr()) { toast(dupMsg); return false; }
+    PSTORE.setItem('w1001.' + key, todayStr());
+    if (gain) earnSB(gain);
+    closeModals(); toast(okMsg); blip(740);
+    return true;
+  };
+  cardBody.querySelector('[data-pantao]')?.addEventListener('click', () =>
+    daily('pantao', 3, '🍑 蟠桃入手,咬一口满嘴仙气 ⚡+3', '🍑 八戒(护住桃树):"今天的份没啦!明儿请早!"'));
+  cardBody.querySelector('[data-flower]')?.addEventListener('click', () =>
+    daily('flowers', 2, '🌺 落花入冢。黛玉远远看了你一眼,轻轻点头 ⚡+2', '🌺 今日花冢已添过,明日再来。'));
+  cardBody.querySelector('[data-tiny]')?.addEventListener('click', () => {
+    if (player.scale.x > .8) { toast('🚪 门把手:"你这么大,敲了也白敲。先去吃蘑菇。"'); return; }
+    daily('tiny', 5, '🚪 小小门开了一条缝,推出一小袋金沙 ⚡+5', '🚪 门把手:"一天一次,规矩就是规矩。"');
+  });
+  cardBody.querySelector('[data-jingu]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.jingu') === '1' || stars < 3) return;
+    PSTORE.setItem('w1001.jingu', '1');
+    if (window.__jinguMesh) window.__jinguMesh.visible = false;
+    earnSB(40);
+    closeModals();
+    toast('🥢 金光万道!神针认主,化作绣花针藏进你耳朵 · ⚡+40');
+    blip(660); setTimeout(() => blip(880), 100); setTimeout(() => blip(1180), 200);
+  });
+  cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
+    player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-shrink]')?.addEventListener('click', () => {
+    player.scale.setScalar(.55); scaleT = 60; closeModals(); toast('🍄 咻——世界忽然变得好大!(一分钟)'); blip(880);
+  });
+  cardBody.querySelector('[data-arrow]')?.addEventListener('click', () => {
+    if (curDA >= .35) { toast('🏹 白日擂鼓?曹操一眼识破,一支箭也没放。等夜里有雾再来!'); return; }
+    let [d3, n3] = (PSTORE.getItem('w1001.arrows') || ':0').split(':'); n3 = d3 === todayStr() ? parseInt(n3, 10) || 0 : 0;
+    if (n3 >= 20) { toast('🏹 今晚二十支已满——"谢曹丞相赠箭!"'); return; }
+    n3++;
+    PSTORE.setItem('w1001.arrows', `${todayStr()}:${n3}`);
+    earnSB(1);
+    toast(`🏹 咚咚咚!曹军放箭——第 ${n3}/20 支 ⚡+1`);
+    blip(440 + n3 * 14);
+  });
+  cardBody.querySelector('[data-wind]')?.addEventListener('click', () => {
+    windFlip = !windFlip;
+    PSTORE.setItem('w1001.wind', windFlip ? '1' : '');
+    closeModals();
+    toast(windFlip ? '🌬️ 东风起!旌旗尽向西——"周郎,可以点火了。"' : '🌬️ 风向复原,江面重归平静。');
+    blip(520);
+  });
+  cardBody.querySelector('[data-well]')?.addEventListener('click', () => {
+    if (curDA >= .35) { toast('🪣 白日井中只有枯叶。夜里再来。'); return; }
+    if (PSTORE.getItem('w1001.qian')) { toast('🪣 井壁暗格已空。'); return; }
+    PSTORE.setItem('w1001.qian', 'urn');
+    closeModals();
+    toast('🏺 取得骨灰坛!井底传来一声轻轻的"多谢"——快送去白杨树下安葬');
+    blip(320);
+  });
+  cardBody.querySelector('[data-bury]')?.addEventListener('click', () => {
+    const st2 = PSTORE.getItem('w1001.qian');
+    if (st2 === 'done') { toast('🕯️ 小倩已安息。杨树梢上,晨光正好。'); return; }
+    if (st2 !== 'urn') { toast('🕯️ 先去寺后古井(夜里)取回骨灰坛。'); return; }
+    PSTORE.setItem('w1001.qian', 'done');
+    stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('🕯️ 骨灰入土,一道白影盈盈一拜,随晨风散去 · ⭐+1');
+    blip(660); setTimeout(() => blip(990), 130);
+  });
+  cardBody.querySelector('[data-juyi]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.hero') === '1') { toast('⚔️ 好汉请上座!您的交椅一直留着。'); return; }
+    const fc = parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0;
+    if (fc < 5) { toast(`⚔️ 王伦规矩:投名状=渔获五尾(现有 ${fc} 尾)。去栈桥钓吧!`); return; }
+    PSTORE.setItem('w1001.hero', '1');
+    stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('⚔️ 五尾献上,好汉入伙!得名号「浪里青鳞」· ⭐+1');
+    blip(660); setTimeout(() => blip(880), 110);
+  });
+  cardBody.querySelector('[data-zhangshun]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.rodbuff') === '1') { toast('🐟 张顺:"诀窍教过啦,提竿别急,数半拍。"'); return; }
+    PSTORE.setItem('w1001.rodbuff', '1');
+    closeModals();
+    toast('🐟 张顺授你钓诀:提竿别急,数半拍(永久:咬钩窗口 +0.35 秒)');
+    blip(740);
+  });
+  cardBody.querySelector('[data-siren]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.siren') === '1') { toast('💎 礁顶已空,只剩竖琴与白骨。'); return; }
+    PSTORE.setItem('w1001.siren', '1');
+    earnSB(15);
+    closeModals();
+    toast('💎 拾得沉船珍宝!塞壬的歌声恨恨地停了半拍 · ⚡+15');
+    blip(880);
+  });
+  cardBody.querySelector('[data-charge]')?.addEventListener('click', () => {
+    const done = PSTORE.getItem('w1001.charge') === '1';
+    if (!done) { PSTORE.setItem('w1001.charge', '1'); earnSB(8); }
+    flight = { t: 0, dur: 2.4, from: [player.position.x, player.position.z], to: [FCY.x - 18, FCY.z - 6], lift: 6,
+      msg: done ? '💥 哐当!又摔了个四仰八叉。桑丘叹了口气。' : '💥 哐当!人仰马翻。堂吉诃德(躺着):"它们用了妖术……" 成就「敢与巨人为敌」⚡+8' };
+    closeModals();
+    toast('🐎 冲啊——为了杜尔西内娅!!');
+    blip(520); setTimeout(() => blip(660), 150);
+  });
+  cardBody.querySelector('[data-cell]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.yfb')) { toast('🗺️ 地图在你身上。长老向墙那头去了。'); return; }
+    PSTORE.setItem('w1001.yfb', 'map');
+    closeModals();
+    toast('🗺️ 得藏宝图!长老:"从崖缘跳海,游去小基督山——替我自由地活。"');
+    blip(320);
+  });
+  cardBody.querySelector('[data-jumpsea]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.yfb') !== 'map' && PSTORE.getItem('w1001.yfb') !== 'done') { toast('🌊 先去 34 号牢房见法利亚长老。'); return; }
+    player.position.set(YFB.x + 52, 0, YFB.z + 58); vy = 0;
+    closeModals();
+    toast('🌊 扑通!!冰冷的黑浪——向东,游向小基督山!');
+    blip(220);
+  });
+  cardBody.querySelector('[data-dig]')?.addEventListener('click', () => {
+    const st3 = PSTORE.getItem('w1001.yfb');
+    if (st3 === 'done') { toast('💎 铁箱已空。"等待和希望。"'); return; }
+    if (st3 !== 'map') { toast('💎 黑岩之下确有东西,但没有图,不知从何挖起。'); return; }
+    PSTORE.setItem('w1001.yfb', 'done');
+    earnSB(50);
+    stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('💎 基督山的宝藏!!"世界上最大的智慧,是等待和希望。" ⚡+50 ⭐+1');
+    blip(660); setTimeout(() => blip(880), 100); setTimeout(() => blip(1180), 200); setTimeout(() => blip(1560), 300);
+  });
+  cardBody.querySelector('[data-poem]')?.addEventListener('click', () => {
+    const idx = Math.floor(Date.now() / 86400000) % COUPLETS.length;
+    if (PSTORE.getItem('w1001.poem') === todayStr()) { toast(`📜 今日已对:「${COUPLETS[idx][0]}」——「${COUPLETS[idx][1]}」`); return; }
+    PSTORE.setItem('w1001.poem', todayStr());
+    earnSB(4);
+    toast(`📜 上联「${COUPLETS[idx][0]}」,你对「${COUPLETS[idx][1]}」——满座称妙!⚡+4`);
+    blip(740);
+  });
+  cardBody.querySelector('[data-flotsam]')?.addEventListener('click', () => {
+    const got = (PSTORE.getItem('w1001.flotsam') || '').split(',').filter(Boolean);
+    const fid = String(s.fid ?? 0);
+    if (got.includes(fid)) { toast('📦 这只箱子已经撬过了。'); return; }
+    got.push(fid);
+    PSTORE.setItem('w1001.flotsam', got.join(','));
+    earnSB(2);
+    if (got.length >= 5) {
+      stars++; saveQuest(); updateQuestHUD();
+      toast('📦 五箱集齐!鲁滨逊传你二十八年生存术 · ⚡+2 ⭐+1');
+      blip(660); setTimeout(() => blip(990), 130);
+    } else {
+      toast(`📦 撬开木箱:饼干、火药、一把好斧头 ⚡+2(${got.length}/5)`);
+      blip(600);
+    }
+    closeModals();
   });
   cardBody.querySelector('[data-flycarpet]')?.addEventListener('click', () => {
     flight = { t: 0, dur: 10, from: [ANH.x + 20, ANH.z - 28], to: [22, 44] };
@@ -1042,6 +1340,16 @@ const THEMES = {
   nautdeep:  { tempo: 48, wave: 'sine', scale: [0, 3, 5, 7, 10], base: 110, dens: .3, pad: true, vol: .9 },
   b612:      { tempo: 70, wave: 'sine', scale: [0, 4, 7, 11, 14], base: 523, dens: .35, vol: .7 },
   jurassic:  { tempo: 56, wave: 'sine', scale: [0, 1, 6, 7], base: 98, dens: .3, pad: true, vol: .9 },
+  huaguo:    { tempo: 112, wave: 'triangle', scale: [0, 2, 4, 7, 9], base: 262, dens: .7, bass: true, vol: .7 },
+  alice:     { tempo: 88, wave: 'sine', scale: [0, 2, 3, 6, 8, 11], base: 349, dens: .55, arp: true, vol: .75 },
+  chibi:     { tempo: 66, wave: 'square', scale: [0, 2, 5, 7, 10], base: 110, dens: .4, bass: true, vol: .45 },
+  lanruo:    { tempo: 50, wave: 'sine', scale: [0, 1, 5, 6, 10], base: 196, dens: .3, pad: true, vol: .8 },
+  liangshan: { tempo: 100, wave: 'triangle', scale: [0, 2, 4, 7, 9], base: 165, dens: .6, bass: true },
+  siren:     { tempo: 60, wave: 'sine', scale: [0, 2, 3, 7, 8], base: 440, dens: .75, arp: true, vol: 1.1 },
+  quixote:   { tempo: 108, wave: 'triangle', scale: [0, 1, 4, 5, 7, 8], base: 220, dens: .6, bass: true },
+  chateau:   { tempo: 54, wave: 'sine', scale: [0, 2, 3, 5, 7], base: 147, dens: .35, pad: true },
+  crusoe:    { tempo: 68, wave: 'sine', scale: [0, 2, 4, 7, 9], base: 196, dens: .35 },
+  daguan:    { tempo: 72, wave: 'sine', scale: [0, 2, 4, 7, 9, 12], base: 330, dens: .5, arp: true, vol: .7 },
 };
 function note(freq, t, dur, wave, vol) {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -1124,7 +1432,7 @@ renderer.toneMappingExposure = .68;
 if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
-scene.fog = new THREE.Fog(0x9fd4ee, 320, 1400);
+scene.fog = new THREE.Fog(0x9fd4ee, 320, 1500);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
 let composer = null;
 function resize() {
@@ -1249,7 +1557,7 @@ function updateDayNight(t) {
 }
 
 /* --- 地形网格 --- */
-const TER = 2600, SEG = MOBILE ? 170 : 280;
+const TER = 3200, SEG = MOBILE ? 190 : 300;
 {
   const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
   g.rotateX(-Math.PI / 2);
@@ -1322,7 +1630,7 @@ function makeWaterNormals() {   // 程序化水面法线贴图(免外部纹理)
   return tex;
 }
 if (!MOBILE) {
-  oceanWater = new Water(new THREE.PlaneGeometry(3200, 3200), {
+  oceanWater = new Water(new THREE.PlaneGeometry(4200, 4200), {
     textureWidth: 512, textureHeight: 512,
     waterNormals: makeWaterNormals(),
     sunDirection: new THREE.Vector3(.5, .6, .3).normalize(),
@@ -1333,7 +1641,7 @@ if (!MOBILE) {
   oceanWater.position.y = .15;
   scene.add(oceanWater);
 } else {
-  waterGeo = new THREE.PlaneGeometry(3200, 3200, 72, 72);
+  waterGeo = new THREE.PlaneGeometry(4200, 4200, 72, 72);
   waterGeo.rotateX(-Math.PI / 2);
   mobileWater = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
     color: 0x2e7fb4, transparent: true, opacity: .82, shininess: 120, specular: 0x88c9ee,
@@ -2868,6 +3176,425 @@ const raptorGrps = [], nightLamps = [];
   const plank5 = box(5, .5, 9, M.wood); plank5.position.set(gx, dk5 + .9, gz - 120); scene.add(plank5);
   addSpot(gx, gz - 118, 'ferry', 'ferry', { r: 8 });
 }
+/* ================= 名著十岛 ================= */
+const windmillBlades = [], cbFlags = [], cheshireMats = [];
+const boats = [];
+/* —— 花果山 —— */
+{
+  const gx = HGS.x, gz = HGS.z, peakZ = gz - 60;
+  const cliffH = height(gx, peakZ + 32);
+  const fall2 = new THREE.Mesh(new THREE.PlaneGeometry(10, 18),
+    new THREE.MeshPhongMaterial({ color: 0xdfeefc, transparent: true, opacity: .55, side: THREE.DoubleSide }));
+  fall2.position.set(gx, cliffH + 2, peakZ + 34); scene.add(fall2);
+  const caveH = new THREE.Mesh(new THREE.CircleGeometry(3, 14), new THREE.MeshBasicMaterial({ color: 0x0a0c10 }));
+  caveH.position.set(gx, cliffH + 1, peakZ + 33.4); scene.add(caveH);
+  addSpot(gx, peakZ + 40, 'lore', 'shuilian', { r: 8 });
+  for (let i = 0; i < 6; i++) {   // 蟠桃园
+    const a = i / 6 * Math.PI * 2, tx = gx + 46 + Math.cos(a) * 14, tz = gz + 30 + Math.sin(a) * 14, th5 = height(tx, tz);
+    const trunk = cyl(.4, .5, 3, M.wood); trunk.position.set(tx, th5 + 1.5, tz); scene.add(trunk);
+    const cano = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 0), lam(0x5fae52)); cano.position.set(tx, th5 + 4.2, tz); scene.add(cano);
+    for (let p4 = 0; p4 < 3; p4++) {
+      const peach = new THREE.Mesh(new THREE.SphereGeometry(.34, 8, 6), lam(0xf5a8c0));
+      peach.position.set(tx + Math.cos(p4 * 2.1) * 1.6, th5 + 3.8 + (p4 % 2) * .8, tz + Math.sin(p4 * 2.1) * 1.6); scene.add(peach);
+    }
+    cirObs.push({ x: tx, z: tz, r: .9 });
+  }
+  addSpot(gx + 46, gz + 30, 'lore', 'pantao', { r: 9 });
+  {   // 山顶定海神针
+    const px7 = gx, pz7 = peakZ, ph8 = height(px7, pz7);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(3), M.stone); rock.position.set(px7, ph8 + 1.4, pz7); scene.add(rock);
+    const cudgel = cyl(.35, .35, 9, MOBILE ? new THREE.MeshLambertMaterial({ color: 0xd9b26a }) : new THREE.MeshStandardMaterial({ color: 0xd9b26a, roughness: .3, metalness: .85 }));
+    cudgel.position.set(px7, ph8 + 6.4, pz7); scene.add(cudgel);
+    for (const yy of [2.6, 6.2]) {
+      const band = cyl(.44, .44, .5, M.gold); band.position.set(px7, ph8 + yy + 2, pz7); scene.add(band);
+    }
+    window.__jinguMesh = cudgel;
+    if (PSTORE.getItem('w1001.jingu') === '1') cudgel.visible = false;
+    cirObs.push({ x: px7, z: pz7, r: 3 });
+    addSpot(px7, pz7 + 5.5, 'lore', 'jingu', { r: 8 });
+  }
+  for (let i = 0; i < 4; i++) {   // 猴群
+    const mx = gx - 30 + i * 8, mz2 = gz + 8 + (i % 2) * 10, mh2 = height(mx, mz2);
+    const mb = new THREE.Mesh(new THREE.SphereGeometry(.6, 8, 6), lam(0x8a6238)); mb.position.set(mx, mh2 + .7, mz2); scene.add(mb);
+    const mhd = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), lam(0xa87c4a)); mhd.position.set(mx, mh2 + 1.4, mz2); scene.add(mhd);
+  }
+  addNpc({ x: gx - 6, z: gz + 20, name: '孙悟空', body: 0xd9a24a, hat: 0xc0392b, opts: { tall: .95 },
+    lines: ['俺老孙五百年前大闹天宫,如今看这石头山,还是家里好。', '皇帝轮流做,明年到我家!', '你这泼猴——欸不对,俺才是猴。'] });
+  addNpc({ x: gx + 40, z: gz + 36, name: '八戒', body: 0xefb8c8, hat: 0x8a6238, opts: { wide: 1.6 },
+    lines: ['俺就闻闻,真的就闻闻。', '猴哥!有妖……哦没有,是风。', '散伙吧散伙吧,俺回高老庄。'] });
+  addNpc({ x: gx + 8, z: gz + 44, name: '唐僧', body: 0xd9c9a0, hat: 0xb8862e,
+    lines: ['悟空,休得无礼。', '出家人以慈悲为怀。', '(小声)其实……为师也想摘个桃。'] });
+  const dk6 = height(gx, gz + 122);
+  const plank6 = box(5, .5, 9, M.wood); plank6.position.set(gx, dk6 + .9, gz + 120); scene.add(plank6);
+  addSpot(gx, gz + 118, 'ferry', 'ferry', { r: 8 });
+  const hgsSign = makeSign('花果山 · 水帘洞', 7, '#1e3a1e', '#f5c9a0');
+  hgsSign.position.set(gx + 12, height(gx + 12, gz + 100) + 4.4, gz + 100); scene.add(hgsSign);
+}
+/* —— 爱丽丝梦游仙境 —— */
+{
+  const gx = ALC.x, gz = ALC.z;
+  const capCols = [0xc0392b, 0x8e44ad, 0xe8963c, 0xc0392b, 0x2e86ab];
+  for (let i = 0; i < 5; i++) {   // 巨蘑菇
+    const a = i / 5 * Math.PI * 2 + .4, mx = gx - 26 + Math.cos(a) * 20, mz3 = gz - 10 + Math.sin(a) * 18, mh3 = height(mx, mz3);
+    const stem = cyl(1.2, 1.6, 4 + (i % 3) * 2, lam(0xf0ead8)); stem.position.set(mx, mh3 + 2 + (i % 3), mz3); scene.add(stem);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(3 + (i % 2), 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(capCols[i]));
+    cap.position.set(mx, mh3 + 4 + (i % 3) * 2, mz3); scene.add(cap);
+    cirObs.push({ x: mx, z: mz3, r: 1.8 });
+  }
+  addSpot(gx - 26, gz - 10, 'lore', 'mushroom', { r: 10 });
+  {   // 小小门
+    const dx4 = gx + 8, dz5 = gz - 30, dh6 = height(dx4, dz5);
+    makeTree(dx4, dz5 - 3, 1.8, null);
+    const td2 = box(.9, 1.4, .15, lam(0xb8862e)); td2.position.set(dx4, dh6 + .7, dz5 + 1.2); scene.add(td2);
+    addSpot(dx4, dz5 + 3, 'lore', 'tinydoor', { r: 5 });
+  }
+  {   // 疯帽子茶会
+    const tx2 = gx + 22, tz3 = gz + 14, th6 = height(tx2, tz3);
+    const table2 = box(14, .6, 3.4, M.wood); table2.position.set(tx2, th6 + 1.3, tz3); scene.add(table2);
+    for (let i = 0; i < 5; i++) {
+      const pot = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), lam([0xf5efdc, 0x2e86ab, 0xc2185b, 0xd9b26a, 0x6a3a8c][i]));
+      pot.position.set(tx2 - 5.6 + i * 2.8, th6 + 1.9, tz3 + (i % 2 ? .8 : -.8)); scene.add(pot);
+    }
+    for (const sgn of [-1, 1]) {
+      const chair = box(1.2, 2.2, 1.2, M.woodDark); chair.position.set(tx2 + sgn * 5, th6 + 1.1, tz3 + 3); scene.add(chair);
+    }
+    boxObs.push({ x1: tx2 - 7, z1: tz3 - 1.8, x2: tx2 + 7, z2: tz3 + 1.8 });
+  }
+  {   // 柴郡猫(会消失只剩笑)
+    const cx7 = gx - 4, cz7 = gz + 30, chh2 = height(cx7, cz7);
+    makeTree(cx7, cz7, 1.6, null);
+    const catBody = new THREE.Mesh(new THREE.SphereGeometry(.9, 10, 8), new THREE.MeshLambertMaterial({ color: 0xb06ad4, transparent: true }));
+    catBody.scale.set(1.3, 1, 1); catBody.position.set(cx7 + 1.5, chh2 + 8.2, cz7 + .5); scene.add(catBody);
+    const catHead = new THREE.Mesh(new THREE.SphereGeometry(.6, 10, 8), new THREE.MeshLambertMaterial({ color: 0xb06ad4, transparent: true }));
+    catHead.position.set(cx7 + 2.6, chh2 + 8.8, cz7 + .5); scene.add(catHead);
+    const grin = new THREE.Mesh(new THREE.TorusGeometry(.42, .09, 6, 12, Math.PI),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    grin.rotation.z = Math.PI; grin.position.set(cx7 + 2.6, chh2 + 8.7, cz7 + 1.05); scene.add(grin);
+    cheshireMats.push(catBody.material, catHead.material);
+    addSpot(cx7, cz7 + 4, 'lore', 'cheshire', { r: 7 });
+  }
+  {   // 刷漆玫瑰与兔子洞
+    const rx3 = gx + 34, rz3 = gz - 14, rh3 = height(rx3, rz3);
+    for (let i = 0; i < 6; i++) {
+      const rose2 = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), lam(i < 3 ? 0xc0392b : 0xf0ead8));
+      rose2.position.set(rx3 - 2.4 + i * 1, rh3 + 1.6, rz3); scene.add(rose2);
+      const st4 = cyl(.06, .06, 1.2, lam(0x3e7a3a)); st4.position.set(rx3 - 2.4 + i * 1, rh3 + .8, rz3); scene.add(st4);
+    }
+    const hole3 = new THREE.Mesh(new THREE.CircleGeometry(2, 14), new THREE.MeshBasicMaterial({ color: 0x0a0c10 }));
+    hole3.rotation.x = -Math.PI / 2; hole3.position.set(gx - 34, height(gx - 34, gz + 26) + .15, gz + 26); scene.add(hole3);
+    addSpot(gx - 34, gz + 29, 'lore', 'rabbithole', { r: 6 });
+  }
+  addNpc({ x: gx + 22, z: gz + 20, name: '疯帽子', body: 0x2e6a5a, hat: 0x8e44ad, opts: { hat: 'cone' },
+    lines: ['为什么乌鸦像写字台?——我也不知道!哈哈哈!', '换座位!全体换座位!', '这里永远是下午茶时间,因为时间先生跟我闹掰了。'] });
+  addNpc({ x: gx + 34, z: gz - 8, name: '红桃皇后', body: 0xc0392b, hat: 0xffd76a, opts: { wide: 1.3 },
+    lines: ['砍掉他的头!!', '谁把白玫瑰种进了朕的花园?!', '先判决,后审判!'] });
+  const dk7 = height(gx, gz + 106);
+  const plank7 = box(5, .5, 9, M.wood); plank7.position.set(gx, dk7 + .9, gz + 104); scene.add(plank7);
+  addSpot(gx, gz + 102, 'ferry', 'ferry', { r: 8 });
+  const alcSign = makeSign('爱丽丝梦游仙境', 7.5, '#3a1e40', '#f5c9d4');
+  alcSign.position.set(gx + 14, height(gx + 14, gz + 88) + 4.4, gz + 88); scene.add(alcSign);
+}
+/* —— 三国 · 赤壁 —— */
+{
+  const gx = CBI.x, gz = CBI.z;
+  for (let i = 0; i < 5; i++) {   // 连环战船(南岸江面)
+    const sx3 = gx - 44 + i * 22, sz4 = gz + 96;
+    const hull2 = box(18, 3, 6.5, lam(0x4a3626)); hull2.position.set(sx3, 1.2, sz4); scene.add(hull2);
+    const mast2 = cyl(.3, .4, 12, M.woodDark); mast2.position.set(sx3, 8, sz4); scene.add(mast2);
+    const sail2 = new THREE.Mesh(new THREE.PlaneGeometry(6, 5), new THREE.MeshLambertMaterial({ color: 0xd9c9a0, side: THREE.DoubleSide }));
+    sail2.position.set(sx3, 8, sz4); scene.add(sail2);
+    if (i < 4) { const chain = box(4.5, .4, .4, lam(0x3a3a40)); chain.position.set(sx3 + 11, 1.6, sz4); scene.add(chain); }
+  }
+  for (let i = 0; i < 3; i++) {   // 草船
+    const cx8 = gx + 40 + i * 10, cz8 = gz + 74;
+    const strawB = box(7, 1.6, 2.6, lam(0xc8b06a)); strawB.position.set(cx8, .8, cz8); scene.add(strawB);
+    const strawMan = cyl(.5, .6, 1.8, lam(0xd9c9a0)); strawMan.position.set(cx8, 2.4, cz8); scene.add(strawMan);
+  }
+  addSpot(gx + 50, gz + 68, 'lore', 'caochuan', { r: 10 });
+  {   // 七星坛
+    const ax2 = gx - 20, az2 = gz - 20, ah2 = height(ax2, az2);
+    for (let i = 0; i < 3; i++) {
+      const tier2 = cyl(8 - i * 2.2, 8.6 - i * 2.2, 1.6, M.stone); tier2.position.set(ax2, ah2 + .8 + i * 1.6, az2); scene.add(tier2);
+    }
+    for (let i = 0; i < 3; i++) {
+      const fp = cyl(.12, .12, 7, M.woodDark); fp.position.set(ax2 - 5 + i * 5, ah2 + 8, az2 - 5); scene.add(fp);
+      const flag2 = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.6), new THREE.MeshLambertMaterial({ color: 0xd4b02a, side: THREE.DoubleSide }));
+      flag2.position.set(ax2 - 5 + i * 5 + 1.3, ah2 + 10.6, az2 - 5); scene.add(flag2);
+      cbFlags.push(flag2);
+    }
+    cirObs.push({ x: ax2, z: az2, r: 8.8 });
+    addSpot(ax2, az2 + 11, 'lore', 'qixingtan', { r: 8 });
+  }
+  addNpc({ x: gx - 20, z: gz - 4, name: '诸葛亮', body: 0xd9c9a0, hat: 0x3a4a5a, opts: { hat: 'cone', cane: true },
+    lines: ['万事俱备,只欠东风。', '亮借三日东南大风,助都督成此大功。', '(摇扇)天下三分,尽在此火。'] });
+  addNpc({ x: gx + 6, z: gz + 30, name: '周瑜', body: 0x8c2f24, hat: 0xb8862e,
+    lines: ['既生瑜——罢了,今日只谈火攻。', '蒋干又来了?让他抄。', '东风一起,火船齐发!'] });
+  addNpc({ x: gx - 44, z: gz + 88, name: '曹操', body: 0x2a3a5a, hat: 0x1c2a44, opts: { tall: 1.1 },
+    lines: ['铁索连舟,如履平地,妙哉!', '对酒当歌,人生几何。', '(望着东南方)这风……不对。'] });
+  const dk8 = height(gx, gz + 114);
+  const plank8 = box(5, .5, 9, M.wood); plank8.position.set(gx, dk8 + .9, gz + 112); scene.add(plank8);
+  addSpot(gx, gz + 110, 'ferry', 'ferry', { r: 8 });
+  const cbSign = makeSign('三国 · 赤壁', 6.4, '#2a1c14', '#e8a45e');
+  cbSign.position.set(gx - 16, height(gx - 16, gz + 96) + 4.4, gz + 96); scene.add(cbSign);
+}
+/* —— 聊斋 · 兰若寺 —— */
+{
+  const gx = LRS.x, gz = LRS.z;
+  {   // 破败古寺
+    const th7 = height(gx, gz - 10);
+    const wall1 = box(20, 5, 1, lam(0x6a6258)); wall1.position.set(gx, th7 + 2.5, gz - 18); scene.add(wall1);
+    const wall2 = box(1, 4, 10, lam(0x6a6258)); wall2.position.set(gx - 10, th7 + 2, gz - 13); scene.add(wall2);
+    const wall3 = box(1, 3, 6, lam(0x6a6258)); wall3.position.set(gx + 10, th7 + 1.5, gz - 15); scene.add(wall3);
+    const roofL = box(14, .6, 8, lam(0x3a342c)); roofL.rotation.z = .12; roofL.position.set(gx - 2, th7 + 5.6, gz - 14); scene.add(roofL);
+    boxObs.push({ x1: gx - 10, z1: gz - 19, x2: gx + 10, z2: gz - 17 });
+    for (let i = 0; i < 4; i++) {
+      const lp = cyl(.1, .1, 3, M.woodDark); lp.position.set(gx - 12 + i * 8, th7 + 1.5, gz + 6); scene.add(lp);
+      const lantern2 = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), new THREE.MeshBasicMaterial({ color: 0xd94f4f, transparent: true, opacity: .9 }));
+      lantern2.position.set(gx - 12 + i * 8, th7 + 3.2, gz + 6); scene.add(lantern2);
+      const ll = new THREE.PointLight(0xd94f4f, 0, 26, 2); ll.position.set(gx - 12 + i * 8, th7 + 3.2, gz + 6); ll.userData.pow = 14;
+      scene.add(ll); nightLamps.push(ll);
+    }
+  }
+  {   // 古井与白杨坟
+    const wx3 = gx + 20, wz3 = gz - 26, wh5 = height(wx3, wz3);
+    const wellRing = cyl(1.6, 1.8, 1.2, M.stone); wellRing.position.set(wx3, wh5 + .6, wz3); scene.add(wellRing);
+    const wellHole = new THREE.Mesh(new THREE.CircleGeometry(1.3, 12), new THREE.MeshBasicMaterial({ color: 0x06080a }));
+    wellHole.rotation.x = -Math.PI / 2; wellHole.position.set(wx3, wh5 + 1.25, wz3); scene.add(wellHole);
+    cirObs.push({ x: wx3, z: wz3, r: 2 });
+    addSpot(wx3, wz3 + 3.4, 'lore', 'well', { r: 6 });
+    makeTree(gx - 26, gz + 20, 1.9, null);
+    const stone2 = box(1.6, 2, .4, M.stone); stone2.position.set(gx - 24, height(gx - 24, gz + 24) + 1, gz + 24); scene.add(stone2);
+    addSpot(gx - 24, gz + 26, 'lore', 'grave', { r: 6 });
+  }
+  addNpc({ x: gx - 4, z: gz + 2, name: '宁采臣', body: 0x4a5a6a, hat: 0x3a4452, day: true,
+    lines: ['小生宁采臣,借宿一晚,天亮就走。', '此寺荒凉,夜里却似有人声……许是风吧。', '君子坦荡,不义之财分毫不取。'] });
+  addNpc({ x: gx + 16, z: gz - 20, name: '聂小倩', body: 0xe8e4ec, hat: 0xd8d4e0, night: true,
+    lines: ['公子,深夜至此,不怕鬼么?', '妾身不由己……井底暗格里的东西,可否劳烦公子?', '十里平湖霜满天,寸寸青丝愁华年。'] });
+  addNpc({ x: gx + 4, z: gz + 14, name: '燕赤霞', body: 0x5a4632, hat: 0x3a2c1c, night: true, opts: { tall: 1.1, cane: true },
+    lines: ['妖气!——哦,是你。夜里少在寺里走动。', '把骨灰葬到生人阳气旺处,姥姥就再拿她没办法。', '剑是直的,人心是弯的。'] });
+  const dk9 = height(gx, gz + 96);
+  const plank9 = box(5, .5, 9, M.wood); plank9.position.set(gx, dk9 + .9, gz + 94); scene.add(plank9);
+  addSpot(gx, gz + 92, 'ferry', 'ferry', { r: 8 });
+  const lrsSign = makeSign('聊斋 · 兰若寺', 6.4, '#1c2026', '#a0b0c8');
+  lrsSign.position.set(gx + 14, height(gx + 14, gz + 80) + 4.4, gz + 80); scene.add(lrsSign);
+}
+/* —— 水浒 · 梁山泊 —— */
+{
+  const gx = LSP.x, gz = LSP.z;
+  for (let i = 0; i < 60; i++) {   // 芦苇荡
+    const a = rnd() * Math.PI * 2, rr = 30 + rnd() * 34;
+    const rx4 = gx - 30 + Math.cos(a) * rr, rz4 = gz + 20 + Math.sin(a) * rr, rh4 = height(rx4, rz4);
+    if (rh4 < -.5 || rh4 > 4) continue;
+    const reed = cyl(.05, .07, 2.6 + rnd(), lam(0x9aa860)); reed.position.set(rx4, rh4 + 1.3, rz4); reed.rotation.z = (rnd() - .5) * .2; scene.add(reed);
+  }
+  pavilion({ x: gx + 30, z: gz - 30, h: height(gx + 30, gz - 30) }, { w: 26, d: 18, walls: 'back', roof: 0x8c2f24, floor: 0xc8b06a });
+  {   // 替天行道大旗
+    const fx3 = gx + 30, fz3 = gz - 14, fh3 = height(fx3, fz3);
+    const pole2 = cyl(.2, .28, 16, M.woodDark); pole2.position.set(fx3, fh3 + 8, fz3); scene.add(pole2);
+    const banner = makeSign('替天行道', 5.4, '#d4b02a', '#8c2f24');
+    banner.position.set(fx3, fh3 + 13.5, fz3 + .3); scene.add(banner);
+  }
+  addSpot(gx + 30, gz - 22, 'lore', 'juyi', { r: 9 });
+  addSpot(gx - 24, gz + 26, 'lore', 'zhangshun', { r: 7 });
+  addNpc({ x: gx + 26, z: gz - 20, name: '宋江', body: 0x3a3630, hat: 0x2a2620,
+    lines: ['四海之内,皆兄弟也。', '山寨替天行道,不害良民。', '(望着汴京方向,不说话)'] });
+  addNpc({ x: gx + 38, z: gz - 18, name: '李逵', body: 0x2a2620, hat: 0x1c1c20, opts: { wide: 1.5 },
+    lines: ['杀去东京,夺了鸟位!', '哥哥说什么就是什么!', '两把板斧,专砍不平事!'] });
+  addNpc({ x: gx - 26, z: gz + 30, name: '张顺', body: 0xe8e4dc, hat: 0xd8d4c8,
+    lines: ['水底伏七日七夜,不换气,你信?', '浪里白条,不是白叫的。', '这泊里的鱼,认得我。'] });
+  const dk10 = height(gx + 122, gz);
+  const plank10 = box(9, .5, 5, M.wood); plank10.position.set(gx + 120, dk10 + .9, gz); scene.add(plank10);
+  addSpot(gx + 118, gz, 'ferry', 'ferry', { r: 8 });
+  const lspSign = makeSign('水浒 · 梁山泊', 6.6, '#2a2014', '#e8d06a');
+  lspSign.position.set(gx + 104, height(gx + 104, gz + 14) + 4.4, gz + 14); scene.add(lspSign);
+}
+/* —— 塞壬海域 —— */
+{
+  const rocks = [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]];
+  rocks.forEach(([rx5, rz5], i) => {
+    const rh5 = height(rx5, rz5);
+    const rock2 = new THREE.Mesh(new THREE.DodecahedronGeometry(6 + i), M.stone);
+    rock2.position.set(rx5, rh5 + 3, rz5); rock2.rotation.y = i * 1.3; scene.add(rock2);
+    cirObs.push({ x: rx5, z: rz5, r: 5 });
+  });
+  for (const sgn of [-1, 1]) {   // 塞壬
+    const sx4 = SIR.x + sgn * 4, sz5 = SIR.z - sgn * 3, sh5 = height(sx4, sz5);
+    const sBody2 = cyl(.5, .7, 1.6, lam(0x3a8a8a)); sBody2.position.set(sx4, sh5 + 6.6, sz5); scene.add(sBody2);
+    const sHead = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); sHead.position.set(sx4, sh5 + 7.8, sz5); scene.add(sHead);
+    const sHair = new THREE.Mesh(new THREE.SphereGeometry(.55, 9, 6, 0, Math.PI * 2, 0, Math.PI / 1.8), lam(0x2a5a5a)); sHair.position.set(sx4, sh5 + 7.9, sz5); scene.add(sHair);
+    const sTail = new THREE.Mesh(new THREE.ConeGeometry(.5, 2, 7), lam(0x3a8a8a)); sTail.rotation.z = 2.4; sTail.position.set(sx4 + .9, sh5 + 5.6, sz5); scene.add(sTail);
+  }
+  const harp = new THREE.Mesh(new THREE.TorusGeometry(.9, .12, 8, 16, Math.PI * 1.3), M.gold);
+  harp.position.set(SIR.x - 2, height(SIR.x, SIR.z) + 6.6, SIR.z + 2); scene.add(harp);
+  addSpot(SIR.x, SIR.z + 8, 'lore', 'sirenrock', { r: 8 });
+  const oShip = makeBoat(0xd9d5c8, 1.5);
+  oShip.userData = { anchor: [SIR.x - 70, SIR.z - 40] };
+  const bindPole = cyl(.15, .15, 4, M.woodDark); bindPole.position.set(0, 3.4, 0); oShip.add(bindPole);
+  const rope = new THREE.Mesh(new THREE.TorusGeometry(.55, .09, 6, 12), lam(0x8a6238)); rope.position.set(0, 3.2, 0); rope.rotation.x = Math.PI / 2; oShip.add(rope);
+  addSpot(SIR.x - 64, SIR.z - 36, 'lore', 'odysseus', { r: 10 });
+  addNpc({ x: SIR.x - 70, z: SIR.z - 32, name: '奥德修斯', body: 0x8a6238, hat: 0xb8862e,
+    lines: ['把我绑紧!无论我如何哀求,都不要松绑!', '我要听完这支歌,并且——活着回伊萨卡。', '(挣扎)松开我!……不,别听我的!'] });
+}
+/* —— 堂吉诃德 · 风车原野 —— */
+{
+  const gx = FCY.x, gz = FCY.z;
+  for (let i = 0; i < 3; i++) {   // 风车阵
+    const wx4 = gx - 30 + i * 30, wz4 = gz - 20 + (i % 2) * 16, wh6 = height(wx4, wz4);
+    const towerW = cyl(3, 4.4, 14, M.white); towerW.position.set(wx4, wh6 + 7, wz4); scene.add(towerW);
+    const capW = new THREE.Mesh(new THREE.ConeGeometry(3.6, 3, 10), lam(0x8c5a2e)); capW.position.set(wx4, wh6 + 15.5, wz4); scene.add(capW);
+    const blades = new THREE.Group();
+    for (let b3 = 0; b3 < 4; b3++) {
+      const blade = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 8), new THREE.MeshLambertMaterial({ color: 0xd9c9a0, side: THREE.DoubleSide }));
+      blade.position.y = 4; blade.rotation.z = 0;
+      const holder = new THREE.Group(); holder.rotation.z = b3 * Math.PI / 2; holder.add(blade);
+      blades.add(holder);
+    }
+    blades.position.set(wx4, wh6 + 13, wz4 + 3.8);
+    scene.add(blades); windmillBlades.push(blades);
+    cirObs.push({ x: wx4, z: wz4, r: 4.6 });
+  }
+  addSpot(gx - 30, gz - 12, 'lore', 'windmill', { r: 9 });
+  addSpot(gx + 14, gz + 24, 'lore', 'charge', { r: 8 });
+  {   // 驽骍难得
+    const hx2 = gx + 20, hz2 = gz + 28, hh4 = height(hx2, hz2);
+    const hBody = box(2.6, 1.2, 1, lam(0xb8a68a)); hBody.position.set(hx2, hh4 + 1.7, hz2); scene.add(hBody);
+    for (const [ox, oz] of [[-1, -.4], [1, -.4], [-1, .4], [1, .4]]) {
+      const leg2 = cyl(.09, .1, 1.4, lam(0xa89678)); leg2.position.set(hx2 + ox, hh4 + .7, hz2 + oz); scene.add(leg2);
+    }
+    const neck = cyl(.3, .4, 1.4, lam(0xb8a68a)); neck.rotation.z = -.7; neck.position.set(hx2 + 1.7, hh4 + 2.5, hz2); scene.add(neck);
+    const hHead = box(1, .5, .5, lam(0xa89678)); hHead.position.set(hx2 + 2.3, hh4 + 3, hz2); scene.add(hHead);
+  }
+  addNpc({ x: gx + 12, z: gz + 20, name: '堂吉诃德', body: 0x8a8a92, hat: 0x6a6a72, opts: { tall: 1.2, cane: true },
+    lines: ['看!三十多个狂暴的巨人!', '命运指引我们走向比想象更伟大的冒险!', '游侠骑士受伤,从不呻吟——哪怕肠子流出来。'] });
+  addNpc({ x: gx + 18, z: gz + 18, name: '桑丘', body: 0x7a5230, hat: 0x8a6238, opts: { wide: 1.4, tall: .85 },
+    lines: ['大人,那真的、真的是风车。', '我的海岛总督什么时候上任?', '(掏出面包)垫垫肚子再冲,大人。'] });
+  const dk11 = height(gx, gz - 116);
+  const plank11 = box(5, .5, 9, M.wood); plank11.position.set(gx, dk11 + .9, gz - 114); scene.add(plank11);
+  addSpot(gx, gz - 112, 'ferry', 'ferry', { r: 8 });
+  const fcySign = makeSign('堂吉诃德 · 风车原野', 8, '#3a3020', '#e8d8a0');
+  fcySign.position.set(gx + 14, height(gx + 14, gz - 100) + 4.4, gz - 100); scene.add(fcySign);
+}
+/* —— 基督山伯爵 · 伊夫堡 —— */
+{
+  const gx = YFB.x, gz = YFB.z, fh4 = height(gx, gz);
+  const keep2 = box(24, 12, 20, M.stone); keep2.position.set(gx, fh4 + 6, gz); scene.add(keep2);
+  boxObs.push({ x1: gx - 12, z1: gz - 10, x2: gx + 12, z2: gz + 10 });
+  for (const [ox, oz] of [[-13, -11], [13, -11], [-13, 11], [13, 11]]) {
+    const tw2 = cyl(3, 3.6, 15, M.stone); tw2.position.set(gx + ox, fh4 + 7.5, gz + oz); scene.add(tw2);
+    const tc2 = new THREE.Mesh(new THREE.ConeGeometry(3.6, 3, 10), lam(0x3a3630)); tc2.position.set(gx + ox, fh4 + 16.5, gz + oz); scene.add(tc2);
+    cirObs.push({ x: gx + ox, z: gz + oz, r: 3.4 });
+  }
+  for (let i = 0; i < 3; i++) {   // 牢窗铁栏
+    const bar2 = cyl(.06, .06, 1.6, lam(0x2a2a30)); bar2.position.set(gx - 12.2, fh4 + 5, gz - 3 + i * 1 - 1); scene.add(bar2);
+  }
+  addSpot(gx - 15, gz - 3, 'lore', 'cell', { r: 7 });
+  addSpot(gx + 30, gz + 30, 'lore', 'jumpsea', { r: 7 });
+  addNpc({ x: gx - 17, z: gz + 2, name: '法利亚长老', body: 0x6a625a, hat: 0x5a544c, opts: { cane: true },
+    lines: ['我用二十年凿穿了这堵墙——方向错了。', '知识是唯一没人能没收的财产。', '基督山岛,黑岩之下。替我看看海,孩子。'] });
+  addNpc({ x: gx + 8, z: gz + 14, name: '狱卒', body: 0x3a3a44, hat: 0x2a2a34,
+    lines: ['34 号今天又在敲墙。随他敲,反正凿不穿。', '这里进来的人,只从海里出去。', '(打了个哈欠)换班还有四小时。'] });
+  {   // 小基督山
+    const bh8 = height(MCD.x, MCD.z);
+    const blackRock = new THREE.Mesh(new THREE.DodecahedronGeometry(5), lam(0x1c1c20));
+    blackRock.position.set(MCD.x, bh8 + 2.4, MCD.z); scene.add(blackRock);
+    cirObs.push({ x: MCD.x, z: MCD.z, r: 4.4 });
+    makeTree(MCD.x - 8, MCD.z + 6, 1.1, null);
+    addSpot(MCD.x, MCD.z + 7, 'lore', 'digtreasure', { r: 7 });
+  }
+  const dk12 = height(gx, gz - 92);
+  const plank12 = box(5, .5, 9, M.wood); plank12.position.set(gx, dk12 + .9, gz - 90); scene.add(plank12);
+  addSpot(gx, gz - 88, 'ferry', 'ferry', { r: 8 });
+  const yfbSign = makeSign('基督山 · 伊夫堡', 7, '#20242e', '#a8b8d0');
+  yfbSign.position.set(gx + 12, height(gx + 12, gz - 76) + 4.4, gz - 76); scene.add(yfbSign);
+}
+/* —— 鲁滨逊 · 绝望岛 —— */
+{
+  const gx = RBX.x, gz = RBX.z;
+  {   // 海难船骸
+    const wx5 = gx + 52, wz5 = gz + 40;
+    const hull3 = box(16, 5, 6, lam(0x4a3a2a)); hull3.rotation.z = .3; hull3.rotation.y = .6; hull3.position.set(wx5, 1.6, wz5); scene.add(hull3);
+    const mast3 = cyl(.25, .3, 9, M.woodDark); mast3.rotation.z = 1; mast3.position.set(wx5 - 3, 5, wz5); scene.add(mast3);
+    addSpot(wx5 - 8, wz5 - 4, 'lore', 'wreck', { r: 9 });
+  }
+  {   // 木栅堡垒
+    const bx6 = gx - 20, bz6 = gz - 16, bh9 = height(bx6, bz6);
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2;
+      if (a > 1 && a < 1.8) continue;
+      const log2 = cyl(.3, .35, 3.6, M.woodDark);
+      log2.position.set(bx6 + Math.cos(a) * 7, bh9 + 1.8, bz6 + Math.sin(a) * 7); scene.add(log2);
+      cirObs.push({ x: bx6 + Math.cos(a) * 7, z: bz6 + Math.sin(a) * 7, r: .8 });
+    }
+    const hut2 = box(5, 3.4, 4, lam(0x8a6238)); hut2.position.set(bx6, bh9 + 1.7, bz6); scene.add(hut2);
+    cirObs.push({ x: bx6, z: bz6, r: 3.4 });
+  }
+  for (let i = 0; i < 3; i++) {   // 山羊
+    const mgx = gx + 8 + i * 9, mgz = gz - 30 + (i % 2) * 8, mgh = height(mgx, mgz);
+    const gBody2 = box(1.6, 1, .8, lam(0xe8e4dc)); gBody2.position.set(mgx, mgh + 1, mgz); scene.add(gBody2);
+    const gHead2 = box(.7, .6, .5, lam(0xd8d4c8)); gHead2.position.set(mgx + 1.1, mgh + 1.5, mgz); scene.add(gHead2);
+  }
+  for (let i = 0; i < 5; i++) {   // 沙滩脚印
+    const fpr = new THREE.Mesh(new THREE.CircleGeometry(.3, 8), new THREE.MeshBasicMaterial({ color: 0x9a8668 }));
+    fpr.rotation.x = -Math.PI / 2; fpr.position.set(gx + 30 + i * 2, height(gx + 30 + i * 2, gz + 58) + .1, gz + 58 + (i % 2) * .8); scene.add(fpr);
+  }
+  addSpot(gx + 34, gz + 55, 'lore', 'footprint', { r: 7 });
+  [[gx - 44, gz + 20], [gx + 10, gz + 46], [gx + 44, gz - 12], [gx - 8, gz - 44], [gx - 36, gz - 28]].forEach(([cx9, cz9], i) => {
+    const ch3 = height(cx9, cz9);
+    const crate2 = box(1.6, 1.3, 1.6, lam(0x7a5230)); crate2.rotation.y = i; crate2.position.set(cx9, ch3 + .7, cz9); scene.add(crate2);
+    addSpot(cx9, cz9 + 2.4, 'lore', 'flotsam', { r: 5.5, fid: i });
+  });
+  addNpc({ x: gx - 16, z: gz - 8, name: '鲁滨逊', body: 0x8a6a3a, hat: 0xa88a54, opts: { wide: 1.1 },
+    lines: ['木刻日历告诉我:今天是第 10220 天。大概。', '把能拆的都拆下来——包括绝望。', '集齐五箱漂流物资,我教你活下去的全部本事。'] });
+  addNpc({ x: gx - 10, z: gz - 4, name: '星期五', body: 0x6a4a2a, hat: 0x4a3620,
+    lines: ['主人说,今天是星期五。昨天也是。', '(指着海)大独木舟!很多人!……哦,是渡船。', '火药要省着用,鲁滨逊说的。'] });
+  const dk13 = height(gx, gz - 100);
+  const plank13 = box(5, .5, 9, M.wood); plank13.position.set(gx, dk13 + .9, gz - 98); scene.add(plank13);
+  addSpot(gx, gz - 96, 'ferry', 'ferry', { r: 8 });
+  const rbxSign = makeSign('鲁滨逊 · 绝望岛', 7, '#2a2418', '#d8c89a');
+  rbxSign.position.set(gx + 12, height(gx + 12, gz - 84) + 4.4, gz - 84); scene.add(rbxSign);
+}
+/* —— 红楼梦 · 大观园 —— */
+{
+  const gx = DGY.x, gz = DGY.z;
+  pavilion({ x: gx - 20, z: gz - 16, h: height(gx - 20, gz - 16) }, { w: 22, d: 16, walls: 'back', roof: 0x2e5a4a, floor: 0xd8c8a8 });
+  pavilion({ x: gx + 24, z: gz - 10, h: height(gx + 24, gz - 10) }, { w: 20, d: 14, walls: 'back', roof: 0x8c2f4e, floor: 0xe0d0b0 });
+  {   // 沁芳亭(水边小亭)
+    const ax3 = gx + 2, az3 = gz + 26, ah3 = height(ax3, az3);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const col2 = cyl(.22, .26, 3.6, lam(0x8c2f24)); col2.position.set(ax3 + Math.cos(a) * 3, ah3 + 1.8, az3 + Math.sin(a) * 3); scene.add(col2);
+    }
+    const aRoof = new THREE.Mesh(new THREE.ConeGeometry(4.6, 2.6, 6), lam(0x2e5a4a)); aRoof.position.set(ax3, ah3 + 4.8, az3); scene.add(aRoof);
+    addSpot(ax3, az3 + 5.4, 'lore', 'shishe', { r: 7 });
+  }
+  for (let i = 0; i < 18; i++) {   // 竹影
+    const bx7 = gx - 38 + (i % 6) * 3.5, bz7 = gz + 8 + Math.floor(i / 6) * 4, bh10 = height(bx7, bz7);
+    const bamboo = cyl(.12, .14, 6 + (i % 3), lam(0x5a9a4a)); bamboo.position.set(bx7, bh10 + 3, bz7); scene.add(bamboo);
+  }
+  const pond2 = new THREE.Mesh(new THREE.CircleGeometry(8, 20), new THREE.MeshPhongMaterial({ color: 0x3d7ba6, transparent: true, opacity: .8 }));
+  pond2.rotation.x = -Math.PI / 2; pond2.position.set(gx + 14, height(gx + 14, gz + 24) + .25, gz + 24); scene.add(pond2);
+  {   // 葬花冢
+    const zx = gx - 30, zz = gz + 34, zh = height(zx, zz);
+    const mound2 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x8a7a5a));
+    mound2.position.set(zx, zh, zz); scene.add(mound2);
+    for (let i = 0; i < 8; i++) {
+      const petal = new THREE.Mesh(new THREE.CircleGeometry(.16, 6), new THREE.MeshBasicMaterial({ color: 0xf5b8cc, side: THREE.DoubleSide }));
+      petal.rotation.x = -Math.PI / 2 + (rnd() - .5); petal.position.set(zx + (rnd() - .5) * 4, zh + .3 + rnd(), zz + (rnd() - .5) * 4); scene.add(petal);
+    }
+    addSpot(zx, zz + 3, 'lore', 'zanghua', { r: 6 });
+  }
+  addNpc({ x: gx - 28, z: gz + 30, name: '黛玉', body: 0xd8e0ec, hat: 0xb8c8dc,
+    lines: ['花谢花飞花满天,红消香断有谁怜?', '你也来了?这里葬的是花,不许笑。', '质本洁来还洁去,强于污淖陷渠沟。'] });
+  addNpc({ x: gx + 20, z: gz - 2, name: '宝玉', body: 0xc0392b, hat: 0xb8862e,
+    lines: ['女儿是水做的骨肉,见了便清爽。', '这个妹妹,我曾见过的。', '什么金玉良缘,我偏说木石前盟!'] });
+  addNpc({ x: gx + 4, z: gz + 14, name: '刘姥姥', body: 0x8a7a5a, hat: 0x6a5a40, opts: { wide: 1.2 },
+    lines: ['老刘,老刘,食量大如牛!', '这园子,比画儿还好看!', '一两银子一个的鸽子蛋,滚喽!'] });
+  const dk14 = height(gx, gz + 106);
+  const plank14 = box(5, .5, 9, M.wood); plank14.position.set(gx, dk14 + .9, gz + 104); scene.add(plank14);
+  addSpot(gx, gz + 102, 'ferry', 'ferry', { r: 8 });
+  const dgySign = makeSign('红楼梦 · 大观园', 7, '#2a1c28', '#e8b8cc');
+  dgySign.position.set(gx + 14, height(gx + 14, gz + 90) + 4.4, gz + 90); scene.add(dgySign);
+}
 const ISLES = [
   { c: SHJ, name: '山海经 · 异兽之野', icon: '🐉', theme: 'shanhai' },
   { c: THY, name: '桃花源', icon: '🌸', theme: 'taoyuan' },
@@ -2875,6 +3602,17 @@ const ISLES = [
   { c: NEM, name: '海底两万里 · 锚地', icon: '🐚', theme: 'nautdeep' },
   { c: B612, name: 'B-612 小行星', icon: '🌹', theme: 'b612' },
   { c: JUR, name: '侏罗纪公园', icon: '🦖', theme: 'jurassic' },
+  { c: HGS, name: '西游记 · 花果山', icon: '🐒', theme: 'huaguo' },
+  { c: ALC, name: '爱丽丝梦游仙境', icon: '🎩', theme: 'alice' },
+  { c: CBI, name: '三国 · 赤壁', icon: '🔥', theme: 'chibi' },
+  { c: LRS, name: '聊斋 · 兰若寺', icon: '🏮', theme: 'lanruo' },
+  { c: LSP, name: '水浒 · 梁山泊', icon: '⚔️', theme: 'liangshan' },
+  { c: { x: SIR.x, z: SIR.z, r: 150 }, name: '塞壬海域', icon: '🧜‍♀️', theme: 'siren' },
+  { c: FCY, name: '堂吉诃德 · 风车原野', icon: '🌀', theme: 'quixote' },
+  { c: YFB, name: '基督山 · 伊夫堡', icon: '⛓️', theme: 'chateau' },
+  { c: MCD, name: '小基督山(宝藏屿)', icon: '💎', theme: 'chateau' },
+  { c: RBX, name: '鲁滨逊 · 绝望岛', icon: '🏝️', theme: 'crusoe' },
+  { c: DGY, name: '红楼梦 · 大观园', icon: '🏮', theme: 'daguan' },
 ];
 /* 多元宇宙渡口(鲸岛东滩) */
 {
@@ -2889,6 +3627,11 @@ const ISLES = [
 }
 function updateNpcs3(dt) {
   for (const n of allNpcs) {
+    if (n.night || n.day) {   // 昼夜限定 NPC(兰若寺)
+      const show = n.night ? curDA < .35 : curDA >= .35;
+      n.g.visible = show;
+      if (!show) { n.bub.classList.add('hidden'); n.talk = false; continue; }
+    }
     const p = n.g.position;
     if (n.wander) {
       if (n.pause > 0) { n.pause -= dt; }
@@ -2937,7 +3680,7 @@ function buildMinimapBase() {
   const c = mmBase.getContext('2d');
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
-    const x = (px / mm.width - .5) * 2500, z = (py / mm.height - .5) * 2400;
+    const x = (px / mm.width - .5) * 3050, z = (py / mm.height - .5) * 2950;
     const h = height(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
@@ -2954,7 +3697,7 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 2500 + .5) * mm.width, W2Y = z => (z / 2400 + .5) * mm.height;
+  const W2X = x => (x / 3050 + .5) * mm.width, W2Y = z => (z / 2950 + .5) * mm.height;
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
@@ -3003,6 +3746,15 @@ CP_MARKS.push({ x: ANH.x, z: ANH.z, col: '#e8c86a' });
 CP_MARKS.push({ x: NEM.x, z: NEM.z, col: '#8ae0d8' });
 CP_MARKS.push({ x: B612.x, z: B612.z, col: '#f2d13c' });
 CP_MARKS.push({ x: JUR.x, z: JUR.z, col: '#9cc46a' });
+CP_MARKS.push({ x: HGS.x, z: HGS.z, col: '#f5c9a0' });
+CP_MARKS.push({ x: ALC.x, z: ALC.z, col: '#f5c9d4' });
+CP_MARKS.push({ x: CBI.x, z: CBI.z, col: '#e8a45e' });
+CP_MARKS.push({ x: LRS.x, z: LRS.z, col: '#a0b0c8' });
+CP_MARKS.push({ x: LSP.x, z: LSP.z, col: '#e8d06a' });
+CP_MARKS.push({ x: FCY.x, z: FCY.z, col: '#e8d8a0' });
+CP_MARKS.push({ x: YFB.x, z: YFB.z, col: '#a8b8d0' });
+CP_MARKS.push({ x: RBX.x, z: RBX.z, col: '#d8c89a' });
+CP_MARKS.push({ x: DGY.x, z: DGY.z, col: '#e8b8cc' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -3164,8 +3916,7 @@ let lightLamp = null, beacon = null;
   const sg = makeSign('灯塔屿', 5.5, '#12242e', '#bfe8ff');
   sg.position.set(bx + 14, height(bx + 14, bz + 30) + 3.6, bz + 30); scene.add(sg);
 }
-/* --- 海上的船 --- */
-const boats = [];
+/* --- 海上的船(boats 声明已前移至名著十岛块前) --- */
 function makeBoat(sailCol, scale = 1) {
   const g = new THREE.Group();
   const hull = box(7 * scale, 1.6 * scale, 2.6 * scale, lam(0x7a4a26));
@@ -3236,6 +3987,7 @@ function catchFish() {
   const f = D.fish[Math.floor(Math.random() * D.fish.length)];
   const price = (FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0);
   openCard({ cat: 'fish', type: 'tank', item: f });   // 收进图鉴(+2)
+  try { PSTORE.setItem('w1001.fishcount', String((parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0) + 1)); } catch (e) {}
   earnSB(price);
   toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}`);
   blip(880); setTimeout(() => blip(1180), 110);
@@ -3246,7 +3998,7 @@ function updateFishing(dt, t) {
   fishing.t -= dt;
   if (fishing.state === 'wait') {
     bobber.position.y = .35 + Math.sin(t * 2.2) * .1;
-    if (fishing.t <= 0) { fishing.state = 'bite'; fishing.t = gearOn('rod') ? 2.1 : 1.15; blip(1400); }
+    if (fishing.t <= 0) { fishing.state = 'bite'; fishing.t = (gearOn('rod') ? 2.1 : 1.15) + (PSTORE.getItem('w1001.rodbuff') === '1' ? .35 : 0); blip(1400); }
   } else if (fishing.state === 'bite') {
     bobber.position.y = -.25 + Math.sin(t * 18) * .12;   // 猛沉
     if (fishing.t <= 0) { toast('💨 鱼跑了……再试一次'); blip(260); endFishing(); }
@@ -3273,7 +4025,7 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 /* 恢复上次位置 */
 try {
   const sv = JSON.parse(PSTORE.getItem('w1001.pos3d') || 'null');
-  if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 1360) {
+  if (Array.isArray(sv) && sv.every(Number.isFinite) && Math.hypot(sv[0], sv[1]) < 1560) {
     player.position.set(sv[0], Math.max(height(sv[0], sv[1]), 0) + .5, sv[1]);
   }
 } catch (e) {}
@@ -3353,7 +4105,7 @@ for (const k in LORE) HINTS[k] = LORE[k].hint;
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0, lastScoreMin = -1;
-let flight = null, roarT = 14;
+let flight = null, roarT = 14, sirenT = 2;
 /* 鲸鸣:低频滑音 */
 function whaleCall() {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -3391,7 +4143,7 @@ function loop() {
     }
     // 边界
     const pd = Math.hypot(player.position.x, player.position.z);
-    if (pd > 1360) { player.position.x *= 1360 / pd; player.position.z *= 1360 / pd; }
+    if (pd > 1560) { player.position.x *= 1560 / pd; player.position.z *= 1560 / pd; }
     // 障碍推离
     const pr = .9;
     for (const o of cirObs) {
@@ -3680,10 +4432,10 @@ function loop() {
     const e2 = k2 * k2 * (3 - 2 * k2);
     const fx2 = flight.from[0] + (flight.to[0] - flight.from[0]) * e2;
     const fz2 = flight.from[1] + (flight.to[1] - flight.from[1]) * e2;
-    const lift = Math.sin(Math.min(1, k2 * 1.04) * Math.PI) * 120;
+    const lift = Math.sin(Math.min(1, k2 * 1.04) * Math.PI) * (flight.lift ?? 120);
     player.position.set(fx2, Math.max(height(fx2, fz2), 0) + 2.2 + lift, fz2);
     vy = 0;
-    if (k2 >= 1) { flight = null; toast('🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'); blip(660); }
+    if (k2 >= 1) { const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660); }
   }
   updateFishing(dt, t);
   /* 泳衣:受寒提示 + 换装配色 */
@@ -3700,8 +4452,23 @@ function loop() {
     whaleT = 34 + Math.random() * 30;
     if (actx && musicOn && Math.hypot(player.position.x - WHALE_BLOW.x, player.position.z - WHALE_BLOW.z) < 150) whaleCall();
   }
+  /* 名著十岛动态 */
+  for (const wb of windmillBlades) wb.rotation.z += dt * .8;
+  for (const fg2 of cbFlags) fg2.rotation.y += ((windFlip ? Math.PI : 0) - fg2.rotation.y) * Math.min(1, dt * 2);
+  cheshireMats.forEach(m3 => { m3.opacity = .1 + .9 * Math.abs(Math.sin(t * .35)); });
+  if (scaleT > 0) { scaleT -= dt; if (scaleT <= 0) { player.scale.setScalar(1); toast('🍄 药效退了,你变回了原来的大小'); } }
+  if (!flight && !gearOn('wax')) {   // 塞壬魅惑
+    const sd2 = Math.hypot(player.position.x - SIR.x, player.position.z - SIR.z);
+    if (sd2 < 130 && sd2 > 12) {
+      const pull = 4.5 * dt;
+      player.position.x += (SIR.x - player.position.x) / sd2 * pull;
+      player.position.z += (SIR.z - player.position.z) / sd2 * pull;
+      sirenT -= dt;
+      if (sirenT <= 0) { sirenT = 6; toast('🧜‍♀️ 歌声钻进耳朵——身体不由自主地漂向礁石!(蜂蜡耳塞可免疫)'); }
+    }
+  }
   updateNpcs3(dt);
-  updateDayNight(t);
+  curDA = updateDayNight(t);
   renderMinimap();
   renderCompass();
 
