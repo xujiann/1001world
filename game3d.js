@@ -35,7 +35,7 @@ function curProfileName() {
   const p = profileList().find(x => x.id === PROFILE_ID);
   return p ? p.name : '未知账号';
 }
-const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl'];
+const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -638,7 +638,23 @@ function mobCard(type) {
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-dblaccept>🔭 接下悬赏,望向大海</button></div>`;
 }
 /* --- 体育岛卡片 --- */
+let scalperDeal = false;
 function sptCard(type) {
+  if (type === 'scalper') {
+    if (PSTORE.getItem('w1001.ticket') === '1') return `<div class="cardHead" style="background:#4a4438">🎫 德比纪念票根</div>
+      <div class="cardMedia"><div class="paperRoll">🎫</div></div>
+      <div class="cardTitle"><h3>曼联 vs 曼城 · 内场票</h3><div class="en">座位:弗爵爷身后第一排(自称)</div></div>
+      <div class="cardDesc">票面印刷精美,防伪水印是黄牛哥的头像。<br>后来你发现南门本来就免费进……但票根确实挺有纪念意义的。</div>`;
+    const price = scalperDeal ? 8 : 30;
+    return `<div class="cardHead" style="background:#4a4438">🧢 黄牛哥 · Ticket Tout</div>
+      <div class="cardMedia"><div class="paperRoll">🎫</div></div>
+      <div class="cardTitle"><h3>"内场票,最后两张!"</h3><div class="en">德比日特别行情</div></div>
+      <div class="cardDesc">${scalperDeal ? '黄牛哥(肉痛地):"行吧行吧,球都开场了——8 个币,拿走拿走!"' : '黄牛哥搓着手:"弗爵爷身后第一排,原价 5 币,现在 30。爱要不要,后面还排着队呢。"(身后并没有队)'}</div>
+      <div style="text-align:center;padding:0 0 16px">
+        <button class="again" data-scalpbuy>🎫 买一张(${price} SB)</button>
+        ${scalperDeal ? '' : '<button class="gBtn off" data-scalphaggle style="margin-left:8px">砍价</button>'}
+      </div>`;
+  }
   if (type === 'stadium') return `<div class="cardHead" style="background:#c8102e">🏟️ 梦剧场 · Theatre of Dreams</div>
     <div class="cardMedia"><div class="paperRoll">🏟️</div></div>
     <div class="cardTitle"><h3>红色梦剧场</h3><div class="en">容量 10,000 · 主队:曼联</div></div>
@@ -743,6 +759,18 @@ function openCard(s) {
       : k === 'mob' ? '🐳 南塔开特到了。海上有咸腥味,和一个关于白鲸的传说'
       : k === 'sport' ? '⚽ 体育岛到了——听,梦剧场的声浪!' : '🐋 回到收藏之岛(主世界)');
   }));
+  cardBody.querySelector('[data-scalphaggle]')?.addEventListener('click', () => {
+    scalperDeal = true;
+    blip(320);
+    openCard(s);
+  });
+  cardBody.querySelector('[data-scalpbuy]')?.addEventListener('click', () => {
+    if (!spendSB(scalperDeal ? 8 : 30)) return;
+    PSTORE.setItem('w1001.ticket', '1');
+    toast('🎫 到手!黄牛哥:"看完别扔,能升值。"(转身消失在人群中)');
+    blip(600);
+    openCard(s);
+  });
   cardBody.querySelector('[data-chowder]')?.addEventListener('click', () => {
     if (!spendSB(4)) return;
     chowderT = 480;
@@ -1187,7 +1215,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch'].includes(type) ? null : pickers[cat]();
+  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -2153,6 +2181,40 @@ function updateScoreboard(minute) {
     ptex.anisotropy = renderer.capabilities.getMaxAnisotropy();   // 掠射角下画线不糊
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(44, 29), new THREE.MeshLambertMaterial({ map: ptex }));
     pitch.rotation.x = -Math.PI / 2; pitch.position.set(cx3, baseH + .12, cz3); scene.add(pitch);
+    // —— 场地画线改为几何白线(浮于草皮上,任何视角清晰) ——
+    {
+      const lm = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const LY = baseH + .18, U = 42.39 / 105;   // 单位换算:0.4037u/m
+      const lineBox = (len, wid, lx, lz, rotY = 0) => {
+        const b2 = new THREE.Mesh(new THREE.BoxGeometry(len, .05, wid), lm);
+        b2.position.set(cx3 + lx, LY, cz3 + lz); b2.rotation.y = rotY; scene.add(b2);
+      };
+      const W2 = .26, HL = 105 * U / 2, HW = 68 * U / 2;   // 半长 21.2 半宽 13.7
+      lineBox(HL * 2 + W2, W2, 0, -HW); lineBox(HL * 2 + W2, W2, 0, HW);   // 边线
+      lineBox(W2, HW * 2, -HL, 0); lineBox(W2, HW * 2, HL, 0);             // 底线
+      lineBox(W2, HW * 2, 0, 0);                                           // 中线
+      const flatRing = (r0, r1, lx, lz, th0, thL) => {
+        const g2 = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 48, 1, th0, thL), lm);
+        g2.rotation.x = -Math.PI / 2; g2.position.set(cx3 + lx, LY, cz3 + lz); scene.add(g2);
+      };
+      flatRing(9.15 * U - .13, 9.15 * U + .13, 0, 0, 0, Math.PI * 2);      // 中圈
+      const dot = (lx, lz) => {
+        const d2 = new THREE.Mesh(new THREE.CircleGeometry(.2, 12), lm);
+        d2.rotation.x = -Math.PI / 2; d2.position.set(cx3 + lx, LY, cz3 + lz); scene.add(d2);
+      };
+      dot(0, 0);
+      for (const sgn of [-1, 1]) {
+        const pd = 16.5 * U, pw = 40.32 * U / 2, gd = 5.5 * U, gw = 18.32 * U / 2, ps = 11 * U;
+        lineBox(W2, pw * 2, sgn * (HL - pd), 0);                            // 罚球区前沿
+        lineBox(pd, W2, sgn * (HL - pd / 2), -pw); lineBox(pd, W2, sgn * (HL - pd / 2), pw);
+        lineBox(W2, gw * 2, sgn * (HL - gd), 0);                            // 球门区
+        lineBox(gd, W2, sgn * (HL - gd / 2), -gw); lineBox(gd, W2, sgn * (HL - gd / 2), gw);
+        dot(sgn * (HL - ps), 0);                                            // 点球点
+        const arcHalf = Math.acos((pd - ps) / (9.15 * U));                   // 罚球弧半角 ≈53°
+        flatRing(9.15 * U - .13, 9.15 * U + .13, sgn * (HL - ps), 0,
+          sgn > 0 ? Math.PI - arcHalf : -arcHalf, arcHalf * 2);             // 罚球弧
+      }
+    }
     // —— 网状球门(门柱 + 横梁 + 线框网) ——
     for (const sgn of [-1, 1]) {
       const gx2 = cx3 + sgn * 21.2;
@@ -2305,6 +2367,9 @@ function updateScoreboard(minute) {
     lines: ['传球!把球传起来!控住它!', '(蹲在场边,手势复杂得像在解微分方程)', '德比,从来没有容易两个字。'] });
   addNpc({ x: cx3 - 20, z: cz3 + 50, name: '红魔球迷', body: 0xc8102e, hat: 0xffd76a, opts: { wide: 1.2 },
     lines: ['Glory Glory Man United!', '两万条围巾,今天全到齐了!', '20 层看台,座无虚席——你听这声浪!'] });
+  addNpc({ x: cx3 + 8, z: cz3 + 57, name: '黄牛哥', body: 0x4a4438, hat: 0x2a2620,
+    lines: ['票!要票吗?内场票,弗爵爷身后第一排!', '(左右张望)德比日行情,懂的都懂。', '什么?南门免费入场?嘘——别嚷嚷!'] });
+  addSpot(cx3 + 11, cz3 + 58, 'spt', 'scalper', { r: 6.5 });
 }
 /* 多元宇宙渡口(鲸岛东滩) */
 {
@@ -2768,7 +2833,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0, lastScoreMin = -1;
@@ -2823,6 +2888,24 @@ function loop() {
         const m = Math.min(dl, drr, dtp, db);
         if (m === dl) player.position.x = o.x1 - pr; else if (m === drr) player.position.x = o.x2 + pr;
         else if (m === dtp) player.position.z = o.z1 - pr; else player.position.z = o.z2 + pr;
+      }
+    }
+    // 梦剧场外墙:低处不可穿越,只能走四座大门(顶层可越沿跳下)
+    {
+      const dxS = player.position.x - SPT.x, dzS = player.position.z - SPT.z;
+      const dS = Math.hypot(dxS, dzS);
+      if (dS > 48.6 && dS < 52.2 && player.position.y < 26) {
+        const ang = Math.atan2(dzS, dxS);
+        const nearGate = [-Math.PI / 2, 0, Math.PI / 2, Math.PI].some(g => {
+          let dd = Math.abs(ang - g) % (Math.PI * 2);
+          if (dd > Math.PI) dd = Math.PI * 2 - dd;
+          return dd < .12;
+        });
+        if (!nearGate) {
+          const target = dS >= 50.4 ? 52.4 : 48.4;
+          player.position.x = SPT.x + dxS / dS * target;
+          player.position.z = SPT.z + dzS / dS * target;
+        }
       }
     }
   }
