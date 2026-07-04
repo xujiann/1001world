@@ -2105,7 +2105,7 @@ let mobyWhale = null, mobySpout = null;
   scene.add(mobySpout);
 }
 /* ================= 多元宇宙 5 号:体育岛(红色梦剧场) ================= */
-let matchPlayers = [], matchBall = null, score = [0, 0], scoreTex = null, scoreCtx = null;
+let matchPlayers = [], matchBall = null, matchRef = null, score = [0, 0], scoreTex = null, scoreCtx = null;
 let nextGoalT = 50, crowdBoost = 0, ballTarget = 0, ballSwapT = 0;
 function updateScoreboard(minute) {
   if (!scoreCtx) return;
@@ -2121,22 +2121,54 @@ function updateScoreboard(minute) {
 }
 {
   const cx3 = SPT.x, cz3 = SPT.z, baseH = 6;
-  // —— 草坪(帆布纹理画线) ——
+  // —— 草坪:FIFA 标准画线(10px = 1m,105×68 场地 + 2m 缓冲) ——
   {
-    const pc = document.createElement('canvas'); pc.width = 512; pc.height = 340;
+    const pc = document.createElement('canvas'); pc.width = 1090; pc.height = 720;
     const c = pc.getContext('2d');
-    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#2e8b3d' : '#257933'; c.fillRect(i * 64, 0, 64, 340); }
-    c.strokeStyle = '#e8f5e8'; c.lineWidth = 4;
-    c.strokeRect(16, 16, 480, 308);
-    c.beginPath(); c.moveTo(256, 16); c.lineTo(256, 324); c.stroke();
-    c.beginPath(); c.arc(256, 170, 48, 0, 7); c.stroke();
-    c.strokeRect(16, 100, 70, 140); c.strokeRect(426, 100, 70, 140);
+    for (let i = 0; i < 12; i++) {   // 浅绿 / 深绿割草条纹
+      c.fillStyle = i % 2 ? '#57b463' : '#2f7a3c';
+      c.fillRect(20 + i * 87.5, 0, 87.5, 720);
+    }
+    c.fillStyle = '#2f7a3c'; c.fillRect(0, 0, 20, 720); c.fillRect(1070, 0, 20, 720);
+    c.strokeStyle = '#ffffff'; c.fillStyle = '#ffffff'; c.lineWidth = 5;
+    c.strokeRect(20, 20, 1050, 680);                                   // 边线与底线
+    c.beginPath(); c.moveTo(545, 20); c.lineTo(545, 700); c.stroke();  // 中线
+    c.beginPath(); c.arc(545, 360, 91.5, 0, 7); c.stroke();            // 中圈 9.15m
+    c.beginPath(); c.arc(545, 360, 5, 0, 7); c.fill();                 // 中点
+    for (const [x0, dir] of [[20, 1], [1070, -1]]) {
+      c.strokeRect(dir > 0 ? x0 : x0 - 165, 158.4, 165, 403.2);        // 罚球区 16.5m
+      c.strokeRect(dir > 0 ? x0 : x0 - 55, 268.4, 55, 183.2);          // 球门区 5.5m
+      const px5 = x0 + dir * 110;
+      c.beginPath(); c.arc(px5, 360, 5, 0, 7); c.fill();               // 点球点 11m
+      const a0 = Math.acos(55 / 91.5);                                  // 罚球弧(区外部分)
+      c.beginPath();
+      if (dir > 0) c.arc(px5, 360, 91.5, -a0, a0);
+      else c.arc(px5, 360, 91.5, Math.PI - a0, Math.PI + a0);
+      c.stroke();
+    }
+    for (const [cx5, cy5, a1, a2] of [[20, 20, 0, Math.PI / 2], [1070, 20, Math.PI / 2, Math.PI], [1070, 700, Math.PI, Math.PI * 1.5], [20, 700, Math.PI * 1.5, Math.PI * 2]]) {
+      c.beginPath(); c.arc(cx5, cy5, 10, a1, a2); c.stroke();          // 角旗弧 1m
+    }
     const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(44, 29), new THREE.MeshLambertMaterial({ map: ptex }));
     pitch.rotation.x = -Math.PI / 2; pitch.position.set(cx3, baseH + .12, cz3); scene.add(pitch);
-    // 球门
+    // —— 网状球门(门柱 + 横梁 + 线框网) ——
     for (const sgn of [-1, 1]) {
-      const goal = box(.4, 2.4, 7, M.white); goal.position.set(cx3 + sgn * 21.5, baseH + 1.2, cz3); scene.add(goal);
+      const gx2 = cx3 + sgn * 21.2;
+      for (const pz6 of [-4, 4]) {
+        const post = cyl(.14, .14, 3.4, M.white); post.position.set(gx2, baseH + 1.7, cz3 + pz6); scene.add(post);
+      }
+      const bar = cyl(.14, .14, 8, M.white); bar.rotation.x = Math.PI / 2; bar.position.set(gx2, baseH + 3.4, cz3); scene.add(bar);
+      const netMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0, wireframe: true, transparent: true, opacity: .55 });
+      const backNet = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.4, 16, 7), netMat);
+      backNet.rotation.y = Math.PI / 2; backNet.position.set(gx2 + sgn * 1.4, baseH + 1.7, cz3); scene.add(backNet);
+      const topNet = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 8, 3, 16), netMat);
+      topNet.rotation.z = Math.PI / 2; topNet.rotation.y = Math.PI / 2;
+      topNet.rotation.x = Math.PI / 2; topNet.position.set(gx2 + sgn * .7, baseH + 3.4, cz3); scene.add(topNet);
+      for (const pz6 of [-4, 4]) {   // 侧网
+        const sideNet = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.4, 3, 7), netMat);
+        sideNet.position.set(gx2 + sgn * .7, baseH + 1.7, cz3 + pz6); scene.add(sideNet);
+      }
     }
   }
   // —— 20 层红色看台(碗状) ——
@@ -2180,12 +2212,7 @@ function updateScoreboard(minute) {
     const gs2 = makeSign(gateNames[i], 4.6, '#6b0a18', '#ffd76a');
     gs2.position.set(gx, baseH + 8.2, gz); gs2.rotation.y = -a + Math.PI / 2; scene.add(gs2);
   }
-  // 看台外墙碰撞(留南门缺口)
-  for (let i = 0; i < 12; i++) {
-    const a = i / 12 * Math.PI * 2;
-    if (Math.abs(((a - Math.PI / 2 + Math.PI * 3) % (Math.PI * 2)) - Math.PI) > Math.PI - .5) continue;   // 南门通行
-    cirObs.push({ x: cx3 + Math.cos(a) * 47, z: cz3 + Math.sin(a) * 47, r: 13 });
-  }
+  // (看台不设碰撞墙:可从任意方向拾级而上——见 stadiumHeight)
   // —— 记分牌(北侧高悬) ——
   {
     const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 150;
@@ -2196,22 +2223,68 @@ function updateScoreboard(minute) {
     board.position.set(cx3, baseH + 27, cz3 - 46); scene.add(board);
     updateScoreboard(0);
   }
-  // —— 场上 22 名球员 + 皮球(德比进行中) ——
+  // —— 场上 22 名球员(与玩家同比例)+ 门将异色 + 裁判 + 皮球 ——
+  function makeFootballer(kitCol, shortsCol) {
+    const g = new THREE.Group();
+    const bodyP = cyl(.5, .58, 1.1, lam(kitCol)); bodyP.position.y = 1.35; g.add(bodyP);
+    const shorts = cyl(.52, .5, .5, lam(shortsCol)); shorts.position.y = .58; g.add(shorts);
+    const legs = cyl(.42, .46, .5, lam(0xf2c9a0)); legs.position.y = .18; g.add(legs);
+    const headP = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); headP.position.y = 2.25; g.add(headP);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), lam(0x2a2018)); hair.position.y = 2.38; g.add(hair);
+    return g;
+  }
   for (let i = 0; i < 22; i++) {
     const home = i < 11;
-    const g = new THREE.Group();
-    const bodyP = cyl(.35, .42, 1.1, lam(home ? 0xc8102e : 0x6cabdd)); bodyP.position.y = .85; g.add(bodyP);
-    const headP = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6), lam(0xf2c9a0)); headP.position.y = 1.7; g.add(headP);
     const col = i % 11;
-    const ax = (home ? -1 : 1) * (3 + Math.floor(col / 4) * 6.5);
-    const az = (col % 4 - 1.5) * 6.5;
-    g.userData = { ax: cx3 + ax, az: cz3 + az, ph: i * 1.3, sp: .6 + (i % 5) * .18 };
+    const isGK = col === 0;
+    // 曼联红/白,门将亮黄;曼城天蓝/白,门将橙
+    const kit = home ? (isGK ? 0xf2d13c : 0xc8102e) : (isGK ? 0xe87422 : 0x6cabdd);
+    const g = makeFootballer(kit, isGK ? 0x1c1c20 : 0xffffff);
+    let ax, az;
+    if (isGK) { ax = (home ? -1 : 1) * 19.6; az = 0; }
+    else {
+      const row = Math.floor((col - 1) / 4), lane = (col - 1) % 4;
+      ax = (home ? -1 : 1) * (5 + row * 6);
+      az = (lane - 1.5) * 6.4;
+    }
+    g.userData = { ax: cx3 + ax, az: cz3 + az, ph: i * 1.3, sp: .6 + (i % 5) * .18, gk: isGK };
     g.position.set(g.userData.ax, baseH + .1, g.userData.az);
     scene.add(g); matchPlayers.push(g);
   }
+  matchRef = makeFootballer(0x1c1c20, 0x1c1c20);   // 黑衣裁判
+  matchRef.position.set(cx3, baseH + .1, cz3 + 3);
+  scene.add(matchRef);
   matchBall = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   matchBall.position.set(cx3, baseH + .5, cz3);
   scene.add(matchBall);
+  // —— 看台上的球迷(实例化,主场红海 + 东北角客队蓝区) ——
+  {
+    const fanGeo = new THREE.ConeGeometry(.38, 1.05, 5);
+    const spotsF = [];
+    for (let i = 0; i < 20; i++) {
+      const rr = 27.5 + i * 1.05;
+      const n = Math.floor(rr * Math.PI * 2 / 1.35);
+      for (let k = 0; k < n; k++) {
+        if (Math.random() > .88) continue;   // 少量空座
+        spotsF.push([rr, k / n * Math.PI * 2, i]);
+      }
+    }
+    const fans = new THREE.InstancedMesh(fanGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), spotsF.length);
+    const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3();
+    const cRed = new THREE.Color(0xc8102e), cRed2 = new THREE.Color(0x8c1c2c), cBlue = new THREE.Color(0x6cabdd), cWhite = new THREE.Color(0xe8e4dc);
+    spotsF.forEach(([rr, a, tier], idx) => {
+      pf.set(cx3 + Math.cos(a) * rr, baseH + 1.02 * (tier + 1) + .5, cz3 + Math.sin(a) * rr);
+      sf.setScalar(.9 + Math.random() * .25);
+      m4f.compose(pf, qf, sf);
+      fans.setMatrixAt(idx, m4f);
+      const away = a > .55 && a < 1.25;   // 东北角客队区
+      const r0 = Math.random();
+      fans.setColorAt(idx, away ? (r0 < .85 ? cBlue : cWhite) : (r0 < .7 ? cRed : (r0 < .88 ? cRed2 : cWhite)));
+    });
+    fans.instanceMatrix.needsUpdate = true;
+    if (fans.instanceColor) fans.instanceColor.needsUpdate = true;
+    scene.add(fans);
+  }
   // —— 场外:队旗 / 渡口 / 岛名牌 ——
   const f1 = makeSign('曼联 MUFC', 5, '#c8102e', '#ffd76a'); f1.position.set(cx3 - 12, baseH + 9, cz3 + 52); scene.add(f1);
   const f2 = makeSign('曼城 MCFC', 5, '#6cabdd', '#1c2c4c'); f2.position.set(cx3 + 12, baseH + 9, cz3 + 52); scene.add(f2);
@@ -2225,9 +2298,9 @@ function updateScoreboard(minute) {
     ss2.position.set(-700, height(-700, 138) + 4.4, 138); scene.add(ss2);
   }
   // —— 场边 NPC ——
-  addNpc({ x: cx3 - 8, z: cz3 + 46, name: '弗格森', body: 0x1c1c20, hat: 0xc8102e,
+  addNpc({ x: cx3 - 8, z: cz3 + 17, name: '弗格森', body: 0x1c1c20, hat: 0xc8102e,
     lines: ['补时阶段,才是我们的主场——弗格森时间!', 'Football, bloody hell!', '(嚼着口香糖,死死盯着场上)'] });
-  addNpc({ x: cx3 + 8, z: cz3 + 46, name: '瓜迪奥拉', body: 0x2c3e50, hat: 0x6cabdd, opts: { tall: 1.05 },
+  addNpc({ x: cx3 + 8, z: cz3 + 17, name: '瓜迪奥拉', body: 0x2c3e50, hat: 0x6cabdd, opts: { tall: 1.05 },
     lines: ['传球!把球传起来!控住它!', '(蹲在场边,手势复杂得像在解微分方程)', '德比,从来没有容易两个字。'] });
   addNpc({ x: cx3 - 20, z: cz3 + 50, name: '红魔球迷', body: 0xc8102e, hat: 0xffd76a, opts: { wide: 1.2 },
     lines: ['Glory Glory Man United!', '两万条围巾,今天全到齐了!', '20 层看台,座无虚席——你听这声浪!'] });
@@ -2437,6 +2510,13 @@ const deckY = t => 3 + Math.sin(t * Math.PI) * 6;
 /* 水族馆栈桥桥面(可行走) */
 function pierHeight(x, z) {
   return (Math.abs(x) < 3.2 && z > 346 && z < 427) ? 1.85 : null;
+}
+/* 梦剧场看台台阶(可拾级而上,20 层) */
+function stadiumHeight(x, z) {
+  const d = Math.hypot(x - SPT.x, z - SPT.z);
+  if (d < 26.8 || d > 48.4) return null;
+  const i = Math.min(19, Math.floor((d - 26.8) / 1.05));
+  return 6 + 1.02 * (i + 1);
 }
 function bridgeHeight(x, z) {
   const t = ((x - BR_A[0]) * brDX + (z - BR_A[1]) * brDZ) / (brDX * brDX + brDZ * brDZ);
@@ -2751,6 +2831,8 @@ function loop() {
   if (bh != null && player.position.y > bh - 1.6) gh = Math.max(gh, bh);
   const ph2 = pierHeight(player.position.x, player.position.z);
   if (ph2 != null && player.position.y > ph2 - 1.4) gh = Math.max(gh, ph2);
+  const sth = stadiumHeight(player.position.x, player.position.z);
+  if (sth != null && player.position.y > sth - 2.4) gh = Math.max(gh, sth);
   swimming = gh < -.6;
   if (swimming) {
     vy = 0; grounded = false;
@@ -2831,9 +2913,19 @@ function loop() {
     const minute = Math.floor(t / 4) % 90;
     for (const p2 of matchPlayers) {
       const u = p2.userData;
-      p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * 3.2;
-      p2.position.z = u.az + Math.cos(t * u.sp * .8 + u.ph) * 2.6;
+      if (u.gk) {   // 门将:守在门线,小幅横移
+        p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * .5;
+        p2.position.z = u.az + Math.sin(t * u.sp * 1.3 + u.ph) * 2.6;
+      } else {
+        p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * 3.2;
+        p2.position.z = u.az + Math.cos(t * u.sp * .8 + u.ph) * 2.6;
+      }
       p2.lookAt(matchBall.position.x, p2.position.y, matchBall.position.z);
+    }
+    if (matchRef) {   // 裁判贴着皮球跑动
+      matchRef.position.x += (matchBall.position.x + 3.5 - matchRef.position.x) * Math.min(1, dt * 1.6);
+      matchRef.position.z += (matchBall.position.z + 3 - matchRef.position.z) * Math.min(1, dt * 1.6);
+      matchRef.lookAt(matchBall.position.x, matchRef.position.y, matchBall.position.z);
     }
     ballSwapT -= dt;
     if (ballSwapT <= 0) { ballSwapT = 1.4 + Math.random() * 1.2; ballTarget = Math.floor(Math.random() * matchPlayers.length); }
