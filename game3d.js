@@ -71,6 +71,8 @@ const smooth01 = t => t * t * (3 - 2 * t);
 /* 主岛 = 一头俯瞰的鲸:头在西,尾鳍甩向东,雪山是背鳍,西南伸出胸鳍 */
 const IS2 = { x: -720, z: -420, r: 150 };   // 灯塔屿
 const TRU = { x: 760, z: 560, r: 135 };     // 楚门的世界(多元宇宙 1 号岛)
+const MID = { x: -150, z: -700, r: 170 };   // 中土(多元宇宙 2 号岛)
+const VOL = { x: -50, z: -700 };            // 末日火山
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -89,6 +91,7 @@ function islandMask(x, z) {
   m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
   m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
   m = Math.max(m, (1 - Math.hypot(x - TRU.x, z - TRU.z) / TRU.r) * 1.8);  // 楚门的世界·桃源岛
+  m = Math.max(m, (1 - Math.hypot(x - MID.x, z - MID.z) / MID.r) * 1.8);  // 中土
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
@@ -122,6 +125,13 @@ function height(x, z) {
   const dd3 = Math.hypot(x - 618, z - 560);            // 天空之门前的浅滩
   const dw3 = smooth01(clamp(1 - dd3 / 16, 0, 1));
   h = h * (1 - dw3 * .9) + 1.6 * dw3 * .9;
+  const sh2 = Math.hypot(x + 230, z + 690);            // 夏尔缓丘整平
+  const sw2 = smooth01(clamp(1 - sh2 / 70, 0, 1));
+  h = h * (1 - sw2 * .85) + 8 * sw2 * .85;
+  h += smooth01(clamp(1 - Math.hypot(x - VOL.x, z - VOL.z) / 70, 0, 1)) ** 2 * 30;   // 末日火山
+  const mdk = Math.hypot(x + 150, z + 552);            // 中土渡口浅滩
+  const mdw = smooth01(clamp(1 - mdk / 18, 0, 1));
+  h = h * (1 - mdw * .96) + 2.2 * mdw * .96;
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -387,7 +397,7 @@ function newsCard() {
 /* --- 多元宇宙:世界列表与穿越 --- */
 const WORLDS = [
   { key: 'truman', icon: '📺', name: '楚门的世界', en: 'The Truman Show', open: true, desc: '桃源岛 · 一座直播了三十年的摄影棚' },
-  { key: 'lotr', icon: '💍', name: '指环王 · 中土', en: 'Middle-earth', open: false, desc: '夏尔与魔多(在建)' },
+  { key: 'lotr', icon: '💍', name: '指环王 · 中土', en: 'Middle-earth', open: true, desc: '西有夏尔炊烟,东有魔多火山' },
   { key: 'hp', icon: '⚡', name: '哈利·波特', en: 'Wizarding World', open: false, desc: '霍格沃茨(在建)' },
   { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
 ];
@@ -418,12 +428,51 @@ function trumanCard(type) {
     <div class="cardTitle"><h3>「天狼星 · 大犬座 9 号」</h3><div class="en">Prop No. SIRIUS-9</div></div>
     <div class="cardDesc">某个清晨,它从"天上"坠落在楚门家门前的街道。电台立刻解释:飞机在高空掉了零件。<br><br>一切怀疑,从这盏灯开始。</div>`;
 }
+/* --- 魔戒支线 --- */
+let hasRing = false;
+const ringDone = () => { try { return localStorage.getItem('w1001.ring') === '1'; } catch (e) { return false; } };
+function lotrCard(type) {
+  if (type === 'ring') {
+    if (ringDone()) return `<div class="cardHead" style="background:#2a3a22">💍 空基座</div>
+      <div class="cardMedia"><div class="paperRoll">🕊️</div></div>
+      <div class="cardTitle"><h3>魔戒已被销毁</h3><div class="en">The War is over</div></div>
+      <div class="cardDesc">基座空空,和平长存。甘道夫远远地朝你点了点头。</div>`;
+    if (hasRing) return `<div class="cardHead" style="background:#3a2a10">💍 空基座</div>
+      <div class="cardTitle" style="padding-top:16px"><h3>魔戒在你身上</h3><div class="en">It is whispering…</div></div>
+      <div class="cardDesc">它在低语你的名字。快,去东边的末日火山,把它投进去!</div>`;
+    return `<div class="cardHead" style="background:#3a2a10">💍 至尊戒 · The One Ring</div>
+      <div class="cardMedia"><div class="paperRoll">💍</div></div>
+      <div class="cardTitle"><h3>至尊戒,驭众戒</h3><div class="en">One Ring to rule them all</div></div>
+      <div class="cardDesc">"至尊戒,驭众戒;至尊戒,寻众戒;魔戒至尊引众戒,禁锢众戒黑暗中。"<br><br>基座上的金环泛着温润的光。它很轻,又重得可怕。</div>
+      <div style="text-align:center;padding:0 0 16px"><button class="again" data-takering>💍 拾起魔戒</button></div>`;
+  }
+  if (type === 'crater') {
+    if (hasRing) return `<div class="cardHead" style="background:#8c2f10">🌋 末日火山口 · Mount Doom</div>
+      <div class="cardMedia"><div class="paperRoll">🌋</div></div>
+      <div class="cardTitle"><h3>就是这里</h3><div class="en">Cast it into the fire!</div></div>
+      <div class="cardDesc">岩浆翻涌,热浪扑面。魔戒在你掌心越来越沉。<br>咕噜的声音在身后:"宝贝……别!"</div>
+      <div style="text-align:center;padding:0 0 16px"><button class="again" data-dropring>🔥 把魔戒投入火山</button></div>`;
+    return `<div class="cardHead" style="background:#8c2f10">🌋 末日火山口 · Mount Doom</div>
+      <div class="cardMedia"><div class="paperRoll">🌋</div></div>
+      <div class="cardTitle"><h3>唯一能销毁魔戒的地方</h3><div class="en">Mount Doom</div></div>
+      <div class="cardDesc">${ringDone() ? '魔戒已在此销毁。岩浆平静了许多,魔多的天也亮了一点。' : '铸成魔戒之火,也是唯一能熔毁它的火。——夏尔那边的基座上,好像放着什么东西。'}</div>`;
+  }
+  if (type === 'eye') return `<div class="cardHead" style="background:#1c1a20">👁️ 巴拉多 · 索伦之眼</div>
+    <div class="cardMedia"><div class="paperRoll">👁️</div></div>
+    <div class="cardTitle"><h3>它看见你了</h3><div class="en">The Eye of Sauron</div></div>
+    <div class="cardDesc">"我看见你。"<br><br>无睑之眼裹挟着火焰,昼夜不息地转动。别盯太久——${hasRing ? '尤其是现在,魔戒就在你身上!' : '它在找一样东西。'}</div>`;
+  return `<div class="cardHead" style="background:#2e7d4f">🚪 圆门 · 袋底洞</div>
+    <div class="cardMedia"><div class="paperRoll">🚪</div></div>
+    <div class="cardTitle"><h3>霍比特人的家</h3><div class="en">Bag End, Hobbiton</div></div>
+    <div class="cardDesc">门上刻着一行小字:"不请自来者恕不接待——推销魔戒者除外。"<br>门里飘出二次早餐的香气。</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'news') return newsCard();
   if (cat === 'shop') return shopCard();
   if (cat === 'ferry') return ferryCard();
   if (cat === 'truman') return trumanCard(s.type);
+  if (cat === 'lotr') return lotrCard(s.type);
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -497,11 +546,28 @@ function openCard(s) {
   bindGear(() => openCard(s));
   cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.goworld;
-    const dest = k === 'truman' ? [694, 624] : [372, 12];
+    const dests = { truman: [694, 624], lotr: [-150, -558], main: [372, 12] };
+    const dest = dests[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
-    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天' : '🐋 回到收藏之岛(主世界)');
+    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
+      : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多' : '🐋 回到收藏之岛(主世界)');
   }));
+  cardBody.querySelector('[data-takering]')?.addEventListener('click', () => {
+    hasRing = true;
+    if (window.__ringMesh) window.__ringMesh.visible = false;
+    closeModals();
+    toast('💍 魔戒在手……它在低语。去末日火山!');
+    blip(320);
+  });
+  cardBody.querySelector('[data-dropring]')?.addEventListener('click', () => {
+    hasRing = false;
+    try { localStorage.setItem('w1001.ring', '1'); } catch (e) {}
+    stars++; earnSB(20); saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('🌋 魔戒已销毁!中土得救 · ⚡+20 ⭐+1');
+    blip(660); setTimeout(() => blip(880), 110); setTimeout(() => blip(1180), 220);
+  });
   cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
     if (!paperBought()) {
       if (!spendSB(2)) return;
@@ -574,6 +640,8 @@ const THEMES = {
   classical: { tempo: 106, wave: 'sine', scale: [0, 4, 7, 12, 16, 19], base: 262, dens: .85, arp: true },
   outdoor:   { tempo: 100, wave: 'triangle', scale: [0, 7, 12, 14, 19], base: 165, dens: .5, bass: true },
   truman:    { tempo: 118, wave: 'triangle', scale: [0, 4, 7, 9, 12], base: 294, dens: .68, bass: true, vol: .6 },
+  shire:     { tempo: 90, wave: 'triangle', scale: [0, 2, 4, 7, 9], base: 220, dens: .6, bass: true },
+  mordor:    { tempo: 58, wave: 'sine', scale: [0, 1, 3, 6, 7], base: 87, dens: .35, pad: true, vol: .85 },
 };
 function note(freq, t, dur, wave, vol) {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -802,7 +870,8 @@ const TER = 1900, SEG = MOBILE ? 150 : 240;
     pos.setY(i, h);
     const sl = Math.abs(height(x + 3, z) - h) + Math.abs(height(x, z + 3) - h);   // 坡度
     let c;
-    if (h > 34) c = cSnow;
+    if (Math.hypot(x - VOL.x, z - VOL.z) < 82 && h > 1) c = fbm(x * .07, z * .07) > .5 ? new THREE.Color(0x4a4038) : new THREE.Color(0x3a322c);   // 魔多焦土
+    else if (h > 34) c = cSnow;
     else if (sl > 3.4 || h > 26) c = cRock;
     else if (h > -1 && mouthDist(x, z) < 5) c = cMouth;                                         // 鲸嘴线
     else if (h > 0 && Math.abs(Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z) - WHALE_EYE.r) < 5) c = cMouth;  // 眼圈
@@ -890,7 +959,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp'].includes(type) ? null : pickers[cat]();
+  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye'].includes(type) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -1519,6 +1588,89 @@ const trumanCams = [];
   addNpc({ x: cx - 26, z: cz - 32, name: '马龙', body: 0x6b7a3a, hat: 0x4a5528,
     lines: ['哥们,我会为你挡子弹。', '这话是我自己想说的,没人提词。真的。', '来瓶啤酒?这牌子……特别好喝(看向远方)。'] });
 }
+/* ================= 多元宇宙 2 号:中土(夏尔与魔多) ================= */
+let sauronEye = null, lavaDisc = null;
+{
+  // —— 夏尔:霍比特洞 ——
+  const holeCols = [0x2e7d4f, 0xc0392b, 0xd9b26a];
+  [[-250, -670], [-215, -715], [-260, -725]].forEach(([hx, hz], i) => {
+    const hh = height(hx, hz);
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x6a9c50));
+    mound.position.set(hx, hh, hz); mound.scale.y = .6; scene.add(mound);
+    const doorDir = Math.atan2(-150 - hx, -690 - hz);   // 圆门朝向岛心
+    const dx = hx + Math.sin(doorDir) * 6.6, dz = hz + Math.cos(doorDir) * 6.6;
+    const door = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, .5, 16), lam(holeCols[i]));
+    door.rotation.x = Math.PI / 2; door.rotation.y = doorDir;
+    door.position.set(dx, hh + 2, dz); scene.add(door);
+    const chimney = cyl(.4, .5, 2, M.stone); chimney.position.set(hx - 2, hh + 4.6, hz); scene.add(chimney);
+    cirObs.push({ x: hx, z: hz, r: 7 });
+    addSpot(dx, dz, 'lotr', 'hole', { r: 6 });
+  });
+  makeTree(-228, -652, 2.2, null);   // 宴会树
+  // 魔戒基座
+  {
+    const ph = height(-190, -650);
+    const ped = cyl(1, 1.4, 2.4, M.stone); ped.position.set(-190, ph + 1.2, -650); scene.add(ped);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.7, .18, 10, 24),
+      MOBILE ? new THREE.MeshLambertMaterial({ color: 0xffd76a })
+             : new THREE.MeshStandardMaterial({ color: 0xffd76a, roughness: .2, metalness: 1 }));
+    ring.rotation.x = Math.PI / 2.4; ring.position.set(-190, ph + 3, -650); scene.add(ring);
+    window.__ringMesh = ring;
+    if (ringDone()) ring.visible = false;
+    cirObs.push({ x: -190, z: -650, r: 1.6 });
+    addSpot(-190, -650, 'lotr', 'ring', { r: 6.5 });
+  }
+  // —— 魔多:末日火山 ——
+  {
+    const vh = height(VOL.x, VOL.z);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(9, 13, 5, 12, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0x3a322c, side: THREE.DoubleSide }));
+    rim.position.set(VOL.x, vh + 1.5, VOL.z); scene.add(rim);
+    lavaDisc = new THREE.Mesh(new THREE.CylinderGeometry(8.4, 8.4, .6, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff5a1a }));
+    lavaDisc.position.set(VOL.x, vh + 2.4, VOL.z); scene.add(lavaDisc);
+    const lavaLight = new THREE.PointLight(0xff6a2a, 30, 60, 2);
+    lavaLight.position.set(VOL.x, vh + 6, VOL.z); scene.add(lavaLight);
+    addSpot(VOL.x, VOL.z + 11, 'lotr', 'crater', { r: 8 });
+  }
+  // —— 巴拉多黑塔与索伦之眼 ——
+  {
+    const tx = -70, tz = -770, th2 = height(tx, tz);
+    const t1 = cyl(4.5, 6, 26, lam(0x1c1a20)); t1.position.set(tx, th2 + 13, tz); scene.add(t1);
+    const t2 = cyl(2.6, 4, 16, lam(0x24202a)); t2.position.set(tx, th2 + 32, tz); scene.add(t2);
+    for (const sgn of [-1, 1]) {
+      const prong = new THREE.Mesh(new THREE.ConeGeometry(1, 9, 5), lam(0x14121a));
+      prong.position.set(tx + sgn * 2.2, th2 + 45, tz); scene.add(prong);
+    }
+    sauronEye = new THREE.Group();
+    const eyeBall = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff7a1a }));
+    eyeBall.scale.set(1, 1.5, .6); sauronEye.add(eyeBall);
+    const pupil = new THREE.Mesh(new THREE.BoxGeometry(.5, 3.4, .4), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }));
+    pupil.position.z = 1.5; sauronEye.add(pupil);
+    sauronEye.position.set(tx, th2 + 44, tz); scene.add(sauronEye);
+    const eyeLight = new THREE.PointLight(0xff7a1a, 40, 90, 2);
+    eyeLight.position.set(tx, th2 + 44, tz); scene.add(eyeLight);
+    cirObs.push({ x: tx, z: tz, r: 6.5 });
+    addSpot(tx, tz + 9, 'lotr', 'eye', { r: 9 });
+  }
+  // —— 渡口与岛名牌 ——
+  {
+    const dh = height(-150, -556);
+    const plank = box(5, .5, 9, M.wood); plank.position.set(-150, dh + .9, -552); scene.add(plank);
+    addSpot(-150, -554, 'ferry', 'ferry', { r: 8 });
+    const msign = makeSign('中土 · 夏尔与魔多', 7, '#1e2a1a', '#cfe8a8');
+    msign.position.set(-158, height(-158, -580) + 4.2, -580); scene.add(msign);
+  }
+  // —— 原著 NPC ——
+  addNpc({ x: -238, z: -688, name: '弗罗多', body: 0x3a6ea5, hat: 0x8a6238,
+    lines: ['我愿意带上魔戒——虽然,我不知道路。', '夏尔的早晨,比什么都珍贵。', '有时候你必须离开,才能守护你所爱的。'] });
+  addNpc({ x: -226, z: -700, name: '山姆', body: 0x9c640c, hat: 0x6b7a3a, opts: { wide: 1.2 },
+    lines: ['我不能替你背戒指,但我能背你!', '土豆!煮一煮,捣成泥,炖进汤里。', '这世上总有些美好,值得我们奋战到底。'] });
+  addNpc({ x: -195, z: -662, name: '甘道夫', body: 0x8f8fa0, hat: 0xd8d5cc, opts: { hat: 'cone', tall: 1.15, cane: true },
+    lines: ['你——不能——通过!', '所有迷路的人,并非都迷失了自己。', '我们无法选择自己的时代,只能选择如何度过。', '傻瓜,快跑!'] });
+  addNpc({ x: -75, z: -688, name: '咕噜', body: 0x7a8a6a, hat: 0x5a684e, opts: { tall: .8 },
+    lines: ['我的宝贝……宝贝!!', '是它偷了它!滑溜的小贼!', '我们发誓,为宝贝的主人效劳……咕噜,咕噜。'] });
+}
 /* 多元宇宙渡口(鲸岛东滩) */
 {
   const fh = height(380, 12);
@@ -1580,7 +1732,7 @@ function buildMinimapBase() {
   const c = mmBase.getContext('2d');
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
-    const x = (px / mm.width - .5) * 1900, z = (py / mm.height - .5) * 1500;
+    const x = (px / mm.width - .5) * 1900, z = (py / mm.height - .5) * 1800;
     const h = height(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
@@ -1597,7 +1749,7 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 1900 + .5) * mm.width, W2Y = z => (z / 1500 + .5) * mm.height;
+  const W2X = x => (x / 1900 + .5) * mm.width, W2Y = z => (z / 1800 + .5) * mm.height;
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
@@ -1607,6 +1759,8 @@ function renderMinimap() {
   mctx.beginPath(); mctx.arc(W2X(IS2.x), W2Y(IS2.z), 2.6, 0, 7); mctx.fill();
   mctx.fillStyle = '#f5c9d4';   // 楚门的世界
   mctx.beginPath(); mctx.arc(W2X(TRU.x), W2Y(TRU.z), 2.6, 0, 7); mctx.fill();
+  mctx.fillStyle = '#cfe8a8';   // 中土
+  mctx.beginPath(); mctx.arc(W2X(MID.x), W2Y(MID.z), 2.6, 0, 7); mctx.fill();
   // 玩家朝向箭头
   const px = W2X(player.position.x), py = W2Y(player.position.z);
   mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
@@ -1620,6 +1774,7 @@ const cpCv = $('compass'), cpCtx = cpCv ? cpCv.getContext('2d') : null;
 const CP_MARKS = ZONES3D.filter(z => z.key !== 'plaza').map(z => ({ x: z.x, z: z.z, col: CATS[z.key].color }));
 CP_MARKS.push({ x: IS2.x, z: IS2.z, col: '#ffe9a8' });
 CP_MARKS.push({ x: TRU.x, z: TRU.z, col: '#f5c9d4' });
+CP_MARKS.push({ x: MID.x, z: MID.z, col: '#cfe8a8' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -1958,7 +2113,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5;
@@ -2069,6 +2224,8 @@ function loop() {
   }
   if (window.__flame) window.__flame.scale.setScalar(1 + Math.sin(t * 9) * .18);
   trumanCams.forEach((m2, i) => m2.color.setHex(Math.sin(t * 4 + i * 2) > 0 ? 0xff2222 : 0x481414));
+  if (sauronEye) { sauronEye.lookAt(player.position.x, player.position.y + 2, player.position.z); }   // 魔眼盯人
+  if (lavaDisc) { const lp = 1 + Math.sin(t * 3) * .06; lavaDisc.scale.set(lp, 1, lp); lavaDisc.material.color.setHex(Math.sin(t * 5) > 0 ? 0xff5a1a : 0xff7a2e); }
   for (const s of spots) if (s.birdRef) s.birdRef.position.y = 12.7 + Math.sin(t * 2 + s.x) * .18;
   /* 星之碎片:旋转 + 浮动 + 拾取 */
   for (let i = shards.length - 1; i >= 0; i--) {
@@ -2171,12 +2328,14 @@ function loop() {
     if (zn.key !== 'plaza' && Math.hypot(player.position.x - zn.x, player.position.z - zn.z) < zn.r) { hereKey = zn.key; break; }
   }
   const onTruman = Math.hypot(player.position.x - TRU.x, player.position.z - TRU.z) < TRU.r + 20;
-  const mz2 = swimming ? 'fish' : (onTruman ? 'truman' : (hereKey || 'street'));
+  const onMid = Math.hypot(player.position.x - MID.x, player.position.z - MID.z) < MID.r + 20;
+  const onMordor = onMid && Math.hypot(player.position.x - VOL.x, player.position.z - VOL.z) < 90;
+  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onTruman ? 'truman' : (hereKey || 'street'))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = swimming ? '🌊' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))));
-  $('zoneName').textContent = swimming ? '大海' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))));
+  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))));
+  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))));
 
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
