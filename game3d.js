@@ -94,6 +94,7 @@ const MID = { x: -150, z: -700, r: 170 };   // 中土(多元宇宙 2 号岛)
 const VOL = { x: -50, z: -700 };            // 末日火山
 const HOG = { x: 660, z: -560, r: 150 };    // 霍格沃茨(多元宇宙 3 号岛)
 const MOB = { x: 120, z: 800, r: 130 };     // 莫比·迪克(多元宇宙 4 号岛)
+const SPT = { x: -780, z: 120, r: 130 };    // 体育岛(多元宇宙 5 号岛)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -115,6 +116,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - MID.x, z - MID.z) / MID.r) * 1.8);  // 中土
   m = Math.max(m, (1 - Math.hypot(x - HOG.x, z - HOG.z) / HOG.r) * 1.8);  // 霍格沃茨
   m = Math.max(m, (1 - Math.hypot(x - MOB.x, z - MOB.z) / MOB.r) * 1.8);  // 南塔开特捕鲸港
+  m = Math.max(m, (1 - Math.hypot(x - SPT.x, z - SPT.z) / SPT.r) * 1.8);  // 体育岛
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
@@ -169,6 +171,10 @@ function height(x, z) {
   h = h * (1 - smooth01(clamp(1 - mbt / 52, 0, 1)) * .88) + 6 * smooth01(clamp(1 - mbt / 52, 0, 1)) * .88;
   const mbf = Math.hypot(x - 120, z - 697);            // 渡口浅滩(北岸)
   h = h * (1 - smooth01(clamp(1 - mbf / 18, 0, 1)) * .95) + 2.2 * smooth01(clamp(1 - mbf / 18, 0, 1)) * .95;
+  const spf = Math.hypot(x - SPT.x, z - SPT.z);        // 体育岛整平(球场基座)
+  h = h * (1 - smooth01(clamp(1 - spf / 72, 0, 1)) * .92) + 6 * smooth01(clamp(1 - spf / 72, 0, 1)) * .92;
+  const spd2 = Math.hypot(x + 678, z - 120);           // 体育岛渡口浅滩(东岸)
+  h = h * (1 - smooth01(clamp(1 - spd2 / 18, 0, 1)) * .95) + 2.2 * smooth01(clamp(1 - spd2 / 18, 0, 1)) * .95;
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -500,6 +506,7 @@ const WORLDS = [
   { key: 'lotr', icon: '💍', name: '指环王 · 中土', en: 'Middle-earth', open: true, desc: '西有夏尔炊烟,东有魔多火山' },
   { key: 'hp', icon: '⚡', name: '哈利·波特', en: 'Wizarding World', open: false, desc: '霍格沃茨已通车——请走主岛 9¾ 站台', note: '🚂 乘特快列车' },
   { key: 'mob', icon: '🐳', name: '莫比·迪克', en: 'Moby-Dick', open: true, desc: '南塔开特捕鲸港 · 白鲸在环岛海域出没' },
+  { key: 'sport', icon: '⚽', name: '体育岛', en: 'Sports Isle', open: true, desc: '一万人红色梦剧场 · 曼联 vs 曼城进行中' },
   { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
 ];
 function ferryCard() {
@@ -630,6 +637,18 @@ function mobCard(type) {
     <div class="cardDesc">亚哈把它钉进桅杆,吼声传遍码头:<br>"谁第一个望见那头白头白背的鲸——这枚金币就是谁的!"</div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-dblaccept>🔭 接下悬赏,望向大海</button></div>`;
 }
+/* --- 体育岛卡片 --- */
+function sptCard(type) {
+  if (type === 'stadium') return `<div class="cardHead" style="background:#c8102e">🏟️ 梦剧场 · Theatre of Dreams</div>
+    <div class="cardMedia"><div class="paperRoll">🏟️</div></div>
+    <div class="cardTitle"><h3>红色梦剧场</h3><div class="en">容量 10,000 · 主队:曼联</div></div>
+    <div class="cardDesc">20 层看台自草坪螺旋升起,红色外坡道缠绕整座球场两周;东南西北四座出口大门,四角泛光灯彻夜通明。<br><br>
+    今日赛事:<b>曼彻斯特德比</b>——曼联 vs 曼城。从南门(出口3)入场,不需要门票,需要嗓子。</div>`;
+  return `<div class="cardHead" style="background:#2e8b3d">⚽ 场边 · 德比进行中</div>
+    <div class="cardMedia"><div class="paperRoll">⚽</div></div>
+    <div class="cardTitle"><h3>曼联 ${score[0]} : ${score[1]} 曼城</h3><div class="en">MANCHESTER DERBY · LIVE</div></div>
+    <div class="cardDesc">红衫与蓝衫在草皮上追逐,皮球在脚下传导。弗格森在场边嚼着口香糖,瓜迪奥拉的手势越来越复杂。<br><br>看台上一万人的声浪一阵接一阵——进球时,你会听见整座岛在震。</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'news') return newsCard();
@@ -639,6 +658,7 @@ function buildCard(s) {
   if (cat === 'lotr') return lotrCard(s.type);
   if (cat === 'hp') return hpCard(s.type, s);
   if (cat === 'mob') return mobCard(s.type);
+  if (cat === 'spt') return sptCard(s.type);
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -712,7 +732,7 @@ function openCard(s) {
   bindGear(() => openCard(s));
   cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.goworld;
-    const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], main: [372, 12] };
+    const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], sport: [-688, 122], main: [372, 12] };
     const dest = dests[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
@@ -720,7 +740,8 @@ function openCard(s) {
       : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多'
       : k === 'hp' ? '⚡ 呜——!霍格沃茨特快抵达霍格莫德站'
       : k === 'mainstation' ? '🚂 呜——!列车抵达 9¾ 站台'
-      : k === 'mob' ? '🐳 南塔开特到了。海上有咸腥味,和一个关于白鲸的传说' : '🐋 回到收藏之岛(主世界)');
+      : k === 'mob' ? '🐳 南塔开特到了。海上有咸腥味,和一个关于白鲸的传说'
+      : k === 'sport' ? '⚽ 体育岛到了——听,梦剧场的声浪!' : '🐋 回到收藏之岛(主世界)');
   }));
   cardBody.querySelector('[data-chowder]')?.addEventListener('click', () => {
     if (!spendSB(4)) return;
@@ -824,7 +845,7 @@ $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidd
 $('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
-let actx = null, musicGain = null, musicOn = true, waveGain = null;
+let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null;
 let musicZone = 'street', nextBeat = 0, beatCount = 0, melIdx = 3;
 const THEMES = {
   street:    { tempo: 96,  wave: 'triangle', scale: [0, 2, 4, 7, 9, 12],   base: 220, dens: .5, bass: true },
@@ -842,6 +863,7 @@ const THEMES = {
   mordor:    { tempo: 58, wave: 'sine', scale: [0, 1, 3, 6, 7], base: 87, dens: .35, pad: true, vol: .85 },
   hogwarts:  { tempo: 96, wave: 'sine', scale: [0, 3, 5, 7, 8, 12], base: 392, dens: .6, arp: true, vol: .8 },
   mobydick:  { tempo: 76, wave: 'triangle', scale: [0, 3, 5, 7, 10], base: 165, dens: .55, bass: true, swing: true },
+  stadium:   { tempo: 104, wave: 'square', scale: [0, 2, 4, 5, 7], base: 196, dens: .5, bass: true, vol: .5 },
 };
 function note(freq, t, dur, wave, vol) {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -892,6 +914,12 @@ function initAudio() {
     waveGain = actx.createGain(); waveGain.gain.value = 0;
     src.connect(filt).connect(waveGain).connect(actx.destination);
     src.start();
+    // 球场人声:带通噪声,靠近梦剧场渐强,进球时爆发
+    const src2 = actx.createBufferSource(); src2.buffer = buf; src2.loop = true;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = .8;
+    crowdGain = actx.createGain(); crowdGain.gain.value = 0;
+    src2.connect(bp).connect(crowdGain).connect(actx.destination);
+    src2.start();
     setInterval(scheduler, 140);
   } catch (e) {}
 }
@@ -1159,7 +1187,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon'].includes(type) ? null : pickers[cat]();
+  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch'].includes(type) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -2076,6 +2104,134 @@ let mobyWhale = null, mobySpout = null;
     new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0, depthWrite: false }));
   scene.add(mobySpout);
 }
+/* ================= 多元宇宙 5 号:体育岛(红色梦剧场) ================= */
+let matchPlayers = [], matchBall = null, score = [0, 0], scoreTex = null, scoreCtx = null;
+let nextGoalT = 50, crowdBoost = 0, ballTarget = 0, ballSwapT = 0;
+function updateScoreboard(minute) {
+  if (!scoreCtx) return;
+  const c = scoreCtx;
+  c.fillStyle = '#0e0e12'; c.fillRect(0, 0, 512, 150);
+  c.strokeStyle = '#c8102e'; c.lineWidth = 8; c.strokeRect(6, 6, 500, 138);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#fff'; c.font = 'bold 56px "Microsoft YaHei", sans-serif';
+  c.fillText(`曼联 ${score[0]} : ${score[1]} 曼城`, 256, 62);
+  c.fillStyle = '#ffd76a'; c.font = 'bold 30px sans-serif';
+  c.fillText(`${minute}'  MANCHESTER DERBY`, 256, 116);
+  scoreTex.needsUpdate = true;
+}
+{
+  const cx3 = SPT.x, cz3 = SPT.z, baseH = 6;
+  // —— 草坪(帆布纹理画线) ——
+  {
+    const pc = document.createElement('canvas'); pc.width = 512; pc.height = 340;
+    const c = pc.getContext('2d');
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#2e8b3d' : '#257933'; c.fillRect(i * 64, 0, 64, 340); }
+    c.strokeStyle = '#e8f5e8'; c.lineWidth = 4;
+    c.strokeRect(16, 16, 480, 308);
+    c.beginPath(); c.moveTo(256, 16); c.lineTo(256, 324); c.stroke();
+    c.beginPath(); c.arc(256, 170, 48, 0, 7); c.stroke();
+    c.strokeRect(16, 100, 70, 140); c.strokeRect(426, 100, 70, 140);
+    const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
+    const pitch = new THREE.Mesh(new THREE.PlaneGeometry(44, 29), new THREE.MeshLambertMaterial({ map: ptex }));
+    pitch.rotation.x = -Math.PI / 2; pitch.position.set(cx3, baseH + .12, cz3); scene.add(pitch);
+    // 球门
+    for (const sgn of [-1, 1]) {
+      const goal = box(.4, 2.4, 7, M.white); goal.position.set(cx3 + sgn * 21.5, baseH + 1.2, cz3); scene.add(goal);
+    }
+  }
+  // —— 20 层红色看台(碗状) ——
+  const redA = lam(0xc8102e), redB = lam(0x9c0c24);
+  redA.side = THREE.DoubleSide; redB.side = THREE.DoubleSide;
+  for (let i = 0; i < 20; i++) {
+    const r = 27 + i * 1.05;
+    const tier = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.0, 30, 1, true), i % 2 ? redA : redB);
+    tier.position.set(cx3, baseH + 1 + i * 1.02, cz3);
+    scene.add(tier);
+  }
+  // 顶檐与泛光灯
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(48.5, 48.5, .8, 30, 1, true),
+    new THREE.MeshLambertMaterial({ color: 0xe8e4dc, side: THREE.DoubleSide }));
+  rim.position.set(cx3, baseH + 21.6, cz3); scene.add(rim);
+  for (let i = 0; i < 4; i++) {
+    const a = i / 4 * Math.PI * 2 + Math.PI / 4;
+    const fx = cx3 + Math.cos(a) * 54, fz = cz3 + Math.sin(a) * 54;
+    const pole = cyl(.5, .7, 34, M.stone); pole.position.set(fx, baseH + 17, fz); scene.add(pole);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(6, 3.4, .8), new THREE.MeshBasicMaterial({ color: 0xfff8e0 }));
+    panel.position.set(fx, baseH + 34, fz); panel.lookAt(cx3, baseH + 10, cz3); scene.add(panel);
+    cirObs.push({ x: fx, z: fz, r: 1.2 });
+  }
+  // —— 螺旋上升的外坡道(缠绕两圈) ——
+  for (let i = 0; i < 72; i++) {
+    const tt = i / 72;
+    const a = tt * Math.PI * 4;
+    const rr = 51;
+    const seg = box(4.6, .5, 2.4, lam(0xe23b4e));
+    seg.position.set(cx3 + Math.cos(a) * rr, baseH + 1.5 + tt * 19, cz3 + Math.sin(a) * rr);
+    seg.rotation.y = -a;
+    scene.add(seg);
+  }
+  // —— 四座出口大门(东南西北) ——
+  const gateNames = ['北门 · 出口1', '东门 · 出口2', '南门 · 出口3', '西门 · 出口4'];
+  for (let i = 0; i < 4; i++) {
+    const a = i / 4 * Math.PI * 2 - Math.PI / 2;   // 北/东/南/西
+    const gx = cx3 + Math.cos(a) * 48, gz = cz3 + Math.sin(a) * 48;
+    const gate = box(9, 7, 5, lam(0x6b0a18)); gate.position.set(gx, baseH + 3.5, gz); gate.rotation.y = -a; scene.add(gate);
+    const arch = box(4.5, 5, 5.4, lam(0x1c1014)); arch.position.set(gx, baseH + 2.5, gz); arch.rotation.y = -a; scene.add(arch);
+    const gs2 = makeSign(gateNames[i], 4.6, '#6b0a18', '#ffd76a');
+    gs2.position.set(gx, baseH + 8.2, gz); gs2.rotation.y = -a + Math.PI / 2; scene.add(gs2);
+  }
+  // 看台外墙碰撞(留南门缺口)
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    if (Math.abs(((a - Math.PI / 2 + Math.PI * 3) % (Math.PI * 2)) - Math.PI) > Math.PI - .5) continue;   // 南门通行
+    cirObs.push({ x: cx3 + Math.cos(a) * 47, z: cz3 + Math.sin(a) * 47, r: 13 });
+  }
+  // —— 记分牌(北侧高悬) ——
+  {
+    const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 150;
+    scoreCtx = sc2.getContext('2d');
+    scoreTex = new THREE.CanvasTexture(sc2); scoreTex.colorSpace = THREE.SRGBColorSpace;
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(17, 5),
+      new THREE.MeshBasicMaterial({ map: scoreTex, side: THREE.DoubleSide }));
+    board.position.set(cx3, baseH + 27, cz3 - 46); scene.add(board);
+    updateScoreboard(0);
+  }
+  // —— 场上 22 名球员 + 皮球(德比进行中) ——
+  for (let i = 0; i < 22; i++) {
+    const home = i < 11;
+    const g = new THREE.Group();
+    const bodyP = cyl(.35, .42, 1.1, lam(home ? 0xc8102e : 0x6cabdd)); bodyP.position.y = .85; g.add(bodyP);
+    const headP = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6), lam(0xf2c9a0)); headP.position.y = 1.7; g.add(headP);
+    const col = i % 11;
+    const ax = (home ? -1 : 1) * (3 + Math.floor(col / 4) * 6.5);
+    const az = (col % 4 - 1.5) * 6.5;
+    g.userData = { ax: cx3 + ax, az: cz3 + az, ph: i * 1.3, sp: .6 + (i % 5) * .18 };
+    g.position.set(g.userData.ax, baseH + .1, g.userData.az);
+    scene.add(g); matchPlayers.push(g);
+  }
+  matchBall = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  matchBall.position.set(cx3, baseH + .5, cz3);
+  scene.add(matchBall);
+  // —— 场外:队旗 / 渡口 / 岛名牌 ——
+  const f1 = makeSign('曼联 MUFC', 5, '#c8102e', '#ffd76a'); f1.position.set(cx3 - 12, baseH + 9, cz3 + 52); scene.add(f1);
+  const f2 = makeSign('曼城 MCFC', 5, '#6cabdd', '#1c2c4c'); f2.position.set(cx3 + 12, baseH + 9, cz3 + 52); scene.add(f2);
+  addSpot(cx3, cz3 + 51, 'spt', 'stadium', { r: 9 });
+  addSpot(cx3, cz3 + 17, 'spt', 'pitch', { r: 10 });
+  {
+    const dh3 = height(-682, 120);
+    const plank = box(9, .5, 5, M.wood); plank.position.set(-686, dh3 + .9, 120); scene.add(plank);
+    addSpot(-684, 120, 'ferry', 'ferry', { r: 8 });
+    const ss2 = makeSign('体育岛 · 梦剧场', 7, '#4a0a14', '#ffb8c4');
+    ss2.position.set(-700, height(-700, 138) + 4.4, 138); scene.add(ss2);
+  }
+  // —— 场边 NPC ——
+  addNpc({ x: cx3 - 8, z: cz3 + 46, name: '弗格森', body: 0x1c1c20, hat: 0xc8102e,
+    lines: ['补时阶段,才是我们的主场——弗格森时间!', 'Football, bloody hell!', '(嚼着口香糖,死死盯着场上)'] });
+  addNpc({ x: cx3 + 8, z: cz3 + 46, name: '瓜迪奥拉', body: 0x2c3e50, hat: 0x6cabdd, opts: { tall: 1.05 },
+    lines: ['传球!把球传起来!控住它!', '(蹲在场边,手势复杂得像在解微分方程)', '德比,从来没有容易两个字。'] });
+  addNpc({ x: cx3 - 20, z: cz3 + 50, name: '红魔球迷', body: 0xc8102e, hat: 0xffd76a, opts: { wide: 1.2 },
+    lines: ['Glory Glory Man United!', '两万条围巾,今天全到齐了!', '20 层看台,座无虚席——你听这声浪!'] });
+}
 /* 多元宇宙渡口(鲸岛东滩) */
 {
   const fh = height(380, 12);
@@ -2170,6 +2326,8 @@ function renderMinimap() {
   mctx.beginPath(); mctx.arc(W2X(HOG.x), W2Y(HOG.z), 2.6, 0, 7); mctx.fill();
   mctx.fillStyle = '#bfe0e8';   // 南塔开特
   mctx.beginPath(); mctx.arc(W2X(MOB.x), W2Y(MOB.z), 2.6, 0, 7); mctx.fill();
+  mctx.fillStyle = '#ff6b7e';   // 体育岛
+  mctx.beginPath(); mctx.arc(W2X(SPT.x), W2Y(SPT.z), 2.6, 0, 7); mctx.fill();
   if (mobyWhale && mobyWhale.position.y > -2.5) {   // 浮出的白鲸
     mctx.fillStyle = '#ffffff';
     mctx.beginPath(); mctx.arc(W2X(mobyWhale.position.x), W2Y(mobyWhale.position.z), 2.2, 0, 7); mctx.fill();
@@ -2190,6 +2348,7 @@ CP_MARKS.push({ x: TRU.x, z: TRU.z, col: '#f5c9d4' });
 CP_MARKS.push({ x: MID.x, z: MID.z, col: '#cfe8a8' });
 CP_MARKS.push({ x: HOG.x, z: HOG.z, col: '#cfb8ff' });
 CP_MARKS.push({ x: MOB.x, z: MOB.z, col: '#bfe0e8' });
+CP_MARKS.push({ x: SPT.x, z: SPT.z, col: '#ff6b7e' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -2528,10 +2687,10 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
-let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0;
+let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0, lastScoreMin = -1;
 /* 鲸鸣:低频滑音 */
 function whaleCall() {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -2667,6 +2826,41 @@ function loop() {
       }
     }
   }
+  /* 梦剧场:德比进行中 */
+  if (matchBall) {
+    const minute = Math.floor(t / 4) % 90;
+    for (const p2 of matchPlayers) {
+      const u = p2.userData;
+      p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * 3.2;
+      p2.position.z = u.az + Math.cos(t * u.sp * .8 + u.ph) * 2.6;
+      p2.lookAt(matchBall.position.x, p2.position.y, matchBall.position.z);
+    }
+    ballSwapT -= dt;
+    if (ballSwapT <= 0) { ballSwapT = 1.4 + Math.random() * 1.2; ballTarget = Math.floor(Math.random() * matchPlayers.length); }
+    const tp = matchPlayers[ballTarget];
+    matchBall.position.x += (tp.position.x - matchBall.position.x) * Math.min(1, dt * 3);
+    matchBall.position.z += (tp.position.z - matchBall.position.z) * Math.min(1, dt * 3);
+    matchBall.position.y = 6.5 + Math.abs(Math.sin(t * 6)) * .5;
+    nextGoalT -= dt;
+    if (nextGoalT <= 0) {
+      nextGoalT = 55 + Math.random() * 60;
+      const homeGoal = Math.random() < .58;   // 主场优势
+      score[homeGoal ? 0 : 1]++;
+      updateScoreboard(minute);
+      crowdBoost = homeGoal ? 2.2 : 1.2;
+      if (Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < 260) {
+        toast(`⚽ GOOOAL!${homeGoal ? '曼联' : '曼城'}破门!曼联 ${score[0]} - ${score[1]} 曼城`);
+        blip(660); setTimeout(() => blip(880), 100); setTimeout(() => blip(1100), 200);
+      }
+    }
+    if (Math.floor(t) % 5 === 0 && Math.floor(t) !== lastScoreMin) { lastScoreMin = Math.floor(t); updateScoreboard(minute); }
+    crowdBoost = Math.max(0, crowdBoost - dt * .6);
+    if (crowdGain) {
+      const dStad = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z);
+      const tgt = clamp(1 - dStad / 240, 0, 1) * (.035 + crowdBoost * .05);
+      crowdGain.gain.value += (tgt - crowdGain.gain.value) * Math.min(1, dt * 3);
+    }
+  }
   /* 金色飞贼:绕场乱飞,碰到即抓住 */
   if (snitch) {
     if (snitch.visible) {
@@ -2796,12 +2990,13 @@ function loop() {
   const onMordor = onMid && Math.hypot(player.position.x - VOL.x, player.position.z - VOL.z) < 90;
   const onHog = Math.hypot(player.position.x - HOG.x, player.position.z - HOG.z) < HOG.r + 20;
   const onMob = Math.hypot(player.position.x - MOB.x, player.position.z - MOB.z) < MOB.r + 20;
-  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onTruman ? 'truman' : (hereKey || 'street'))))));
+  const onSpt = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < SPT.r + 20;
+  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (onTruman ? 'truman' : (hereKey || 'street')))))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))));
-  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))));
+  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')))))))));
+  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')))))))));
 
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
