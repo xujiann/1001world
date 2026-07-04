@@ -274,8 +274,8 @@ function paperHTML() {
   const issue = Math.floor((Date.now() - new Date('2026-01-01').getTime()) / 86400000);
   const shardLeft = 24 - shardsGot.length;
   return `<div class="paper">
-    <div class="pMast">万神殿日报</div>
-    <div class="pSub">THE PANTHEON DAILY · ${ds} · 第 ${issue} 期 · 收藏之岛唯一日报 · 售价 2 SB</div>
+    <div class="pMast">1001日报</div>
+    <div class="pSub">THE 1001 DAILY · ${ds} · 第 ${issue} 期 · 收藏之岛第一小报 · 售价 2 SB</div>
     <div class="pHead">《${esc(art.title)}》真迹今日在一〇〇一美术馆展出</div>
     <div class="pBody">${esc(art.artist)}(${esc(art.artist_en)})作于${esc(art.year)},馆藏来自${esc(art.loc)}。策展人称:"错过要再等一千零一夜。"</div>
     <div class="pCols">
@@ -291,13 +291,90 @@ function paperHTML() {
     广告位招租(请洽报亭墨丘利)</div>
   </div>`;
 }
+/* 万神殿日报(真实日报,联网直供 https://news-dev.goood.space) */
+const NEWS_BASE = 'https://news-dev.goood.space';
+const paper2Bought = () => { try { return localStorage.getItem('w1001.paper2') === todayStr(); } catch (e) { return false; } };
+function parsePantheon(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const date = (doc.querySelector('.masthead-v2__meta span') || { textContent: '' }).textContent.trim();
+  const tabs = [...doc.querySelectorAll('.tab-nav-v2__btn')].map(b => ({ key: b.dataset.tab, name: b.textContent.trim() }));
+  const grab = (el, sel) => { const n = el.querySelector(sel); return n ? n.textContent.trim() : ''; };
+  const heroes = [...doc.querySelectorAll('.hero-section')].map(h => ({
+    tab: h.dataset.tab,
+    title: grab(h, '.hero-title span') || grab(h, '.hero-title'),
+    lede: grab(h, '.hero-lede'),
+    href: (h.querySelector('a') || { getAttribute: () => '' }).getAttribute('href') || '',
+  })).filter(x => x.title);
+  const items = [...doc.querySelectorAll('.section-items-v2__item')].map(a => ({
+    tab: a.dataset.homeTab,
+    title: grab(a, 'h3 span') || grab(a, 'h3'),
+    lede: grab(a, '.item-v2__lede') || grab(a, '.section-lead-v2__lede'),
+    href: (a.querySelector('a') || { getAttribute: () => '' }).getAttribute('href') || '',
+  })).filter(x => x.title);
+  return { date, tabs, heroes, items };
+}
+function pantheonHTML(d) {
+  const link = h => h ? `${NEWS_BASE}${h}` : NEWS_BASE;
+  const secs = d.tabs.map(tb => {
+    const hero = d.heroes.find(h => h.tab === tb.key);
+    const its = d.items.filter(i => i.tab === tb.key).slice(0, 4);
+    if (!hero && !its.length) return '';
+    return `<div class="pHead" style="font-size:15px;border-bottom:1px solid #b9ae98;padding-bottom:4px">◈ ${esc(tb.name)}</div>
+      ${hero ? `<div class="pBody" style="border-bottom:none"><a href="${esc(link(hero.href))}" target="_blank" rel="noopener" style="color:#26211a;font-weight:800;text-decoration:none">${esc(hero.title)}</a><br><span style="font-size:12px">${esc(hero.lede).slice(0, 90)}…</span></div>` : ''}
+      <div class="pCols" style="padding-top:4px">${its.map(i =>
+        `<div><a href="${esc(link(i.href))}" target="_blank" rel="noopener" style="color:#26211a;font-weight:700;text-decoration:none">${esc(i.title)}</a><br>${esc(i.lede).slice(0, 56)}…</div>`).join('')}</div>`;
+  }).join('');
+  return `<div class="paper">
+    <div class="pMast">万神殿日报</div>
+    <div class="pSub">PANTHEON DAILY · ${esc(d.date)} · 联网直供 · 点标题读全文</div>
+    ${secs}
+    <div class="pFoot">内容由 news-dev.goood.space 提供 · 本报在报亭售价 3 SB,当日免费重读</div>
+  </div>
+  <div style="text-align:center;padding:10px"><button class="gBtn off" data-backstand>↩ 返回报亭</button></div>`;
+}
+function pantheonFallback() {
+  return `<div class="cardHead" style="background:#26211a">🏛️ 万神殿日报 · Pantheon Daily</div>
+    <div class="cardMedia"><div class="paperRoll">🏛️</div></div>
+    <div class="cardTitle"><h3>万神殿日报</h3><div class="en">PANTHEON DAILY · 真实世界日报</div></div>
+    <div class="cardDesc">墨丘利:"这份大报由报社直供,得去亭外看——我给你把门打开。"<br><br>
+    <span style="font-size:12px;color:#8a7c62">(在新窗口阅读,需登录报社账号;待报社开通跨域直供后,即可在游戏里直接翻阅)</span></div>
+    <div style="text-align:center;padding:0 0 16px">
+      <button class="again" data-openp2>🌐 打开万神殿日报</button>
+      <button class="gBtn off" data-backstand style="margin-left:8px">↩ 返回报亭</button></div>`;
+}
+async function openPantheon(s) {
+  cardBody.innerHTML = `<div class="cardHead" style="background:#26211a">🏛️ 万神殿日报</div><div class="cardDesc" style="padding:26px 22px">🕊️ 墨丘利取报中……</div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  let ok = false;
+  try {
+    const res = await fetch(NEWS_BASE + '/', { credentials: 'include' });
+    const data = parsePantheon(await res.text());
+    if (data.items.length || data.heroes.length) { cardBody.innerHTML = pantheonHTML(data); ok = true; }
+  } catch (e) { /* CORS 未开通或未登录 */ }
+  if (!ok) {
+    cardBody.innerHTML = pantheonFallback();
+    cardBody.querySelector('[data-openp2]')?.addEventListener('click', () => window.open(NEWS_BASE + '/', '_blank'));
+  }
+  cardBody.querySelector('[data-backstand]')?.addEventListener('click', () => openCard(s));
+}
+function showPaper1(s) {
+  cardBody.innerHTML = paperHTML() + '<div style="text-align:center;padding:10px"><button class="gBtn off" data-backstand>↩ 返回报亭</button></div>';
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelector('[data-backstand]')?.addEventListener('click', () => openCard(s));
+}
 function newsCard() {
-  if (paperBought()) return paperHTML();
   return `<div class="cardHead" style="background:#4a4438">🗞️ 报亭 · Newsstand</div>
-    <div class="cardMedia"><div class="paperRoll">📰</div></div>
-    <div class="cardTitle"><h3>万神殿日报</h3><div class="en">The Pantheon Daily · 今日刊</div></div>
-    <div class="cardDesc">墨丘利:"号外!全岛大事,尽在一纸。今天买过的,全天免费重读。"</div>
-    <div style="text-align:center;padding:0 0 16px"><button class="again" data-buypaper>🗞️ 买一份(2 SB)</button></div>`;
+    <div class="cardTitle" style="padding-top:18px"><h3>今日两刊</h3><div class="en">墨丘利:"小报知岛事,大报知天下。"</div></div>
+    <div style="padding:4px 20px 18px">
+      <div class="gRow"><div class="gi">🗞️</div>
+        <div class="gInfo"><b>1001日报</b> <span style="color:#8a7c62;font-size:12px">THE 1001 DAILY</span>
+        <div class="gDesc">收藏之岛本地小报:展讯 · 酒讯 · 鸟讯 · 乐评 · 寻物启事</div></div>
+        <button class="gBtn" data-buypaper>${paperBought() ? '免费重读' : '买一份 · 2 SB'}</button></div>
+      <div class="gRow"><div class="gi">🏛️</div>
+        <div class="gInfo"><b>万神殿日报</b> <span style="color:#8a7c62;font-size:12px">PANTHEON DAILY</span>
+        <div class="gDesc">真实世界日报:国际新闻 · 外媒看中国 · 科技 · 预测市场(联网直供)</div></div>
+        <button class="gBtn" data-buyp2>${paper2Bought() ? '再次翻阅' : '买一份 · 3 SB'}</button></div>
+    </div>`;
 }
 function buildCard(s) {
   const cat = s.cat;
@@ -375,11 +452,20 @@ function openCard(s) {
   });
   bindGear(() => openCard(s));
   cardBody.querySelector('[data-buypaper]')?.addEventListener('click', () => {
-    if (!spendSB(2)) return;
-    try { localStorage.setItem('w1001.paper', todayStr()); } catch (e) {}
-    toast('🗞️ 墨丘利:"慢用,今日的世界。" ⚡-2');
-    blip(740);
-    openCard(s);
+    if (!paperBought()) {
+      if (!spendSB(2)) return;
+      try { localStorage.setItem('w1001.paper', todayStr()); } catch (e) {}
+      toast('🗞️ 墨丘利:"1001日报,岛上的事都在这儿。" ⚡-2'); blip(740);
+    }
+    showPaper1(s);
+  });
+  cardBody.querySelector('[data-buyp2]')?.addEventListener('click', () => {
+    if (!paper2Bought()) {
+      if (!spendSB(3)) return;
+      try { localStorage.setItem('w1001.paper2', todayStr()); } catch (e) {}
+      toast('🏛️ 墨丘利:"万神殿日报,知天下。" ⚡-3'); blip(740);
+    }
+    openPantheon(s);
   });
   cardBody.querySelectorAll('[data-travel]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.travel, p = TRAVEL3D[k];
@@ -1250,7 +1336,7 @@ function addNpc(cfg) {
   addNpc({ x: 68, z: -218, y: hBooks, name: '博尔赫斯', body: 0x707b7c, hat: 0x515a5a, opts: { cane: true },
     lines: ['我一直暗暗设想,天堂应该是图书馆的模样。', '我写作,是为了时光流逝使我心安。', '任何一本书,都是一座小径分岔的花园。'] });
   addNpc({ x: 32, z: 57, name: '墨丘利', body: 0x5d7a99, hat: 0xd9b26a,
-    lines: ['号外号外!万神殿日报,今日新鲜出炉!', '两个算力币,知晓全岛大事。', '诸神也订这份报,你还在等什么?'] });
+    lines: ['号外号外!今日双刊到齐!', '1001日报知岛事,万神殿日报知天下。', '小报两个币,大报三个币,童叟无欺。', '诸神也订万神殿日报,你还在等什么?'] });
   addNpc({ x: 19, z: 214, name: '老装备', body: 0x3e5c46, hat: 0x2c4436,
     lines: ['要下海?先穿上泳衣,冷得很。', '这鱼竿,等得起戈多,更等得起鱼。', '装备上的广告位?去问墨丘利。'] });
 }
@@ -1696,7 +1782,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '万神殿日报(2 SB)', shop: '逛逛装备行' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5;
@@ -1926,4 +2012,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon };
