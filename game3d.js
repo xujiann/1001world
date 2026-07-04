@@ -73,6 +73,7 @@ const IS2 = { x: -720, z: -420, r: 150 };   // 灯塔屿
 const TRU = { x: 760, z: 560, r: 135 };     // 楚门的世界(多元宇宙 1 号岛)
 const MID = { x: -150, z: -700, r: 170 };   // 中土(多元宇宙 2 号岛)
 const VOL = { x: -50, z: -700 };            // 末日火山
+const HOG = { x: 660, z: -560, r: 150 };    // 霍格沃茨(多元宇宙 3 号岛)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -92,6 +93,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
   m = Math.max(m, (1 - Math.hypot(x - TRU.x, z - TRU.z) / TRU.r) * 1.8);  // 楚门的世界·桃源岛
   m = Math.max(m, (1 - Math.hypot(x - MID.x, z - MID.z) / MID.r) * 1.8);  // 中土
+  m = Math.max(m, (1 - Math.hypot(x - HOG.x, z - HOG.z) / HOG.r) * 1.8);  // 霍格沃茨
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
@@ -132,6 +134,16 @@ function height(x, z) {
   const mdk = Math.hypot(x + 150, z + 552);            // 中土渡口浅滩
   const mdw = smooth01(clamp(1 - mdk / 18, 0, 1));
   h = h * (1 - mdw * .96) + 2.2 * mdw * .96;
+  // 霍格沃茨:城堡山丘 / 车站台地 / 魁地奇球场 / 黑湖
+  const hgc = Math.hypot(x - 690, z + 592);
+  h = h * (1 - smooth01(clamp(1 - hgc / 52, 0, 1)) * .9) + 16 * smooth01(clamp(1 - hgc / 52, 0, 1)) * .9;
+  const hgs = Math.hypot(x - 585, z + 495);
+  h = h * (1 - smooth01(clamp(1 - hgs / 24, 0, 1)) * .92) + 3.2 * smooth01(clamp(1 - hgs / 24, 0, 1)) * .92;
+  const hgp = Math.hypot(x - 735, z + 505);
+  h = h * (1 - smooth01(clamp(1 - hgp / 30, 0, 1)) * .9) + 10 * smooth01(clamp(1 - hgp / 30, 0, 1)) * .9;
+  h -= smooth01(clamp(1 - Math.hypot(x - 600, z + 628) / 20, 0, 1)) * 10;   // 黑湖
+  const mss = Math.hypot(x - 140, z + 80);             // 主岛 9¾ 车站台地
+  h = h * (1 - smooth01(clamp(1 - mss / 24, 0, 1)) * .9) + 6.5 * smooth01(clamp(1 - mss / 24, 0, 1)) * .9;
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -398,7 +410,7 @@ function newsCard() {
 const WORLDS = [
   { key: 'truman', icon: '📺', name: '楚门的世界', en: 'The Truman Show', open: true, desc: '桃源岛 · 一座直播了三十年的摄影棚' },
   { key: 'lotr', icon: '💍', name: '指环王 · 中土', en: 'Middle-earth', open: true, desc: '西有夏尔炊烟,东有魔多火山' },
-  { key: 'hp', icon: '⚡', name: '哈利·波特', en: 'Wizarding World', open: false, desc: '霍格沃茨(在建)' },
+  { key: 'hp', icon: '⚡', name: '哈利·波特', en: 'Wizarding World', open: false, desc: '霍格沃茨已通车——请走主岛 9¾ 站台', note: '🚂 乘特快列车' },
   { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
 ];
 function ferryCard() {
@@ -408,7 +420,7 @@ function ferryCard() {
       <div class="gRow"><div class="gi">🐋</div><div class="gInfo"><b>收藏之岛(主世界)</b><div class="gDesc">鲸背上的一千零一收藏</div></div><button class="gBtn" data-goworld="main">返回</button></div>
       ${WORLDS.map(w => `<div class="gRow"><div class="gi">${w.icon}</div>
         <div class="gInfo"><b>${w.name}</b> <span style="color:#8a7c62;font-size:12px">${w.en}</span><div class="gDesc">${w.desc}</div></div>
-        ${w.open ? `<button class="gBtn" data-goworld="${w.key}">前往</button>` : '<button class="gBtn" disabled>在建</button>'}</div>`).join('')}
+        ${w.open ? `<button class="gBtn" data-goworld="${w.key}">前往</button>` : `<button class="gBtn" disabled>${w.note || '在建'}</button>`}</div>`).join('')}
     </div>`;
 }
 function trumanCard(type) {
@@ -466,6 +478,35 @@ function lotrCard(type) {
     <div class="cardTitle"><h3>霍比特人的家</h3><div class="en">Bag End, Hobbiton</div></div>
     <div class="cardDesc">门上刻着一行小字:"不请自来者恕不接待——推销魔戒者除外。"<br>门里飘出二次早餐的香气。</div>`;
 }
+/* --- 霍格沃茨卡片 --- */
+const HOUSES = [['格兰芬多', '🦁'], ['斯莱特林', '🐍'], ['拉文克劳', '🦅'], ['赫奇帕奇', '🦡']];
+function hpCard(type, s) {
+  if (type === 'train') {
+    const toHog = s.side === 'main';
+    return `<div class="cardHead" style="background:#7a1414">🚂 ${toHog ? '九又四分之三站台' : '霍格莫德站'}</div>
+      <div class="cardMedia"><div class="paperRoll">🚂</div></div>
+      <div class="cardTitle"><h3>霍格沃茨特快</h3><div class="en">${toHog ? "Platform 9¾ · King's Cross" : 'Hogsmeade Station'}</div></div>
+      <div class="cardDesc">${toHog ? '猩红色的蒸汽机车喷着白汽。检票员看了看你:"麻瓜?今天破例。"' : '晚课的钟声从城堡传来。回程列车已经烧好了锅炉。'}</div>
+      <div style="text-align:center;padding:0 0 16px"><button class="again" data-goworld="${toHog ? 'hp' : 'mainstation'}">🚂 ${toHog ? '开往霍格沃茨' : '返回收藏之岛'}</button></div>`;
+  }
+  if (type === 'castle') {
+    let house = null;
+    try { house = localStorage.getItem('w1001.house'); } catch (e) {}
+    return `<div class="cardHead" style="background:#2a2438">🏰 霍格沃茨城堡</div>
+      <div class="cardMedia"><div class="paperRoll">${house ? (HOUSES.find(h => h[0] === house) || ['', '🎩'])[1] : '🎩'}</div></div>
+      <div class="cardTitle"><h3>${house ? `你属于${house}` : '分院帽在等你'}</h3><div class="en">Hogwarts School of Witchcraft and Wizardry</div></div>
+      <div class="cardDesc">${house ? '帽子从不改口。为你的学院赢得荣耀吧!' : '一顶打满补丁的旧尖顶帽放在凳子上。它突然开口:"嗯——放哪儿呢?"'}</div>
+      ${house ? '' : '<div style="text-align:center;padding:0 0 16px"><button class="again" data-sorthat>🎩 戴上分院帽</button></div>'}`;
+  }
+  if (type === 'hoops') return `<div class="cardHead" style="background:#b8862e">🥅 魁地奇球场</div>
+    <div class="cardMedia"><div class="paperRoll">🧹</div></div>
+    <div class="cardTitle"><h3>魁地奇球场</h3><div class="en">Quidditch Pitch</div></div>
+    <div class="cardDesc">三根金环立在草地上。一颗金色的小东西正嗡嗡地绕场乱飞——<b>金色飞贼</b>!<br><br>追上它、碰到它就算抓住(奖 8 SB)。它很快,祝你好运。</div>`;
+  return `<div class="cardHead" style="background:#6b4a2b">🛖 海格小屋</div>
+    <div class="cardMedia"><div class="paperRoll">🐉</div></div>
+    <div class="cardTitle"><h3>猎场看守的小屋</h3><div class="en">Hagrid's Hut</div></div>
+    <div class="cardDesc">屋里传出茶壶的响声和某种……幼龙的喷嚏?门口挂着弩弓和一串鼹鼠皮。<br>海格:"进来喝茶!岩皮饼管够!"(建议委婉拒绝岩皮饼)</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'news') return newsCard();
@@ -473,6 +514,7 @@ function buildCard(s) {
   if (cat === 'ferry') return ferryCard();
   if (cat === 'truman') return trumanCard(s.type);
   if (cat === 'lotr') return lotrCard(s.type);
+  if (cat === 'hp') return hpCard(s.type, s);
   if (cat === 'sign') {
     return `<div class="cardHead" style="background:#5a7247">🧭 海岛路牌 · Signpost</div>
     <div class="cardTitle"><h3>要去哪儿?</h3><div class="en">Fast travel</div></div>
@@ -546,13 +588,23 @@ function openCard(s) {
   bindGear(() => openCard(s));
   cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.goworld;
-    const dests = { truman: [694, 624], lotr: [-150, -558], main: [372, 12] };
+    const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], main: [372, 12] };
     const dest = dests[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
     toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
-      : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多' : '🐋 回到收藏之岛(主世界)');
+      : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多'
+      : k === 'hp' ? '⚡ 呜——!霍格沃茨特快抵达霍格莫德站'
+      : k === 'mainstation' ? '🚂 呜——!列车抵达 9¾ 站台' : '🐋 回到收藏之岛(主世界)');
   }));
+  cardBody.querySelector('[data-sorthat]')?.addEventListener('click', () => {
+    const h2 = HOUSES[Math.floor(Math.random() * HOUSES.length)];
+    try { localStorage.setItem('w1001.house', h2[0]); } catch (e) {}
+    toast(`🎩 分院帽(沉吟片刻):"${h2[0]}!!" ${h2[1]}`);
+    blip(660); setTimeout(() => blip(990), 130);
+    const cs = spots.find(x2 => x2.type === 'castle');
+    if (cs) openCard(cs);
+  });
   cardBody.querySelector('[data-takering]')?.addEventListener('click', () => {
     hasRing = true;
     if (window.__ringMesh) window.__ringMesh.visible = false;
@@ -642,6 +694,7 @@ const THEMES = {
   truman:    { tempo: 118, wave: 'triangle', scale: [0, 4, 7, 9, 12], base: 294, dens: .68, bass: true, vol: .6 },
   shire:     { tempo: 90, wave: 'triangle', scale: [0, 2, 4, 7, 9], base: 220, dens: .6, bass: true },
   mordor:    { tempo: 58, wave: 'sine', scale: [0, 1, 3, 6, 7], base: 87, dens: .35, pad: true, vol: .85 },
+  hogwarts:  { tempo: 96, wave: 'sine', scale: [0, 3, 5, 7, 8, 12], base: 392, dens: .6, arp: true, vol: .8 },
 };
 function note(freq, t, dur, wave, vol) {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -959,7 +1012,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye'].includes(type) ? null : pickers[cat]();
+  const item = ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut'].includes(type) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -1671,6 +1724,104 @@ let sauronEye = null, lavaDisc = null;
   addNpc({ x: -75, z: -688, name: '咕噜', body: 0x7a8a6a, hat: 0x5a684e, opts: { tall: .8 },
     lines: ['我的宝贝……宝贝!!', '是它偷了它!滑溜的小贼!', '我们发誓,为宝贝的主人效劳……咕噜,咕噜。'] });
 }
+/* ================= 多元宇宙 3 号:霍格沃茨 ================= */
+let snitch = null, snitchT = 0;
+function makeTrain(x, z, ry) {
+  const g = new THREE.Group(); g.position.set(x, height(x, z), z); g.rotation.y = ry;
+  const base = box(7.5, .6, 2.6, lam(0x1c1c20)); base.position.y = 1; g.add(base);
+  const boiler = cyl(1.1, 1.1, 4.6, lam(0x9c1c1c), 12); boiler.rotation.z = Math.PI / 2; boiler.position.set(-1, 2.2, 0); g.add(boiler);
+  const cab = box(2.2, 2.6, 2.4, lam(0x7a1414)); cab.position.set(2.4, 2.6, 0); g.add(cab);
+  const roofT = box(2.6, .3, 2.8, lam(0x1c1c20)); roofT.position.set(2.4, 4, 0); g.add(roofT);
+  const funnel = cyl(.35, .55, 1.4, lam(0x1c1c20)); funnel.position.set(-2.6, 3.6, 0); g.add(funnel);
+  for (const [wx, sgn] of [[-2.2, 1], [-2.2, -1], [.2, 1], [.2, -1], [2.4, 1], [2.4, -1]]) {
+    const wheel = cyl(.7, .7, .3, lam(0x0e0e12), 10);
+    wheel.rotation.x = Math.PI / 2; wheel.position.set(wx, .8, sgn * 1.35); g.add(wheel);
+  }
+  scene.add(g);
+  cirObs.push({ x, z, r: 4 });
+  return g;
+}
+{
+  // —— 主岛:九又四分之三站台 ——
+  const sx = 140, sz2 = -80, sh3 = height(sx, sz2);
+  const platform = box(16, 1, 6, M.stone); platform.position.set(sx, sh3 + .5, sz2 + 5); scene.add(platform);
+  for (const rz of [-1.1, 1.1]) {   // 铁轨
+    const rail = box(30, .2, .3, lam(0x3a3a40)); rail.position.set(sx, sh3 + .3, sz2 - 2 + rz); scene.add(rail);
+  }
+  for (let i = 0; i < 7; i++) {
+    const tie = box(.5, .15, 3, M.woodDark); tie.position.set(sx - 12 + i * 4, sh3 + .22, sz2 - 2); scene.add(tie);
+  }
+  makeTrain(sx - 4, sz2 - 2, 0);
+  const wall = box(7, 5.6, 1.4, lam(0x8c4a3a));   // 红砖墙
+  wall.position.set(sx + 6, sh3 + 2.8, sz2 + 9); scene.add(wall);
+  boxObs.push({ x1: sx + 2.5, z1: sz2 + 8.3, x2: sx + 9.5, z2: sz2 + 9.7 });
+  const wsign = makeSign('9¾ 站台', 4, '#5a2c22', '#ffd76a');
+  wsign.position.set(sx + 6, sh3 + 6.2, sz2 + 8.2); scene.add(wsign);
+  addSpot(sx, sz2 + 3, 'hp', 'train', { r: 8, side: 'main' });
+  // —— 霍格莫德站(霍格沃茨岛) ——
+  const hx = 585, hz = -495, hh3 = height(hx, hz);
+  const plat2 = box(14, 1, 6, M.stone); plat2.position.set(hx, hh3 + .5, hz + 5); scene.add(plat2);
+  for (const rz of [-1.1, 1.1]) {
+    const rail = box(26, .2, .3, lam(0x3a3a40)); rail.position.set(hx, hh3 + .3, hz - 2 + rz); scene.add(rail);
+  }
+  makeTrain(hx + 3, hz - 2, 0);
+  const hsign = makeSign('霍格莫德站', 5, '#2a2438', '#cfb8ff');
+  hsign.position.set(hx - 5, hh3 + 4.6, hz + 8); scene.add(hsign);
+  addSpot(hx, hz + 3, 'hp', 'train', { r: 8, side: 'hog' });
+  // —— 霍格沃茨城堡(塔群) ——
+  const cx2 = 690, cz2 = -592, chh = height(cx2, cz2);
+  const keep = box(16, 14, 12, M.stone); keep.position.set(cx2, chh + 7, cz2); scene.add(keep);
+  const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(10, 6, 4), lam(0x2a3448));
+  keepRoof.rotation.y = Math.PI / 4; keepRoof.position.set(cx2, chh + 17, cz2); scene.add(keepRoof);
+  [[-11, -8, 22, 3], [11, -7, 26, 3.4], [-9, 7, 18, 2.6], [10, 8, 20, 2.8]].forEach(([ox, oz, th3, tr]) => {
+    const tower = cyl(tr, tr + .5, th3, M.stone, 10); tower.position.set(cx2 + ox, chh + th3 / 2, cz2 + oz); scene.add(tower);
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(tr + .7, 6, 10), lam(0x2a3448));
+    spire.position.set(cx2 + ox, chh + th3 + 3, cz2 + oz); scene.add(spire);
+    cirObs.push({ x: cx2 + ox, z: cz2 + oz, r: tr + 1 });
+  });
+  cirObs.push({ x: cx2, z: cz2, r: 10 });
+  const gate = box(4, 6, 1, lam(0x3a3026)); gate.position.set(cx2, chh + 3, cz2 + 6.4); scene.add(gate);
+  addSpot(cx2, cz2 + 10, 'hp', 'castle', { r: 8 });
+  const csign = makeSign('霍格沃茨', 6, '#2a2438', '#ffd76a');
+  csign.position.set(cx2, chh + 22, cz2 + 2); scene.add(csign);
+  // —— 魁地奇球场 + 金色飞贼 ——
+  const px3 = 735, pz3 = -505, phh = height(px3, pz3);
+  [[-10, 0, 9], [0, 4, 11], [10, -2, 8]].forEach(([ox, oz, hp2]) => {
+    const pole = cyl(.25, .3, hp2, M.gold); pole.position.set(px3 + ox, phh + hp2 / 2, pz3 + oz); scene.add(pole);
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(1.6, .18, 8, 20), M.gold);
+    hoop.position.set(px3 + ox, phh + hp2 + 1.2, pz3 + oz); scene.add(hoop);
+    cirObs.push({ x: px3 + ox, z: pz3 + oz, r: .8 });
+  });
+  addSpot(px3, pz3 - 8, 'hp', 'hoops', { r: 8 });
+  snitch = new THREE.Group();
+  const sBall = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8),
+    MOBILE ? new THREE.MeshLambertMaterial({ color: 0xffd76a }) : new THREE.MeshStandardMaterial({ color: 0xffd76a, roughness: .25, metalness: .9 }));
+  snitch.add(sBall);
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xf5f0e0, transparent: true, opacity: .85, side: THREE.DoubleSide });
+  const wl2 = new THREE.Mesh(new THREE.PlaneGeometry(.9, .3), wingMat); wl2.position.x = -.6; snitch.add(wl2);
+  const wr2 = new THREE.Mesh(new THREE.PlaneGeometry(.9, .3), wingMat); wr2.position.x = .6; snitch.add(wr2);
+  snitch.userData = { cx: px3, cz: pz3, cy: phh, wl: wl2, wr: wr2 };
+  scene.add(snitch);
+  // —— 禁林与海格小屋 ——
+  [[600, -560], [615, -545], [590, -540], [625, -565], [605, -580], [635, -540]].forEach(([tx2, tz2]) => makeTree(tx2, tz2, 1.3 + rnd() * .5, null));
+  const hutH = height(640, -530);
+  const hut = cyl(3.4, 3.8, 3.6, M.stone, 10); hut.position.set(640, hutH + 1.8, -530); scene.add(hut);
+  const hutRoof = new THREE.Mesh(new THREE.ConeGeometry(4.4, 3.2, 10), lam(0x6b4a2b));
+  hutRoof.position.set(640, hutH + 5.2, -530); scene.add(hutRoof);
+  cirObs.push({ x: 640, z: -530, r: 4.2 });
+  addSpot(640, -524, 'hp', 'hut', { r: 7 });
+  // —— 原著 NPC ——
+  addNpc({ x: 684, z: -578, name: '哈利', body: 0x2a2a30, hat: 0x1c1c20,
+    lines: ['我是……就是哈利。', '呼神护卫!!(一道银光掠过)', '是霍格沃茨,把我变成今天的我。'] });
+  addNpc({ x: 694, z: -576, name: '赫敏', body: 0x6b3a5a, hat: 0x8a5a3a,
+    lines: ['是"漂浮咒"!Wing-GAR-dium Levi-O-sa,O 要读长音!', '我在《霍格沃茨:一段校史》里读到过。', '打败黑魔王靠的是书本和聪明——还有勇气。'] });
+  addNpc({ x: 676, z: -570, name: '罗恩', body: 0xb03a2e, hat: 0xd97c3a,
+    lines: ['梅林的胡子!', '要不……我们先吃点东西?', '她是真的可怕(小声):我说赫敏。'] });
+  addNpc({ x: 690, z: -602, name: '邓布利多', body: 0x4a3a6a, hat: 0x8a7ab0, opts: { hat: 'cone', tall: 1.15, cane: true },
+    lines: ['幸福,属于那些在黑暗中仍记得点灯的人。', '决定我们成为什么样的人的,不是能力,而是选择。', '对聪明绝顶的头脑而言,死亡不过是下一场伟大的冒险。'] });
+  addNpc({ x: 646, z: -524, name: '海格', body: 0x4a3626, hat: 0x2e2418, opts: { wide: 1.7, tall: 1.3 },
+    lines: ['你是一个巫师,哈利!', '我本不该说这个的……当我没说!', '再来块岩皮饼?自家烤的。'] });
+}
 /* 多元宇宙渡口(鲸岛东滩) */
 {
   const fh = height(380, 12);
@@ -1761,6 +1912,8 @@ function renderMinimap() {
   mctx.beginPath(); mctx.arc(W2X(TRU.x), W2Y(TRU.z), 2.6, 0, 7); mctx.fill();
   mctx.fillStyle = '#cfe8a8';   // 中土
   mctx.beginPath(); mctx.arc(W2X(MID.x), W2Y(MID.z), 2.6, 0, 7); mctx.fill();
+  mctx.fillStyle = '#cfb8ff';   // 霍格沃茨
+  mctx.beginPath(); mctx.arc(W2X(HOG.x), W2Y(HOG.z), 2.6, 0, 7); mctx.fill();
   // 玩家朝向箭头
   const px = W2X(player.position.x), py = W2Y(player.position.z);
   mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
@@ -1775,6 +1928,7 @@ const CP_MARKS = ZONES3D.filter(z => z.key !== 'plaza').map(z => ({ x: z.x, z: z
 CP_MARKS.push({ x: IS2.x, z: IS2.z, col: '#ffe9a8' });
 CP_MARKS.push({ x: TRU.x, z: TRU.z, col: '#f5c9d4' });
 CP_MARKS.push({ x: MID.x, z: MID.z, col: '#cfe8a8' });
+CP_MARKS.push({ x: HOG.x, z: HOG.z, col: '#cfb8ff' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -2113,7 +2267,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋' };
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5;
@@ -2225,6 +2379,27 @@ function loop() {
   if (window.__flame) window.__flame.scale.setScalar(1 + Math.sin(t * 9) * .18);
   trumanCams.forEach((m2, i) => m2.color.setHex(Math.sin(t * 4 + i * 2) > 0 ? 0xff2222 : 0x481414));
   if (sauronEye) { sauronEye.lookAt(player.position.x, player.position.y + 2, player.position.z); }   // 魔眼盯人
+  /* 金色飞贼:绕场乱飞,碰到即抓住 */
+  if (snitch) {
+    if (snitch.visible) {
+      const u = snitch.userData;
+      snitch.position.set(
+        u.cx + Math.sin(t * 1.7) * 16 + Math.sin(t * 3.3) * 5,
+        u.cy + 3.5 + Math.sin(t * 2.6) * 2 + Math.cos(t * 4.1) * 1,
+        u.cz + Math.cos(t * 1.3) * 13 + Math.cos(t * 2.9) * 5);
+      u.wl.rotation.y = Math.sin(t * 22) * .9; u.wr.rotation.y = -Math.sin(t * 22) * .9;
+      const dS = snitch.position.distanceTo(player.position);
+      if (dS < 3.2) {
+        snitch.visible = false; snitchT = 45;
+        earnSB(8);
+        toast('✨ 抓住了金色飞贼!⚡+8(45 秒后它会再出现)');
+        blip(990); setTimeout(() => blip(1320), 90);
+      }
+    } else {
+      snitchT -= dt;
+      if (snitchT <= 0) snitch.visible = true;
+    }
+  }
   if (lavaDisc) { const lp = 1 + Math.sin(t * 3) * .06; lavaDisc.scale.set(lp, 1, lp); lavaDisc.material.color.setHex(Math.sin(t * 5) > 0 ? 0xff5a1a : 0xff7a2e); }
   for (const s of spots) if (s.birdRef) s.birdRef.position.y = 12.7 + Math.sin(t * 2 + s.x) * .18;
   /* 星之碎片:旋转 + 浮动 + 拾取 */
@@ -2330,12 +2505,13 @@ function loop() {
   const onTruman = Math.hypot(player.position.x - TRU.x, player.position.z - TRU.z) < TRU.r + 20;
   const onMid = Math.hypot(player.position.x - MID.x, player.position.z - MID.z) < MID.r + 20;
   const onMordor = onMid && Math.hypot(player.position.x - VOL.x, player.position.z - VOL.z) < 90;
-  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onTruman ? 'truman' : (hereKey || 'street'))));
+  const onHog = Math.hypot(player.position.x - HOG.x, player.position.z - HOG.z) < HOG.r + 20;
+  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onTruman ? 'truman' : (hereKey || 'street')))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))));
-  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))));
+  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')))))));
+  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')))))));
 
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
