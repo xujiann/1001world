@@ -4421,6 +4421,52 @@ blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
 scene.add(player);
 let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
+
+/* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
+let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9;
+{
+  const GN = MOBILE ? 900 : 2000, R = MOBILE ? 30 : 42;
+  const bladeGeo = new THREE.ConeGeometry(.11, 1.15, 3);
+  bladeGeo.translate(0, .575, 0);   // 基部落到 y=0,便于自底摇摆
+  grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
+  grassMat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = { value: 0 };
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      `#include <begin_vertex>
+       #ifdef USE_INSTANCING
+         vec3 iP = instanceMatrix[3].xyz;
+       #else
+         vec3 iP = vec3(0.0);
+       #endif
+       float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * .16 * transformed.y;
+       transformed.x += wv; transformed.z += wv * .55;`);
+    grassMat.userData.shader = sh;
+  };
+  grassBlades = new THREE.InstancedMesh(bladeGeo, grassMat, GN);
+  grassBlades.frustumCulled = false;
+  scene.add(grassBlades);
+  grassBlades.userData = { GN, R, rnd: mulberry32(303) };
+  const gc = [new THREE.Color(0x5aa048), new THREE.Color(0x6cb556), new THREE.Color(0x4c8c40), new THREE.Color(0x7fb85e)];
+  for (let i = 0; i < GN; i++) grassBlades.setColorAt(i, gc[i % 4]);
+}
+function redistributeGrass(cx, cz) {
+  grassCx = cx; grassCz = cz;
+  const u = grassBlades.userData, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
+  for (let i = 0; i < u.GN; i++) {
+    const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    if (h > 2.6 && h < 19) {                 // 只长在草地高度带
+      e.set(0, u.rnd() * 6.2832, 0);
+      q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .8 + u.rnd() * .8, .9 + u.rnd() * .5);
+      m4.compose(p.set(x, h, z), q, s);
+    } else {
+      m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));   // 非草地:藏起
+    }
+    grassBlades.setMatrixAt(i, m4);
+  }
+  grassBlades.instanceMatrix.needsUpdate = true;
+  if (grassBlades.instanceColor) grassBlades.instanceColor.needsUpdate = true;
+}
 /* 恢复上次位置 */
 try {
   const sv = JSON.parse(PSTORE.getItem('w1001.pos3d') || 'null');
@@ -4610,6 +4656,12 @@ function loop() {
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = swimming ? 0 : .3;
+
+  /* 草地:移动超 7m 重铺一次,风摆逐帧 */
+  if (grassBlades) {
+    if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 49) redistributeGrass(player.position.x, player.position.z);
+    if (grassMat.userData.shader) grassMat.userData.shader.uniforms.uTime.value = t;
+  }
 
   /* 相机 */
   const cp = camPitch, off = new THREE.Vector3(Math.sin(camYaw) * Math.cos(cp), Math.sin(cp), Math.cos(camYaw) * Math.cos(cp)).multiplyScalar(camDist);
