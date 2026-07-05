@@ -1461,6 +1461,8 @@ $('btnStart').addEventListener('click', () => {
     else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
   }, 2600);
+  // 节日彩蛋播报
+  if (FESTIVAL) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 4800);
 });
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
@@ -1628,6 +1630,33 @@ const FULLMOON = (() => {
   const phase = ((days % 29.53059) + 29.53059) % 29.53059;
   return Math.abs(phase - 14.7653) < 1.4;
 })();
+/* 节日彩蛋:按真实日期触发。农历节日用 2026-2028 硬表;可 ?fest=key 强制预览 */
+const FEST_DEFS = {
+  spring:     { name: '春节', emoji: '🧧', color: 0xd94040, hue: 'red',   flavor: '新春大吉!花果山猴群闹春,广场挂起红灯笼' },
+  lantern:    { name: '元宵节', emoji: '🏮', color: 0xff8a3c, hue: 'red',   flavor: '正月十五闹元宵——大观园的灯谜,巴格达的花灯' },
+  dragon:     { name: '端午节', emoji: '🐉', color: 0x2e8b57, hue: 'green', flavor: '端午安康!梁山泊龙舟竞渡,粽叶飘香' },
+  midautumn:  { name: '中秋节', emoji: '🌕', color: 0xffe08a, hue: 'gold',  flavor: '海上生明月——今夜月最圆,潮最盛' },
+  christmas:  { name: '圣诞节', emoji: '🎄', color: 0xffffff, hue: 'snow',  flavor: '雪落多元宇宙,愿你收到想要的礼物' },
+  halloween:  { name: '万圣节', emoji: '🎃', color: 0xe8963c, hue: 'purple', flavor: '兰若寺今夜格外热闹,聂小倩说她也想要糖' },
+  newyear:    { name: '元旦', emoji: '🎉', color: 0xffd76a, hue: 'gold',  flavor: '新的一年,新的一千零一种美好' },
+  children:   { name: '儿童节', emoji: '🎈', color: 0x66c2ff, hue: 'gold',  flavor: '今天所有人都是小孩——爱丽丝请你喝下午茶' },
+};
+const FEST_BY_YMD = {
+  '2026-02-17': 'spring', '2027-02-06': 'spring', '2028-01-26': 'spring',
+  '2026-03-03': 'lantern', '2027-02-20': 'lantern', '2028-02-09': 'lantern',
+  '2026-06-19': 'dragon', '2027-06-09': 'dragon', '2028-05-28': 'dragon',
+  '2026-09-25': 'midautumn', '2027-09-15': 'midautumn', '2028-10-03': 'midautumn',
+};
+const FEST_BY_MD = { '12-24': 'christmas', '12-25': 'christmas', '10-31': 'halloween', '01-01': 'newyear', '06-01': 'children' };
+const FESTIVAL = (() => {
+  const forced = new URLSearchParams(location.search).get('fest');
+  if (forced && FEST_DEFS[forced]) return Object.assign({ key: forced }, FEST_DEFS[forced]);
+  const d = new Date();
+  const ymd = d.toISOString().slice(0, 10);
+  const key = FEST_BY_YMD[ymd] || FEST_BY_MD[ymd.slice(5)];
+  return key ? Object.assign({ key }, FEST_DEFS[key]) : null;
+})();
+const MOON_FULL = FULLMOON || (FESTIVAL && FESTIVAL.key === 'midautumn');   // 中秋强制满月
 let rainPts = null;
 if (WEATHER === 'rain') {
   const N4 = 480, arr2 = new Float32Array(N4 * 3);
@@ -1643,6 +1672,19 @@ if (WEATHER === 'rain') {
   scene.add(rainPts);
 }
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
+/* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
+let festPts = null;
+if (FESTIVAL) {
+  const N5 = 420, arr3 = new Float32Array(N5 * 3);
+  const rr3 = mulberry32(88);
+  for (let i = 0; i < N5; i++) { arr3[i * 3] = (rr3() - .5) * 130; arr3[i * 3 + 1] = rr3() * 70; arr3[i * 3 + 2] = (rr3() - .5) * 130; }
+  const g5 = new THREE.BufferGeometry();
+  g5.setAttribute('position', new THREE.BufferAttribute(arr3, 3));
+  const snowy = FESTIVAL.hue === 'snow';
+  festPts = new THREE.Points(g5, new THREE.PointsMaterial({ color: FESTIVAL.color, size: snowy ? 2.4 : 2, transparent: true, opacity: snowy ? .85 : .7, sizeAttenuation: false }));
+  festPts.userData = { fall: snowy ? 10 : 16, sway: snowy ? 1 : .3 };
+  scene.add(festPts);
+}
 /* --- 月亮(夜间升起,月光洒海) --- */
 let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0, springTideToldT = 0;
 const moonDirN = new THREE.Vector3(0, 1, 0);
@@ -1693,13 +1735,13 @@ function updateDayNight(t) {
   moonMesh.position.copy(player.position).addScaledVector(moonDirN, 820);
   moonGlow.position.copy(moonMesh.position);
   moonMesh.visible = moonGlow.visible = night > .05;
-  moonGlow.material.opacity = night * (FULLMOON ? .34 : .18);   // 满月更亮
-  moonLight.intensity = night * (FULLMOON ? .75 : .5);
-  if (FULLMOON && !springTideToldT && night > .4) { springTideToldT = 1; toast('🌕 满月大潮之夜——海水涨得比平日更高'); }
+  moonGlow.material.opacity = night * (MOON_FULL ? .34 : .18);   // 满月更亮
+  moonLight.intensity = night * (MOON_FULL ? .75 : .5);
+  if (MOON_FULL && !springTideToldT && night > .4) { springTideToldT = 1; toast('🌕 满月大潮之夜——海水涨得比平日更高'); }
   moonLight.position.copy(player.position).addScaledVector(moonDirN, 300);
   moonLight.target.position.copy(player.position);
   /* 潮汐:月升潮涨 */
-  tideY = night * mElev * .9 * (FULLMOON ? 1.7 : 1);   // 满月大潮:潮位更高
+  tideY = night * mElev * .9 * (MOON_FULL ? 1.7 : 1);   // 满月大潮:潮位更高
   if (oceanWater) {
     oceanWater.position.y = .15 + tideY;
     oceanWater.material.uniforms.sunDirection.value.copy(night > .5 ? moonDirN : sunDirN);
@@ -4694,6 +4736,17 @@ function loop() {
       rp3.setY(i, y3);
     }
     rp3.needsUpdate = true;
+  }
+  if (festPts) {
+    festPts.position.copy(player.position);
+    const fp3 = festPts.geometry.attributes.position, fu = festPts.userData;
+    for (let i = 0; i < fp3.count; i++) {
+      let y4 = fp3.getY(i) - fu.fall * dt;
+      if (y4 < -6) y4 = 66;
+      fp3.setY(i, y4);
+      fp3.setX(i, fp3.getX(i) + Math.sin(y4 * .3 + i) * fu.sway * dt);   // 飘摆
+    }
+    fp3.needsUpdate = true;
   }
   if (windGain) {
     const wTar = clamp((player.position.y - 14) / 34, 0, 1) * .05 + (WEATHER === 'rain' ? .012 : 0);
