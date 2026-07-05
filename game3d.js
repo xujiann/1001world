@@ -38,7 +38,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -419,6 +419,27 @@ function openAccount() {
   });
 }
 
+/* --- 鉴赏里程碑:深化 1001 收藏,每类看得越多奖励越丰 --- */
+const MILE_TIERS = [[10, '🥉 初鉴', 10], [25, '🥈 品鉴', 25], [50, '🥇 精鉴', 50]];
+const mileGot = new Set((() => { try { return (PSTORE.getItem('w1001.mile') || '').split(',').filter(Boolean); } catch (e) { return []; } })());
+function mileTier(cat) {   // 返回该类当前已达最高段位图标(用于图鉴徽章)
+  const n = seen[cat] ? seen[cat].length : 0;
+  if (n >= (D[cat] ? D[cat].length : 1e9)) return '🏆';
+  if (n >= 50) return '🥇'; if (n >= 25) return '🥈'; if (n >= 10) return '🥉'; return '';
+}
+function checkMilestone(cat) {
+  const n = seen[cat].length;
+  const tiers = [...MILE_TIERS, [D[cat].length, '🏆 全收录', 100]];
+  for (const [th, nm, rw] of tiers) {
+    const key = cat + ':' + th;
+    if (n >= th && !mileGot.has(key)) {
+      mileGot.add(key);
+      try { PSTORE.setItem('w1001.mile', [...mileGot].join(',')); } catch (e) {}
+      earnSB(rw);
+      setTimeout(() => { toast(`${nm} · ${CATS[cat].name} 达成!⚡+${rw}`); blip(740); setTimeout(() => blip(990), 110); }, 450);
+    }
+  }
+}
 function markSeen(cat, id, title) {
   if (!CATS[cat]) return;
   if (!seen[cat].includes(id)) {
@@ -429,6 +450,7 @@ function markSeen(cat, id, title) {
     toast(`✦ 收录图鉴:${title} · ⚡+2`);
     blip(660); setTimeout(() => blip(880), 90);
     questBump(cat);
+    checkMilestone(cat);
   }
 }
 
@@ -1360,6 +1382,7 @@ function titleList() {
     { id: 'qian',   name: '🕯️ 兰若义士',   got: f.qian,    note: '井底救倩安魂' },
     { id: 'tao',    name: '🌸 桃源客',     got: f.tao,     note: '寻得桃花源秘境' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
+    { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
   ];
 }
 function updateTitleHUD() {
@@ -1418,10 +1441,11 @@ function openJournal() {
   list.innerHTML = qHtml + titleHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
+    const badge = mileTier(k);
     return `<div class="jRow"><div class="ico">${cfg.icon}</div>
-      <div class="info"><div class="nm">${cfg.name} <span style="color:#93a07f;font-weight:400">${cfg.en}</span></div>
+      <div class="info"><div class="nm">${cfg.name} ${badge}<span style="color:#93a07f;font-weight:400">${cfg.en}</span></div>
       <div class="jBar"><i style="--c:${cfg.color};width:${pct}%"></i></div>
-      <div class="tot">岛上在展 ${embed} · 完整收藏 ${cfg.tot} ${cfg.unit}</div></div>
+      <div class="tot">岛上在展 ${embed} · 完整收藏 ${cfg.tot} ${cfg.unit} · 鉴赏 10/25/50/全</div></div>
       <div class="num">${n}/${embed}</div>
       <a href="${cfg.link}" target="_blank" rel="noopener">网站 →</a></div>`;
   }).join('');
