@@ -10,7 +10,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=1';
+import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES } from './w-config.js?v=1';
 
 const D = window.WORLD_DATA;
@@ -154,9 +154,11 @@ function mouthDist(x, z) {                          // 嘴线(头部南缘的弧
 }
 function height(x, z) {
   const fall = smooth01(clamp(islandMask(x, z), 0, 1));
-  let h = -9 + fall * (13 + fbm(x * .008, z * .008) * 14);
+  // 域扭曲梯度噪声:内陆起伏更有机、有河谷走向(振幅与原值噪声一致,不改水位/海岸线)
+  let h = -9 + fall * (13 + warpFbm(x * .009, z * .009) * 14);
   const md = Math.hypot(x - 340, z + 320);            // 东北雪山(背鳍)
-  h += smooth01(clamp(1 - md / 200, 0, 1)) ** 2 * 55;
+  // 脊状多重分形:山坡刻出山脊线,峰高仍封顶 55,不影响营地整平
+  h += smooth01(clamp(1 - md / 200, 0, 1)) ** 2 * 55 * (.7 + .3 * ridged(x * .028, z * .028, 4));
   for (const zn of ZONES3D) {                          // 区域整平
     const zd = Math.hypot(x - zn.x, z - zn.z);
     const w = smooth01(clamp(1 - zd / (zn.r * 1.25), 0, 1));
@@ -234,6 +236,8 @@ function height(x, z) {
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
   h -= smooth01(clamp(1 - bd2 / WHALE_BLOW.r, 0, 1)) * 11;
+  // 海岸柔化:抬高 -3.5..+3.5 过渡带(修复新噪声下沉的栈桥,滩涂也更自然)
+  if (h > -3.5 && h < 3.5) h += (3.5 - Math.abs(h)) / 3.5 * 2.2;
   return h;
 }
 

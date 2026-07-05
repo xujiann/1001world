@@ -20,6 +20,35 @@ export function vnoise(x, z) {
 }
 export const fbm = (x, z) => vnoise(x, z) * .55 + vnoise(x * 2.17, z * 2.17) * .28 + vnoise(x * 4.9, z * 4.9) * .17;
 
+/* ---------- 梯度噪声(Perlin)+ 域扭曲 + 脊状:更有机的地貌 ---------- */
+function pgrad(ix, iz, fx, fz) {   // 单元格随机梯度点乘
+  const a = hash2(ix, iz) * 6.28318530718;
+  return Math.cos(a) * fx + Math.sin(a) * fz;
+}
+export function perlin(x, z) {     // 经典 Perlin,五次淡化,范围约 [-1,1]
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10), v = zf * zf * zf * (zf * (zf * 6 - 15) + 10);
+  const n00 = pgrad(xi, zi, xf, zf), n10 = pgrad(xi + 1, zi, xf - 1, zf);
+  const n01 = pgrad(xi, zi + 1, xf, zf - 1), n11 = pgrad(xi + 1, zi + 1, xf - 1, zf - 1);
+  const nx0 = n00 + u * (n10 - n00), nx1 = n01 + u * (n11 - n01);
+  return (nx0 + v * (nx1 - nx0)) * 1.4;
+}
+export function fbm2(x, z, oct = 4) {   // 分形叠加,范围约 [-1,1]
+  let a = 0, amp = .5, f = 1;
+  for (let i = 0; i < oct; i++) { a += perlin(x * f, z * f) * amp; f *= 2; amp *= .5; }
+  return a;
+}
+export function warpFbm(x, z) {          // 域扭曲(用噪声扰动采样坐标)→ 河谷走向,范围 [0,1]
+  const wx = fbm2(x + 5.2, z + 1.3, 3) * 1.6;
+  const wz = fbm2(x + 9.1, z + 4.7, 3) * 1.6;
+  return clamp(fbm2(x + wx, z + wz, 4) * .5 + .5, 0, 1);
+}
+export function ridged(x, z, oct = 4) {  // 脊状多重分形(山脊线),范围 [0,1]
+  let a = 0, amp = .5, f = 1;
+  for (let i = 0; i < oct; i++) { let n = 1 - Math.abs(perlin(x * f, z * f)); n *= n; a += n * amp; f *= 2; amp *= .5; }
+  return clamp(a, 0, 1);
+}
+
 /* ---------- 调色板 ---------- */
 export const PALETTE = ['#c0392b','#2980b9','#27ae60','#8e44ad','#d35400','#16a085','#f39c12','#7f8c8d','#c2185b','#5d4037'];
 export const hashCol = s => PALETTE[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
