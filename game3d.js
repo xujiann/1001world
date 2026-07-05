@@ -1631,20 +1631,43 @@ skyUni.turbidity.value = 7;
 skyUni.rayleigh.value = 1.6;
 skyUni.mieCoefficient.value = .004;
 skyUni.mieDirectionalG.value = .8;
-/* --- 星空(夜晚可见) --- */
+/* --- 星空(夜晚可见:软圆星点 + 亮度/色温变化 + 银河带) --- */
 let starField;
 {
-  const n = 500, posArr = new Float32Array(n * 3);
+  // 软圆星点贴图(径向渐变)
+  const sc0 = document.createElement('canvas'); sc0.width = sc0.height = 32;
+  const sctx = sc0.getContext('2d');
+  const grd = sctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(.35, 'rgba(255,255,255,.75)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  sctx.fillStyle = grd; sctx.fillRect(0, 0, 32, 32);
+  const starTex = new THREE.CanvasTexture(sc0);
+  const n = 1100, posArr = new Float32Array(n * 3), colArr = new Float32Array(n * 3);
   const r0 = mulberry32(99);
+  const cWarm = new THREE.Color(0xfff0d0), cCool = new THREE.Color(0xcfe0ff), cW = new THREE.Color(0xffffff);
   for (let i = 0; i < n; i++) {
-    const a = r0() * Math.PI * 2, e = Math.acos(r0() * .95);   // 上半球
+    let a, e;
+    if (i < 320) {          // 银河带:聚在一条倾斜大圆附近
+      a = r0() * Math.PI * 2;
+      e = Math.acos(clamp((r0() - .5) * .28 + .45, 0, .95)) ;
+      a += Math.sin(e * 3) * .5;
+    } else {
+      a = r0() * Math.PI * 2; e = Math.acos(r0() * .95);   // 上半球均匀
+    }
     posArr[i * 3] = Math.sin(e) * Math.cos(a) * 1000;
     posArr[i * 3 + 1] = Math.cos(e) * 1000 + 40;
     posArr[i * 3 + 2] = Math.sin(e) * Math.sin(a) * 1000;
+    const t = r0(), tint = t < .18 ? cWarm : t < .34 ? cCool : cW;
+    const b = i < 320 ? .35 + r0() * .35 : .5 + r0() * .5;   // 银河带偏暗,主星偏亮
+    colArr[i * 3] = tint.r * b; colArr[i * 3 + 1] = tint.g * b; colArr[i * 3 + 2] = tint.b * b;
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-  starField = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
+  g.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+  starField = new THREE.Points(g, new THREE.PointsMaterial({
+    map: starTex, size: 4, transparent: true, opacity: 0, fog: false, sizeAttenuation: false,
+    vertexColors: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
   scene.add(starField);
 }
 /* --- 天气(按日期随机:晴/雨/雾) --- */
@@ -1776,7 +1799,8 @@ function updateDayNight(t) {
     oceanWater.material.uniforms.sunColor.value.setHex(night > .5 ? 0xbdd8ff : 0xffffff);
   }
   if (mobileWater) mobileWater.position.y = tideY;
-  starField.material.opacity = night * .95;
+  starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
+  starField.rotation.y = t * .006;                                        // 缓慢天旋
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
@@ -1820,7 +1844,8 @@ const TER = 3200, SEG = MOBILE ? 190 : 300;
     const sl = (Math.abs(hR - h) + Math.abs(hF - h)) * .28;  // 坡度(网格间距约 10.7,缩放到原 ±3 尺度)
     const lap = (hR + hL + hF + hB) * .25 - h;               // 曲率:>0 凹(汇水),<0 凸(山脊)
     const gj = fbm(x * .05, z * .05);                        // 草色/边界抖动
-    const grass = (gj > .52 ? cGrass1 : cGrass2).clone();
+    const biome = fbm(x * .0016, z * .0016);                 // 大尺度生物群系:大片区域暖/冷倾向
+    const grass = (gj > .52 ? cGrass1 : cGrass2).clone().offsetHSL((biome - .5) * .05, (biome - .5) * .14, (biome - .5) * .05);
     let c;
     if (Math.hypot(x - VOL.x, z - VOL.z) < 82 && h > 1) {    // 魔多焦土
       c = fbm(x * .07, z * .07) > .5 ? new THREE.Color(0x4a4038) : new THREE.Color(0x3a322c);
@@ -2050,9 +2075,15 @@ function paintingMesh(grp, lx, lz, ry, spot) {
 function makeTree(x, z, scale, birdCol) {
   const h = height(x, z);
   const grp = new THREE.Group(); grp.position.set(x, h, z);
-  const tr = cyl(.5 * scale, .7 * scale, 5 * scale, M.wood); tr.position.y = 2.5 * scale; grp.add(tr);
-  const c1 = new THREE.Mesh(new THREE.IcosahedronGeometry(3.4 * scale, 0), lam(0x4f9448)); c1.position.y = 6.4 * scale; grp.add(c1);
-  const c2 = new THREE.Mesh(new THREE.IcosahedronGeometry(2.4 * scale, 0), lam(0x5fae52)); c2.position.set(1.4 * scale, 8 * scale, .6 * scale); grp.add(c2);
+  const tr = cyl(.42 * scale, .7 * scale, 5 * scale, M.wood); tr.position.y = 2.5 * scale; grp.add(tr);
+  // 三团树冠 + 逐树色相微变(暖/冷绿)
+  const tv = (hash2(x, z) - .5) * .12;
+  const g1 = new THREE.Color(0x4f9448).offsetHSL(tv, 0, tv * .3);
+  const g2 = new THREE.Color(0x5fae52).offsetHSL(tv, 0, tv * .3);
+  const g3 = new THREE.Color(0x3e7a3a).offsetHSL(tv, 0, tv * .3);
+  const c0 = new THREE.Mesh(new THREE.IcosahedronGeometry(3.7 * scale, 0), lam(g3.getHex())); c0.position.y = 5.4 * scale; c0.scale.y = .82; grp.add(c0);
+  const c1 = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2 * scale, 0), lam(g1.getHex())); c1.position.set(-.8 * scale, 6.9 * scale, .5 * scale); grp.add(c1);
+  const c2 = new THREE.Mesh(new THREE.IcosahedronGeometry(2.3 * scale, 0), lam(g2.getHex())); c2.position.set(1.4 * scale, 8.1 * scale, .6 * scale); grp.add(c2);
   let bird = null;
   if (birdCol) {
     bird = new THREE.Group();
@@ -2394,17 +2425,26 @@ function collectShard(s) {
   }
   {
     const n = treePts.length;
-    const trunkI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .7, 5), M.wood, n);
-    const canoAI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.4, 0), lam(0x4f9448), n);
-    const canoBI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.4, 0), lam(0x5fae52), n);
+    const trunkI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.42, .7, 5), M.wood, n);
+    const canoLo = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.7, 0), lam(0xffffff), n);
+    const canoAI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.2, 0), lam(0xffffff), n);
+    const canoBI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), lam(0xffffff), n);
     const m4t = new THREE.Matrix4(), qt = new THREE.Quaternion(), st = new THREE.Vector3(), pt = new THREE.Vector3();
+    const gg1 = new THREE.Color(), gg2 = new THREE.Color(), gg3 = new THREE.Color();
     treePts.forEach(([x, z, h, sc], i) => {
       st.setScalar(sc);
       m4t.compose(pt.set(x, h + 2.5 * sc, z), qt, st); trunkI.setMatrixAt(i, m4t);
-      m4t.compose(pt.set(x, h + 6.4 * sc, z), qt, st); canoAI.setMatrixAt(i, m4t);
-      m4t.compose(pt.set(x + 1.4 * sc, h + 8 * sc, z + .6 * sc), qt, st); canoBI.setMatrixAt(i, m4t);
+      st.set(sc, sc * .82, sc);
+      m4t.compose(pt.set(x, h + 5.4 * sc, z), qt, st); canoLo.setMatrixAt(i, m4t);
+      st.setScalar(sc);
+      m4t.compose(pt.set(x - .8 * sc, h + 6.9 * sc, z + .5 * sc), qt, st); canoAI.setMatrixAt(i, m4t);
+      m4t.compose(pt.set(x + 1.4 * sc, h + 8.1 * sc, z + .6 * sc), qt, st); canoBI.setMatrixAt(i, m4t);
+      const tv = (hash2(x, z) - .5) * .13;   // 逐树色相微变
+      canoLo.setColorAt(i, gg3.setHex(0x3e7a3a).offsetHSL(tv, 0, tv * .3));
+      canoAI.setColorAt(i, gg1.setHex(0x4f9448).offsetHSL(tv, 0, tv * .3));
+      canoBI.setColorAt(i, gg2.setHex(0x5fae52).offsetHSL(tv, 0, tv * .3));
     });
-    [trunkI, canoAI, canoBI].forEach(im => { im.instanceMatrix.needsUpdate = true; scene.add(im); });
+    [trunkI, canoLo, canoAI, canoBI].forEach(im => { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; scene.add(im); });
   }
   const rockG = new THREE.IcosahedronGeometry(1.6, 0);
   for (let i = 0; i < 40; i++) {
