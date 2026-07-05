@@ -36,7 +36,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -481,7 +481,7 @@ function paperHTML() {
       <div><b>🌿 花讯</b><br>植物园「${esc(plant.zh)}」(${esc(plant.family)})正当时,解说牌照片已更新。</div>
       <div><b>⛰️ 户外专栏</b><br>雪峰营地本周主推:${esc(sport.name)}(难度 ${'●'.repeat(sport.diff)}${'○'.repeat(5 - sport.diff)})。</div>
     </div>
-    <div class="pFoot">天气:恒晴,傍晚有物理正确的晚霞,夜间星空营业,灯塔照常旋转 ·
+    <div class="pFoot">天气:${WEATHER === 'rain' ? '全域有雨,渔汛正旺,出门带蓑衣' : WEATHER === 'fog' ? '大雾,能见度低,塞壬海域尤请谨慎' : '晴,傍晚有物理正确的晚霞'},夜间星空营业,灯塔照常旋转 ·
     寻物启事:全岛尚有 ${shardLeft} 枚星之碎片下落不明,拾获者奖 10 SB ·
     广告位招租(请洽报亭墨丘利)</div>
   </div>`;
@@ -569,6 +569,10 @@ function newsCard() {
         <div class="gInfo"><b>万神殿日报</b> <span style="color:#8a7c62;font-size:12px">PANTHEON DAILY</span>
         <div class="gDesc">真实世界日报:国际新闻 · 外媒看中国 · 科技 · 预测市场(联网直供)</div></div>
         <button class="gBtn" data-buyp2>${paper2Bought() ? '再次翻阅' : '买一份 · 3 SB'}</button></div>
+      <div class="gRow"><div class="gi">📜</div>
+        <div class="gInfo"><b>羊皮纸典藏创刊号</b> <span style="color:#8a7c62;font-size:12px">限量收藏</span>
+        <div class="gDesc">1001日报创刊号复刻,羊皮纸印制,全岛仅一份</div></div>
+        <button class="gBtn" data-vellum>${PSTORE.getItem('w1001.vellum') === '1' ? '已收藏 ✓' : '收藏 · 15 SB'}</button></div>
     </div>`;
 }
 /* --- 多元宇宙:世界列表与穿越 --- */
@@ -724,8 +728,12 @@ function mobCard(type) {
     <div class="cardDesc">亚哈把它钉进桅杆,吼声传遍码头:<br>"谁第一个望见那头白头白背的鲸——这枚金币就是谁的!"</div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-dblaccept>🔭 接下悬赏,望向大海</button></div>`;
 }
-let scaleT = 0, curDA = 1;
+let scaleT = 0, curDA = 1, photoFilter = 0;
+const PHOTO_FILTERS = [['原色', ''], ['旧梦', 'sepia(.55) contrast(1.06)'], ['黑白', 'grayscale(1) contrast(1.12)'], ['暖阳', 'saturate(1.4) hue-rotate(-8deg) brightness(1.04)'], ['冷冽', 'saturate(1.2) hue-rotate(12deg) contrast(1.1) brightness(.94)']];
 let windFlip = PSTORE.getItem('w1001.wind') === '1';
+/* 存档版本(为未来字段迁移预留) */
+const SAVE_V = '2';
+try { if (PSTORE.getItem('w1001.savev') !== SAVE_V) { /* v1→v2:字段全部向后兼容,无需迁移 */ PSTORE.setItem('w1001.savev', SAVE_V); } } catch (e) {}
 const COUPLETS = [
   ['寒塘渡鹤影', '冷月葬花魂'], ['芳情只自遣', '雅趣向谁言'], ['宝鼎茶闲烟尚绿', '幽窗棋罢指犹凉'],
   ['绕堤柳借三篙翠', '隔岸花分一脉香'], ['吟成豆蔻才犹艳', '睡足酴醿梦亦香'], ['珠玉自应传盛世', '神仙何幸下瑶台'],
@@ -908,8 +916,30 @@ function sptCard(type) {
     <div class="cardTitle"><h3>曼联 ${score[0]} : ${score[1]} 曼城</h3><div class="en">MANCHESTER DERBY · LIVE</div></div>
     <div class="cardDesc">红衫与蓝衫在草皮上追逐,皮球在脚下传导。弗格森在场边嚼着口香糖,瓜迪奥拉的手势越来越复杂。<br><br>看台上一万人的声浪一阵接一阵——进球时,你会听见整座岛在震。</div>`;
 }
+/* --- 星门(星星消费:1⭐ 解锁全域传送) --- */
+const SG_LIST = [
+  ['main', '🐋 收藏之岛'], ['truman', '📺 楚门的世界'], ['lotr', '💍 中土'], ['hp', '⚡ 霍格沃茨'],
+  ['mob', '🐳 南塔开特'], ['sport', '⚽ 体育岛'], ['shj', '🐉 山海经'], ['anh', '🪔 一千零一夜'],
+  ['nem', '🐚 鹦鹉螺锚地'], ['b612', '🌹 B-612'], ['jur', '🦖 侏罗纪'], ['hgs', '🐒 花果山'],
+  ['alc', '🎩 爱丽丝仙境'], ['cbi', '🔥 赤壁'], ['lrs', '🏮 兰若寺'], ['lsp', '⚔️ 梁山泊'],
+  ['fcy', '🌀 风车原野'], ['yfb', '⛓️ 伊夫堡'], ['rbx', '🏝️ 绝望岛'], ['dgy', '🏮 大观园'],
+];
+function stargateCard() {
+  if (PSTORE.getItem('w1001.stargate') !== '1') {
+    return `<div class="cardHead" style="background:#3a2a5a">🌀 星门 · Stargate</div>
+      <div class="cardMedia"><div class="paperRoll">🌀</div></div>
+      <div class="cardTitle"><h3>沉睡的星门</h3><div class="en">以一颗星辰为钥</div></div>
+      <div class="cardDesc">石环上刻着古老的铭文:"献上一颗星辰,此门永为你开。"<br>解锁后,可随时传送到任何已通航的世界——一劳永逸。<br><br>当前星星:⭐×${stars}</div>
+      ${stars >= 1 ? '<div style="text-align:center;padding:0 0 16px"><button class="again" data-sgunlock>⭐ 献出一颗星,唤醒星门</button></div>'
+        : '<div style="text-align:center;padding:0 0 16px;color:#8a7c62;font-size:13px">(完成任意支线即可获得星星)</div>'}`;
+  }
+  return `<div class="cardHead" style="background:#3a2a5a">🌀 星门 · Stargate</div>
+    <div class="cardTitle" style="padding-top:16px"><h3>要去哪个世界?</h3><div class="en">即刻抵达 · 不收船费</div></div>
+    <div class="travelGrid">${SG_LIST.map(([k2, nm4]) => `<button data-goworld="${k2}">${nm4}</button>`).join('')}</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
+  if (cat === 'gate') return stargateCard();
   if (cat === 'news') return newsCard();
   if (cat === 'shop') return shopCard();
   if (cat === 'ferry') return ferryCard();
@@ -971,7 +1001,7 @@ function buildCard(s) {
     desc = it.desc;
   }
   if (CATS[cat]) markSeen(cat, it.id, title);
-  const again = s.type === 'bar' ? `<div style="text-align:center;padding:0 0 16px"><button class="again" data-again>🍺 买一杯(6 SB)${drinks ? ` · 已饮 ${drinks} 杯` : ''}</button></div>` : '';
+  const again = s.type === 'bar' ? `<div style="text-align:center;padding:0 0 16px"><button class="again" data-again>🍺 买一杯(6 SB)${drinks ? ` · 已饮 ${drinks} 杯` : ''}</button><button class="again" data-cellar style="margin-left:8px;background:#5a3a1e">🥃 珍藏窖藏(30 SB)</button></div>` : '';
   return cardHTML(cat, `<div class="cardMedia">${media}</div>
     <div class="cardTitle"><h3>${esc(title)}</h3><div class="en">${en}</div></div>${meta}
     ${desc ? `<div class="cardDesc">${desc}</div>` : ''}${again}`);
@@ -1021,6 +1051,7 @@ function openCard(s) {
       : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好' : '🐋 回到收藏之岛(主世界)');
   }));
   cardBody.querySelector('[data-taogo]')?.addEventListener('click', () => {
+    PSTORE.setItem('w1001.taofound', '1');
     player.position.set(THY.x - 90, height(THY.x - 90, THY.z) + 1, THY.z); vy = 0;
     closeModals(); blip(520);
     toast('🌸 复行数十步,豁然开朗——桃花源');
@@ -1201,6 +1232,33 @@ function openCard(s) {
     toast('🧞 飞毯呼啸而起!抓稳流苏——');
     blip(660); setTimeout(() => blip(880), 120);
   });
+  cardBody.querySelector('[data-sgunlock]')?.addEventListener('click', () => {
+    if (stars < 1) return;
+    stars--; saveQuest(); updateQuestHUD();
+    PSTORE.setItem('w1001.stargate', '1');
+    toast('🌀 星辰没入石环,星门醒了!此后传送不再收费');
+    blip(660); setTimeout(() => blip(990), 120);
+    const gs3 = spots.find(x3 => x3.cat === 'gate');
+    if (gs3) openCard(gs3);
+  });
+  cardBody.querySelector('[data-cellar]')?.addEventListener('click', () => {
+    if (!spendSB(30)) return;
+    const pool = D.beers.filter(b4 => b4.cat === 'strong' || b4.cat === 'specialty');
+    const b5 = pool[Math.floor(Math.random() * pool.length)] || D.beers[0];
+    drinks++; saveSB();
+    if (CATS.beers) markSeen('beers', b5.id, b5.name);
+    toast(`🥃 珍藏窖藏开瓶:「${b5.name}」(${b5.abv})——值回票价 ⚡-30`);
+    blip(520);
+    closeModals();
+  });
+  cardBody.querySelector('[data-vellum]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.vellum') === '1') { toast('🗞️ 典藏号仅此一份,已在你手中。'); return; }
+    if (!spendSB(15)) return;
+    PSTORE.setItem('w1001.vellum', '1');
+    toast('📜 羊皮纸典藏创刊号到手!墨丘利:"传家的东西,别拿来垫桌脚。" ⚡-15');
+    blip(740);
+    closeModals();
+  });
   cardBody.querySelector('[data-scalphaggle]')?.addEventListener('click', () => {
     scalperDeal = true;
     blip(320);
@@ -1294,7 +1352,28 @@ function openJournal() {
       return `<div class="qRow${ok ? ' ok' : ''}"><span>${ok ? '✅' : CATS[c].icon}</span><span>${QUEST_TPL[c][1]}</span><span class="qn">${p}/${need}</span></div>`;
     }).join('')}
     <button id="btnRotate">🔄 给海岛换一批展品</button></div>` : '';
-  list.innerHTML = qHtml + Object.keys(CATS).map(k => {
+  /* 航海日志:跨世界成就总览 */
+  const fc2 = parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0;
+  const flot = (PSTORE.getItem('w1001.flotsam') || '').split(',').filter(Boolean).length;
+  const yfbSt = PSTORE.getItem('w1001.yfb'), qianSt = PSTORE.getItem('w1001.qian');
+  const LOGROWS = [
+    ['✨ 星之碎片(全域)', `${shardsGot.length}/24` + (shardsGot.length >= 24 ? ' ✅' : '')],
+    ['💍 魔戒远征(中土)', ringDone() ? '✅ 已销毁' : (hasRing ? '🔥 魔戒在身,去末日火山' : '⏳ 夏尔基座')],
+    ['🥢 定海神针(花果山)', PSTORE.getItem('w1001.jingu') === '1' ? '✅ 已拔出' : `⏳ 需 ⭐×3(现 ${stars})`],
+    ['💎 基督山宝藏(伊夫堡)', yfbSt === 'done' ? '✅ 已挖出' : (yfbSt === 'map' ? '🗺️ 持图,去小基督山' : '⏳ 34 号牢房')],
+    ['🪙 白鲸悬赏(南塔开特)', dblState === 'done' ? '✅ 金币到手' : (dblState === 'seen' ? '🐳 已目击,找亚哈' : (dblState === 'active' ? '🔭 盯住海面' : '⏳ 桅杆金币'))],
+    ['🕯️ 井底救倩(兰若寺)', qianSt === 'done' ? '✅ 已安葬' : (qianSt === 'urn' ? '🏺 持坛,去白杨下' : '⏳ 夜探古井')],
+    ['⚔️ 投名状(梁山泊)', PSTORE.getItem('w1001.hero') === '1' ? '✅ 好汉入伙' : `⏳ 渔获 ${Math.min(fc2, 5)}/5`],
+    ['📦 漂流物资(绝望岛)', flot >= 5 ? '✅ 生存术已学' : `⏳ ${flot}/5 箱`],
+    ['🎩 分院(霍格沃茨)', PSTORE.getItem('w1001.house') || '⏳ 城堡门口戴帽'],
+    ['🐎 敢与巨人为敌(风车原野)', PSTORE.getItem('w1001.charge') === '1' ? '✅ 冲过了' : '⏳ 陪骑士冲锋'],
+    ['💎 塞壬珍宝(塞壬海域)', PSTORE.getItem('w1001.siren') === '1' ? '✅ 已取得' : '⏳ 备好蜂蜡耳塞'],
+    ['🎫 德比票根(体育岛)', PSTORE.getItem('w1001.ticket') === '1' ? '✅ 收藏中' : '⏳ 找黄牛哥'],
+    ['🌸 桃花源(秘境)', PSTORE.getItem('w1001.taofound') === '1' ? '✅ 曾入桃源' : '⏳ 仿佛若有光……'],
+  ];
+  const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
+    ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
+  list.innerHTML = qHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     return `<div class="jRow"><div class="ico">${cfg.icon}</div>
@@ -1312,10 +1391,31 @@ $('hudQuest').addEventListener('click', openJournal);
 $('btnBag').addEventListener('click', () => { modalOpen ? closeModals() : openBag(); });
 $('btnAcc').addEventListener('click', () => { modalOpen ? closeModals() : openAccount(); });
 $('btnHelp').addEventListener('click', () => { $('intro').classList.remove('hidden'); });
-$('btnStart').addEventListener('click', () => { $('intro').classList.add('hidden'); initAudio(); });
+function openGuide() {
+  cardBody.innerHTML = `<div class="cardHead" style="background:#2c5a7a">🕊️ 墨丘利的世界导览</div>
+    <div class="cardTitle" style="padding-top:16px"><h3>初来乍到?三件事</h3><div class="en">A Guide to the 1001 Multiverse</div></div>
+    <div class="cardDesc">
+    <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
+    <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
+    <b>3. 出海远行</b>——东滩渡口通往 20 个世界(中土、霍格沃茨走 9¾ 站台的火车)。每个世界都藏着一条支线,<b>按 J 打开图鉴看「航海日志」</b>,按 <b>M</b> 看海图。<br><br>
+    <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
+    <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelector('[data-close-guide]')?.addEventListener('click', () => closeModals());
+}
+$('btnStart').addEventListener('click', () => {
+  $('intro').classList.add('hidden');
+  initAudio();
+  try {
+    if (PSTORE.getItem('w1001.guide') !== '1') {
+      PSTORE.setItem('w1001.guide', '1');
+      setTimeout(openGuide, 700);
+    }
+  } catch (e) {}
+});
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
-let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null;
+let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null, windGain = null;
 let musicZone = 'street', nextBeat = 0, beatCount = 0, melIdx = 3;
 const THEMES = {
   street:    { tempo: 96,  wave: 'triangle', scale: [0, 2, 4, 7, 9, 12],   base: 220, dens: .5, bass: true },
@@ -1406,6 +1506,20 @@ function initAudio() {
     crowdGain = actx.createGain(); crowdGain.gain.value = 0;
     src2.connect(bp).connect(crowdGain).connect(actx.destination);
     src2.start();
+    // 高处风声(低通噪声,海拔越高越响;雨天常鸣)
+    const src3 = actx.createBufferSource(); src3.buffer = buf; src3.loop = true;
+    const lp3 = actx.createBiquadFilter(); lp3.type = 'lowpass'; lp3.frequency.value = 280;
+    windGain = actx.createGain(); windGain.gain.value = 0;
+    src3.connect(lp3).connect(windGain).connect(actx.destination);
+    src3.start();
+    // 雨声(雨天恒鸣)
+    if (WEATHER === 'rain') {
+      const src4 = actx.createBufferSource(); src4.buffer = buf; src4.loop = true;
+      const hp3 = actx.createBiquadFilter(); hp3.type = 'highpass'; hp3.frequency.value = 1400;
+      const rg = actx.createGain(); rg.gain.value = .028;
+      src4.connect(hp3).connect(rg).connect(actx.destination);
+      src4.start();
+    }
     setInterval(scheduler, 140);
   } catch (e) {}
 }
@@ -1487,6 +1601,26 @@ let starField;
   starField = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.4, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
   scene.add(starField);
 }
+/* --- 天气(按日期随机:晴/雨/雾) --- */
+const WEATHER = (() => {
+  const r0 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a, c2) => (a * 37 + c2.charCodeAt(0)) | 0, 3))();
+  return r0 < .62 ? 'clear' : (r0 < .85 ? 'rain' : 'fog');
+})();
+let rainPts = null;
+if (WEATHER === 'rain') {
+  const N4 = 480, arr2 = new Float32Array(N4 * 3);
+  const rr2 = mulberry32(44);
+  for (let i = 0; i < N4; i++) {
+    arr2[i * 3] = (rr2() - .5) * 110;
+    arr2[i * 3 + 1] = rr2() * 60;
+    arr2[i * 3 + 2] = (rr2() - .5) * 110;
+  }
+  const g4 = new THREE.BufferGeometry();
+  g4.setAttribute('position', new THREE.BufferAttribute(arr2, 3));
+  rainPts = new THREE.Points(g4, new THREE.PointsMaterial({ color: 0x9ab8d8, size: 1.5, transparent: true, opacity: .55, sizeAttenuation: false }));
+  scene.add(rainPts);
+}
+if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 /* --- 月亮(夜间升起,月光洒海) --- */
 let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0;
 const moonDirN = new THREE.Vector3(0, 1, 0);
@@ -1519,8 +1653,10 @@ function updateDayNight(t) {
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
-  sun.intensity = .06 + 2.7 * da;
-  hemi.intensity = .16 + .62 * da;
+  const wxMul = WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
+  sun.intensity = (.06 + 2.7 * da) * wxMul;
+  hemi.intensity = (.16 + .62 * da) * (WEATHER === 'clear' ? 1 : .85);
+  if (WEATHER === 'rain') skyCol.lerp(new THREE.Color(0x6a7480), .4);
   const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
   const elev = Math.sin(sa) * da - .32 * (1 - da);   // 夜里太阳沉入地平线下
   sunDirN.set(Math.cos(sa), Math.max(elev, -0.4), .42).normalize();
@@ -1674,7 +1810,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (cat === 'lore' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
+  const item = (cat === 'lore' || cat === 'gate' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -2050,6 +2186,19 @@ function makeTree(x, z, scale, birdCol) {
   cirObs.push({ x: -14, z: -10, r: .8 });
   addSpot(-14, -10, 'sign', 'sign', { r: 7 });
 }
+/* --- 星门(广场西侧) --- */
+{
+  const sgx = -42, sgz = 38, sgh = height(-42, 38);
+  const ped2 = cyl(3.4, 4, 1.2, M.stone); ped2.position.set(sgx, sgh + .6, sgz); scene.add(ped2);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(3.2, .45, 10, 28),
+    MOBILE ? new THREE.MeshLambertMaterial({ color: 0x8a7ab0 }) : new THREE.MeshStandardMaterial({ color: 0x8a7ab0, roughness: .35, metalness: .7 }));
+  ring2.position.set(sgx, sgh + 4.6, sgz); scene.add(ring2);
+  const glow2 = new THREE.Mesh(new THREE.CircleGeometry(2.7, 24),
+    new THREE.MeshBasicMaterial({ color: 0x9a8ae0, transparent: true, opacity: .18, side: THREE.DoubleSide }));
+  glow2.position.set(sgx, sgh + 4.6, sgz); scene.add(glow2);
+  cirObs.push({ x: sgx, z: sgz, r: 3.8 });
+  addSpot(sgx, sgz + 5.4, 'gate', 'gate', { r: 7.5 });
+}
 /* --- 报亭:万神殿日报(广场东南角) --- */
 {
   const kx = 38, kz = 52, kh = 6;
@@ -2119,13 +2268,30 @@ function collectShard(s) {
 
 /* --- 散布树 / 岩石 / 花 --- */
 {
-  let placed = 0, guard = 0;
-  while (placed < 60 && guard++ < 1500) {
+  // 散布树:实例化(3 次绘制取代 ~180 个网格)
+  const treePts = [];
+  let guard = 0;
+  while (treePts.length < 60 && guard++ < 1500) {
     const x = rnd() * 900 - 450, z = rnd() * 900 - 450;
     const h = height(x, z);
     if (h < 3 || h > 26) continue;
     if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r + 8)) continue;
-    makeTree(x, z, .8 + rnd() * .7, null); placed++;
+    treePts.push([x, z, h, .8 + rnd() * .7]);
+    cirObs.push({ x, z, r: 1 });
+  }
+  {
+    const n = treePts.length;
+    const trunkI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .7, 5), M.wood, n);
+    const canoAI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.4, 0), lam(0x4f9448), n);
+    const canoBI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.4, 0), lam(0x5fae52), n);
+    const m4t = new THREE.Matrix4(), qt = new THREE.Quaternion(), st = new THREE.Vector3(), pt = new THREE.Vector3();
+    treePts.forEach(([x, z, h, sc], i) => {
+      st.setScalar(sc);
+      m4t.compose(pt.set(x, h + 2.5 * sc, z), qt, st); trunkI.setMatrixAt(i, m4t);
+      m4t.compose(pt.set(x, h + 6.4 * sc, z), qt, st); canoAI.setMatrixAt(i, m4t);
+      m4t.compose(pt.set(x + 1.4 * sc, h + 8 * sc, z + .6 * sc), qt, st); canoBI.setMatrixAt(i, m4t);
+    });
+    [trunkI, canoAI, canoBI].forEach(im => { im.instanceMatrix.needsUpdate = true; scene.add(im); });
   }
   const rockG = new THREE.IcosahedronGeometry(1.6, 0);
   for (let i = 0; i < 40; i++) {
@@ -3381,11 +3547,23 @@ const boats = [];
 /* —— 水浒 · 梁山泊 —— */
 {
   const gx = LSP.x, gz = LSP.z;
-  for (let i = 0; i < 60; i++) {   // 芦苇荡
-    const a = rnd() * Math.PI * 2, rr = 30 + rnd() * 34;
-    const rx4 = gx - 30 + Math.cos(a) * rr, rz4 = gz + 20 + Math.sin(a) * rr, rh4 = height(rx4, rz4);
-    if (rh4 < -.5 || rh4 > 4) continue;
-    const reed = cyl(.05, .07, 2.6 + rnd(), lam(0x9aa860)); reed.position.set(rx4, rh4 + 1.3, rz4); reed.rotation.z = (rnd() - .5) * .2; scene.add(reed);
+  {   // 芦苇荡(实例化)
+    const reedPts = [];
+    for (let i = 0; i < 90; i++) {
+      const a = rnd() * Math.PI * 2, rr = 30 + rnd() * 34;
+      const rx4 = gx - 30 + Math.cos(a) * rr, rz4 = gz + 20 + Math.sin(a) * rr, rh4 = height(rx4, rz4);
+      if (rh4 < -.5 || rh4 > 4) continue;
+      reedPts.push([rx4, rz4, rh4]);
+    }
+    const reedI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.05, .07, 3), lam(0x9aa860), reedPts.length);
+    const m4r = new THREE.Matrix4(), qr = new THREE.Quaternion(), sr = new THREE.Vector3(1, 1, 1), pr2 = new THREE.Vector3();
+    reedPts.forEach(([rx4, rz4, rh4], i) => {
+      qr.setFromEuler(new THREE.Euler((rnd() - .5) * .2, 0, (rnd() - .5) * .2));
+      m4r.compose(pr2.set(rx4, rh4 + 1.4, rz4), qr, sr);
+      reedI.setMatrixAt(i, m4r);
+    });
+    reedI.instanceMatrix.needsUpdate = true;
+    scene.add(reedI);
   }
   pavilion({ x: gx + 30, z: gz - 30, h: height(gx + 30, gz - 30) }, { w: 26, d: 18, walls: 'back', roof: 0x8c2f24, floor: 0xc8b06a });
   {   // 替天行道大旗
@@ -3626,7 +3804,13 @@ const ISLES = [
     lines: ['渡一切想去别的世界的人。', '楚门的世界已通航;中土、霍格沃茨、花果山,在建。', '船票免费,回程也是——但记忆要自己带回来。'] });
 }
 function updateNpcs3(dt) {
+  npcFrame++;
+  let ni = 0;
   for (const n of allNpcs) {
+    ni++;
+    // 远端 NPC 降频:600 米外每 8 帧更新一次
+    const farD2 = (player.position.x - n.g.position.x) ** 2 + (player.position.z - n.g.position.z) ** 2;
+    if (farD2 > 360000 && (npcFrame + ni) % 8 !== 0) continue;
     if (n.night || n.day) {   // 昼夜限定 NPC(兰若寺)
       const show = n.night ? curDA < .35 : curDA >= .35;
       n.g.visible = show;
@@ -3730,6 +3914,66 @@ function renderMinimap() {
   mctx.fillStyle = '#fff';
   mctx.beginPath(); mctx.moveTo(0, -5); mctx.lineTo(3.4, 4); mctx.lineTo(-3.4, 4); mctx.closePath(); mctx.fill();
   mctx.restore();
+}
+
+/* --- 世界地图(M) --- */
+const bigmapEl = $('bigmap'), bigCv = $('bigmapCv'), bigCtx = bigCv ? bigCv.getContext('2d') : null;
+let bigBase = null;
+const MAP_LABELS = [
+  ['收藏之岛', 0, -60], ['灯塔屿', IS2.x, IS2.z], ['楚门的世界', TRU.x, TRU.z], ['中土', MID.x, MID.z],
+  ['霍格沃茨', HOG.x, HOG.z], ['南塔开特', MOB.x, MOB.z], ['体育岛', SPT.x, SPT.z], ['山海经', SHJ.x, SHJ.z],
+  ['一千零一夜', ANH.x, ANH.z], ['鹦鹉螺锚地', NEM.x, NEM.z], ['B-612', B612.x, B612.z], ['侏罗纪公园', JUR.x, JUR.z],
+  ['花果山', HGS.x, HGS.z], ['爱丽丝仙境', ALC.x, ALC.z], ['赤壁', CBI.x, CBI.z], ['兰若寺', LRS.x, LRS.z],
+  ['梁山泊', LSP.x, LSP.z], ['风车原野', FCY.x, FCY.z], ['伊夫堡', YFB.x, YFB.z], ['绝望岛', RBX.x, RBX.z],
+  ['大观园', DGY.x, DGY.z], ['塞壬海域⚠', SIR.x, SIR.z],
+];
+function renderBigMap() {
+  if (!bigCtx) return;
+  const W3 = bigCv.width, H3 = bigCv.height, SC2 = 3100;
+  const BX = x => (x / SC2 + .5) * W3, BY = z => (z / (SC2 * H3 / W3) + .5) * H3;
+  if (!bigBase) {
+    bigBase = document.createElement('canvas'); bigBase.width = W3; bigBase.height = H3;
+    const c = bigBase.getContext('2d');
+    const img = c.createImageData(W3, H3);
+    for (let py = 0; py < H3; py += 2) for (let px = 0; px < W3; px += 2) {
+      const x = (px / W3 - .5) * SC2, z = (py / H3 - .5) * (SC2 * H3 / W3);
+      const h = height(x, z);
+      let r2, g3, b2;
+      if (h < -.5) { r2 = 24; g3 = 62; b2 = 92; }
+      else if (h < 1.8) { r2 = 216; g3 = 200; b2 = 150; }
+      else if (h > 34) { r2 = 238; g3 = 243; b2 = 245; }
+      else if (h > 26) { r2 = 141; g3 = 133; b2 = 119; }
+      else { r2 = 106; g3 = 165; b2 = 78; }
+      for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        const o2 = ((py + oy) * W3 + px + ox) * 4;
+        img.data[o2] = r2; img.data[o2 + 1] = g3; img.data[o2 + 2] = b2; img.data[o2 + 3] = 255;
+      }
+    }
+    c.putImageData(img, 0, 0);
+    c.font = 'bold 15px "Microsoft YaHei", sans-serif';
+    c.textAlign = 'center';
+    for (const [nm3, lx3, lz3] of MAP_LABELS) {
+      c.lineWidth = 4; c.strokeStyle = 'rgba(10,16,10,.75)';
+      c.strokeText(nm3, BX(lx3), BY(lz3) - 8);
+      c.fillStyle = nm3.includes('⚠') ? '#ff9d8a' : '#f5efdc';
+      c.fillText(nm3, BX(lx3), BY(lz3) - 8);
+    }
+  }
+  bigCtx.drawImage(bigBase, 0, 0);
+  bigCtx.fillStyle = '#ffd76a';
+  bigCtx.beginPath(); bigCtx.arc(BX(player.position.x), BY(player.position.z), 6, 0, 7); bigCtx.fill();
+  bigCtx.fillStyle = '#26211a';
+  bigCtx.beginPath(); bigCtx.arc(BX(player.position.x), BY(player.position.z), 2.6, 0, 7); bigCtx.fill();
+}
+function toggleBigMap() {
+  if (!bigmapEl) return;
+  const opening = bigmapEl.classList.contains('hidden');
+  if (opening) { renderBigMap(); bigmapEl.classList.remove('hidden'); modalOpen = true; }
+  else { bigmapEl.classList.add('hidden'); modalOpen = false; }
+}
+if (bigmapEl) {
+  bigmapEl.addEventListener('click', e => { if (e.target === bigmapEl || e.target.dataset.close !== undefined) toggleBigMap(); });
+  bigmapEl.querySelector('[data-close]')?.addEventListener('click', () => toggleBigMap());
 }
 
 /* --- 指南针(顶部罗盘条) --- */
@@ -4042,9 +4286,17 @@ addEventListener('keydown', e => {
   if (k === 'p') {   // 照片模式:隐藏全部 UI
     photoMode = !photoMode;
     for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
-    if (!photoMode) toast('已退出照片模式');
+    if (!photoMode) { cv.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
+    else toast('📷 照片模式(F 切换滤镜,P 退出)');
     return;
   }
+  if (k === 'f' && photoMode) {   // 照片滤镜
+    photoFilter = (photoFilter + 1) % PHOTO_FILTERS.length;
+    cv.style.filter = PHOTO_FILTERS[photoFilter][1];
+    toast('🎞️ 滤镜:' + PHOTO_FILTERS[photoFilter][0]);
+    return;
+  }
+  if (k === 'm') { toggleBigMap(); return; }
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
   if (k === ' ') { e.preventDefault(); if (grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
@@ -4100,12 +4352,14 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门' };
 for (const k in LORE) HINTS[k] = LORE[k].hint;
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
 let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0, lastScoreMin = -1;
 let flight = null, roarT = 14, sirenT = 2;
+let bucketT = 0, npcFrame = 0, fpsN = 0, fpsT = 0, prScale = MOBILE ? 1.5 : 1.75;
+const PR_MAX = prScale;
 /* 鲸鸣:低频滑音 */
 function whaleCall() {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -4404,6 +4658,26 @@ function loop() {
     }
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
+  /* 雨幕跟随玩家 + 高处风声 */
+  if (rainPts) {
+    rainPts.position.copy(player.position);
+    const rp3 = rainPts.geometry.attributes.position;
+    for (let i = 0; i < rp3.count; i++) {
+      let y3 = rp3.getY(i) - 55 * dt;
+      if (y3 < -4) y3 = 55;
+      rp3.setY(i, y3);
+    }
+    rp3.needsUpdate = true;
+  }
+  if (windGain) {
+    const wTar = clamp((player.position.y - 14) / 34, 0, 1) * .05 + (WEATHER === 'rain' ? .012 : 0);
+    windGain.gain.value += (wTar - windGain.gain.value) * Math.min(1, dt * 3);
+  }
+  /* 蘑菇缩放恢复 */
+  if (scaleT > 0) {
+    scaleT -= dt;
+    if (scaleT <= 0) { player.scale.setScalar(1); toast('🍄 药效退了,你恢复了原本的大小'); }
+  }
   /* 海浪声强度 */
   if (waveGain) {
     const target = clamp(1 - Math.abs(gh) / 7, 0, 1) * .05;
@@ -4515,7 +4789,53 @@ function loop() {
   $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
   $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
 
+  /* 岛屿分桶显隐(0.5s 节流) */
+  bucketT -= dt;
+  if (bucketT <= 0) {
+    bucketT = .5;
+    for (const b of BUCKETS) b.g.visible = ((player.position.x - b.x) ** 2 + (player.position.z - b.z) ** 2) < 1210000;   // 1100²
+  }
+  /* 动态画质:帧率过低自动降像素比,恢复后升回 */
+  fpsN++; fpsT += dt;
+  if (fpsT >= 2.5) {
+    const fps = fpsN / fpsT; fpsN = 0; fpsT = 0;
+    if (fps < 27 && prScale > .85) {
+      prScale = Math.max(.85, prScale - .25);
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale));
+      if (composer) composer.setSize(innerWidth, innerHeight);
+    } else if (fps > 55 && prScale < PR_MAX) {
+      prScale = Math.min(PR_MAX, prScale + .25);
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale));
+      if (composer) composer.setSize(innerWidth, innerHeight);
+    }
+  }
   if (composer) composer.render(); else renderer.render(scene, camera);
+}
+/* ---------- 岛屿分桶距离显隐(性能:远岛整组不渲染) ---------- */
+const BUCKETS = [
+  { x: 0, z: 0 }, { x: IS2.x, z: IS2.z }, { x: TRU.x, z: TRU.z }, { x: MID.x, z: MID.z },
+  { x: HOG.x, z: HOG.z }, { x: MOB.x, z: MOB.z }, { x: SPT.x, z: SPT.z }, { x: SHJ.x, z: SHJ.z },
+  { x: THY.x, z: THY.z }, { x: ANH.x, z: ANH.z }, { x: NEM.x, z: NEM.z }, { x: B612.x, z: B612.z },
+  { x: JUR.x, z: JUR.z }, { x: HGS.x, z: HGS.z }, { x: ALC.x, z: ALC.z }, { x: CBI.x, z: CBI.z },
+  { x: LRS.x, z: LRS.z }, { x: LSP.x, z: LSP.z }, { x: FCY.x, z: FCY.z }, { x: YFB.x, z: YFB.z },
+  { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
+].map(b => Object.assign(b, { g: new THREE.Group() }));
+{
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout]);
+  clouds.forEach(c => excl.add(c));
+  for (const o of [...scene.children]) {
+    if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
+    if (o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width >= 3000) continue;   // 海面
+    if (o.material && o.material.uniforms && o.material.uniforms.waterColor) continue;   // 反射海面
+    if (o.geometry && o.geometry.type === 'PlaneGeometry' && o.material && o.material.vertexColors) continue;   // 地形
+    let best = null, bd = Infinity;
+    for (const b of BUCKETS) {
+      const d2 = (o.position.x - b.x) ** 2 + (o.position.z - b.z) ** 2;
+      if (d2 < bd) { bd = d2; best = b; }
+    }
+    best.g.add(o);
+  }
+  BUCKETS.forEach(b => scene.add(b.g));
 }
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外 */
 if (!MOBILE) {

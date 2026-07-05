@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>1001 世界 · 1001 World — 可漫游的收藏宇宙</title>
+<meta name="description" content="一个开放世界小游戏:漫步于美术馆、百鸟林、植物园、酒馆、水族馆、爵士俱乐部、音乐厅、图书馆与营地,收集 1001×1001 的真实藏品。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hudLeft">
+    <div id="hudZone"><span id="zoneIcon">🧭</span><span id="zoneName">中央广场</span></div>
+    <div id="hudQuest" title="今日委托(点击查看)">📜 今日委托</div>
+  </div>
+  <div id="hudRight">
+    <div id="hudCount" title="已收录">✦ <b id="seenCount">0</b></div>
+    <button id="btnMusic" title="音乐开关">🎵</button>
+    <button id="btnJournal" title="图鉴 (J)">📖 图鉴</button>
+    <button id="btnHelp" title="帮助 (H)">?</button>
+  </div>
+</div>
+
+<div id="hint" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+<canvas id="minimap" width="192" height="144"></canvas>
+
+<!-- 藏品卡片 -->
+<div id="modal" class="overlay hidden">
+  <div id="card">
+    <button class="closeX" data-close>×</button>
+    <div id="cardBody"></div>
+  </div>
+</div>
+
+<!-- 图鉴 -->
+<div id="journal" class="overlay hidden">
+  <div id="journalCard">
+    <button class="closeX" data-close>×</button>
+    <h2>🗺️ 探索图鉴</h2>
+    <p class="sub">在 1001 世界里走走看看,遇见的每件藏品都会收进这里。</p>
+    <div id="journalList"></div>
+  </div>
+</div>
+
+<!-- 开场 -->
+<div id="intro" class="overlay">
+  <div id="introCard">
+    <h1>1001 世界</h1>
+    <p class="tagline">经典 2D 版 · Classic Edition(已停止更新,永久保留)</p>
+    <p class="story">传说中有一座小镇,收藏着世上一切美好之物的一千零一种:<br>
+    名画与好书、飞鸟与草木、鱼群与美酒、爵士与咏叹调,还有远方的群山。<br>
+    这里是一切开始的地方——新故事在 3D 多元宇宙继续。</p>
+    <div class="keys">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 移动</span>
+      <span><kbd>E</kbd> / <kbd>空格</kbd> 查看·互动</span>
+      <span><kbd>J</kbd> 图鉴 · 广场路牌可快速旅行</span>
+      <span>📱 手机:左侧摇杆 + 右下按钮</span>
+    </div>
+    <button id="btnStart">🚪 进入小镇</button>
+    <p style="margin-top:14px"><a href="./" style="color:#8fd3ff;font-size:14px;text-decoration:none">⛰️ 前往正史:3D 多元宇宙(22 个世界)→</a></p>
+  </div>
+</div>
+
+<!-- 移动端控件 -->
+<div id="stick" class="hidden"><div id="stickKnob"></div></div>
+<button id="btnAct" class="hidden">👀</button>
+
+<script src="world-data.js?v=3"></script>
+<script src="game.js?v=4"></script>
+</body>
+</html>
