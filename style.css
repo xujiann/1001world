@@ -193,6 +193,17 @@ kbd { background: #3a4430; border: 1px solid #5a664c; border-bottom-width: 3px; 
 
 @media (max-width: 640px) {
   #introCard h1 { font-size: 40px; letter-spacing: 8px; }
-  #minimap { width: 130px; height: 98px; right: 8px; top: 58px; bottom: auto; }
-  #hudZone { font-size: 13px; padding: 6px 12px; }
+  /* 顶栏压缩为一行,避免在窄屏堆叠占满上半屏 */
+  #hud { padding: 6px 7px; align-items: flex-start; }
+  #hudLeft { gap: 4px; flex-shrink: 0; }
+  #hudZone { font-size: 12px; padding: 5px 10px; letter-spacing: 0; }
+  #hudQuest { font-size: 11px; padding: 4px 10px; }
+  #hudRight { gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  #hudCount { font-size: 10.5px; padding: 5px 8px; letter-spacing: 0; }
+  #hud button { padding: 6px 8px; font-size: 12px; }
+  #btnMusic { width: 32px; } #btnHelp { width: 28px; }
+  #btnAcc, #btnBag { padding: 6px 7px; }
+  /* 小地图缩小、右上;指南针移到底部(拇指可及,且不再与小地图重叠) */
+  #minimap { width: 108px; height: 82px; right: 7px; top: 86px; bottom: auto; }
+  #compass { top: auto !important; bottom: 92px; width: min(300px, 82vw); }
 }
