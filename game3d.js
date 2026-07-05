@@ -1921,19 +1921,26 @@ if (!MOBILE) {
   }));
   mobileWater.position.y = 0; scene.add(mobileWater);
 }
-/* --- 云 --- */
+/* --- 云(多团絮状、底部偏灰、各自漂移) --- */
 const clouds = [];
 {
-  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .85 });
   const rnd = mulberry32(11);
-  for (let i = 0; i < 10; i++) {
+  const cTop = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .92, depthWrite: false });
+  const cBot = new THREE.MeshLambertMaterial({ color: 0xccd6e6, transparent: true, opacity: .92, depthWrite: false });
+  const NC = MOBILE ? 12 : 18;
+  for (let i = 0; i < NC; i++) {
     const grp = new THREE.Group();
-    for (let j = 0; j < 3; j++) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(14 + rnd() * 12, 7, 5), mat);
-      m.position.set(j * 20 - 20 + rnd() * 8, rnd() * 4, rnd() * 10 - 5); m.scale.y = .45;
+    const big = .7 + rnd() * 1.1;
+    const puffs = 5 + Math.floor(rnd() * 4);
+    for (let j = 0; j < puffs; j++) {
+      const r = (10 + rnd() * 14) * big;
+      const m = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), rnd() < .3 ? cBot : cTop);
+      m.position.set((j - puffs / 2) * 14 * big + (rnd() - .5) * 10, (rnd() - .3) * 6 * big, (rnd() - .5) * 18 * big);
+      m.scale.y = .5;
       grp.add(m);
     }
-    grp.position.set(rnd() * 2400 - 1200, 130 + rnd() * 60, rnd() * 2400 - 1200);
+    grp.position.set(rnd() * 3000 - 1500, 150 + rnd() * 90, rnd() * 3000 - 1500);
+    grp.userData = { sp: .8 + rnd() * 1.8 };
     scene.add(grp); clouds.push(grp);
   }
 }
@@ -4423,7 +4430,7 @@ scene.add(player);
 let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
-let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9;
+let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null;
 {
   const GN = MOBILE ? 900 : 2000, R = MOBILE ? 30 : 42;
   const bladeGeo = new THREE.ConeGeometry(.11, 1.15, 3);
@@ -4448,6 +4455,14 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9;
   grassBlades.userData = { GN, R, rnd: mulberry32(303) };
   const gc = [new THREE.Color(0x5aa048), new THREE.Color(0x6cb556), new THREE.Color(0x4c8c40), new THREE.Color(0x7fb85e)];
   for (let i = 0; i < GN; i++) grassBlades.setColorAt(i, gc[i % 4]);
+  // 野花:草丛间零星点缀(实例化,随草一起重铺)
+  const FN = MOBILE ? 140 : 320;
+  flowerInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.26, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), FN);
+  flowerInst.frustumCulled = false;
+  scene.add(flowerInst);
+  flowerInst.userData = { FN, R, rnd: mulberry32(717) };
+  const fc = [new THREE.Color(0xe8b4c8), new THREE.Color(0xffd76a), new THREE.Color(0xffffff), new THREE.Color(0xd94f6b), new THREE.Color(0x9a7fd6)];
+  for (let i = 0; i < FN; i++) flowerInst.setColorAt(i, fc[i % 5]);
 }
 function redistributeGrass(cx, cz) {
   grassCx = cx; grassCz = cz;
@@ -4466,6 +4481,19 @@ function redistributeGrass(cx, cz) {
   }
   grassBlades.instanceMatrix.needsUpdate = true;
   if (grassBlades.instanceColor) grassBlades.instanceColor.needsUpdate = true;
+  // 野花同步重铺
+  if (flowerInst) {
+    const fu = flowerInst.userData;
+    for (let i = 0; i < fu.FN; i++) {
+      const a = fu.rnd() * 6.2832, rr = Math.sqrt(fu.rnd()) * fu.R;
+      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+      if (h > 2.8 && h < 17) { q.setFromEuler(e.set(0, fu.rnd() * 6.2832, 0)); s.set(1, 1, 1); m4.compose(p.set(x, h + .45, z), q, s); }
+      else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
+      flowerInst.setMatrixAt(i, m4);
+    }
+    flowerInst.instanceMatrix.needsUpdate = true;
+    if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
+  }
 }
 /* 恢复上次位置 */
 try {
@@ -4679,7 +4707,7 @@ function loop() {
     }
     wp.needsUpdate = true;
   }
-  for (const c of clouds) { c.position.x += dt * 2.2; if (c.position.x > 1250) c.position.x = -1250; }
+  for (const c of clouds) { c.position.x += dt * c.userData.sp; if (c.position.x > 1700) c.position.x = -1700; }
   for (const f of seaFish) {
     const u = f.userData;
     const a = t * u.sp + u.ph;
