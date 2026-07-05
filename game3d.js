@@ -1397,6 +1397,12 @@ $('btnStart').addEventListener('click', () => {
       setTimeout(openGuide, 700);
     }
   } catch (e) {}
+  // 今日天气播报(雨天提示渔汛)
+  setTimeout(() => {
+    if (WEATHER === 'rain') toast('🌧️ 今日有雨——渔汛正旺!钓鱼上钩快、售价翻倍');
+    else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
+    else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
+  }, 2600);
 });
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
@@ -1558,6 +1564,12 @@ const WEATHER = (() => {
   const r0 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a, c2) => (a * 37 + c2.charCodeAt(0)) | 0, 3))();
   return r0 < .62 ? 'clear' : (r0 < .85 ? 'rain' : 'fog');
 })();
+/* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
+const FULLMOON = (() => {
+  const days = (Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
+  const phase = ((days % 29.53059) + 29.53059) % 29.53059;
+  return Math.abs(phase - 14.7653) < 1.4;
+})();
 let rainPts = null;
 if (WEATHER === 'rain') {
   const N4 = 480, arr2 = new Float32Array(N4 * 3);
@@ -1574,7 +1586,7 @@ if (WEATHER === 'rain') {
 }
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 /* --- 月亮(夜间升起,月光洒海) --- */
-let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0;
+let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0, springTideToldT = 0;
 const moonDirN = new THREE.Vector3(0, 1, 0);
 {
   const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128;
@@ -1623,12 +1635,13 @@ function updateDayNight(t) {
   moonMesh.position.copy(player.position).addScaledVector(moonDirN, 820);
   moonGlow.position.copy(moonMesh.position);
   moonMesh.visible = moonGlow.visible = night > .05;
-  moonGlow.material.opacity = night * .18;
-  moonLight.intensity = night * .5;
+  moonGlow.material.opacity = night * (FULLMOON ? .34 : .18);   // 满月更亮
+  moonLight.intensity = night * (FULLMOON ? .75 : .5);
+  if (FULLMOON && !springTideToldT && night > .4) { springTideToldT = 1; toast('🌕 满月大潮之夜——海水涨得比平日更高'); }
   moonLight.position.copy(player.position).addScaledVector(moonDirN, 300);
   moonLight.target.position.copy(player.position);
   /* 潮汐:月升潮涨 */
-  tideY = night * mElev * .9;
+  tideY = night * mElev * .9 * (FULLMOON ? 1.7 : 1);   // 满月大潮:潮位更高
   if (oceanWater) {
     oceanWater.position.y = .15 + tideY;
     oceanWater.material.uniforms.sunDirection.value.copy(night > .5 ? moonDirN : sunDirN);
@@ -4174,18 +4187,20 @@ const bobber = new THREE.Group();
 const FISH_PRICE = { deep: 9, rare: 9, pelagic: 7, special: 6, reef: 5 };
 function startCast(fs) {
   fishing.state = 'wait'; fishing.spot = fs;
-  fishing.t = 2.2 + Math.random() * 4.5;
+  // 雨天渔汛:上钩更快
+  fishing.t = (2.2 + Math.random() * 4.5) * (WEATHER === 'rain' ? .5 : 1);
   bobber.position.set(fs.bx, .35, fs.bz); bobber.visible = true;
   blip(440);
 }
 function endFishing() { fishing.state = 'idle'; fishing.spot = null; bobber.visible = false; }
 function catchFish() {
   const f = D.fish[Math.floor(Math.random() * D.fish.length)];
-  const price = (FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0);
+  const rainy = WEATHER === 'rain';
+  const price = ((FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0)) * (rainy ? 2 : 1);   // 雨天渔汛:售价翻倍
   openCard({ cat: 'fish', type: 'tank', item: f });   // 收进图鉴(+2)
   try { PSTORE.setItem('w1001.fishcount', String((parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0) + 1)); } catch (e) {}
   earnSB(price);
-  toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}`);
+  toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}${rainy ? '(雨天渔汛×2)' : ''}`);
   blip(880); setTimeout(() => blip(1180), 110);
   endFishing();
 }
