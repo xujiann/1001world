@@ -1808,23 +1808,42 @@ const TER = 3200, SEG = MOBILE ? 190 : 300;
     }
     return Math.sqrt(best);
   }
+  const cGrassDry = new THREE.Color(0x9caf5e);   // 高处/向阳的干草色
+  // 第一遍:每顶点只算一次 height(),存高度;坡度/曲率下一遍从网格邻居取(零额外 height 调用)
+  const W = SEG + 1, HT = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) { const h = height(pos.getX(i), pos.getZ(i)); pos.setY(i, h); HT[i] = h; }
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    const h = height(x, z);
-    pos.setY(i, h);
-    const sl = Math.abs(height(x + 3, z) - h) + Math.abs(height(x, z + 3) - h);   // 坡度
+    const x = pos.getX(i), z = pos.getZ(i), h = HT[i];
+    const gx = i % W, gz = (i / W) | 0;
+    const hR = HT[gx < W - 1 ? i + 1 : i], hL = HT[gx > 0 ? i - 1 : i];
+    const hF = HT[gz < W - 1 ? i + W : i], hB = HT[gz > 0 ? i - W : i];
+    const sl = (Math.abs(hR - h) + Math.abs(hF - h)) * .28;  // 坡度(网格间距约 10.7,缩放到原 ±3 尺度)
+    const lap = (hR + hL + hF + hB) * .25 - h;               // 曲率:>0 凹(汇水),<0 凸(山脊)
+    const gj = fbm(x * .05, z * .05);                        // 草色/边界抖动
+    const grass = (gj > .52 ? cGrass1 : cGrass2).clone();
     let c;
-    if (Math.hypot(x - VOL.x, z - VOL.z) < 82 && h > 1) c = fbm(x * .07, z * .07) > .5 ? new THREE.Color(0x4a4038) : new THREE.Color(0x3a322c);   // 魔多焦土
-    else if (h > 34) c = cSnow;
-    else if (sl > 3.4 || h > 26) c = cRock;
-    else if (h > -1 && mouthDist(x, z) < 5) c = cMouth;                                         // 鲸嘴线
-    else if (h > 0 && Math.abs(Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z) - WHALE_EYE.r) < 5) c = cMouth;  // 眼圈
-    else if (h < 1.8) c = h < -2 ? cSea : cSand;
-    else {
-      c = fbm(x * .05, z * .05) > .52 ? cGrass1 : cGrass2;
+    if (Math.hypot(x - VOL.x, z - VOL.z) < 82 && h > 1) {    // 魔多焦土
+      c = fbm(x * .07, z * .07) > .5 ? new THREE.Color(0x4a4038) : new THREE.Color(0x3a322c);
+    } else if (h < -2) {
+      c = cSea.clone();
+    } else {
+      // —— splat 风:高度平滑混合 沙→草→岩→雪(边界带噪声抖动) ——
+      const jit = (gj - .5) * 1.6;
+      c = cSand.clone().lerp(grass.lerp(cGrassDry, smooth01(clamp((h - 12) / 16, 0, 1)) * .4), smooth01(clamp((h - 1) / 2.6, 0, 1)));
+      c.lerp(cRock, smooth01(clamp((h - 22 + jit) / 8, 0, 1)));
+      c.lerp(cSnow, smooth01(clamp((h - 33 + jit) / 5, 0, 1)));
+      // 坡度露岩(碎石带)
+      c.lerp(cRock, clamp((sl - 2 + jit * .8) / 3.2, 0, 1) * .75);
+      // —— 侵蚀观感:曲率明暗 ——
+      if (lap > .12) c.multiplyScalar(clamp(1 - lap * .22, .62, 1));      // 凹处汇水/背阴 → 压暗成沟
+      else if (lap < -.12) c.lerp(cRock, clamp(-lap * .32, 0, .5));       // 凸处山脊/棱线 → 露岩
+      // 泥土小路
       const pd = pathDist(x, z);
-      if (pd < 4.2) c = cPath;
-      else if (pd < 7.5) c = c.clone().lerp(cPath, (7.5 - pd) / 3.3 * .55);
+      if (pd < 4.2) c = cPath.clone();
+      else if (pd < 7.5) c.lerp(cPath, (7.5 - pd) / 3.3 * .5);
+      // 鲸嘴线 / 眼圈
+      if (h > -1 && mouthDist(x, z) < 5) c.lerp(cMouth, .8);
+      else if (h > 0 && Math.abs(Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z) - WHALE_EYE.r) < 5) c.lerp(cMouth, .8);
     }
     colors.push(c.r, c.g, c.b);
   }
