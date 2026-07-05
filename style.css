@@ -23,6 +23,15 @@ body { font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif
   font-size: 12.5px; border: 1px solid rgba(180,220,140,.28); pointer-events: auto; cursor: pointer;
 }
 #hudQuest.done { color: #ffd76a; border-color: rgba(255,215,106,.4); }
+#hudTitle {
+  background: rgba(20,26,16,.72); color: #e8c86a; padding: 5px 13px; border-radius: 999px;
+  font-size: 12px; border: 1px solid rgba(232,200,106,.35); pointer-events: none; letter-spacing: .5px;
+}
+.tEquip {
+  background: #b8862e; color: #fff; border: none; border-radius: 999px;
+  padding: 3px 12px; font-size: 12px; cursor: pointer;
+}
+.tEquip:hover { background: #d9a23c; }
 #btnMusic { width: 42px; }
 #hudRight { display: flex; gap: 8px; align-items: center; pointer-events: auto; }
 #hudCount {

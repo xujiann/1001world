@@ -38,7 +38,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1329,6 +1329,57 @@ function rotateExhibits() {
   for (const s of spots) if (s.item) { s.item = pickers[s.cat](); s.updateVisual && s.updateVisual(); }
   closeModals(); toast('🔄 海岛换了一批新展品,再去逛逛吧!'); blip(520);
 }
+/* --- 称号系统:成就换称号,可佩戴,显示在 HUD --- */
+function titleList() {
+  const flot = (PSTORE.getItem('w1001.flotsam') || '').split(',').filter(Boolean).length;
+  const f = {
+    jingu:  PSTORE.getItem('w1001.jingu') === '1',
+    ring:   ringDone(),
+    yfb:    PSTORE.getItem('w1001.yfb') === 'done',
+    shards: shardsGot.length >= 24,
+    dbl:    dblState === 'done',
+    qian:   PSTORE.getItem('w1001.qian') === 'done',
+    hero:   PSTORE.getItem('w1001.hero') === '1',
+    flot:   flot >= 5,
+    house:  !!PSTORE.getItem('w1001.house'),
+    charge: PSTORE.getItem('w1001.charge') === '1',
+    siren:  PSTORE.getItem('w1001.siren') === '1',
+    ticket: PSTORE.getItem('w1001.ticket') === '1',
+    tao:    PSTORE.getItem('w1001.taofound') === '1',
+  };
+  const done = Object.values(f).filter(Boolean).length;
+  const tier = done >= 13 ? '👑 万世收藏之主' : done >= 9 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
+  return [
+    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/13 传奇` },
+    { id: 'qitian', name: '🐒 齐天大圣',   got: f.jingu,   note: '拔出定海神针' },
+    { id: 'ring',   name: '💍 护戒使者',   got: f.ring,    note: '销毁至尊魔戒' },
+    { id: 'monte',  name: '💎 基督山伯爵', got: f.yfb,     note: '挖出黑岩宝藏' },
+    { id: 'star',   name: '✨ 拾星者',     got: f.shards,  note: '集齐 24 枚星之碎片' },
+    { id: 'whaler', name: '🐳 望鲸人',     got: f.dbl,     note: '领取白鲸悬赏' },
+    { id: 'hero',   name: '⚔️ 梁山好汉',   got: f.hero,    note: '纳投名状入伙' },
+    { id: 'qian',   name: '🕯️ 兰若义士',   got: f.qian,    note: '井底救倩安魂' },
+    { id: 'tao',    name: '🌸 桃源客',     got: f.tao,     note: '寻得桃花源秘境' },
+    { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
+  ];
+}
+function updateTitleHUD() {
+  const el = $('hudTitle'); if (!el) return;
+  const eqId = PSTORE.getItem('w1001.title') || 'tier';
+  const list = titleList();
+  let t = list.find(x => x.id === eqId && x.got);
+  if (!t) t = list[0];   // 回退到当前段位
+  el.textContent = t.name;
+}
+function equipTitle(id) {
+  const t = titleList().find(x => x.id === id);
+  if (!t || !t.got) return;
+  PSTORE.setItem('w1001.title', id);
+  updateTitleHUD();
+  toast(`🎖️ 已佩戴称号:${t.name}`);
+  blip(660);
+  openJournal();
+}
+
 function openJournal() {
   const list = $('journalList');
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -1358,7 +1409,13 @@ function openJournal() {
   ];
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
     ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
-  list.innerHTML = qHtml + logHtml + Object.keys(CATS).map(k => {
+  /* 称号:成就换称号,点击佩戴 */
+  const eqId = PSTORE.getItem('w1001.title') || 'tier';
+  const titleHtml = `<div class="qBox"><div class="qTitle"><span>🎖️ 称号</span><span>${titleList().filter(t => t.got).length} 个可佩戴</span></div>
+    ${titleList().map(t => `<div class="qRow${t.got ? ' ok' : ''}">
+      <span>${t.got ? t.name : '🔒 ???'}</span>
+      <span class="qn">${t.got ? (t.id === eqId ? '佩戴中' : `<button class="tEquip" data-eqtitle="${t.id}">佩戴</button>`) : t.note}</span></div>`).join('')}</div>`;
+  list.innerHTML = qHtml + titleHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     return `<div class="jRow"><div class="ico">${cfg.icon}</div>
@@ -1370,6 +1427,7 @@ function openJournal() {
   }).join('');
   $('journal').classList.remove('hidden'); modalOpen = true;
   list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
+  list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
 }
 $('btnJournal').addEventListener('click', openJournal);
 $('hudQuest').addEventListener('click', openJournal);
@@ -2213,6 +2271,7 @@ const shards = [];
 }
 function updateShardHUD() { const el = $('shardCount'); if (el) el.textContent = shardsGot.length; }
 updateShardHUD();
+updateTitleHUD();
 function collectShard(s) {
   shardsGot.push(s.i);
   try { PSTORE.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
