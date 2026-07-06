@@ -11,7 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES } from './w-config.js?v=4';
+import { THEMES } from './w-config.js?v=5';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 
 const D = window.WORLD_DATA;
@@ -115,6 +115,11 @@ const NISLES = [
   { key: 'gul', x: 1440, z: -1060, r: 90, mask: 2.0, h: 6, dock: [1360, -1002] },                          // 格列佛
   { key: 'nvl', x: -520, z: 1720, r: 90, mask: 2.0, h: 7, dock: [-500, 1636] },                            // 梦幻岛
   { key: 'cor', x: 180, z: 1780, r: 86, mask: 2.0, h: 5, dock: [172, 1698] },                              // 珊瑚岛
+  { key: 'typ', x: 820, z: 1620, r: 90, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [772, 1544] },     // 泰皮
+  { key: 'tah', x: 1660, z: 780, r: 88, mask: 2.0, h: 6, dock: [1584, 743] },                              // 画家岛(塔希提)
+  { key: 'daw', x: 1770, z: 180, r: 86, mask: 2.0, h: 5, dock: [1686, 172] },                              // 黎明踏浪号
+  { key: 'rain', x: 650, z: -1650, r: 88, mask: 2.0, h: 6, dock: [620, -1568] },                           // 雨岛
+  { key: 'shu', x: -560, z: -1680, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 14 }, dock: [-536, -1598] }, // 禁闭岛
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
@@ -4635,6 +4640,137 @@ const NI_CONTENT = {
       for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; const cor = new THREE.Mesh(new THREE.ConeGeometry(.8, 1.6, 5), lam([0xe86a8a, 0xd94040, 0xe0a040, 0x8a4ab0][i % 4])); const u = gx + Math.cos(a) * 9.5, v = gz + Math.sin(a) * 9.5; cor.position.set(u, height(u, v) + .8, v); scene.add(cor); }
       for (const [tx, tz] of [[-12, -6], [12, -8], [10, 8], [-10, 8]]) { const u = gx + tx, v = gz + tz, th = height(u, v); const tr = cyl(.28, .4, 5.5, M.wood); tr.rotation.z = (rnd() - .5) * .3; tr.position.set(u, th + 2.7, v); scene.add(tr); const fr = new THREE.Mesh(new THREE.SphereGeometry(2, 7, 5), lam(0x4a9a4a)); fr.scale.set(1.4, .7, 1.4); fr.position.set(u, th + 5.6, v); scene.add(fr); }
       const raft = box(3, .4, 4, M.woodDark); raft.position.set(gx + 11, height(gx + 11, gz + 10) + .5, gz + 10); scene.add(raft);
+    },
+  },
+  typ: {
+    name: '泰皮山谷', en: 'Typee', icon: '🌴', theme: 'typee',
+    desc: '南洋峡谷 · 食人族的温柔款待 · 逃亡水手的两难',
+    ferryMsg: '🌴 泰皮山谷到了。传说这里住着食人族——可他们待你像贵客,你反倒不敢走了',
+    lore: {
+      typeevalley: { icon: '🏝️', color: '#3a6a4a', title: '泰皮山谷', en: 'The Valley', hint: '异文化的两副面孔',
+        desc: '汤莫从捕鲸船逃进这座与世隔绝的山谷。泰皮人给他最好的果子、最美的姑娘、最闲适的日子——可他始终不确定:他们是把他当客人,还是当……日后的一顿飨宴?文明与野蛮,究竟谁更"开化"?' },
+      typeetabu: { icon: '🗿', color: '#5a4a3a', title: '禁忌与文身', en: 'Tabu', hint: '一切都被"塔布"管着',
+        desc: '"塔布"(tabu)统治着山谷的一切:哪些食物女人不能碰,哪条独木舟神圣不可近。老文身师追着汤莫,想在他脸上刺满花纹——一旦刺了,他就再也回不去白人的世界了。' },
+    },
+    spots: [[0, 4, 'typeevalley'], [14, -8, 'typeetabu']],
+    npcs: [
+      { dx: -4, dz: 6, name: '汤莫', body: 0x6a7a8a, hat: 0x4a5a6a, opts: { tall: 1.0 },
+        lines: ['他们待我这样好……可我总在数,盛宴的日子是不是快到了。', '在这山谷里,没人为明天发愁——这倒把我这个文明人衬得可笑。', '法亚薇替我求了情,他们才允我去海边。船,快来吧。'] },
+      { dx: 7, dz: 5, name: '法亚薇', body: 0xd8a86a, hat: 0x8a5a2a, opts: { tall: .95 },
+        lines: ['你为什么总望着海?海那边,有比这里更好的地方吗?', '别怕文身师……不过,你要真留下,就得像我们一样。', '(她替你拨开独木舟的禁忌绳)——去吧,趁潮水正好。'] },
+    ],
+    build: (gx, gz) => {
+      for (const [hx, hz] of [[-6, 6], [6, 8], [10, -2], [-10, -4]]) { const u = gx + hx, v = gz + hz, hh = height(u, v); for (const px of [-1.5, 1.5]) for (const pz of [-1.5, 1.5]) { const stilt = cyl(.12, .14, 2, M.woodDark); stilt.position.set(u + px, hh + 1, v + pz); scene.add(stilt); } const flr = box(4, .3, 4, M.wood); flr.position.set(u, hh + 2, v); scene.add(flr); const rf = new THREE.Mesh(new THREE.ConeGeometry(3.2, 2.2, 4), lam(0x6a5a3a)); rf.rotation.y = .78; rf.position.set(u, hh + 3.4, v); scene.add(rf); }
+      for (const [tx, tz] of [[0, 0], [3, -3]]) { const u = gx + tx, v = gz + tz + 12, th = height(u, v); const tiki = box(1, 3.4, 1, lam(0x5a4030)); tiki.position.set(u, th + 1.7, v); scene.add(tiki); const face = new THREE.Mesh(new THREE.SphereGeometry(.7, 6, 5), lam(0x8a6a4a)); face.position.set(u, th + 3.4, v); scene.add(face); }
+      for (const [tx, tz] of [[-14, 4], [13, 6], [8, -12]]) { const u = gx + tx, v = gz + tz, th = height(u, v); const tr = cyl(.3, .42, 6, M.wood); tr.position.set(u, th + 3, v); scene.add(tr); const fr = new THREE.Mesh(new THREE.SphereGeometry(2.2, 7, 5), lam(0x3a8a3a)); fr.scale.set(1.4, .7, 1.4); fr.position.set(u, th + 6.2, v); scene.add(fr); }
+    },
+  },
+  tah: {
+    name: '画家岛', en: 'The Moon and Sixpence', icon: '🎨', theme: 'tahiti',
+    desc: '塔希提 · 逃离文明去画画 · 满墙杰作与麻风,毛姆笔下的高更',
+    ferryMsg: '🎨 塔希提到了。有个英国人抛下伦敦的一切来这里画画——他说他"必须画,像溺水的人必须挣扎"',
+    lore: {
+      studio: { icon: '🖼️', color: '#b85a2e', title: '椰林里的画室', en: "The Painter's Hut", hint: '满墙的杰作',
+        desc: '一间椰叶顶的木屋,四壁画满了斑斓怪诞的画:金黄的女人、猩红的树、从未有人见过的乐园。斯特里克兰画完最后一笔就双目失明、死于麻风——临终前,他叫人把这满屋杰作,一把火烧了。' },
+      sixpence: { icon: '🌙', color: '#3a3a5a', title: '月亮与六便士', en: 'The Moon', hint: '为月亮丢了六便士',
+        desc: '四十岁的证券经纪人,某天忽然抛妻弃子、远走他乡,只为画画。世人说他疯了。"我必须画画。就像一个掉进水里的人,不管游得好不好,总得挣扎,不然就淹死。"他为了天上的月亮,丢掉了脚下的六便士。' },
+    },
+    spots: [[0, 4, 'studio'], [14, -6, 'sixpence']],
+    npcs: [
+      { dx: -3, dz: 6, name: '斯特里克兰', body: 0x8a4a2a, hat: 0x5a2a18, opts: { tall: 1.08 },
+        lines: ['我必须画画。就像溺水的人必须挣扎。', '我不需要爱情,我没有时间——爱情是种软弱。', '美是艺术家用灵魂的痛苦,从世界的混沌里换来的东西。'] },
+      { dx: 8, dz: 6, name: '蒂阿瑞', body: 0xd86a8a, hat: 0xb84a6a, opts: { wide: 1.2, tall: .98 },
+        lines: ['那个怪人,一文不名,却把我的旅店住成了传奇。', '爱塔跟了他,伺候他画画,直到他烂了、瞎了、死了。', '他叫人把满屋的画都烧了。天哪,那可是……那可是神迹啊。'] },
+    ],
+    build: (gx, gz) => {
+      const hx = gx, hz = gz + 4, hh = height(hx, hz);
+      const hut = box(8, 4, 6, lam(0xc8a878)); hut.position.set(hx, hh + 2, hz); scene.add(hut); cirObs.push({ x: hx, z: hz, r: 4.5 });
+      const rf = new THREE.Mesh(new THREE.ConeGeometry(6, 2.4, 4), lam(0x7a6a3a)); rf.rotation.y = Math.PI / 4; rf.position.set(hx, hh + 5, hz); scene.add(rf);
+      for (const [ox, col] of [[-3.9, 0xe0a020], [0, 0xc23a3a], [3.9, 0x2a7a5a]]) { const mural = box(.15, 3, 5.4, lam(col)); mural.position.set(hx - 4.05, hh + 2, hz); scene.add(mural); const m2 = box(5.4, 3, .15, lam([0xd94080, 0x4a8ac0, 0xe0b040][(ox + 4) % 3 | 0])); m2.position.set(hx, hh + 2, hz + 3.05); scene.add(m2); break; }
+      const easel = cyl(.1, .12, 3, M.woodDark); easel.position.set(gx + 10, height(gx + 10, gz - 4) + 1.5, gz - 4); scene.add(easel);
+      const canvas = box(.1, 2, 1.6, lam(0xe0d0a0)); canvas.position.set(gx + 10.2, height(gx + 10, gz - 4) + 2.2, gz - 4); scene.add(canvas);
+      for (const [tx, tz] of [[-12, 6], [12, 8], [10, -12]]) { const u = gx + tx, v = gz + tz, th = height(u, v); const tr = cyl(.28, .4, 6, M.wood); tr.position.set(u, th + 3, v); scene.add(tr); const fr = new THREE.Mesh(new THREE.SphereGeometry(2.2, 7, 5), lam(0x4a9a4a)); fr.scale.set(1.4, .7, 1.4); fr.position.set(u, th + 6.2, v); scene.add(fr); }
+    },
+  },
+  daw: {
+    name: '黎明踏浪号', en: 'The Voyage of the Dawn Treader', icon: '🐉', theme: 'dawntreader',
+    desc: '群岛远征 · 龙首帆船 · 变成龙的男孩 · 世界尽头的百合之海(原创致敬)',
+    ferryMsg: '🐉 龙首船"黎明踏浪号"停在这里。船头指向东方——世界的尽头,阿斯兰的国度',
+    lore: {
+      dragonisle: { icon: '🐉', color: '#8c3a2e', title: '龙岛', en: 'Dragon Island', hint: '贪婪让男孩变成了龙',
+        desc: '尤斯塔斯是个讨人厌的男孩。他躲进龙穴、枕着金银睡去,醒来发现自己变成了一条龙——贪婪的心,长出了贪婪的鳞。唯有让狮王阿斯兰用利爪剥去他一层层龙皮,那个自私的男孩才痛得脱胎换骨。' },
+      worldsend: { icon: '🌊', color: '#2a6a9a', title: '世界尽头', en: "The World's End", hint: '海水甜如百合',
+        desc: '越往东,海水越清越甜,铺满洁白的睡莲,阳光亮得能直视。老鼠雷佩契普划着小舟,越过最后一道浪墙,独自去往阿斯兰的国度——它这一生的心愿。世界的尽头,不是深渊,是光。' },
+    },
+    spots: [[0, 4, 'dragonisle'], [16, -8, 'worldsend']],
+    npcs: [
+      { dx: -4, dz: 6, name: '卡斯宾王', body: 0x2a6a8a, hat: 0xd9b24a, opts: { tall: 1.05 },
+        lines: ['我们向东航行,去寻找父王放逐的七位爵爷。', '只要"黎明踏浪号"还浮着,我们就一直向着日出开。', '雷佩契普,你这只勇敢的老鼠,比许多骑士都更像骑士。'] },
+      { dx: 8, dz: 6, name: '雷佩契普', body: 0x8a5a3a, hat: 0xc23a3a, opts: { tall: .5 },
+        lines: ['我这一生,只为抵达世界的尽头,阿斯兰的国度。', '当我还在摇篮里,一位女预言者就为我唱了那支歌。', '恐惧?一只有尊严的老鼠,是不认得这个词的。'] },
+    ],
+    build: (gx, gz) => {
+      const ship = makeBoat(0x6a2a9a, 1.5); ship.userData = { anchor: [gx + 2, gz + 4] };
+      const dragonHead = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3, 6), M.gold); dragonHead.rotation.x = Math.PI / 2; dragonHead.position.set(gx + 12, height(gx + 2, gz + 4) + 4, gz + 4); scene.add(dragonHead);
+      const dx2 = gx - 12, dz2 = gz - 8, dh = height(dx2, dz2);
+      const dragon = new THREE.Mesh(new THREE.SphereGeometry(2, 10, 8), lam(0x7a3a2a)); dragon.scale.set(1, .8, 2); dragon.position.set(dx2, dh + 1.6, dz2); scene.add(dragon); cirObs.push({ x: dx2, z: dz2, r: 2.6 });
+      for (const wg of [-1, 1]) { const wing = new THREE.Mesh(new THREE.ConeGeometry(1.6, 4, 3), lam(0x5a2a1a)); wing.rotation.z = wg * 1.2; wing.position.set(dx2 + wg * 2.6, dh + 2.6, dz2); scene.add(wing); }
+      const lily = new THREE.Mesh(new THREE.CircleGeometry(9, 24), new THREE.MeshPhongMaterial({ color: 0xd0eaff, transparent: true, opacity: .7 })); lily.rotation.x = -Math.PI / 2; lily.position.set(gx + 18, height(gx + 18, gz - 8) + .3, gz - 8); scene.add(lily);
+      for (let i = 0; i < 8; i++) { const p = new THREE.Mesh(new THREE.CircleGeometry(.6, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })); p.rotation.x = -Math.PI / 2; p.position.set(gx + 18 + (rnd() - .5) * 14, height(gx + 18, gz - 8) + .35, gz - 8 + (rnd() - .5) * 14); scene.add(p); }
+    },
+  },
+  rain: {
+    name: '雨岛', en: 'Rain', icon: '🌧️', theme: 'rainisle',
+    desc: '帕果帕果 · 连绵不绝的雨 · 传教士与风尘女子的对峙,毛姆短篇',
+    ferryMsg: '🌧️ 帕果帕果到了。雨已经下了半个月,还看不到头。旅店里,一场关于灵魂的战争正在上演',
+    lore: {
+      rainhotel: { icon: '🏨', color: '#4a5a6a', title: '雨中旅店', en: 'The Boarding House', hint: '被雨困住的人们',
+        desc: '检疫封岛,一群旅客挤在这间闷热的木板旅店里,听着屋顶永不停歇的雨。楼上的留声机彻夜放着爵士乐——那是汤普森小姐的房间。楼下,戴维森牧师的脸一天比一天阴沉。' },
+      missionary: { icon: '✝️', color: '#3a3a44', title: '牧师与汤普森小姐', en: 'Davidson & Miss Thompson', hint: '谁在拯救谁?',
+        desc: '戴维森牧师立誓要拯救风尘女子汤普森小姐的灵魂,日夜逼她祈祷、忏悔,几乎要把她送回监狱。她从反抗到崩溃、到跪地皈依……然后某个清晨,牧师被发现割喉自尽在海滩。而她冷笑:"男人!你们都是一路货色。"雨,还在下。' },
+    },
+    spots: [[0, 4, 'rainhotel'], [12, -8, 'missionary']],
+    npcs: [
+      { dx: -4, dz: 6, name: '戴维森牧师', body: 0x2a2a34, hat: 0x1a1a22, opts: { tall: 1.08 },
+        lines: ['这座岛上遍地是罪。我来,是要把光带给他们。', '那个女人的灵魂,我一定要把它从火里夺回来。', '(他望着汤普森小姐的窗,眼神里有种他自己也不懂的东西……)'] },
+      { dx: 7, dz: 5, name: '汤普森小姐', body: 0x9a3a5a, hat: 0x6a2a3a, opts: { tall: .98 },
+        lines: ['凭什么?我碍着谁了?这该死的雨,这该死的岛!', '好啊,牧师,你要救我,那就来救啊。', '(结局那句)——男人!你们这些猪猡,全都一个样!'] },
+    ],
+    build: (gx, gz) => {
+      const hx = gx, hz = gz + 4, hh = height(hx, hz);
+      const hotel = box(12, 6, 8, lam(0x8a8478)); hotel.position.set(hx, hh + 3, hz); scene.add(hotel); cirObs.push({ x: hx, z: hz, r: 6.5 });
+      const ver = box(14, .3, 3, M.wood); ver.position.set(hx, hh + .3, hz + 5.5); scene.add(ver);
+      const rf = box(13, .5, 9, lam(0x4a4a52)); rf.position.set(hx, hh + 6.3, hz); scene.add(rf);
+      for (const px of [-5, -1.5, 1.5, 5]) { const post = cyl(.14, .14, 6, M.woodDark); post.position.set(hx + px, hh + 3, hz + 5.5); scene.add(post); }
+      for (let i = 0; i < 8; i++) { const pud = new THREE.Mesh(new THREE.CircleGeometry(.8 + rnd(), 10), new THREE.MeshPhongMaterial({ color: 0x5a6a7a, transparent: true, opacity: .6 })); pud.rotation.x = -Math.PI / 2; const u = gx + (rnd() - .5) * 40, v = gz + (rnd() - .5) * 40, ph = height(u, v); if (ph > 2) { pud.position.set(u, ph + .1, v); scene.add(pud); } }
+    },
+  },
+  shu: {
+    name: '禁闭岛', en: 'Shutter Island', icon: '🌫️', theme: 'shutter',
+    desc: '雾中疗养岛 · 灯塔与病院 · 记忆随谎言改写,勒翰心理悬疑',
+    ferryMsg: '🌫️ 禁闭岛到了。渡轮不会等你——岛上只有一座精神病院、一座灯塔,和一场分不清真假的暴风雨',
+    lore: {
+      shulighthouse: { icon: '🗼', color: '#5a5a64', title: '灯塔', en: 'The Lighthouse', hint: '真相锁在塔里',
+        desc: '所有人都说灯塔里在做违禁的脑science实验;泰迪拼死也要闯进去查明真相。可当他终于登上塔顶,等着他的不是手术台,而是考利医生温和的一句话:"欢迎回来……你已经在这座岛上,住了很久了。"' },
+      shuward: { icon: '🏥', color: '#3a4048', title: 'C 病区', en: 'Ward C', hint: '记忆是靠不住的',
+        desc: '联邦执法官泰迪来岛上调查一桩失踪案,却发现每个人的说法都自相矛盾、每张地图都对不上。到底是全岛在合谋骗他,还是……这一切,本就是为他一个人精心搭起的戏?"要像个怪物一样活着,还是像个好人一样死去?"' },
+    },
+    spots: [[0, 4, 'shuward'], [-2, -10, 'shulighthouse']],
+    npcs: [
+      { dx: -4, dz: 6, name: '泰迪', body: 0x4a5560, hat: 0x2a3038, opts: { tall: 1.05 },
+        lines: ['我是联邦执法官,我来调查一名失踪的病人。', '这座岛不对劲……每个人都在对我撒谎。', '要像怪物一样活着,还是像好人一样死去?——我选后者。'] },
+      { dx: 8, dz: 6, name: '考利医生', body: 0xd8d2c8, hat: 0xb0a898, opts: { tall: 1.02 },
+        lines: ['我们试过所有办法。这场"角色扮演",是最后的希望。', '你构建了一个精巧的故事,好让自己不必面对真相。', '想想吧:这四天,到底是谁,在追查谁?'] },
+    ],
+    build: (gx, gz) => {
+      const wx = gx, wz = gz + 4, wh = height(wx, wz);
+      const ward = box(14, 6, 9, lam(0x6a6a72)); ward.position.set(wx, wh + 3, wz); scene.add(ward); cirObs.push({ x: wx, z: wz, r: 7.5 });
+      const rf = box(15, .6, 10, lam(0x3a3a42)); rf.position.set(wx, wh + 6.3, wz); scene.add(rf);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, r = 20; const fp = cyl(.12, .14, 2.6, M.woodDark); const u = gx + Math.cos(a) * r, v = gz + Math.sin(a) * r; fp.position.set(u, height(u, v) + 1.3, v); scene.add(fp); }
+      const lx = gx - 2, lz = gz - 10, lh = height(lx, lz);
+      const tower = cyl(1.4, 2, 12, M.white, 12); tower.position.set(lx, lh + 6, lz); scene.add(tower); cirObs.push({ x: lx, z: lz, r: 2.2 });
+      const lroom = cyl(2, 2.2, 2.4, new THREE.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: .5 })); lroom.position.set(lx, lh + 13, lz); scene.add(lroom);
+      const lamp = new THREE.PointLight(0xfff2b0, 0, 120, 2); lamp.position.set(lx, lh + 13, lz); lamp.userData.pow = 24; nightLamps.push(lamp); scene.add(lamp);
     },
   },
 };

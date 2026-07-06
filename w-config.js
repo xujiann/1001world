@@ -47,4 +47,9 @@ export const THEMES = {
   gulliver:  { tempo: 112, wave: 'triangle', scale: [0, 2, 4, 5, 7, 9], base: 294, dens: .55, arp: true, vol: .64 },
   neverland: { tempo: 92, wave: 'triangle', scale: [0, 2, 4, 7, 9, 12], base: 349, dens: .5, arp: true, vol: .68 },
   coral:     { tempo: 74, wave: 'sine', scale: [0, 2, 5, 7, 9], base: 233, dens: .4, vol: .72 },
+  typee:     { tempo: 82, wave: 'triangle', scale: [0, 2, 4, 7, 9], base: 196, dens: .44, bass: true, vol: .68 },
+  tahiti:    { tempo: 72, wave: 'triangle', scale: [0, 3, 5, 7, 10], base: 208, dens: .42, vol: .7 },
+  dawntreader: { tempo: 78, wave: 'sine', scale: [0, 2, 4, 7, 9, 11, 12], base: 262, dens: .46, pad: true, vol: .76 },
+  rainisle:  { tempo: 52, wave: 'sine', scale: [0, 2, 3, 5, 7, 8], base: 139, dens: .3, pad: true, vol: .66 },
+  shutter:   { tempo: 46, wave: 'sawtooth', scale: [0, 1, 3, 6, 7, 9], base: 104, dens: .28, pad: true, vol: .58 },
 };
