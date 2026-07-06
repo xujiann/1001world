@@ -12,6 +12,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES } from './w-config.js?v=1';
+import { CONSTELLATIONS } from './constellations.js?v=1';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -1670,24 +1671,8 @@ let starField;
   }));
   scene.add(starField);
 }
-/* --- 星座系统:知名星座连线成图,夜间显现,随天旋(挂在 starField 下) --- */
+/* --- 星座系统:全 88 IAU 星座 → constellations.js;连线成图,夜间显现,随天旋 --- */
 let constStars = null, constLines = null;
-const CONSTELLATIONS = [
-  { name: '北斗七星', az: 30, el: 68, stars: [[0,2],[0,0],[2,-.2],[2,1.5],[3.6,1.9],[5.2,2.3],[6.8,2.1]], lines: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]] },
-  { name: '猎户座', az: 90, el: 45, stars: [[-1.5,2.2],[1.5,2.4],[-.6,0],[0,0],[.6,0],[-1.2,-2.2],[1.4,-2],[0,3.6]], lines: [[0,7],[1,7],[0,2],[1,4],[2,3],[3,4],[2,5],[4,6]] },
-  { name: '仙后座', az: 340, el: 71, stars: [[-3,0],[-1.5,1.2],[0,0],[1.5,1.2],[3,0]], lines: [[0,1],[1,2],[2,3],[3,4]] },
-  { name: '天蝎座', az: 205, el: 34, stars: [[-2,2.5],[-2.6,2],[-2,1.5],[0,.5],[.6,-.5],[1,-1.8],[.6,-3],[-.4,-3.6],[-1.4,-3.2]], lines: [[0,3],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8]] },
-  { name: '狮子座', az: 120, el: 55, stars: [[0,0],[0,1.2],[-.3,2.4],[.4,3.2],[1.3,3.4],[1.4,2.4],[4.2,.6],[3.2,-.6]], lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,1],[0,6],[6,7],[7,0]] },
-  { name: '天鹅座', az: 60, el: 76, stars: [[0,3],[0,.5],[0,-2.6],[-2.6,1],[2.6,1]], lines: [[0,1],[1,2],[3,1],[1,4]] },
-  { name: '南十字座', az: 180, el: 24, stars: [[0,2.2],[0,-2.2],[-1.6,0],[1.6,0]], lines: [[0,1],[2,3]] },
-  { name: '天琴座', az: 45, el: 60, stars: [[0,3],[-.7,0],[.7,.3],[.5,-1.5],[-.9,-1.2]], lines: [[0,1],[1,2],[2,3],[3,4],[4,1]] },
-  { name: '金牛座', az: 105, el: 40, stars: [[1,0],[0,1],[-1.2,2],[2,1],[3.2,2],[-2.2,3.6],[4.2,3]], lines: [[0,1],[1,2],[0,3],[3,4],[2,5],[4,6]] },
-  { name: '双子座', az: 132, el: 49, stars: [[-1.5,3.2],[-1.4,1],[-1,-1.4],[1.5,3],[1.2,1],[1.4,-1.4]], lines: [[0,1],[1,2],[3,4],[4,5],[0,3],[2,5]] },
-  { name: '大犬座', az: 152, el: 30, stars: [[0,0],[-1,1.2],[1,1.4],[-.6,-1.6],[1.2,-1.8]], lines: [[0,1],[0,2],[0,3],[0,4]] },
-  { name: '天鹰座', az: 250, el: 54, stars: [[0,0],[0,1.4],[0,-1.4],[-1.6,.4],[1.6,.2]], lines: [[1,0],[0,2],[3,0],[0,4]] },
-  { name: '牧夫座', az: 300, el: 62, stars: [[0,0],[-1.2,1.8],[.4,3.4],[1.6,1.6]], lines: [[0,1],[1,2],[2,3],[3,0]] },
-  { name: '小熊座', az: 5, el: 80, stars: [[0,3],[-.3,1.6],[.2,.4],[1,.6],[1.4,1.8],[1,2.8],[.4,2.4]], lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]] },
-];
 {
   const R = 980, S = .045, starPos = [], linePos = [];
   const Dv = new THREE.Vector3(), Ev = new THREE.Vector3(), Uv = new THREE.Vector3(), tmp = new THREE.Vector3();
