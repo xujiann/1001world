@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -4834,8 +4834,15 @@ for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }
 const MAZE_NODES = [
   [0, -70, 0], [70, -78, 10], [80, -86, 80], [10, -76, 100], [-70, -84, 80], [-85, -72, 10],
   [-70, -92, -70], [0, -82, -95], [75, -96, -70], [0, -104, 0], [45, -100, 45], [-45, -90, -45],
+  [122, -80, 96], [58, -112, -94],
 ];
-const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11]];
+const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13]];
+const AIR_NODES = [12, 4];   // 气室(补给氧气)
+const DISC = {   // 死路/中心的发现(迷路奖励)
+  11: { kind: 'mural', title: '海底壁画', msg: '🖼️ 死路尽头一面壁画:一头鲸与一座灯塔并肩——像在暗示,这两座岛曾经由陆地相连。' },
+  13: { kind: 'wreck', flag: 'wreck', sb: 18, title: '沉船宝箱', msg: '⚓ 沉船残骸里一只铁箱,锁早锈穿了——金币、旧海图、一枚灯塔徽章。⚡+18' },
+  9:  { kind: 'heart', title: '潮汐之心', msg: '🫀 迷宫正中,一颗缓缓搏动的巨核悬在水里——古文明留下的"潮汐之心"。原来这些隧道不是天然的:整座星球的海底,是一张刻意铺就的迷宫。' },
+};
 const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标, col=浮标色
   { n: 0, isle: '收藏之岛', surf: [0, 440], col: 0x9fe0ff },
   { n: 3, isle: '蓝色海豚岛', surf: [1225, 1272], col: 0x6ab0d8 },
@@ -4845,6 +4852,7 @@ const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标
 ];
 const TUBE_R = 6;
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
+let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0;
 const diveGroup = new THREE.Group(); diveGroup.visible = false; scene.add(diveGroup);
 const ropeGroup = new THREE.Group(); scene.add(ropeGroup); ropeGroup.visible = false;
 const portalBeacons = [];
@@ -4854,14 +4862,15 @@ const portalBeacons = [];
   const rockMat = MOBILE ? new THREE.MeshLambertMaterial({ color: 0x2a3640, side: THREE.BackSide })
     : new THREE.MeshStandardMaterial({ color: 0x2a3640, roughness: 1, metalness: 0, side: THREE.BackSide });
   const ropeMat = new THREE.MeshBasicMaterial({ color: 0x6ffcff, fog: false });
-  for (const [a, b] of MAZE_EDGES) {
+  const glassMat = new THREE.MeshPhongMaterial({ color: 0x9fd8ff, transparent: true, opacity: .18, side: THREE.DoubleSide, shininess: 90, fog: false });
+  MAZE_EDGES.forEach(([a, b], ei) => {
     const A = V(a), B = V(b), len = A.distanceTo(B), mid = A.clone().add(B).multiplyScalar(.5);
     const q = new THREE.Quaternion().setFromUnitVectors(up, B.clone().sub(A).normalize());
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R, TUBE_R, len + 2, 14, 1, true), rockMat);
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R, TUBE_R, len + 2, 16, 1, true), ei === 0 ? glassMat : rockMat);   // 首段=玻璃观景廊
     tube.position.copy(mid); tube.quaternion.copy(q); diveGroup.add(tube);
     const rope = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, len, 5), ropeMat);
     rope.position.copy(mid); rope.quaternion.copy(q); ropeGroup.add(rope);
-  }
+  });
   for (let i = 0; i < MAZE_NODES.length; i++) {   // 交汇处开阔洞室
     const cav = new THREE.Mesh(new THREE.SphereGeometry(TUBE_R + 3, 12, 10), rockMat);
     cav.position.copy(V(i)); diveGroup.add(cav);
@@ -4876,6 +4885,41 @@ const portalBeacons = [];
     ropeGroup.add(g); portalBeacons.push(g);
   }
   diveLight = new THREE.PointLight(0xbfeaff, 0, 70, 1.6); diveLight.visible = false; scene.add(diveLight);
+  /* 观景廊外的巨鲸剪影(周期性掠过玻璃隧道) */
+  mazeWhale = new THREE.Group();
+  const wbody = new THREE.Mesh(new THREE.SphereGeometry(9, 14, 10), new THREE.MeshBasicMaterial({ color: 0x0a1a26, fog: false })); wbody.scale.set(1, .7, 2.7); mazeWhale.add(wbody);
+  const wtail = new THREE.Mesh(new THREE.ConeGeometry(5, 8, 4), new THREE.MeshBasicMaterial({ color: 0x0a1a26, fog: false })); wtail.rotation.x = -Math.PI / 2; wtail.scale.set(1, .3, 1); wtail.position.z = -26; mazeWhale.add(wtail);
+  mazeWhale.userData = { mid: new THREE.Vector3((MAZE_NODES[0][0] + MAZE_NODES[1][0]) / 2, (MAZE_NODES[0][1] + MAZE_NODES[1][1]) / 2, (MAZE_NODES[0][2] + MAZE_NODES[1][2]) / 2) };
+  diveGroup.add(mazeWhale);
+  /* 气室:开阔洞室顶部一层明亮水镜 + 上升气泡 */
+  for (const ni of AIR_NODES) {
+    const n = MAZE_NODES[ni];
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(TUBE_R + 2, 20), new THREE.MeshBasicMaterial({ color: 0xbfeeff, transparent: true, opacity: .5, fog: false, side: THREE.DoubleSide }));
+    disc.rotation.x = -Math.PI / 2; disc.position.set(n[0], n[1] + TUBE_R + 1.5, n[2]); diveGroup.add(disc);
+    const bg = new THREE.BufferGeometry(); const bp = new Float32Array(30 * 3);
+    for (let i = 0; i < 30; i++) { bp[i * 3] = n[0] + (Math.random() - .5) * 8; bp[i * 3 + 1] = n[1] + Math.random() * 8; bp[i * 3 + 2] = n[2] + (Math.random() - .5) * 8; }
+    bg.setAttribute('position', new THREE.BufferAttribute(bp, 3));
+    diveGroup.add(new THREE.Points(bg, new THREE.PointsMaterial({ color: 0xcfeeff, size: .5, transparent: true, opacity: .7, fog: false })));
+  }
+  /* 死路壁画(节点 11):鲸与灯塔 */
+  { const n = MAZE_NODES[11]; const cv = document.createElement('canvas'); cv.width = 128; cv.height = 96; const cx = cv.getContext('2d');
+    cx.fillStyle = '#26343e'; cx.fillRect(0, 0, 128, 96); cx.fillStyle = '#8fb6c8';
+    cx.beginPath(); cx.ellipse(44, 56, 28, 12, 0, 0, 7); cx.fill(); cx.beginPath(); cx.moveTo(16, 56); cx.lineTo(4, 44); cx.lineTo(6, 64); cx.fill();
+    cx.fillRect(92, 32, 10, 44); cx.beginPath(); cx.moveTo(88, 32); cx.lineTo(106, 32); cx.lineTo(97, 20); cx.fill(); cx.fillStyle = '#ffd76a'; cx.fillRect(94, 30, 6, 6);
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(9, 6.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), fog: false }));
+    mural.position.set(n[0], n[1], n[2] - (TUBE_R + 2)); diveGroup.add(mural); }
+  /* 沉船宝箱(节点 13) */
+  { const n = MAZE_NODES[13]; const hull = box(3, 1.4, 8, new THREE.MeshStandardMaterial({ color: 0x3a2c1e, roughness: 1 })); hull.rotation.z = .3; hull.position.set(n[0] - 2, n[1] - 2, n[2]); diveGroup.add(hull);
+    const chest = box(2, 1.3, 1.4, new THREE.MeshStandardMaterial({ color: 0x6a4a24, roughness: .8 })); chest.position.set(n[0] + 1, n[1] - 2, n[2] + 1); diveGroup.add(chest);
+    const gold = box(1.7, .4, 1.1, new THREE.MeshBasicMaterial({ color: 0xe8c040, fog: false })); gold.position.set(n[0] + 1, n[1] - 1.3, n[2] + 1); diveGroup.add(gold); }
+  /* 潮汐之心(中心节点 9) */
+  { const n = MAZE_NODES[9]; tidalHeart = new THREE.Group(); tidalHeart.position.set(n[0], n[1], n[2]);
+    tidalHeart.add(new THREE.Mesh(new THREE.IcosahedronGeometry(4, 1), new THREE.MeshBasicMaterial({ color: 0x2a6a8a, transparent: true, opacity: .55, fog: false })));
+    tidalHeart.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.4, 0), new THREE.MeshBasicMaterial({ color: 0x8ffcff, fog: false })));
+    const hl = new THREE.PointLight(0x6ffcff, 1.2, 60, 2); tidalHeart.add(hl); diveGroup.add(tidalHeart); }
+  /* 声呐脉冲环 */
+  sonarRing = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0x7ffcff, transparent: true, opacity: 0, wireframe: true, fog: false }));
+  sonarRing.visible = false; diveGroup.add(sonarRing);
 }
 {   // 潜水 HUD:气瓶条 + 提示
   const d = document.createElement('div'); d.id = 'diveHud'; d.className = 'hidden';
@@ -4909,6 +4953,17 @@ function clampToMaze(pos) {
   const R = TUBE_R - 1.3;
   if (best > R) { const f = R / best; pos.x = cx + (px - cx) * f; pos.y = cy + (py - cy) * f; pos.z = cz + (pz - cz) * f; }
   return best;
+}
+const discSeen = new Set();
+function fireSonar() {
+  if (!diving || sonarCD > 0) return;
+  sonarCD = 4; sonarT = 1.4;
+  sonarRing.position.copy(player.position); sonarRing.visible = true;
+  // 回声:报出最近出口的方位与距离
+  let best = 1e9, bi = -1;
+  for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; const d = Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]); if (d < best) { best = d; bi = i; } }
+  if (bi >= 0) { const n = MAZE_NODES[MAZE_PORTALS[bi].n]; const ang = Math.atan2(n[0] - player.position.x, n[2] - player.position.z) * 180 / Math.PI; const dir = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'][((Math.round(ang / 45) + 8) % 8)]; toast(`🔊 声呐回声:最近的出口(${MAZE_PORTALS[bi].isle})在${dir}方,约 ${Math.round(best)} 米`); }
+  if (actx && musicOn) { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(880, actx.currentTime); o.frequency.exponentialRampToValueAtTime(220, actx.currentTime + .5); g.gain.setValueAtTime(.12, actx.currentTime); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .6); o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + .6); }
 }
 function enterDive(pi) {
   if (diving) return;
@@ -5625,6 +5680,7 @@ addEventListener('keydown', e => {
     return;
   }
   if (k === 'm') { toggleBigMap(); return; }
+  if (k === 'q' && diving) { fireSonar(); return; }   // 声呐探路
   if (k === 'k') {   // 观星模式:夜间显示星座名
     starGaze = !starGaze;
     toast(starGaze ? (curDA >= .32 ? '🔭 观星模式已开(夜幕降临后仰望星空)' : '🔭 观星模式:仰望星空,星座之名浮现') : '观星模式已关');
@@ -5751,15 +5807,29 @@ function loop() {
     player.rotation.x = -camPitch * .5;
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
     diveLight.intensity = 2.4;
-    // 气瓶
-    diveAir -= dt * 1.35;
+    // 气瓶(气室内回充)
+    let inAir = false;
+    for (const ni of AIR_NODES) { const n = MAZE_NODES[ni]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < TUBE_R + 3) { inAir = true; break; } }
+    diveAir = inAir ? Math.min(100, diveAir + dt * 28) : diveAir - dt * 1.4;
+    if (inAir && airChamberT <= 0) { airChamberT = 6; toast('🫧 气室——氧气回满,喘口气再走'); }
+    airChamberT -= dt;
     const fill = $('diveAirFill'); if (fill) { fill.style.width = Math.max(0, diveAir) + '%'; fill.style.background = diveAir < 25 ? '#ff5a4a' : 'linear-gradient(90deg,#2ad0ff,#7affd0)'; }
-    if (diveAir <= 0) { toast('🫧 憋不住了——你抓住导绳,勉强浮回了洞口'); surfaceDive(diveEntry); }
+    if (diveAir <= 0) { toast('🫧 憋不住了——你勉强浮回了洞口'); surfaceDive(diveEntry); }
+    // 死路/中心发现(迷路有奖励)
+    for (const nk in DISC) { const n = MAZE_NODES[nk], d = DISC[nk]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 10) {
+      if (d.flag) { if (PSTORE.getItem('w1001.' + d.flag) !== '1') { PSTORE.setItem('w1001.' + d.flag, '1'); if (d.sb) earnSB(d.sb); toast(d.msg); blip(760); } }
+      else if (!discSeen.has(nk)) { discSeen.add(nk); toast(d.msg); blip(560); }
+    } }
+    // 潮汐之心搏动 + 巨鲸掠过玻璃观景廊
+    if (tidalHeart) { const s = 1 + Math.sin(t * 1.6) * .12; tidalHeart.children[1].scale.setScalar(s); tidalHeart.rotation.y = t * .3; }
+    if (mazeWhale) { const m = mazeWhale.userData.mid, ph = (t * .06) % 1, wz = -60 + ph * 120; mazeWhale.position.set(m.x + 24, m.y + 4, m.z + wz); mazeWhale.rotation.y = Math.PI / 2; }
+    if (sonarT > 0) { sonarT -= dt; sonarRing.scale.setScalar(1 + (1.4 - sonarT) * 30); sonarRing.material.opacity = Math.max(0, sonarT / 1.4) * .5; if (sonarT <= 0) sonarRing.visible = false; }
+    if (sonarCD > 0) sonarCD -= dt;
     // 出口检测
     nearPortal = -1;
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
     const dh = $('diveHint');
-    if (dh) dh.textContent = nearPortal >= 0 ? `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : '🫧 空格上浮 · Shift下潜 · WASD 游动 · 找到发光浮标按 E 出水';
+    if (dh) dh.textContent = nearPortal >= 0 ? `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : '🫧 空格上浮·Shift下潜·WASD游动 · Q 声呐探路 · 找到浮标按 E 出水';
   }
   /* 移动 */
   if (!modalOpen && !flight && !diving) {
@@ -6345,4 +6415,4 @@ if (!MOBILE) {
 loop();
 
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
-  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, diving: () => diving, diveAir: () => diveAir, gear, GEAR };
+  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR };
