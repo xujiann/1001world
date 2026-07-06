@@ -4838,6 +4838,7 @@ const MAZE_NODES = [
   [-70, -92, -70], [0, -82, -95], [75, -96, -70], [0, -104, 0], [45, -100, 45], [-45, -90, -45],
   [122, -80, 96], [58, -112, -94], [-40, -116, -120],
   [-115, -84, -30], [-100, -70, 60], [30, -92, -115], [95, -90, -20],
+  [105, -104, -95], [-30, -72, 110], [-30, -110, -30], [-120, -92, -70], [120, -96, -40], [-100, -80, 90], [40, -114, -70], [50, -74, 110],
 ];
 /* 主题分区:整座海底迷宫分四区(+巴别密室),各区管壁配色/雾色/地标不同 */
 const ZONES = [
@@ -4846,8 +4847,8 @@ const ZONES = [
   { name: '✨ 星象水道', col: 0x2a3266, fog: 0x080a1e },
   { name: '🐋 鲸骨王朝', col: 0x5a5448, fog: 0x100c08 },
 ];
-const NODE_ZONE = [0, 1, 1, 0, 2, 2, 2, 3, 1, 3, 1, 2, 0, 1, 3, 2, 2, 3, 1];
-const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13], [7, 14], [5, 16], [16, 15], [15, 6], [7, 17], [1, 18], [18, 8]];
+const NODE_ZONE = [0, 1, 1, 0, 2, 2, 2, 3, 1, 3, 1, 2, 0, 1, 3, 2, 2, 3, 1, 1, 0, 3, 2, 1, 2, 3, 0];
+const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13], [7, 14], [5, 16], [16, 15], [15, 6], [7, 17], [1, 18], [18, 8], [13, 19], [3, 20], [9, 21], [6, 22], [8, 23], [4, 24], [7, 25], [2, 26], [19, 23], [24, 16], [21, 17]];
 const AIR_NODES = [12, 4];   // 气室(补给氧气)
 const GATES = [   // 潮汐门:潮起潮落定时开合;满月门:仅满月夜开(通往巴别海窟)
   { a: 1, b: 2, kind: 'tide', phase: 0 },
@@ -4870,6 +4871,14 @@ const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标
   { n: 15, isle: '黎明踏浪号', surf: [1686, 172], col: 0x6affc0 },
   { n: 17, isle: '无人生还岛', surf: [-76, -1690], col: 0xc0c0c8 },
   { n: 18, isle: '泰皮', surf: [772, 1544], col: 0x4a9a4a },
+  { n: 19, isle: '莫罗博士岛', surf: [-1406, -953], col: 0xe0dcd2, cave: true },
+  { n: 20, isle: '蝇王', surf: [-993, -1380], col: 0xd8b46a },
+  { n: 21, isle: '乌托邦', surf: [-1476, 805], col: 0x9fb0c0 },
+  { n: 22, isle: '格列佛', surf: [1360, -1002], col: 0xc23a3a },
+  { n: 23, isle: '侏罗纪公园', surf: [1020, 800], col: 0x9cc46a, cave: true },
+  { n: 24, isle: '一千零一夜', surf: [-1020, 534], col: 0xe8c86a },
+  { n: 25, isle: '花果山', surf: [150, -1132], col: 0xf5c9a0, cave: true },
+  { n: 26, isle: '大观园', surf: [1250, -548], col: 0xe8b8cc },
 ];
 const TUBE_R = 6;
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
@@ -4975,7 +4984,16 @@ const portalBeacons = [];
   d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveHint" style="margin-top:5px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
   document.body.appendChild(d);
 }
-/* 各海岛的蓝洞(潜水口):走近按 E 潜入 */
+/* 步行洞窟:围绕潜水潭建一座可走进的小洞(顶盖+半圈石壁+钟乳石),留前方开口 */
+function buildGrotto(sx, sz, gy) {
+  const rock = lam(0x39352e);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(9, 14, 8, 0, 6.283, 0, Math.PI / 2.4), new THREE.MeshLambertMaterial({ color: 0x39352e, side: THREE.DoubleSide }));
+  canopy.scale.y = .7; canopy.position.set(sx, gy + 3, sz); scene.add(canopy);
+  for (const a of [1.5, 2.3, 3.14, 3.98, 4.78]) { const b = new THREE.Mesh(new THREE.DodecahedronGeometry(2.8), rock); const bx = sx + Math.cos(a) * 7.5, bz = sz + Math.sin(a) * 7.5; b.position.set(bx, gy + 1.5, bz); b.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); scene.add(b); cirObs.push({ x: bx, z: bz, r: 2.6 }); }
+  for (let i = 0; i < 5; i++) { const st = new THREE.Mesh(new THREE.ConeGeometry(.4, 1.6, 5), rock); st.rotation.x = Math.PI; st.position.set(sx + (rnd() - .5) * 10, gy + 5, sz + (rnd() - .5) * 10); scene.add(st); }
+  const gl = new THREE.PointLight(0x6fd0e8, .7, 18, 2); gl.position.set(sx, gy + 2, sz); scene.add(gl);
+}
+/* 各海岛的蓝洞(潜水口):走近按 E 潜入;cave 者外面罩一座可步行洞窟 */
 for (const p of MAZE_PORTALS) {
   const [sx, sz] = p.surf;
   const gy = Math.max(height(sx, sz), pierHeight(sx, sz) || 0, 0);
@@ -4983,6 +5001,7 @@ for (const p of MAZE_PORTALS) {
   ring.rotation.x = Math.PI / 2; ring.position.set(sx, gy + .15, sz); scene.add(ring);
   const hole = new THREE.Mesh(new THREE.CircleGeometry(3, 20), new THREE.MeshBasicMaterial({ color: 0x061a26, transparent: true, opacity: .92 }));
   hole.rotation.x = -Math.PI / 2; hole.position.set(sx, gy + .17, sz); scene.add(hole);
+  if (p.cave) buildGrotto(sx, sz, gy);
   addSpot(sx, sz, 'dive', 'bluehole', { r: 7, y: gy + 1, portal: MAZE_PORTALS.indexOf(p) });
 }
 /* 主岛「牛首回廊」海蚀洞:南滩可步行入洞,走到潜水潭下水(潜水之外的陆上入口)*/
