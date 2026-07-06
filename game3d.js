@@ -4852,7 +4852,7 @@ const DISC = {   // 死路/中心的发现(迷路奖励)
   14: { kind: 'babel', flag: 'babel', sb: 40, star: true, title: '巴别海窟', msg: '📖 满月之门后,是一间六边形的密室——博尔赫斯的巴别图书馆沉入了海底。架上不是书,是发光的贝壳、珊瑚片、鲸歌的回响。你在这里,读到了整座迷宫的地图。⚡+40 · ⭐+1' },
 };
 const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标, col=浮标色
-  { n: 0, isle: '收藏之岛', surf: [0, 440], col: 0x9fe0ff },
+  { n: 0, isle: '收藏之岛', surf: [0, 312], col: 0x9fe0ff },
   { n: 3, isle: '蓝色海豚岛', surf: [1225, 1272], col: 0x6ab0d8 },
   { n: 5, isle: '神秘岛', surf: [-1690, -400], col: 0xff8a4a },
   { n: 7, isle: '金银岛', surf: [1632, -498], col: 0xe0c040 },
@@ -4966,6 +4966,23 @@ for (const p of MAZE_PORTALS) {
   const hole = new THREE.Mesh(new THREE.CircleGeometry(3, 20), new THREE.MeshBasicMaterial({ color: 0x061a26, transparent: true, opacity: .92 }));
   hole.rotation.x = -Math.PI / 2; hole.position.set(sx, gy + .17, sz); scene.add(hole);
   addSpot(sx, sz, 'dive', 'bluehole', { r: 7, y: gy + 1, portal: MAZE_PORTALS.indexOf(p) });
+}
+/* 主岛「牛首回廊」海蚀洞:南滩可步行入洞,走到潜水潭下水(潜水之外的陆上入口)*/
+{
+  const cx = 0, cz = 320, fh = height(cx, cz), rock = lam(0x39352e);
+  // 侧壁 + 后壁(挡路)
+  for (const [wx, wz1, wz2] of [[-14, 304, 340], [14, 304, 340]]) { const wall = box(2, 9, wz2 - wz1, rock); wall.position.set(wx, fh + 4, (wz1 + wz2) / 2); scene.add(wall); boxObs.push({ x1: wx - 1, z1: wz1, x2: wx + 1, z2: wz2 }); }
+  const back = box(30, 9, 2, rock); back.position.set(cx, fh + 4, 303); scene.add(back); boxObs.push({ x1: -15, z1: 302, x2: 15, z2: 304 });
+  const ceil = box(30, 2, 40, rock); ceil.position.set(cx, fh + 8.5, 321); scene.add(ceil);
+  // 洞口拱门(朝海)
+  for (const px of [-12, 12]) { const pil = cyl(2.2, 2.6, 8, rock, 7); pil.position.set(px, fh + 4, 339); scene.add(pil); cirObs.push({ x: px, z: 339, r: 2.4 }); }
+  const lintel = box(28, 3, 3, rock); lintel.position.set(cx, fh + 8, 339); scene.add(lintel);
+  // 钟乳石
+  for (let i = 0; i < 7; i++) { const st = new THREE.Mesh(new THREE.ConeGeometry(.5 + Math.random() * .4, 2 + Math.random() * 2, 6), rock); st.rotation.x = Math.PI; st.position.set(-11 + Math.random() * 22, fh + 7, 308 + Math.random() * 28); scene.add(st); }
+  // 潜水潭幽光 + 洞名牌
+  const glow = new THREE.PointLight(0x6fd0e8, 0, 26, 2); glow.position.set(cx, fh + 3, 312); glow.userData.pow = 10; nightLamps.push(glow); scene.add(glow);
+  const gl2 = new THREE.PointLight(0x6fd0e8, .8, 20, 2); gl2.position.set(cx, fh + 1, 312); scene.add(gl2);
+  const cSign = makeSign('牛首回廊 · 潜水潭', 6, '#14202a', '#8fe0e8'); cSign.position.set(20, height(20, 330) + 3.4, 330); scene.add(cSign);
 }
 function clampToMaze(pos) {
   let best = 1e9, cx = 0, cy = 0, cz = 0;
