@@ -1678,7 +1678,7 @@ let starField;
   scene.add(starField);
 }
 /* --- 星座系统:全 88 IAU 星座 → constellations.js;连线成图,夜间显现,随天旋 --- */
-let constStars = null, constLines = null;
+let constStars = null, constLines = null, constDirs = [];
 {
   const R = 980, S = .045, starPos = [], linePos = [];
   const Dv = new THREE.Vector3(), Ev = new THREE.Vector3(), Uv = new THREE.Vector3(), tmp = new THREE.Vector3();
@@ -1691,12 +1691,42 @@ let constStars = null, constLines = null;
     const pts = cst.stars.map(([lx, ly]) => { tmp.copy(Dv).addScaledVector(Ev, (lx - mx) * S).addScaledVector(Uv, (ly - my) * S).normalize().multiplyScalar(R); return new THREE.Vector3(tmp.x, tmp.y + 40, tmp.z); });
     for (const p of pts) starPos.push(p.x, p.y, p.z);
     for (const [i, j] of cst.lines) { const a = pts[i], b = pts[j]; linePos.push(a.x, a.y, a.z, b.x, b.y, b.z); }
+    const c = new THREE.Vector3(); for (const p of pts) c.add(p); c.multiplyScalar(1 / pts.length);   // 质心=观星标签锚点
+    constDirs.push({ name: cst.name, c });
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
   constStars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xeaf4ff, size: 6, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
   constLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x5f86bf, transparent: true, opacity: 0, fog: false, depthWrite: false }));
   starField.add(constStars, constLines);
+}
+/* --- 观星模式(K):夜间把视野内星座名投影到屏幕 --- */
+let starGaze = false, constLabels = [], skyLabels = null, sgY = new THREE.Vector3(0, 1, 0), sgV = new THREE.Vector3();
+{
+  skyLabels = document.createElement('div'); skyLabels.id = 'skyLabels';
+  Object.assign(skyLabels.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '6', display: 'none', overflow: 'hidden' });
+  document.body.appendChild(skyLabels);
+  for (let i = 0; i < constDirs.length; i++) {
+    const el = document.createElement('div');
+    Object.assign(el.style, { position: 'absolute', transform: 'translate(-50%,-50%)', font: '600 12px system-ui,sans-serif', color: '#dce8ff', textShadow: '0 0 6px #2a4a8c,0 1px 2px #000', whiteSpace: 'nowrap', opacity: '0', transition: 'opacity .25s', letterSpacing: '.5px' });
+    el.textContent = '✦ ' + constDirs[i].name;
+    skyLabels.appendChild(el); constLabels.push(el);
+  }
+}
+function updateStarGaze() {
+  if (!starGaze || curDA >= .32) { if (skyLabels.style.display !== 'none') skyLabels.style.display = 'none'; return; }
+  if (skyLabels.style.display === 'none') skyLabels.style.display = 'block';
+  const ry = starField.rotation.y, W = innerWidth, H = innerHeight, fade = Math.min(1, (.32 - curDA) / .2);
+  for (let i = 0; i < constDirs.length; i++) {
+    sgV.copy(constDirs[i].c).applyAxisAngle(sgY, ry).project(camera);
+    const on = sgV.z < 1 && Math.abs(sgV.x) < 1 && sgV.y > -.9 && sgV.y < 1;
+    const lab = constLabels[i];
+    if (!on) { if (lab.style.opacity !== '0') lab.style.opacity = '0'; continue; }
+    lab.style.left = ((sgV.x * .5 + .5) * W) + 'px';
+    lab.style.top = ((-sgV.y * .5 + .5) * H) + 'px';
+    const edge = Math.min(1, (1 - Math.abs(sgV.x)) * 3, (1 - Math.abs(sgV.y)) * 3);   // 近屏幕边缘淡出
+    lab.style.opacity = (fade * edge * .9).toFixed(2);
+  }
 }
 /* --- 天气(按日期随机:晴/雨/雾) --- */
 const WEATHER = (() => {
@@ -4717,6 +4747,11 @@ addEventListener('keydown', e => {
     return;
   }
   if (k === 'm') { toggleBigMap(); return; }
+  if (k === 'k') {   // 观星模式:夜间显示星座名
+    starGaze = !starGaze;
+    toast(starGaze ? (curDA >= .32 ? '🔭 观星模式已开(夜幕降临后仰望星空)' : '🔭 观星模式:仰望星空,星座之名浮现') : '观星模式已关');
+    return;
+  }
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
   if (k === ' ') { e.preventDefault(); if (grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
@@ -5236,6 +5271,7 @@ function loop() {
       }
     }
   }
+  updateStarGaze();
   /* 晨昏薄雾 */
   if (mistPts) {
     const mistF = clamp(1 - Math.abs(curDA - .45) * 3, 0, .62);
@@ -5374,4 +5410,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels };
