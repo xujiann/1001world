@@ -1563,7 +1563,8 @@ function openGuide() {
     <div class="cardDesc">
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
-    <b>3. 出海远行</b>——东滩渡口通往 20 个世界(中土、霍格沃茨走 9¾ 站台的火车)。每个世界都藏着一条支线,<b>按 J 打开图鉴看「航海日志」</b>,按 <b>M</b> 看海图。<br><br>
+    <b>3. 出海远行</b>——东滩渡口通往二十余个世界(中土、霍格沃茨走 9¾ 站台的火车;南海新添但丁的炼狱山)。每个世界都藏着一条支线,<b>按 J 打开图鉴看「航海日志」</b>,按 <b>M</b> 看海图。<br><br>
+    <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
   modal.classList.remove('hidden'); modalOpen = true;
