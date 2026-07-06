@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1519,6 +1519,7 @@ function titleList() {
     { id: 'marlin', name: '🦈 不可战胜',   got: f.marlin,  note: '与鲨鱼搏至终局' },
     { id: 'treasure', name: '🏴‍☠️ 寻宝者', got: f.treasure, note: '挖出弗林特宝藏' },
     { id: 'caver',  name: '🤿 洞穴潜水员', got: f.caved,   note: '穿越海底隧道迷宫' },
+    { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
     { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
@@ -1598,6 +1599,7 @@ function openJournal() {
     ['🦈 大马林鱼(老人与海)', PSTORE.getItem('w1001.marlin') === '1' ? '✅ 虽败犹荣' : '⏳ 栈桥旁助老人'],
     ['💰 弗林特宝藏(金银岛)', PSTORE.getItem('w1001.treasure') === '1' ? '✅ 已挖出' : '⏳ 按藏宝图开挖'],
     ['🤿 海底隧道迷宫(蓝洞)', PSTORE.getItem('w1001.caved') === '1' ? '✅ 已穿越' : '⏳ 带导绳潜蓝洞'],
+    ['📖 巴别海窟(满月秘门)', PSTORE.getItem('w1001.babel') === '1' ? '✅ 已入密室' : '⏳ 满月夜过潮汐门'],
   ];
   for (const k in NI_QUESTS) { const q = NI_QUESTS[k]; LOGROWS.push([q.log, PSTORE.getItem('w1001.nq_' + k) === '1' ? q.done : q.pend]); }   // 海洋文学带 16 条故事线
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
@@ -4834,14 +4836,20 @@ for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }
 const MAZE_NODES = [
   [0, -70, 0], [70, -78, 10], [80, -86, 80], [10, -76, 100], [-70, -84, 80], [-85, -72, 10],
   [-70, -92, -70], [0, -82, -95], [75, -96, -70], [0, -104, 0], [45, -100, 45], [-45, -90, -45],
-  [122, -80, 96], [58, -112, -94],
+  [122, -80, 96], [58, -112, -94], [-40, -116, -120],
 ];
-const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13]];
+const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13], [7, 14]];
 const AIR_NODES = [12, 4];   // 气室(补给氧气)
+const GATES = [   // 潮汐门:潮起潮落定时开合;满月门:仅满月夜开(通往巴别海窟)
+  { a: 1, b: 2, kind: 'tide', phase: 0 },
+  { a: 4, b: 5, kind: 'tide', phase: 2.2 },
+  { a: 7, b: 14, kind: 'moon' },
+];
 const DISC = {   // 死路/中心的发现(迷路奖励)
   11: { kind: 'mural', title: '海底壁画', msg: '🖼️ 死路尽头一面壁画:一头鲸与一座灯塔并肩——像在暗示,这两座岛曾经由陆地相连。' },
   13: { kind: 'wreck', flag: 'wreck', sb: 18, title: '沉船宝箱', msg: '⚓ 沉船残骸里一只铁箱,锁早锈穿了——金币、旧海图、一枚灯塔徽章。⚡+18' },
   9:  { kind: 'heart', title: '潮汐之心', msg: '🫀 迷宫正中,一颗缓缓搏动的巨核悬在水里——古文明留下的"潮汐之心"。原来这些隧道不是天然的:整座星球的海底,是一张刻意铺就的迷宫。' },
+  14: { kind: 'babel', flag: 'babel', sb: 40, star: true, title: '巴别海窟', msg: '📖 满月之门后,是一间六边形的密室——博尔赫斯的巴别图书馆沉入了海底。架上不是书,是发光的贝壳、珊瑚片、鲸歌的回响。你在这里,读到了整座迷宫的地图。⚡+40 · ⭐+1' },
 };
 const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标, col=浮标色
   { n: 0, isle: '收藏之岛', surf: [0, 440], col: 0x9fe0ff },
@@ -4852,7 +4860,8 @@ const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标
 ];
 const TUBE_R = 6;
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
-let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0;
+let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0;
+const gateMeshes = [];
 const diveGroup = new THREE.Group(); diveGroup.visible = false; scene.add(diveGroup);
 const ropeGroup = new THREE.Group(); scene.add(ropeGroup); ropeGroup.visible = false;
 const portalBeacons = [];
@@ -4920,6 +4929,27 @@ const portalBeacons = [];
   /* 声呐脉冲环 */
   sonarRing = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0x7ffcff, transparent: true, opacity: 0, wireframe: true, fog: false }));
   sonarRing.visible = false; diveGroup.add(sonarRing);
+  /* 潮汐门 / 满月门:铜绿闸栅,升降开合 */
+  const gateMat = new THREE.MeshStandardMaterial({ color: 0x2e6a5a, roughness: .6, metalness: .5, emissive: 0x0a2a22 });
+  const moonGateMat = new THREE.MeshStandardMaterial({ color: 0x3a4a7a, roughness: .5, metalness: .6, emissive: 0x1a2450 });
+  for (const g of GATES) {
+    const A = V(g.a), B = V(g.b), mid = A.clone().add(B).multiplyScalar(.5), dir = B.clone().sub(A).normalize();
+    const mat = g.kind === 'moon' ? moonGateMat : gateMat;
+    const grp = new THREE.Group(); grp.position.copy(mid); grp.rotation.y = Math.atan2(dir.x, dir.z);   // 局部 z 沿隧道
+    grp.add(new THREE.Mesh(new THREE.TorusGeometry(TUBE_R, .5, 8, 18), mat));   // 门框环绕隧道口
+    const bars = new THREE.Group();
+    for (let i = -2; i <= 2; i++) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, TUBE_R * 2, 6), mat); bar.position.x = i * 2.2; bars.add(bar); }
+    if (g.kind === 'moon') { const glyph = new THREE.Mesh(new THREE.CircleGeometry(1.5, 20), new THREE.MeshBasicMaterial({ color: 0xbfd0ff, transparent: true, opacity: .8, fog: false })); bars.add(glyph); }
+    grp.add(bars); diveGroup.add(grp);
+    gateMeshes.push({ cfg: g, bars, mid, openY: TUBE_R * 2 + 2 });
+  }
+  /* 巴别海窟(满月门后的六边形密室) */
+  { const n = MAZE_NODES[14], hex = new THREE.Group(); hex.position.set(n[0], n[1], n[2]);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; const wall = box(9, 12, .6, new THREE.MeshStandardMaterial({ color: 0x1e2a3a, roughness: 1, side: THREE.BackSide })); wall.position.set(Math.cos(a) * 8, 0, Math.sin(a) * 8); wall.rotation.y = -a + Math.PI / 2; hex.add(wall);
+      for (let s = 0; s < 3; s++) { const shelf = box(7, .3, .8, new THREE.MeshBasicMaterial({ color: [0x6ffcff, 0xffd76a, 0xd98ac8][s], fog: false })); shelf.position.set(Math.cos(a) * 7.2, -3 + s * 3, Math.sin(a) * 7.2); shelf.rotation.y = -a + Math.PI / 2; hex.add(shelf); } }
+    const lamp = new THREE.PointLight(0x9fd0ff, 1.6, 40, 2); hex.add(lamp);
+    hex.add(new THREE.Mesh(new THREE.OctahedronGeometry(1.4, 0), new THREE.MeshBasicMaterial({ color: 0xbfe4ff, fog: false })));
+    diveGroup.add(hex); }
 }
 {   // 潜水 HUD:气瓶条 + 提示
   const d = document.createElement('div'); d.id = 'diveHud'; d.className = 'hidden';
@@ -4955,6 +4985,10 @@ function clampToMaze(pos) {
   return best;
 }
 const discSeen = new Set();
+function gateOpen(g, t) {
+  if (g.kind === 'moon') return MOON_FULL && curDA < .4;   // 满月夜方开
+  return Math.sin(t * .18 + g.phase) > -.15;                // 潮汐:约 35s 周期,开约六成
+}
 function fireSonar() {
   if (!diving || sonarCD > 0) return;
   sonarCD = 4; sonarT = 1.4;
@@ -5815,9 +5849,20 @@ function loop() {
     airChamberT -= dt;
     const fill = $('diveAirFill'); if (fill) { fill.style.width = Math.max(0, diveAir) + '%'; fill.style.background = diveAir < 25 ? '#ff5a4a' : 'linear-gradient(90deg,#2ad0ff,#7affd0)'; }
     if (diveAir <= 0) { toast('🫧 憋不住了——你勉强浮回了洞口'); surfaceDive(diveEntry); }
+    // 潮汐门 / 满月门:升降开合 + 关闭时挡路
+    for (const gm of gateMeshes) {
+      const open = gateOpen(gm.cfg, t);
+      gm.bars.position.y += ((open ? gm.openY : 0) - gm.bars.position.y) * Math.min(1, dt * 3);
+      if (!open) {
+        const d = Math.hypot(player.position.x - gm.mid.x, player.position.y - gm.mid.y, player.position.z - gm.mid.z);
+        if (d < 5.5 && d > .001) { const f = 5.5 / d; player.position.x = gm.mid.x + (player.position.x - gm.mid.x) * f; player.position.y = gm.mid.y + (player.position.y - gm.mid.y) * f; player.position.z = gm.mid.z + (player.position.z - gm.mid.z) * f;
+          if (gateHintT <= 0) { gateHintT = 5; toast(gm.cfg.kind === 'moon' ? '🌕 这道门只在满月之夜开启……' : '🌊 潮汐门关闭中——退潮时它会再次升起'); } }
+      }
+    }
+    gateHintT -= dt;
     // 死路/中心发现(迷路有奖励)
     for (const nk in DISC) { const n = MAZE_NODES[nk], d = DISC[nk]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 10) {
-      if (d.flag) { if (PSTORE.getItem('w1001.' + d.flag) !== '1') { PSTORE.setItem('w1001.' + d.flag, '1'); if (d.sb) earnSB(d.sb); toast(d.msg); blip(760); } }
+      if (d.flag) { if (PSTORE.getItem('w1001.' + d.flag) !== '1') { PSTORE.setItem('w1001.' + d.flag, '1'); if (d.sb) earnSB(d.sb); if (d.star) { stars++; saveQuest(); updateQuestHUD(); } toast(d.msg); blip(760); } }
       else if (!discSeen.has(nk)) { discSeen.add(nk); toast(d.msg); blip(560); }
     } }
     // 潮汐之心搏动 + 巨鲸掠过玻璃观景廊
@@ -6415,4 +6460,4 @@ if (!MOBILE) {
 loop();
 
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
-  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR };
+  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR };
