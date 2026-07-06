@@ -4461,7 +4461,7 @@ scene.add(player);
 let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
-let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null;
+let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
 {
   const GN = MOBILE ? 900 : 2000, R = MOBILE ? 30 : 42;
   const bladeGeo = new THREE.ConeGeometry(.11, 1.15, 3);
@@ -4494,6 +4494,14 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   flowerInst.userData = { FN, R, rnd: mulberry32(717) };
   const fc = [new THREE.Color(0xe8b4c8), new THREE.Color(0xffd76a), new THREE.Color(0xffffff), new THREE.Color(0xd94f6b), new THREE.Color(0x9a7fd6)];
   for (let i = 0; i < FN; i++) flowerInst.setColorAt(i, fc[i % 5]);
+  // 碎石:地表零星石块(随草一起重铺)
+  const KN = MOBILE ? 70 : 150;
+  rockInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.55, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), KN);
+  rockInst.frustumCulled = false;
+  scene.add(rockInst);
+  rockInst.userData = { KN, R, rnd: mulberry32(431) };
+  const kc = [new THREE.Color(0x8d8577), new THREE.Color(0x9a9184), new THREE.Color(0x77706a), new THREE.Color(0xa39a8c)];
+  for (let i = 0; i < KN; i++) rockInst.setColorAt(i, kc[i % 4]);
 }
 function redistributeGrass(cx, cz) {
   grassCx = cx; grassCz = cz;
@@ -4524,6 +4532,19 @@ function redistributeGrass(cx, cz) {
     }
     flowerInst.instanceMatrix.needsUpdate = true;
     if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
+  }
+  // 碎石同步重铺(草地与低岩带,半埋入地)
+  if (rockInst) {
+    const ku = rockInst.userData;
+    for (let i = 0; i < ku.KN; i++) {
+      const a = ku.rnd() * 6.2832, rr = Math.sqrt(ku.rnd()) * ku.R;
+      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+      if (h > 2 && h < 26) { q.setFromEuler(e.set(ku.rnd() * 3, ku.rnd() * 6.28, ku.rnd() * 3)); const sc = .5 + ku.rnd() * 1.4; s.set(sc, sc * .7, sc); m4.compose(p.set(x, h + .1, z), q, s); }
+      else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
+      rockInst.setMatrixAt(i, m4);
+    }
+    rockInst.instanceMatrix.needsUpdate = true;
+    if (rockInst.instanceColor) rockInst.instanceColor.needsUpdate = true;
   }
 }
 /* --- 萤火虫(夜间草地随玩家浮动发光) --- */
@@ -4558,6 +4579,35 @@ let meteor = null, meteorT = 10, meteorLife = 0;
   meteor.frustumCulled = false;
   meteor.userData = { dir: new THREE.Vector3(), head: new THREE.Vector3() };
   scene.add(meteor);
+}
+/* --- 晨昏地面薄雾(软精灵贴地,低洼处浮现,twilight 时最浓) --- */
+let mistPts = null, mistCx = 1e9, mistCz = 1e9;
+{
+  const mc = document.createElement('canvas'); mc.width = mc.height = 128;
+  const mx2 = mc.getContext('2d');
+  const grd = mx2.createRadialGradient(64, 64, 8, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,.55)'); grd.addColorStop(.55, 'rgba(255,255,255,.22)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  mx2.fillStyle = grd; mx2.fillRect(0, 0, 128, 128);
+  const mtex = new THREE.CanvasTexture(mc);
+  const MN = MOBILE ? 26 : 46;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MN * 3), 3));
+  mistPts = new THREE.Points(g, new THREE.PointsMaterial({ map: mtex, color: 0xe6edf3, size: 36, transparent: true, opacity: 0, depthWrite: false, fog: false, sizeAttenuation: true }));
+  mistPts.frustumCulled = false;
+  const ph = new Float32Array(MN), r0 = mulberry32(919);
+  for (let i = 0; i < MN; i++) ph[i] = r0() * 6.2832;
+  mistPts.userData = { MN, R: 62, rnd: r0, base: new Float32Array(MN * 3), ph };
+  scene.add(mistPts);
+}
+function redistributeMist(cx, cz) {
+  mistCx = cx; mistCz = cz;
+  const u = mistPts.userData, b = u.base;
+  for (let i = 0; i < u.MN; i++) {
+    const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    b[i * 3] = x; b[i * 3 + 2] = z;
+    b[i * 3 + 1] = (h > 1.6 && h < 15) ? h + 1.8 : -999;   // 低洼草地才起雾
+  }
 }
 /* 恢复上次位置 */
 try {
@@ -5108,6 +5158,22 @@ function loop() {
         }
       }
     }
+  }
+  /* 晨昏薄雾 */
+  if (mistPts) {
+    const mistF = clamp(1 - Math.abs(curDA - .45) * 3, 0, .62);
+    if (mistF > .02) {
+      if ((player.position.x - mistCx) ** 2 + (player.position.z - mistCz) ** 2 > 400) redistributeMist(player.position.x, player.position.z);
+      const u = mistPts.userData, b = u.base, arr = mistPts.geometry.attributes.position.array;
+      for (let i = 0; i < u.MN; i++) {
+        arr[i * 3] = b[i * 3] + Math.sin(t * .12 + u.ph[i]) * 3;
+        arr[i * 3 + 1] = b[i * 3 + 1];
+        arr[i * 3 + 2] = b[i * 3 + 2] + Math.cos(t * .1 + u.ph[i]) * 3;
+      }
+      mistPts.geometry.attributes.position.needsUpdate = true;
+      mistPts.material.opacity = mistF;
+      mistPts.visible = true;
+    } else mistPts.visible = false;
   }
   renderMinimap();
   renderCompass();
