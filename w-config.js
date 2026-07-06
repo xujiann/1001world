@@ -35,4 +35,10 @@ export const THEMES = {
   crusoe:    { tempo: 68, wave: 'sine', scale: [0, 2, 4, 7, 9], base: 196, dens: .35 },
   daguan:    { tempo: 72, wave: 'sine', scale: [0, 2, 4, 7, 9, 12], base: 330, dens: .5, arp: true, vol: .7 },
   purgatory: { tempo: 54, wave: 'sine', scale: [0, 3, 5, 7, 10, 12], base: 147, dens: .32, pad: true, vol: .82 },
+  mystisle:  { tempo: 80, wave: 'triangle', scale: [0, 2, 3, 7, 9], base: 165, dens: .5, bass: true },
+  treasure:  { tempo: 100, wave: 'sawtooth', scale: [0, 2, 4, 5, 7, 9], base: 147, dens: .6, bass: true, vol: .7 },
+  mystery:   { tempo: 50, wave: 'sine', scale: [0, 1, 3, 6, 8], base: 131, dens: .3, pad: true, vol: .8 },
+  tempest:   { tempo: 66, wave: 'triangle', scale: [0, 2, 3, 5, 7, 10], base: 196, dens: .45, pad: true },
+  moreau:    { tempo: 58, wave: 'sawtooth', scale: [0, 1, 4, 6, 7], base: 110, dens: .32, bass: true, vol: .72 },
+  dolphin:   { tempo: 70, wave: 'sine', scale: [0, 2, 4, 7, 9, 11], base: 262, dens: .38, vol: .72 },
 };

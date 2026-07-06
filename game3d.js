@@ -11,7 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES } from './w-config.js?v=2';
+import { THEMES } from './w-config.js?v=3';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 
 const D = window.WORLD_DATA;
@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -101,6 +101,16 @@ const MCD = { x: 80, z: 1360, r: 45 };      // 小基督山(宝藏屿)
 const RBX = { x: 420, z: 1300, r: 120 };    // 鲁滨逊·绝望岛
 const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
 const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,七层螺旋)
+/* —— 海洋文学带:外环诸岛(数据驱动,内容见 NI_CONTENT)—— */
+const NISLES = [
+  { key: 'mys', x: -1780, z: -420, r: 92, mask: 2.0, h: 7, peak: { r: 52, hh: 30 }, dock: [-1690, -400] }, // 神秘岛(火山)
+  { key: 'trs', x: 1720, z: -520, r: 92, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [1632, -498] },   // 金银岛(望远山)
+  { key: 'chr', x: -80, z: -1780, r: 88, mask: 2.0, h: 8, dock: [-76, -1690] },                            // 无人生还岛
+  { key: 'tmp', x: -1780, z: 260, r: 88, mask: 2.0, h: 9, dock: [-1690, 247] },                            // 暴风雨岛
+  { key: 'mor', x: -1490, z: -1010, r: 90, mask: 2.0, h: 7, dock: [-1406, -953] },                         // 莫罗博士岛
+  { key: 'dol', x: 1300, z: 1350, r: 90, mask: 2.0, h: 6, dock: [1225, 1272] },                            // 蓝色海豚岛
+];
+const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -140,6 +150,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - RBX.x, z - RBX.z) / RBX.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
+  for (const s of NISLES) m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8));  // 海洋文学带
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
     m = Math.max(m, (1 - Math.hypot(x - rx2, z - rz2) / 24) * 1.7);       // 塞壬礁
   return m;
@@ -241,6 +252,11 @@ function height(x, z) {
       const rise = fr > .58 ? (fr - .58) / .42 : 0; h += (k + rise) * 4; } }
   q(PUR.x, PUR.z, 9.5, 30.5, .82);                                                           // 炼狱山巅·地上乐园(平台)
   q(PUR.x, PUR.z + PUR.r + 20, 15, 2.2, .95);                                                // 炼狱山渡口浅滩
+  for (const s of NISLES) {                                                                  // 海洋文学带地形
+    q(s.x, s.z, s.r, s.h);
+    if (s.peak) h += smooth01(clamp(1 - Math.hypot(x - s.x, z - s.z) / s.peak.r, 0, 1)) ** 2 * s.peak.hh;
+    q(s.dock[0], s.dock[1], 13, 2.2, .95);
+  }
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -932,6 +948,9 @@ function loreCard(k) {
   if (k === 'zanghua') btn = '<button class="again" data-flower>🌺 添一抔落花</button>';
   if (k === 'shishe') btn = '<button class="again" data-poem>📜 领今日诗题</button>';
   if (k === 'flotsam') btn = '<button class="again" data-flotsam>📦 撬开木箱</button>';
+  if (k === 'treasuredig') btn = PSTORE.getItem('w1001.treasure') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">坑已挖开,弗林特的黄金归你——空气里还飘着一点朗姆酒味。</span>'
+    : '<button class="again" data-treasure>⛏️ 照着藏宝图,挖!</button>';
   if (k === 'marlin') btn = PSTORE.getItem('w1001.marlin') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">船边只剩一副雪白的巨大骨架。老人睡了,梦见狮子。</span>'
     : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
@@ -1085,7 +1104,7 @@ function openCard(s) {
       hgs: [HGS.x, HGS.z + 118], alc: [ALC.x, ALC.z + 102], cbi: [CBI.x, CBI.z + 110], lrs: [LRS.x, LRS.z + 92], lsp: [LSP.x + 118, LSP.z],
       fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102],
       pur: [PUR.x, PUR.z + PUR.r + 18], main: [372, 12] };
-    const dest = dests[k] || dests.main;
+    const dest = dests[k] || NI_DEST[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
     toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
@@ -1108,7 +1127,8 @@ function openCard(s) {
       : k === 'yfb' ? '⛓️ 伊夫堡到了。有人在墙里敲了二十年'
       : k === 'rbx' ? '🏝️ 绝望岛到了。沙滩上,好像有脚印'
       : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好'
-      : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪' : '🐋 回到收藏之岛(主世界)');
+      : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪'
+      : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
   }));
   cardBody.querySelector('[data-taogo]')?.addEventListener('click', () => {
     PSTORE.setItem('w1001.taofound', '1');
@@ -1163,6 +1183,14 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
     player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-treasure]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.treasure') === '1') return;
+    PSTORE.setItem('w1001.treasure', '1');
+    earnSB(40); stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('💰 铁锹磕到了硬物——弗林特船长的六十万英镑!⚡+40 · ⭐+1');
+    blip(523); setTimeout(() => blip(659), 100); setTimeout(() => blip(880), 200);
   });
   cardBody.querySelector('[data-marlin]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.marlin') === '1') return;
@@ -1448,11 +1476,12 @@ function titleList() {
     tao:    PSTORE.getItem('w1001.taofound') === '1',
     purg:   PSTORE.getItem('w1001.purg') === '1',
     marlin: PSTORE.getItem('w1001.marlin') === '1',
+    treasure: PSTORE.getItem('w1001.treasure') === '1',
   };
   const done = Object.values(f).filter(Boolean).length;
-  const tier = done >= 15 ? '👑 万世收藏之主' : done >= 11 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
+  const tier = done >= 16 ? '👑 万世收藏之主' : done >= 11 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
   return [
-    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/15 传奇` },
+    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/16 传奇` },
     { id: 'qitian', name: '🐒 齐天大圣',   got: f.jingu,   note: '拔出定海神针' },
     { id: 'ring',   name: '💍 护戒使者',   got: f.ring,    note: '销毁至尊魔戒' },
     { id: 'monte',  name: '💎 基督山伯爵', got: f.yfb,     note: '挖出黑岩宝藏' },
@@ -1463,6 +1492,7 @@ function titleList() {
     { id: 'tao',    name: '🌸 桃源客',     got: f.tao,     note: '寻得桃花源秘境' },
     { id: 'pilgrim', name: '⛰️ 神曲行者',  got: f.purg,    note: '涤七罪登临乐园' },
     { id: 'marlin', name: '🦈 不可战胜',   got: f.marlin,  note: '与鲨鱼搏至终局' },
+    { id: 'treasure', name: '🏴‍☠️ 寻宝者', got: f.treasure, note: '挖出弗林特宝藏' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
     { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
@@ -1540,6 +1570,7 @@ function openJournal() {
     ['🌸 桃花源(秘境)', PSTORE.getItem('w1001.taofound') === '1' ? '✅ 曾入桃源' : '⏳ 仿佛若有光……'],
     ['⛰️ 涤罪登顶(炼狱山)', PSTORE.getItem('w1001.purg') === '1' ? '✅ 已登乐园' : '⏳ 登临七层山巅'],
     ['🦈 大马林鱼(老人与海)', PSTORE.getItem('w1001.marlin') === '1' ? '✅ 虽败犹荣' : '⏳ 栈桥旁助老人'],
+    ['💰 弗林特宝藏(金银岛)', PSTORE.getItem('w1001.treasure') === '1' ? '✅ 已挖出' : '⏳ 按藏宝图开挖'],
   ];
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
     ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
@@ -1704,7 +1735,7 @@ renderer.toneMappingExposure = .68;
 if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
-scene.fog = new THREE.Fog(0x9fd4ee, 320, 1500);
+scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
 let composer = null;
 function resize() {
@@ -1986,7 +2017,7 @@ function updateDayNight(t) {
 }
 
 /* --- 地形网格 --- */
-const TER = 3200, SEG = MOBILE ? 190 : 300;
+const TER = 4000, SEG = MOBILE ? 190 : 300;
 {
   const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
   g.rotateX(-Math.PI / 2);
@@ -2079,7 +2110,7 @@ function makeWaterNormals() {   // 程序化水面法线贴图(免外部纹理)
   return tex;
 }
 if (!MOBILE) {
-  oceanWater = new Water(new THREE.PlaneGeometry(4200, 4200), {
+  oceanWater = new Water(new THREE.PlaneGeometry(5200, 5200), {
     textureWidth: 512, textureHeight: 512,
     waterNormals: makeWaterNormals(),
     sunDirection: new THREE.Vector3(.5, .6, .3).normalize(),
@@ -2090,7 +2121,7 @@ if (!MOBILE) {
   oceanWater.position.y = .15;
   scene.add(oceanWater);
 } else {
-  waterGeo = new THREE.PlaneGeometry(4200, 4200, 72, 72);
+  waterGeo = new THREE.PlaneGeometry(5200, 5200, 72, 72);
   waterGeo.rotateX(-Math.PI / 2);
   mobileWater = new THREE.Mesh(waterGeo, new THREE.MeshPhongMaterial({
     color: 0x2e7fb4, transparent: true, opacity: .82, shininess: 120, specular: 0x88c9ee,
@@ -4280,6 +4311,190 @@ const ISLES = [
   { c: DGY, name: '红楼梦 · 大观园', icon: '🏮', theme: 'daguan' },
   { c: PUR, name: '神曲 · 炼狱山', icon: '⛰️', theme: 'purgatory' },
 ];
+/* ===== 海洋文学带:数据驱动内容(每岛一份 lore/npcs/build)===== */
+const NI_CONTENT = {
+  mys: {
+    name: '神秘岛', en: 'The Mysterious Island', icon: '🌋', theme: 'mystisle',
+    desc: '林肯岛 · 工程师用科学重建文明 · 火山与神秘恩人',
+    ferryMsg: '🌋 林肯岛到了。史密斯工程师说,给他一座火山,他能造出一个文明',
+    lore: {
+      mystvolcano: { icon: '🌋', color: '#8c3a1a', title: '富兰克林火山', en: 'Mount Franklin', hint: '登顶望全岛',
+        desc: '岛心的死火山又醒了。史密斯凭它测出了纬度、烧出了陶、炼出了铁——"我们不是漂流者,是殖民者。"多年后,火山将把整座岛沉入海底。' },
+      mystforge: { icon: '⚒️', color: '#5a4636', title: '花岗石宫的工场', en: 'The Chimneys', hint: '科学重建文明',
+        desc: '风箱、陶窑、铁砧。五个人从一根火柴、一颗麦粒起家,造出了砖、玻璃、硝化甘油,甚至一部电报机。潘克洛夫说:"只要史密斯先生在,荒岛也是家。"' },
+      mystnemo: { icon: '🐚', color: '#1c3a4a', title: '神秘的恩人', en: 'The Benefactor', hint: '是谁在暗中相助?',
+        desc: '每逢绝境,总有人暗中相救:治好病的奎宁、击沉海盗船的鱼雷……直到他们潜入海底洞穴,才见到那位垂死的老人和他的钢铁潜艇——"我叫尼摩船长。"' },
+    },
+    spots: [[-2, -4, 'mystvolcano'], [16, -10, 'mystforge'], [-20, 16, 'mystnemo']],
+    npcs: [
+      { dx: -14, dz: 12, name: '史密斯工程师', body: 0x5a6a7a, hat: 0x3a4a5a, opts: { tall: 1.05 },
+        lines: ['给我一座火山,我能还你一个文明。', '知识,是一个人身上抢不走的行李。', '别灰心,潘克洛夫——荒岛只是尚未开化的家。'] },
+      { dx: 16, dz: -6, name: '潘克洛夫', body: 0x8a5a2a, hat: 0x6a4420, opts: { wide: 1.2 },
+        lines: ['只要史密斯先生在,魔鬼来了我也不怕!', '这岛上什么都能造,就是造不出烟草……', '一根火柴!你敢信?我们的家业是从一根火柴开始的。'] },
+    ],
+    build: (gx, gz) => {
+      const hx = gx - 14, hz = gz + 12, hh = height(hx, hz);
+      const house = box(9, 5, 7, lam(0x8a8478)); house.position.set(hx, hh + 2.5, hz); scene.add(house); cirObs.push({ x: hx, z: hz, r: 5 });
+      const fx = gx + 15, fz = gz - 8, fh = height(fx, fz);
+      const forge = cyl(1.1, 1.4, 3.4, M.stone); forge.position.set(fx, fh + 1.7, fz); scene.add(forge);
+      const chim = cyl(.5, .6, 2.6, lam(0x5a5048)); chim.position.set(fx, fh + 3.9, fz); scene.add(chim);
+      const px = gx + 4, pz = gz + 18, ph = height(px, pz);
+      const pole = cyl(.12, .14, 7, M.woodDark); pole.position.set(px, ph + 3.5, pz); scene.add(pole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.4), new THREE.MeshLambertMaterial({ color: 0xd94040, side: THREE.DoubleSide })); flag.position.set(px + 1.2, ph + 6.2, pz); scene.add(flag);
+      const glow = new THREE.PointLight(0xff6a2a, 0, 150, 2); glow.position.set(gx, height(gx, gz) + 3, gz); glow.userData.pow = 26; nightLamps.push(glow); scene.add(glow);
+    },
+  },
+  trs: {
+    name: '金银岛', en: 'Treasure Island', icon: '🏴‍☠️', theme: 'treasure',
+    desc: '藏宝图 · 海盗营 · 骷髅礁 · 弗林特船长的黄金',
+    ferryMsg: '🏴‍☠️ 金银岛到了。西尔弗压低嗓子:"十五个人趴在死人箱上——呦嗬嗬,还有一瓶朗姆酒。"',
+    lore: {
+      pirateflag: { icon: '🏴‍☠️', color: '#2a2a2a', title: '海盗营', en: 'The Stockade', hint: '黑斑与朗姆酒',
+        desc: '木栅栏围起的营地,篝火没熄。弗林特的老船员们为一张藏宝图反目——递到谁手里一张涂黑的圆纸片,就是死刑判决:"黑斑"。' },
+      skullrock: { icon: '💀', color: '#6a6258', title: '骷髅礁', en: 'Spy-glass Hill', hint: '藏宝图的地标',
+        desc: '一块形如骷髅的礁石,正是藏宝图上的方位基准。"望远镜山"的影子指向哪里,弗林特六十万英镑的黄金就埋在哪里。' },
+      treasuredig: { icon: '💰', color: '#b8862e', title: '藏宝坑(X 记号)', en: "The Treasure", hint: '按图开挖',
+        desc: '藏宝图上一个朱红的 X。传说弗林特把六十万英镑埋在这三棵大树之间——不过,吉姆总觉得会不会早被人挖走了……要不,自己挖挖看?' },
+    },
+    spots: [[10, 14, 'pirateflag'], [-18, -12, 'skullrock'], [0, -2, 'treasuredig']],
+    npcs: [
+      { dx: 8, dz: 12, name: '高个约翰·西尔弗', body: 0x4a5a3a, hat: 0x2e2a24, opts: { tall: 1.06, cane: true },
+        lines: ['呦嗬嗬,还有一瓶朗姆酒!', '我这条腿,是在英国海军里丢的——霍金斯,做海盗要趁早。', '死人不咬人。可我偏偏留着你这小鬼的命,你说怪不怪?'] },
+      { dx: -6, dz: 8, name: '吉姆·霍金斯', body: 0x9c640c, hat: 0x7d5109, opts: { tall: .74 },
+        lines: ['我从苹果桶里,听见了他们全部的密谋。', '西尔弗又坏又好,我到现在也没想明白。', '八个里亚尔!八个里亚尔!——那是弗林特船长的鹦鹉在叫。'] },
+    ],
+    build: (gx, gz) => {
+      const sx = gx + 10, sz = gz + 14, sh = height(sx, sz);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; const post = cyl(.2, .24, 2.6, M.woodDark); post.position.set(sx + Math.cos(a) * 6, sh + 1.3, sz + Math.sin(a) * 6); scene.add(post); }
+      const kx = gx - 18, kz = gz - 12, kh = height(kx, kz);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8), M.stone); skull.position.set(kx, kh + 1.6, kz); scene.add(skull); cirObs.push({ x: kx, z: kz, r: 2.4 });
+      for (const ox of [-3.2, 3.2]) { const boat = box(2, .5, 5, lam(0x7a4a26)); boat.position.set(gx + ox + 4, height(gx + 4, gz - 20) + .6, gz - 20); scene.add(boat); }
+      for (const [tx, tz] of [[-3, -4], [3, -5], [0, 1]]) { const t = gx + tx * 2, u = gz + tz * 2, th = height(t, u); const tr = cyl(.5, .7, 5, M.wood); tr.position.set(t, th + 2.5, u); scene.add(tr); const cn = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 6), lam(0x4a7a3a)); cn.position.set(t, th + 6, u); scene.add(cn); }
+      const xg = new THREE.Group(); for (const r of [-1, 1]) { const b = box(2.6, .12, .4, lam(0x8c2f2f)); b.rotation.y = r * .78; xg.add(b); } xg.position.set(gx, height(gx, gz) + .2, gz); scene.add(xg);
+    },
+  },
+  chr: {
+    name: '无人生还岛', en: 'And Then There Were None', icon: '🔪', theme: 'mystery',
+    desc: '士兵岛 · 暴风雨封岛 · 十位客人 · 一首童谣',
+    ferryMsg: '🔪 士兵岛到了。管家说:"欧文先生临时有事,今晚不到。请各位……先在客厅坐坐。"(送你来的船,不会再回头了)',
+    lore: {
+      tensoldiers: { icon: '🪆', color: '#4a4650', title: '十个小瓷兵', en: 'Ten Little Soldiers', hint: '数一数,少了几个',
+        desc: '餐桌中央,十个瓷制小士兵,配着墙上那首童谣:"十个小兵人,外出去用餐;一个被噎死,还剩九个人……"每死一位客人,桌上就少一个瓷兵。现在还剩几个?你数了数,心里一凉。' },
+      chrmansion: { icon: '🏚️', color: '#3a3a44', title: '孤岛庄园', en: 'Soldier Island House', hint: '暴风雨困住了所有人',
+        desc: '一座现代派的白色宅邸,孤悬海中。八位素不相识的客人被一封信骗来,加上一对管家夫妇——共十人。留声机忽然响起,一个声音逐一念出他们隐秘的旧罪。窗外,暴风雨封死了归路。' },
+    },
+    spots: [[0, 3, 'tensoldiers'], [0, -8, 'chrmansion']],
+    npcs: [
+      { dx: -8, dz: -2, name: '沃格雷夫法官', body: 0x3a3a44, hat: 0x2a2a30, opts: { tall: 1.04 },
+        lines: ['我审了一辈子案子。有些人,法律碰不到——但正义可以。', '别慌。恐惧,才是这座岛真正的凶手。', '童谣不会说谎。下一个,该轮到谁了?'] },
+      { dx: 7, dz: 4, name: '维拉', body: 0x8c6a9a, hat: 0x6a4a78, opts: { tall: .96 },
+        lines: ['我没有……那个孩子是自己游出去的,不是我!', '每念完一句童谣,就有人再也醒不来。', '我数过了,瓷兵又少了一个。是谁?是谁干的?'] },
+    ],
+    build: (gx, gz) => {
+      const mx = gx, mz = gz - 8, mh = height(mx, mz);
+      const manor = box(16, 7, 11, lam(0xe6e2d8)); manor.position.set(mx, mh + 3.5, mz); scene.add(manor); cirObs.push({ x: mx, z: mz, r: 8 });
+      const roof = box(17, .6, 12, lam(0x4a4650)); roof.position.set(mx, mh + 7.3, mz); scene.add(roof);
+      for (const ox of [-5, 0, 5]) { const win = box(1.6, 2, .2, new THREE.MeshBasicMaterial({ color: 0x2a2a34 })); win.position.set(mx + ox, mh + 3.4, mz + 5.6); scene.add(win); }
+      const tx = gx, tz = gz + 3, th2 = height(tx, tz);
+      const tbl = cyl(2.2, 2.2, .3, lam(0x5a4636), 16); tbl.position.set(tx, th2 + 1.2, tz); scene.add(tbl);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; const sol = cyl(.14, .18, .7, lam(0xe0dccc)); sol.position.set(tx + Math.cos(a) * 1.4, th2 + 1.7, tz + Math.sin(a) * 1.4); scene.add(sol); }
+    },
+  },
+  tmp: {
+    name: '暴风雨岛', en: 'The Tempest', icon: '⛈️', theme: 'tempest',
+    desc: '普洛斯彼罗的魔法岛 · 精灵爱丽儿 · 一场召唤的风暴',
+    ferryMsg: '⛈️ 魔法岛到了。海面的风暴是假的——普洛斯彼罗只想把仇人请上岸,而非淹死他们',
+    lore: {
+      prospero: { icon: '📖', color: '#3a2a5a', title: '普洛斯彼罗的魔法书', en: "Prospero's Book", hint: '法力尽在此书',
+        desc: '被弟弟篡位、放逐荒岛的米兰公爵,在这里研习魔法十二年。他召来一场暴风雨,把仇人的船引到岸边。"我要折断我的法杖,把魔法书沉入海底——比铅锤到不了的深处。"宽恕,比复仇更难。' },
+      ariel: { icon: '🧚', color: '#4a8ab0', title: '精灵爱丽儿', en: 'Ariel', hint: '风与火的仆役',
+        desc: '被囚在裂松里十二年,普洛斯彼罗放它出来,它便化作风暴、火焰、水中的女妖,替主人办事,只求一样:自由。"我全心全意为你效劳——但请记得你的承诺:还我自由。"' },
+    },
+    spots: [[0, 2, 'prospero'], [12, -8, 'ariel']],
+    npcs: [
+      { dx: -3, dz: 4, name: '普洛斯彼罗', body: 0x4a3a6a, hat: 0x2e2450, opts: { tall: 1.08, cane: true },
+        lines: ['我们本是造梦的材料,短短一生,前后都环绕在睡眠里。', '稀有的德性,比之报复,是更高贵的行为。', '爱丽儿,把风暴收了吧——我要的不是他们的命,是他们的悔。'] },
+      { dx: 6, dz: 6, name: '米兰达', body: 0xd8c4e0, hat: 0xb89ac8, opts: { tall: .98 },
+        lines: ['啊,新奇的世界,竟有这样出色的人物!', '父亲,您施法的时候,总是这样温柔又可怕。', '我从没见过男人——除了你,和那个梦里的青年。'] },
+    ],
+    build: (gx, gz) => {
+      const cy = height(gx, gz);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(5, .3, 8, 24), new THREE.MeshBasicMaterial({ color: 0x8a6ad0 })); ring.rotation.x = Math.PI / 2; ring.position.set(gx, cy + .3, gz); scene.add(ring);
+      const ped = cyl(.7, .9, 1.6, M.stone); ped.position.set(gx, cy + .8, gz); scene.add(ped);
+      const book = box(1.2, .3, .9, lam(0x6a2a8a)); book.position.set(gx, cy + 1.75, gz); scene.add(book);
+      const cx = gx - 16, cz = gz + 10, ch = height(cx, cz);
+      const cave = new THREE.Mesh(new THREE.SphereGeometry(4, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x4a4636)); cave.position.set(cx, ch, cz); scene.add(cave); cirObs.push({ x: cx, z: cz, r: 3.4 });
+      const cloud = new THREE.Mesh(new THREE.SphereGeometry(9, 10, 8), new THREE.MeshLambertMaterial({ color: 0x4a4a58, transparent: true, opacity: .75 })); cloud.scale.set(1.6, .5, 1.6); cloud.position.set(gx, cy + 34, gz); scene.add(cloud);
+      for (const ox of [-2, 2]) { const wr = box(2, .5, 6, lam(0x6a4a2a)); wr.rotation.z = .3; wr.position.set(gx + 22 + ox, height(gx + 22, gz - 24) + .4, gz - 24); scene.add(wr); }
+    },
+  },
+  mor: {
+    name: '莫罗博士岛', en: 'The Island of Doctor Moreau', icon: '🧪', theme: 'moreau',
+    desc: '兽形实验岛 · 痛苦之屋 · 兽人律法(我们不是人吗?)',
+    ferryMsg: '🧪 诺布尔岛到了。空气里有防腐剂和野兽的味道。莫罗说:"这里做的是造物主的工作。"',
+    lore: {
+      morlaw: { icon: '📜', color: '#5a4a3a', title: '兽人律法', en: 'The Law', hint: '"我们不是人吗?"',
+        desc: '兽人们围坐诵念律法者的教条:"不许四脚爬行——我们不是人吗?不许吸血——我们不是人吗?不许追逐旁人——我们不是人吗?"念律法,是为了压住体内正在苏醒的兽性。' },
+      morhouse: { icon: '🔬', color: '#4a5a5a', title: '痛苦之屋', en: 'The House of Pain', hint: '实验室(别在夜里靠近)',
+        desc: '铁皮屋顶的实验室,门后传出的哀嚎让人脊背发凉。莫罗用活体解剖把野兽塑成人形——不用麻药。"疼痛?那不过是造物过程里,一点必要的杂音。"入夜,他的造物们会想起自己曾是什么。' },
+    },
+    spots: [[0, 6, 'morlaw'], [-12, -8, 'morhouse']],
+    npcs: [
+      { dx: -10, dz: -4, name: '莫罗博士', body: 0xe0dcd2, hat: 0xc8c4ba, opts: { tall: 1.08 },
+        lines: ['我研究的是生命可塑的极限。', '痛苦?再过一两百年,人类会觉得那不值一提。', '这些造物一犯错,就得回痛苦之屋——律法必须刻进血里。'] },
+      { dx: 8, dz: 6, name: '念律法者', body: 0x6a5a4a, hat: 0x4a3a2a, opts: { tall: .9, wide: 1.2 },
+        lines: ['不许四脚爬行——我们,不是人吗?', '他的是造物之手,他的是伤人之手,他的是治愈之手。', '入夜了……律法,越来越难念下去了。'] },
+    ],
+    build: (gx, gz) => {
+      const lx = gx - 12, lz = gz - 8, lh = height(lx, lz);
+      const lab = box(11, 5, 8, lam(0x9a9a8a)); lab.position.set(lx, lh + 2.5, lz); scene.add(lab); cirObs.push({ x: lx, z: lz, r: 6 });
+      const labr = box(12, .5, 9, lam(0x6a6a5a)); labr.position.set(lx, lh + 5.2, lz); scene.add(labr);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, r = 16; const post = cyl(.16, .2, 2.4, M.woodDark); const fx = gx + Math.cos(a) * r, fz = gz + Math.sin(a) * r; post.position.set(fx, height(fx, fz) + 1.2, fz); scene.add(post); }
+      for (const [hx, hz] of [[10, 8], [14, -2], [6, 12]]) { const hut = cyl(2, 2.4, 2.6, lam(0x7a5a3a), 6); const u = gx + hx, v = gz + hz, hh = height(u, v); hut.position.set(u, hh + 1.3, v); scene.add(hut); const top = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.6, 6), lam(0x5a4028)); top.position.set(u, hh + 3.4, v); scene.add(top); }
+    },
+  },
+  dol: {
+    name: '蓝色海豚岛', en: 'Island of the Blue Dolphins', icon: '🐬', theme: 'dolphin',
+    desc: '海獭 · 独木舟 · 鲸骨屋 · 一个女孩十八年的独处',
+    ferryMsg: '🐬 蓝色海豚岛到了。潮声很轻。卡拉娜独自在这里生活了十八年,与海獭、海鸟为伴',
+    lore: {
+      karana: { icon: '🐚', color: '#2a7a8a', title: '卡拉娜的鲸骨屋', en: "Karana's House", hint: '一个人的岛',
+        desc: '族人乘船离开时,她为寻找弟弟跳下了船——弟弟却被野狗咬死了。此后十八年,她独自守着这座岛:用鲸骨围篱,用海象牙做鱼钩,缝一条鸬鹚羽毛的裙子。她不再猎杀,只是学着与万物共处。' },
+      otterbay: { icon: '🦦', color: '#3a6a5a', title: '海獭湾', en: 'The Otter Cove', hint: '与海獭为友',
+        desc: '海獭在海藻里翻滚、用石头砸开贝壳。曾经她为报仇猎杀过它们,后来却给受伤的头领海獭取名"獠牙",一勺一勺喂它。孤独教会她:海岛上的每一条命,都值得温柔。' },
+    },
+    spots: [[0, 4, 'karana'], [14, -10, 'otterbay']],
+    npcs: [
+      { dx: -3, dz: 6, name: '卡拉娜', body: 0x2e6a7a, hat: 0x1a4a5a, opts: { tall: .96 },
+        lines: ['我留下了,为了弟弟——可我终究只剩自己。', '这座岛给我食物、衣裳,还有说话的伙伴:海獭、海鸟、还有风。', '若有一天船再来,我该走吗?我竟有些舍不得了。'] },
+    ],
+    build: (gx, gz) => {
+      const kx = gx, kz = gz + 4, kh = height(kx, kz);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; const rib = cyl(.12, .16, 2.2 + Math.sin(a * 2) * .4, lam(0xe8e2d4)); rib.position.set(kx + Math.cos(a) * 3, kh + 1.1, kz + Math.sin(a) * 3); rib.rotation.z = Math.cos(a) * .3; scene.add(rib); }
+      const canoe = box(1.6, .5, 5, lam(0x6a4a2a)); canoe.position.set(gx + 12, height(gx + 12, gz - 12) + .5, gz - 12); scene.add(canoe);
+      for (let i = 0; i < 5; i++) { const kelp = cyl(.1, .12, 3, lam(0x2a6a4a)); const u = gx + 12 + (rnd() - .5) * 10, v = gz - 18 - rnd() * 6; kelp.position.set(u, .6, v); scene.add(kelp); }
+      for (const [sx, sz] of [[-6, 8], [5, 10], [8, 2]]) { const sh = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), lam(0xf0e6d0)); const u = gx + sx, v = gz + sz; sh.position.set(u, height(u, v) + .3, v); scene.add(sh); }
+    },
+  },
+};
+/* 框架:把每岛内容接入世界(渡口/图鉴/海图/配乐/分桶经各自定义点补齐)*/
+for (const s of NISLES) {
+  const c = NI_CONTENT[s.key]; if (!c) continue;
+  const gx = s.x, gz = s.z;
+  Object.assign(LORE, c.lore);
+  WORLDS.push({ key: s.key, icon: c.icon, name: c.name, en: c.en, open: true, desc: c.desc || '' });
+  SG_LIST.push([s.key, c.icon + ' ' + c.name]);
+  ISLES.push({ c: { x: gx, z: gz, r: s.r }, name: c.name, icon: c.icon, theme: c.theme });
+  NI_DEST[s.key] = s.dock; NI_MSG[s.key] = c.ferryMsg;
+  if (c.build) c.build(gx, gz);
+  for (const n of (c.npcs || [])) addNpc(Object.assign({}, n, { x: gx + n.dx, z: gz + n.dz }));
+  for (const [dx, dz, tp] of (c.spots || [])) addSpot(gx + dx, gz + dz, 'lore', tp, { r: 6 });
+  const dk = height(s.dock[0], s.dock[1]);
+  const plk = box(5, .5, 9, M.wood); plk.position.set(s.dock[0], dk + .9, s.dock[1]); scene.add(plk);
+  addSpot(s.dock[0], s.dock[1], 'ferry', 'ferry', { r: 8 });
+  const sgn = makeSign(c.name, 6.5, '#1e2430', '#dfe8f0'); const sgz = gz + (gz > 0 ? -s.r * .6 : s.r * .6);
+  sgn.position.set(gx + 10, height(gx + 10, sgz) + 4, sgz); scene.add(sgn);
+}
 /* 多元宇宙渡口(鲸岛东滩) */
 {
   const fh = height(380, 12);
@@ -4352,7 +4567,7 @@ function buildMinimapBase() {
   const c = mmBase.getContext('2d');
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
-    const x = (px / mm.width - .5) * 3050, z = (py / mm.height - .5) * 2950;
+    const x = (px / mm.width - .5) * 3950, z = (py / mm.height - .5) * 3850;
     const h = height(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
@@ -4369,7 +4584,7 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 3050 + .5) * mm.width, W2Y = z => (z / 2950 + .5) * mm.height;
+  const W2X = x => (x / 3950 + .5) * mm.width, W2Y = z => (z / 3850 + .5) * mm.height;
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
@@ -4414,10 +4629,11 @@ const MAP_LABELS = [
   ['花果山', HGS.x, HGS.z], ['爱丽丝仙境', ALC.x, ALC.z], ['赤壁', CBI.x, CBI.z], ['兰若寺', LRS.x, LRS.z],
   ['梁山泊', LSP.x, LSP.z], ['风车原野', FCY.x, FCY.z], ['伊夫堡', YFB.x, YFB.z], ['绝望岛', RBX.x, RBX.z],
   ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['塞壬海域⚠', SIR.x, SIR.z],
+  ...NISLES.map(s => [NI_CONTENT[s.key].name, s.x, s.z]),
 ];
 function renderBigMap() {
   if (!bigCtx) return;
-  const W3 = bigCv.width, H3 = bigCv.height, SC2 = 3100;
+  const W3 = bigCv.width, H3 = bigCv.height, SC2 = 4000;
   const BX = x => (x / SC2 + .5) * W3, BY = z => (z / (SC2 * H3 / W3) + .5) * H3;
   if (!bigBase) {
     bigBase = document.createElement('canvas'); bigBase.width = W3; bigBase.height = H3;
@@ -4488,6 +4704,7 @@ CP_MARKS.push({ x: YFB.x, z: YFB.z, col: '#a8b8d0' });
 CP_MARKS.push({ x: RBX.x, z: RBX.z, col: '#d8c89a' });
 CP_MARKS.push({ x: DGY.x, z: DGY.z, col: '#e8b8cc' });
 CP_MARKS.push({ x: PUR.x, z: PUR.z, col: '#ccd8f0' });
+for (const s of NISLES) CP_MARKS.push({ x: s.x, z: s.z, col: '#cfe0ea' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -5093,7 +5310,7 @@ function loop() {
     }
     // 边界
     const pd = Math.hypot(player.position.x, player.position.z);
-    if (pd > 1560) { player.position.x *= 1560 / pd; player.position.z *= 1560 / pd; }
+    if (pd > 1950) { player.position.x *= 1950 / pd; player.position.z *= 1950 / pd; }
     // 障碍推离
     const pr = .9;
     for (const o of cirObs) {
@@ -5620,6 +5837,7 @@ const BUCKETS = [
   { x: LRS.x, z: LRS.z }, { x: LSP.x, z: LSP.z }, { x: FCY.x, z: FCY.z }, { x: YFB.x, z: YFB.z },
   { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
   { x: PUR.x, z: PUR.z },
+  ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
   const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird]);
