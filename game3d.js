@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -895,6 +895,8 @@ const LORE = {
     desc: '两株清泉浇灌的果树垂满鲜果,香气诱人;贪吃者形销骨立,却怎么也够不着——饥渴使他们瘦得眼窝深陷,却也第一次尝到节制的滋味。' },
   purlust:  { icon: '🔥', color: '#b8482e', title: '第七层 · 色欲', en: 'Lust', hint: '穿火而行',
     desc: '一堵火墙横贯整层,烈焰灼人却不伤形。要登顶,唯有穿火而过——但丁在此犹豫良久。维吉尔说:"这火与你和贝雅特丽齐之间,只隔一层。"于是他闭眼走了进去。' },
+  marlin:  { icon: '🐟', color: '#2a4a7a', title: '大马林鱼', en: 'The Great Marlin', hint: '帮老人搏鱼',
+    desc: '拴在船舷的这条马林鱼,从吻到尾比小船还长——银蓝的脊背,长剑似的上颌。圣地亚哥说他等了八十四天,又搏了三天三夜才制服它。如今归途未半,血腥味已招来成群的鲨鱼……你要帮他守住这条鱼吗?' },
   peng:    { icon: '🕊️', color: '#2c4a6a', title: '大鹏', en: 'The Peng', hint: '乘之扶摇直上',
     desc: '《逍遥游》:北冥有鱼,其名为鲲。鲲之大,不知其几千里也;化而为鸟,其名为鹏。鹏之背,不知其几千里也;怒而飞,其翼若垂天之云。——它低头看你,似在相邀:可要乘我扶摇直上,环游这一千零一个世界?' },
   eden:    { icon: '🌸', color: '#4a8a5a', title: '山巅 · 地上乐园', en: 'Earthly Paradise', hint: '登临绝顶',
@@ -930,6 +932,9 @@ function loreCard(k) {
   if (k === 'zanghua') btn = '<button class="again" data-flower>🌺 添一抔落花</button>';
   if (k === 'shishe') btn = '<button class="again" data-poem>📜 领今日诗题</button>';
   if (k === 'flotsam') btn = '<button class="again" data-flotsam>📦 撬开木箱</button>';
+  if (k === 'marlin') btn = PSTORE.getItem('w1001.marlin') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">船边只剩一副雪白的巨大骨架。老人睡了,梦见狮子。</span>'
+    : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
   if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button>';
   if (k === 'eden') btn = PSTORE.getItem('w1001.purg') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">你已饮过忘川之水,罪的记忆随流水而去,只余轻盈。</span>'
@@ -1158,6 +1163,14 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
     player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-marlin]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.marlin') === '1') return;
+    PSTORE.setItem('w1001.marlin', '1');
+    earnSB(40); stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('🦈 你和老人拼死搏斗——大鱼被啃成白骨,可你们没被打败。⚡+40 · ⭐+1');
+    blip(392); setTimeout(() => blip(330), 120); setTimeout(() => blip(523), 260);
   });
   cardBody.querySelector('[data-peng]')?.addEventListener('click', () => {
     const a0 = Math.atan2(player.position.z, player.position.x);
@@ -1434,11 +1447,12 @@ function titleList() {
     ticket: PSTORE.getItem('w1001.ticket') === '1',
     tao:    PSTORE.getItem('w1001.taofound') === '1',
     purg:   PSTORE.getItem('w1001.purg') === '1',
+    marlin: PSTORE.getItem('w1001.marlin') === '1',
   };
   const done = Object.values(f).filter(Boolean).length;
-  const tier = done >= 14 ? '👑 万世收藏之主' : done >= 10 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
+  const tier = done >= 15 ? '👑 万世收藏之主' : done >= 11 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
   return [
-    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/14 传奇` },
+    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/15 传奇` },
     { id: 'qitian', name: '🐒 齐天大圣',   got: f.jingu,   note: '拔出定海神针' },
     { id: 'ring',   name: '💍 护戒使者',   got: f.ring,    note: '销毁至尊魔戒' },
     { id: 'monte',  name: '💎 基督山伯爵', got: f.yfb,     note: '挖出黑岩宝藏' },
@@ -1448,6 +1462,7 @@ function titleList() {
     { id: 'qian',   name: '🕯️ 兰若义士',   got: f.qian,    note: '井底救倩安魂' },
     { id: 'tao',    name: '🌸 桃源客',     got: f.tao,     note: '寻得桃花源秘境' },
     { id: 'pilgrim', name: '⛰️ 神曲行者',  got: f.purg,    note: '涤七罪登临乐园' },
+    { id: 'marlin', name: '🦈 不可战胜',   got: f.marlin,  note: '与鲨鱼搏至终局' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
     { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
@@ -1524,6 +1539,7 @@ function openJournal() {
     ['🎫 德比票根(体育岛)', PSTORE.getItem('w1001.ticket') === '1' ? '✅ 收藏中' : '⏳ 找黄牛哥'],
     ['🌸 桃花源(秘境)', PSTORE.getItem('w1001.taofound') === '1' ? '✅ 曾入桃源' : '⏳ 仿佛若有光……'],
     ['⛰️ 涤罪登顶(炼狱山)', PSTORE.getItem('w1001.purg') === '1' ? '✅ 已登乐园' : '⏳ 登临七层山巅'],
+    ['🦈 大马林鱼(老人与海)', PSTORE.getItem('w1001.marlin') === '1' ? '✅ 虽败犹荣' : '⏳ 栈桥旁助老人'],
   ];
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
     ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
@@ -4652,6 +4668,31 @@ makeBoat(0xf5efdc, 1.25).userData = { cruise: { cx: 380, cz: 480, r: 155, sp: .1
 makeBoat(0xd94f6b, 1).userData = { cruise: { cx: 380, cz: 480, r: 105, sp: -.17, ph: 2.2 } };
 makeBoat(0xffd76a, 1.1).userData = { anchor: [-350, 300] };
 makeBoat(null, .7).userData = { anchor: [14, 408] };   // 栈桥边的小舢板
+/* —— 老人与海:圣地亚哥的小船 + 拴在船舷的大马林鱼(不设岛,挂在钓鱼栈桥旁)—— */
+{
+  makeBoat(null, .82).userData = { anchor: [13, 414] };   // 圣地亚哥的小帆船
+  // 大马林鱼(拴在船舷,半浮于水)
+  const mx = 13, mz = 407, my = .9;
+  const marlin = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), lam(0x35548a)); body.scale.set(1, 1.15, 3.4); marlin.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(.92, 12, 10), lam(0xccd6e2)); belly.scale.set(.86, .64, 3.1); belly.position.y = -.32; marlin.add(belly);
+  const bill = new THREE.Mesh(new THREE.ConeGeometry(.16, 3.4, 6), lam(0x24324a)); bill.rotation.x = Math.PI / 2; bill.position.z = 5.2; marlin.add(bill);
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(1.7, .12, 3), lam(0x2a4a7a)); dorsal.rotation.z = Math.PI / 2; dorsal.scale.set(1, 1, .5); dorsal.position.set(0, 1.4, .6); marlin.add(dorsal);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.6, 4), lam(0x2a4a7a)); tail.rotation.x = -Math.PI / 2; tail.scale.set(1, .28, 1); tail.position.z = -3.6; marlin.add(tail);
+  marlin.position.set(mx, my, mz); marlin.rotation.y = .35; marlin.rotation.z = .12; scene.add(marlin);
+  window.__marlin = marlin;
+  // 圣地亚哥(老人)+ 马诺林(男孩),站在可行走的桥面上
+  addNpc({ x: 0, z: 400, y: 1.85, name: '圣地亚哥', body: 0x6a7a6a, hat: 0xb8a888, opts: { tall: 1.02 }, face: '🧓',
+    lines: ['一个人可以被毁灭,但不能被打败。', '这是我打过的最大的鱼——整整八十四天没开张,然后就是它。', '可惜孩子不在。有他在,就好了。'],
+    topics: [
+      { q: '那条大鱼呢?', a: '比船还长。我跟它耗了三天三夜,手都勒烂了。终于把鱼叉扎进它心脏——可回来的路上,鲨鱼闻着血来了。' },
+      { q: '鲨鱼来了怎么办?', a: '打。用鱼叉、用桨、用舵把。它们咬一口,我还一下。等靠岸,只剩一副雪白的大骨架了……但我没认输。' },
+      { q: '还会再出海吗?', a: '当然。明天,后天,只要我还拿得动桨。人不是为失败而生的。' },
+    ] });
+  addNpc({ x: 0, z: 372, y: 1.85, name: '马诺林', body: 0xd98a3a, hat: 0x8c5a20, opts: { tall: .72 }, face: '🧒',
+    lines: ['圣地亚哥老爹!我给你带了沙丁鱼和啤酒。', '他们说你倒了血霉,可我不信。', '等我长大,还跟你一条船。' ] });
+  addSpot(0, 411, 'lore', 'marlin', { r: 6, y: 1.85 });
+}
 /* 喷水孔的水雾(周期性喷发) */
 const spray = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 9),
   new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0, depthWrite: false }));
