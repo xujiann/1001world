@@ -829,6 +829,12 @@ const LORE = {
     desc: '白日看只是枯井。入夜后,井底隐隐有白衣飘动——小倩的骨灰坛藏在井壁暗格里,取出它,才能送她投胎。' },
   grave:   { icon: '🕯️', color: '#3a4436', title: '安魂之处', en: 'A Resting Place', hint: '白杨树下',
     desc: '寺外白杨萧萧。燕赤霞说:"把骨灰葬在生人阳气旺处,姥姥就再也拿她无可奈何。"' },
+  laolao:  { icon: '🌲', color: '#2a1c22', title: '千年树妖·姥姥', en: 'The Tree Demon', hint: '别靠古树太近',
+    desc: '寺后那株老树,根须钻进坟茔,枝桠伸向人间。她以女鬼为饵、摄人精血已逾千年——小倩,不过是她千百个替身之一。夜里靠近,能听见树心里咯咯的笑。' },
+  huapi:   { icon: '🎭', color: '#3a2028', title: '画皮', en: 'The Painted Skin', hint: '墙上那张人皮',
+    desc: '厉鬼取五彩笔,于一张人皮上细细描画,画毕披于身,便成绝色女子。《画皮》有言:"世人愚昧,明明是妖,而以为美。"——你看得出谁是画皮吗?' },
+  hall:    { icon: '🏯', color: '#2a2620', title: '兰若寺·大殿', en: 'The Main Hall', hint: '残佛低眉',
+    desc: '梁木朽断,金身剥落,残佛仍低眉垂目,似怜众生。香案积灰三寸,唯有一盏长明灯,不知被谁夜夜续着油。' },
   // 梁山泊
   juyi:    { icon: '⚔️', color: '#8c2f24', title: '聚义厅', en: 'Hall of Loyalty', hint: '上山要交投名状',
     desc: '杏黄旗上"替天行道"四个大字。交椅一百单八把,还空着一把。王伦规矩:上山者,先纳投名状——钓满五尾鱼,即见诚心。' },
@@ -3190,6 +3196,7 @@ function updateScoreboard(minute) {
 /* ================= 六新岛:山海经/桃花源/一千零一夜/海底两万里/B-612/侏罗纪 ================= */
 let nautilusHull = null, nemFishSchool = null, trexGrp = null, brachioNeck = null;
 const raptorGrps = [], nightLamps = [];
+let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红眼
 /* —— 山海经 · 异兽之野 —— */
 {
   const gx = SHJ.x, gz = SHJ.z;
@@ -3723,12 +3730,76 @@ const boats = [];
     const stone2 = box(1.6, 2, .4, M.stone); stone2.position.set(gx - 24, height(gx - 24, gz + 24) + 1, gz + 24); scene.add(stone2);
     addSpot(gx - 24, gz + 26, 'lore', 'grave', { r: 6 });
   }
-  addNpc({ x: gx - 4, z: gz + 2, name: '宁采臣', body: 0x4a5a6a, hat: 0x3a4452, day: true,
-    lines: ['小生宁采臣,借宿一晚,天亮就走。', '此寺荒凉,夜里却似有人声……许是风吧。', '君子坦荡,不义之财分毫不取。'] });
-  addNpc({ x: gx + 16, z: gz - 20, name: '聂小倩', body: 0xe8e4ec, hat: 0xd8d4e0, night: true,
-    lines: ['公子,深夜至此,不怕鬼么?', '妾身不由己……井底暗格里的东西,可否劳烦公子?', '十里平湖霜满天,寸寸青丝愁华年。'] });
-  addNpc({ x: gx + 4, z: gz + 14, name: '燕赤霞', body: 0x5a4632, hat: 0x3a2c1c, night: true, opts: { tall: 1.1, cane: true },
-    lines: ['妖气!——哦,是你。夜里少在寺里走动。', '把骨灰葬到生人阳气旺处,姥姥就再拿她没办法。', '剑是直的,人心是弯的。'] });
+  {   // 破败大殿 + 残佛
+    const hx = gx, hz = gz - 30, hh = height(hx, hz);
+    for (const sgn of [-1, 1]) { const pil = cyl(.5, .6, 6, lam(0x5a4636)); pil.rotation.z = sgn * .06; pil.position.set(hx + sgn * 5, hh + 3, hz); scene.add(pil); cirObs.push({ x: hx + sgn * 5, z: hz, r: .9 }); }
+    const beam = box(12, .7, 1, lam(0x3a2e22)); beam.rotation.z = .05; beam.position.set(hx, hh + 6, hz); scene.add(beam);
+    const dais = cyl(2.6, 3, 1, M.stone); dais.position.set(hx, hh + .5, hz - 1); scene.add(dais);
+    const budBody = cyl(1.2, 1.7, 3.4, lam(0x8a7a4a)); budBody.position.set(hx, hh + 2.7, hz - 1); scene.add(budBody);
+    const budHead = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), lam(0x9a8a56)); budHead.position.set(hx, hh + 5, hz - 1); scene.add(budHead);
+    cirObs.push({ x: hx, z: hz - 1, r: 2.6 });
+    const eternLamp = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
+    eternLamp.position.set(hx + 2.2, hh + 1.6, hz + .4); scene.add(eternLamp);
+    addSpot(hx, hz + 2.4, 'lore', 'hall', { r: 6 });
+  }
+  {   // 千年树妖·姥姥(古树,夜里红眼透光)
+    const tx = gx - 30, tz = gz - 22, tth = height(tx, tz);
+    const trunk = cyl(2, 3, 11, lam(0x2e241e)); trunk.position.set(tx, tth + 5.5, tz); scene.add(trunk);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; const br = cyl(.3, .7, 5 + (i % 3), lam(0x241c16)); br.position.set(tx + Math.cos(a) * 2, tth + 9 + (i % 3), tz + Math.sin(a) * 2); br.rotation.z = Math.cos(a) * .8; br.rotation.x = Math.sin(a) * .8; scene.add(br); }
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(4.5, 0), lam(0x1e2a1c)); crown.position.set(tx, tth + 13, tz); scene.add(crown);
+    for (const sgn of [-1, 1]) {   // 树心红眼(夜间发光)
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), new THREE.MeshBasicMaterial({ color: 0x8a1010 }));
+      eye.position.set(tx + sgn * .7, tth + 6.5, tz + 2.1); scene.add(eye); laolaoEyes.push(eye.material);
+    }
+    const eyeLight = new THREE.PointLight(0xaa1818, 0, 24, 2); eyeLight.position.set(tx, tth + 6.5, tz + 2); eyeLight.userData.pow = 10; scene.add(eyeLight); nightLamps.push(eyeLight);
+    cirObs.push({ x: tx, z: tz, r: 3.2 });
+    addSpot(tx, tz + 5, 'lore', 'laolao', { r: 7 });
+  }
+  {   // 画皮:破墙上的一张人皮
+    const px2 = gx + 26, pz2 = gz + 6, ph2 = height(px2, pz2);
+    const wallP = box(.4, 4, 4, lam(0x4a423a)); wallP.position.set(px2, ph2 + 2, pz2); scene.add(wallP);
+    const skin = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), new THREE.MeshBasicMaterial({ color: 0xe8c8b0, side: THREE.DoubleSide, transparent: true, opacity: .92 }));
+    skin.rotation.y = Math.PI / 2; skin.position.set(px2 + .25, ph2 + 2.2, pz2); scene.add(skin);
+    cirObs.push({ x: px2, z: pz2, r: .8 });
+    addSpot(px2 + 1.6, pz2, 'lore', 'huapi', { r: 6 });
+  }
+  {   // 鬼火磷光(寺周,夜间飘绿焰)
+    const geo = new THREE.BufferGeometry();
+    const gp = [];
+    for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28, rr = 14 + (i % 5) * 4; const fx = gx + Math.cos(a) * rr, fz = gz - 6 + Math.sin(a) * rr; gp.push(fx, height(fx, fz) + 1.5 + (i % 3), fz); }
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gp), 3));
+    ghostFire = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x6affa0, size: 8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+    ghostFire.frustumCulled = false; ghostFire.userData = { base: Float32Array.from(gp) };
+    scene.add(ghostFire);
+  }
+  addNpc({ x: gx - 4, z: gz + 2, name: '宁采臣', body: 0x4a5a6a, hat: 0x3a4452, day: true, face: '📖',
+    lines: ['小生宁采臣,借宿一晚,天亮就走。', '此寺荒凉,夜里却似有人声……许是风吧。', '君子坦荡,不义之财分毫不取。'],
+    topics: [
+      { q: '你为何独宿荒寺?', a: '囊中羞涩,投宿不起客栈,便在这兰若寺廊下将就一夜。天亮即走,不叨扰。' },
+      { q: '夜里听见了什么?', a: '有女子吟诗,有金铁交鸣,还有……老树咯咯的笑。小生装作没听见——君子不涉怪力乱神。' },
+      { q: '若有女鬼相诱呢?', a: '(正色)富贵不能淫,鬼魅亦不能。她若真有苦衷,我倒愿意帮衬;媚我害我,断然不从。' },
+    ] });
+  addNpc({ x: gx + 16, z: gz - 20, name: '聂小倩', body: 0xe8e4ec, hat: 0xd8d4e0, night: true, face: '👻',
+    lines: ['公子,深夜至此,不怕鬼么?', '妾身不由己……井底暗格里的东西,可否劳烦公子?', '十里平湖霜满天,寸寸青丝愁华年。'],
+    topics: [
+      { q: '你为何被困于此?', a: '妾十八而夭,葬于寺侧。姥姥摄我魂魄,逼我以色媚人、取生人精血……我不愿,却身不由己。' },
+      { q: '如何才能救你?', a: '寺后古井井壁有暗格,藏着我的骨灰。夜里取出,葬到白杨树下阳气旺处——姥姥便再拿我无可奈何。' },
+      { q: '姥姥是什么?', a: '寺后那株千年老树成的精。她的根钻进我的坟……公子若去,万莫靠得太近。' },
+    ] });
+  addNpc({ x: gx + 4, z: gz + 14, name: '燕赤霞', body: 0x5a4632, hat: 0x3a2c1c, night: true, opts: { tall: 1.1, cane: true }, face: '🗡️',
+    lines: ['妖气!——哦,是你。夜里少在寺里走动。', '把骨灰葬到生人阳气旺处,姥姥就再拿她没办法。', '剑是直的,人心是弯的。'],
+    topics: [
+      { q: '你是何人?', a: '一介剑客,专收妖邪。这兰若寺阴气重,我在此已候了姥姥三年。' },
+      { q: '如何对付姥姥?', a: '树妖千年道行,硬拼不易。先断她爪牙——把小倩的骨灰迁走,她少一具替身,便弱一分。' },
+      { q: '画皮又是什么?', a: '(压低声)寺里混着一只画皮厉鬼。它披着好人皮,你未必认得出。看人,别只看脸。' },
+    ] });
+  addNpc({ x: gx + 24, z: gz + 4, name: '画皮鬼', body: 0x7a3040, hat: 0x4a1c28, night: true, face: '🎭',
+    lines: ['(一位绝色女子对你嫣然一笑)', '公子,进来坐坐?奴家一个人,好怕……', '(墙上似有窸窣描画之声)'],
+    topics: [
+      { q: '你是人是鬼?', a: '(笑意一僵)公子说笑了……奴家自然是人。(指甲在袖中悄悄变长)' },
+      { q: '墙上那张皮是什么?', a: '(脸色骤变)你……你看见了?!——罢了。世人愚昧,明明是妖,偏以为美。你算头一个看破的。' },
+      { q: '为何害人?', a: '皮囊会烂,唯有活人的心头血,能让这张画皮鲜艳如初。这不叫害——叫续命。' },
+    ] });
   const dk9 = height(gx, gz + 96);
   const plank9 = box(5, .5, 9, M.wood); plank9.position.set(gx, dk9 + .9, gz + 94); scene.add(plank9);
   addSpot(gx, gz + 92, 'ferry', 'ferry', { r: 8 });
@@ -5175,6 +5246,15 @@ function loop() {
       mistPts.visible = true;
     } else mistPts.visible = false;
   }
+  /* 兰若寺:鬼火飘 + 姥姥红眼(夜间) */
+  if (ghostFire) {
+    const b = ghostFire.userData.base, arr = ghostFire.geometry.attributes.position.array, nN = arr.length / 3;
+    for (let i = 0; i < nN; i++) arr[i * 3 + 1] = b[i * 3 + 1] + Math.sin(t * 1.4 + i * .7) * .5;
+    ghostFire.geometry.attributes.position.needsUpdate = true;
+    ghostFire.visible = nite > .15;
+    ghostFire.material.opacity = nite * (.5 + Math.sin(t * 4) * .35);
+  }
+  for (const m of laolaoEyes) m.color.setHex(nite > .3 ? (Math.sin(t * 3) > 0 ? 0xcc2020 : 0x7a0e0e) : 0x2e1010);
   renderMinimap();
   renderCompass();
 
