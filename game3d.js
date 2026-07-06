@@ -1,7 +1,7 @@
 /* ============================================================
    1001 世界 3D · Isle of 1001 — 荒野之息风低多边形海岛
    Three.js 三维开放世界:雪山 · 平原 · 大海 · 九大收藏区域
-   与 2D 版共用 world-data.js;进度按账号(本机多档)隔离保存。
+   数据来自 world-data.js;进度按账号(本机多档)隔离保存。
    ============================================================ */
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
@@ -122,6 +122,7 @@ const NISLES = [
   { key: 'shu', x: -560, z: -1680, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 14 }, dock: [-536, -1598] }, // 禁闭岛
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
+for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -969,6 +970,10 @@ function loreCard(k) {
   if (k === 'eden') btn = PSTORE.getItem('w1001.purg') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">你已饮过忘川之水,罪的记忆随流水而去,只余轻盈。</span>'
     : '<button class="again" data-eden>🌸 饮忘川之水,登临乐园</button>';
+  const _niq = NIQ_BY_LORE[k];   // 海洋文学带故事线:自动挂在对应 lore 卡上
+  if (_niq) btn = PSTORE.getItem('w1001.' + _niq.flag) === '1'
+    ? `<span style="color:#8a7c62;font-size:13px">${_niq.done}——这一段,已写进你的航海日志。</span>`
+    : `<button class="again" data-niq="${_niq.flag}">${_niq.btn}</button>`;
   return `<div class="cardHead" style="background:${L.color}">${L.icon} ${esc(L.title)}</div>
     <div class="cardMedia"><div class="paperRoll">${L.icon}</div></div>
     <div class="cardTitle"><h3>${esc(L.title)}</h3><div class="en">${L.en}</div></div>
@@ -1194,6 +1199,13 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
     player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-niq]')?.addEventListener('click', ev => {
+    const flag = ev.currentTarget.dataset.niq, q = NIQ_BY_FLAG[flag];
+    if (!q || PSTORE.getItem('w1001.' + flag) === '1') return;
+    PSTORE.setItem('w1001.' + flag, '1');
+    earnSB(q.sb); stars++; saveQuest(); updateQuestHUD();
+    closeModals(); toast(q.msg); blip(560); setTimeout(() => blip(720), 110); setTimeout(() => blip(880), 220);
   });
   cardBody.querySelector('[data-treasure]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.treasure') === '1') return;
@@ -1583,6 +1595,7 @@ function openJournal() {
     ['🦈 大马林鱼(老人与海)', PSTORE.getItem('w1001.marlin') === '1' ? '✅ 虽败犹荣' : '⏳ 栈桥旁助老人'],
     ['💰 弗林特宝藏(金银岛)', PSTORE.getItem('w1001.treasure') === '1' ? '✅ 已挖出' : '⏳ 按藏宝图开挖'],
   ];
+  for (const k in NI_QUESTS) { const q = NI_QUESTS[k]; LOGROWS.push([q.log, PSTORE.getItem('w1001.nq_' + k) === '1' ? q.done : q.pend]); }   // 海洋文学带 16 条故事线
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
     ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
   /* 称号:成就换称号,点击佩戴 */
@@ -1621,7 +1634,7 @@ function openGuide() {
     <div class="cardDesc">
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
-    <b>3. 出海远行</b>——东滩渡口通往二十余个世界(中土、霍格沃茨走 9¾ 站台的火车;南海新添但丁的炼狱山)。每个世界都藏着一条支线,<b>按 J 打开图鉴看「航海日志」</b>,按 <b>M</b> 看海图。<br><br>
+    <b>3. 出海远行</b>——东滩渡口通往四十余座岛(中土、霍格沃茨走 9¾ 站台的火车;南海有但丁的炼狱山,外环是一整条「海洋文学带」:金银岛、神秘岛、无人生还岛……)。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮,按 <b>M</b> 看海图。<br><br>
     <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
@@ -4792,6 +4805,27 @@ for (const s of NISLES) {
   const sgn = makeSign(c.name, 6.5, '#1e2430', '#dfe8f0'); const sgz = gz + (gz > 0 ? -s.r * .6 : s.r * .6);
   sgn.position.set(gx + 10, height(gx + 10, sgz) + 4, sgz); scene.add(sgn);
 }
+/* 海洋文学带故事线:每岛一条支线(挂在某个 lore 卡上,完成得 SB+⭐,列入航海日志)*/
+const NI_QUESTS = {
+  mys:  { lore: 'mystnemo',     btn: '🐚 循光潜入海底洞穴',   sb: 20, log: '🌋 神秘的恩人(神秘岛)',       pend: '⏳ 探海底洞穴',   done: '✅ 见过尼摩',   msg: '🐚 海底洞穴里,垂死的尼摩握住你的手:"这是我最后的秘密。" ⚡+20 · ⭐+1' },
+  chr:  { lore: 'tensoldiers',  btn: '🪆 对着童谣推演真凶',   sb: 20, log: '🔪 童谣杀人(无人生还岛)',     pend: '⏳ 数一数瓷兵',   done: '✅ 真相已记',   msg: '🪆 死亡的顺序,与童谣一句句对上了——凶手,正是那个"最先离场"的人。 ⚡+20 · ⭐+1' },
+  tmp:  { lore: 'prospero',     btn: '📖 劝法师折杖宽恕',     sb: 20, log: '⛈️ 折断法杖(暴风雨岛)',       pend: '⏳ 劝普洛斯彼罗', done: '✅ 仇已释怀',   msg: '📖 普洛斯彼罗把魔法书沉入海底:"稀有的德性,是宽恕,而非报复。" ⚡+20 · ⭐+1' },
+  mor:  { lore: 'morlaw',       btn: '📜 随兽人诵一遍律法',   sb: 20, log: '🧪 兽人律法(莫罗博士岛)',     pend: '⏳ 参加诵法',     done: '✅ 律法已诵',   msg: '🧪 你随兽人齐诵:"我们不是人吗?"——念着念着,连你也分不清人兽的界线。 ⚡+20 · ⭐+1' },
+  dol:  { lore: 'karana',       btn: '🦦 给受伤的海獭喂食',   sb: 15, log: '🐬 驯服獠牙(蓝色海豚岛)',     pend: '⏳ 结交海獭',     done: '✅ 有了朋友',   msg: '🦦 那只叫"獠牙"的海獭,终于肯从你手里接食——卡拉娜笑了,十八年来头一次。 ⚡+15 · ⭐+1' },
+  fly:  { lore: 'flyconch',     btn: '🐚 吹响海螺重开集会',   sb: 20, log: '🐚 重整秩序(蝇王)',           pend: '⏳ 吹响海螺',     done: '✅ 火重新亮',   msg: '🐚 海螺一响,散去的孩子又围拢过来,信号火重新烧起——文明,续上了一口气。 ⚡+20 · ⭐+1' },
+  uto:  { lore: 'utocity',      btn: '📖 记录理想国的制度',   sb: 15, log: '🏛️ 理想国见闻(乌托邦)',       pend: '⏳ 走访全城',     done: '✅ 已成手记',   msg: '🏛️ 六小时工作、无货币、金夜壶……你都记进本子。完美,还是可怕?留给读者判断。 ⚡+15 · ⭐+1' },
+  hux:  { lore: 'moksha',       btn: '🧘 随八哥冥想此时此地', sb: 15, log: '🧘 注意·当下(帕拉岛)',       pend: '⏳ 练一次觉知',   done: '✅ 已然清醒',   msg: '🧘 "注意!此时,此地。"你跟着呼吸,第一次真正地在场。 ⚡+15 · ⭐+1' },
+  gul:  { lore: 'lilliput',     btn: '🥚 调停敲蛋战争',       sb: 20, log: '👣 敲蛋和约(格列佛)',         pend: '⏳ 调停两党',     done: '✅ 已促和谈',   msg: '👣 你提议:今后各敲各的那头。大小端两派竟都答应了——天大的仇,原来起于一枚鸡蛋。 ⚡+20 · ⭐+1' },
+  nvl:  { lore: 'lostchildren', btn: '✨ 想着快乐的事飞起来', sb: 15, log: '🧚 学会飞行(梦幻岛)',         pend: '⏳ 试着起飞',     done: '✅ 飞过一回',   msg: '✨ 你想起最快乐的一件事,脚尖离了地——原来长大,只是忘了怎么飞。 ⚡+15 · ⭐+1' },
+  cor:  { lore: 'coralreef',    btn: '🤿 潜入水下岩洞',       sb: 15, log: '🐠 水下岩洞(珊瑚岛)',         pend: '⏳ 屏气下潜',     done: '✅ 探过秘洞',   msg: '🐠 你屏一口气潜到礁底,钻进一个连海盗都不知道的水下岩洞——里面亮得像撒了金子。 ⚡+15 · ⭐+1' },
+  typ:  { lore: 'typeevalley',  btn: '🌴 助汤莫逃回海边',     sb: 20, log: '🌴 逃离山谷(泰皮)',           pend: '⏳ 寻机逃亡',     done: '✅ 已回大海',   msg: '🌴 趁法亚薇拨开禁忌绳,你和汤莫跳上独木舟冲向捕鲸船——文明还是野蛮,他终究做了选择。 ⚡+20 · ⭐+1' },
+  tah:  { lore: 'studio',       btn: '🖼️ 在烧毁前抢一幅画',   sb: 20, log: '🎨 抢救杰作(画家岛)',         pend: '⏳ 冲进画室',     done: '✅ 留下一幅',   msg: '🎨 火舌舔上四壁前,你抢出一幅画——斯特里克兰要毁掉的乐园,总算留下一角。 ⚡+20 · ⭐+1' },
+  daw:  { lore: 'worldsend',    btn: '🐭 送雷佩契普越浪墙',   sb: 20, log: '🐉 世界尽头(黎明踏浪号)',     pend: '⏳ 划向东方',     done: '✅ 已抵尽头',   msg: '🐭 你目送雷佩契普的小舟越过最后一道浪墙,驶入满是百合与光的国度——它到家了。 ⚡+20 · ⭐+1' },
+  rain: { lore: 'missionary',   btn: '☔ 记下这场雨中的对峙', sb: 20, log: '🌧️ 帕果帕果的雨(雨岛)',       pend: '⏳ 旁观牧师',     done: '✅ 已见结局',   msg: '☔ 牧师倒在海滩,汤普森小姐冷笑一声"猪猡"。雨,还在下。你合上了本子。 ⚡+20 · ⭐+1' },
+  shu:  { lore: 'shulighthouse',btn: '🗼 登灯塔查明真相',     sb: 20, log: '🌫️ 灯塔的真相(禁闭岛)',     pend: '⏳ 闯进灯塔',     done: '✅ 真相已明',   msg: '🗼 塔顶没有秘密实验,只有考利医生一句"欢迎回来"——那么,谁才是病人? ⚡+20 · ⭐+1' },
+};
+const NIQ_BY_LORE = {}, NIQ_BY_FLAG = {};
+for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }, NI_QUESTS[k]); NIQ_BY_LORE[q.lore] = q; NIQ_BY_FLAG[q.flag] = q; }
 /* 多元宇宙渡口(鲸岛东滩) */
 {
   const fh = height(380, 12);
