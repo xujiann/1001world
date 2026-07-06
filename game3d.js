@@ -4535,8 +4535,8 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
 {
   const GN = MOBILE ? 900 : 2000, R = MOBILE ? 30 : 42;
-  const bladeGeo = new THREE.ConeGeometry(.11, 1.15, 3);
-  bladeGeo.translate(0, .575, 0);   // 基部落到 y=0,便于自底摇摆
+  const bladeGeo = new THREE.ConeGeometry(.17, .78, 3);   // 更矮更宽,不扎脚
+  bladeGeo.translate(0, .39, 0);   // 基部落到 y=0,便于自底摇摆
   grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
   grassMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 };
@@ -4580,9 +4580,9 @@ function redistributeGrass(cx, cz) {
   for (let i = 0; i < u.GN; i++) {
     const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
     const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
-    if (h > 2.6 && h < 19) {                 // 只长在草地高度带
+    if (h > 2.6 && h < 19 && fbm(x * .045, z * .045) > .47) {   // 草地高度带 + 噪声成簇(留出空地,不铺满)
       e.set(0, u.rnd() * 6.2832, 0);
-      q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .8 + u.rnd() * .8, .9 + u.rnd() * .5);
+      q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .7 + u.rnd() * .5, .9 + u.rnd() * .5);
       m4.compose(p.set(x, h, z), q, s);
     } else {
       m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));   // 非草地:藏起
@@ -4621,10 +4621,16 @@ function redistributeGrass(cx, cz) {
 /* --- 萤火虫(夜间草地随玩家浮动发光) --- */
 let fireflies = null, ffCx = 1e9, ffCz = 1e9;
 {
-  const FF = MOBILE ? 60 : 130;
+  const FF = MOBILE ? 50 : 110;
+  const fc0 = document.createElement('canvas'); fc0.width = fc0.height = 32;
+  const fx0 = fc0.getContext('2d');
+  const fg = fx0.createRadialGradient(16, 16, 0, 16, 16, 16);
+  fg.addColorStop(0, 'rgba(255,255,240,1)'); fg.addColorStop(.35, 'rgba(230,255,150,.6)'); fg.addColorStop(1, 'rgba(200,255,120,0)');
+  fx0.fillStyle = fg; fx0.fillRect(0, 0, 32, 32);
+  const ffTex = new THREE.CanvasTexture(fc0);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
-  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf2ffa0, size: 5, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ map: ffTex, color: 0xf2ffa0, size: 3.2, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
   fireflies.frustumCulled = false;
   const ph = new Float32Array(FF), r0 = mulberry32(555);
   for (let i = 0; i < FF; i++) ph[i] = r0() * 6.2832;
