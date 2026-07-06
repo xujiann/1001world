@@ -4526,6 +4526,39 @@ function redistributeGrass(cx, cz) {
     if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
   }
 }
+/* --- 萤火虫(夜间草地随玩家浮动发光) --- */
+let fireflies = null, ffCx = 1e9, ffCz = 1e9;
+{
+  const FF = MOBILE ? 60 : 130;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
+  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf2ffa0, size: 5, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+  fireflies.frustumCulled = false;
+  const ph = new Float32Array(FF), r0 = mulberry32(555);
+  for (let i = 0; i < FF; i++) ph[i] = r0() * 6.2832;
+  fireflies.userData = { FF, R: 34, rnd: r0, base: new Float32Array(FF * 3), ph };
+  scene.add(fireflies);
+}
+function redistributeFireflies(cx, cz) {
+  ffCx = cx; ffCz = cz;
+  const u = fireflies.userData, b = u.base;
+  for (let i = 0; i < u.FF; i++) {
+    const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    b[i * 3] = x; b[i * 3 + 2] = z;
+    b[i * 3 + 1] = (h > 2.2 && h < 20) ? h + 1.2 + u.rnd() * 2.5 : -999;
+  }
+}
+/* --- 流星(夜空偶尔划过) --- */
+let meteor = null, meteorT = 10, meteorLife = 0;
+{
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  meteor = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+  meteor.frustumCulled = false;
+  meteor.userData = { dir: new THREE.Vector3(), head: new THREE.Vector3() };
+  scene.add(meteor);
+}
 /* 恢复上次位置 */
 try {
   const sv = JSON.parse(PSTORE.getItem('w1001.pos3d') || 'null');
@@ -5039,6 +5072,43 @@ function loop() {
   }
   updateNpcs3(dt);
   curDA = updateDayNight(t);
+  /* 萤火虫 + 流星(夜间氛围) */
+  const nite = 1 - curDA;
+  if (fireflies) {
+    if ((player.position.x - ffCx) ** 2 + (player.position.z - ffCz) ** 2 > 36) redistributeFireflies(player.position.x, player.position.z);
+    const u = fireflies.userData, b = u.base, arr = fireflies.geometry.attributes.position.array;
+    for (let i = 0; i < u.FF; i++) {
+      const p2 = u.ph[i];
+      arr[i * 3] = b[i * 3] + Math.sin(t * .8 + p2) * .5;
+      arr[i * 3 + 1] = b[i * 3 + 1] + Math.sin(t * 1.3 + p2) * .6;
+      arr[i * 3 + 2] = b[i * 3 + 2] + Math.cos(t * .7 + p2) * .5;
+    }
+    fireflies.geometry.attributes.position.needsUpdate = true;
+    fireflies.visible = nite > .12;
+    fireflies.material.opacity = nite * (.55 + Math.sin(t * 3) * .45);
+  }
+  if (meteor) {
+    if (meteorLife > 0) {
+      meteorLife -= dt;
+      const u = meteor.userData; u.head.addScaledVector(u.dir, dt * 820);
+      const arr = meteor.geometry.attributes.position.array;
+      arr[0] = u.head.x; arr[1] = u.head.y; arr[2] = u.head.z;
+      arr[3] = u.head.x - u.dir.x * 70; arr[4] = u.head.y - u.dir.y * 70; arr[5] = u.head.z - u.dir.z * 70;
+      meteor.geometry.attributes.position.needsUpdate = true;
+      meteor.material.opacity = Math.min(1, meteorLife * 2.5) * nite;
+    } else {
+      meteorT -= dt;
+      if (meteorT <= 0) {
+        meteorT = 12 + Math.random() * 28;
+        if (nite > .4) {
+          const u = meteor.userData, az = Math.random() * 6.2832, el = .55 + Math.random() * .6;
+          u.head.set(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)).multiplyScalar(950).add(player.position);
+          u.dir.set(Math.random() - .5, -.12 - Math.random() * .22, Math.random() - .5).normalize();
+          meteorLife = .85;
+        }
+      }
+    }
+  }
   renderMinimap();
   renderCompass();
 
@@ -5126,7 +5196,7 @@ const BUCKETS = [
   { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
