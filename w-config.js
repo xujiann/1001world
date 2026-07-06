@@ -34,4 +34,5 @@ export const THEMES = {
   chateau:   { tempo: 54, wave: 'sine', scale: [0, 2, 3, 5, 7], base: 147, dens: .35, pad: true },
   crusoe:    { tempo: 68, wave: 'sine', scale: [0, 2, 4, 7, 9], base: 196, dens: .35 },
   daguan:    { tempo: 72, wave: 'sine', scale: [0, 2, 4, 7, 9, 12], base: 330, dens: .5, arp: true, vol: .7 },
+  purgatory: { tempo: 54, wave: 'sine', scale: [0, 3, 5, 7, 10, 12], base: 147, dens: .32, pad: true, vol: .82 },
 };

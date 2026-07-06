@@ -11,7 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES } from './w-config.js?v=1';
+import { THEMES } from './w-config.js?v=2';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 
 const D = window.WORLD_DATA;
@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -100,6 +100,7 @@ const YFB = { x: -130, z: 1250, r: 110 };   // 基督山·伊夫堡
 const MCD = { x: 80, z: 1360, r: 45 };      // 小基督山(宝藏屿)
 const RBX = { x: 420, z: 1300, r: 120 };    // 鲁滨逊·绝望岛
 const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
+const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,七层螺旋)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const abx = bx - ax, abz = bz - az;
   const t = clamp(((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz), 0, 1);
@@ -138,6 +139,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - MCD.x, z - MCD.z) / MCD.r) * 1.7);
   m = Math.max(m, (1 - Math.hypot(x - RBX.x, z - RBX.z) / RBX.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
+  m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
     m = Math.max(m, (1 - Math.hypot(x - rx2, z - rz2) / 24) * 1.7);       // 塞壬礁
   return m;
@@ -233,6 +235,12 @@ function height(x, z) {
   q(MCD.x, MCD.z, 26, 5);                                                                    // 小基督山
   q(RBX.x, RBX.z, 66, 6); q(RBX.x, RBX.z - 104, 16, 2.2, .95);                               // 绝望岛
   q(DGY.x, DGY.z, 72, 7); q(DGY.x, DGY.z + 112, 16, 2.2, .95);                               // 大观园
+  q(PUR.x, PUR.z, PUR.r, 3);                                                                 // 炼狱山·涤罪滩(环山基座)
+  { const dpu = Math.hypot(x - PUR.x, z - PUR.z), R2 = PUR.r * .82;                          // 七层阶梯螺旋锥
+    if (dpu < R2) { const lvl = (1 - dpu / R2) * 7, k = Math.min(6, Math.floor(lvl)), fr = lvl - k;
+      const rise = fr > .58 ? (fr - .58) / .42 : 0; h += (k + rise) * 4; } }
+  q(PUR.x, PUR.z, 9.5, 30.5, .82);                                                           // 炼狱山巅·地上乐园(平台)
+  q(PUR.x, PUR.z + PUR.r + 20, 15, 2.2, .95);                                                // 炼狱山渡口浅滩
   const ed = Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z);
   h -= smooth01(clamp(1 - ed / WHALE_EYE.r, 0, 1)) * 9;
   const bd2 = Math.hypot(x - WHALE_BLOW.x, z - WHALE_BLOW.z);
@@ -608,6 +616,7 @@ const WORLDS = [
   { key: 'yfb', icon: '⛓️', name: '基督山 · 伊夫堡', en: 'Monte Cristo', open: true, desc: '海上监狱 · 越狱 · 黑岩宝藏' },
   { key: 'rbx', icon: '🏝️', name: '鲁滨逊 · 绝望岛', en: 'Robinson Crusoe', open: true, desc: '海难船骸 · 集五箱漂流物资' },
   { key: 'dgy', icon: '🏮', name: '红楼梦 · 大观园', en: 'Dream of Red Chamber', open: true, desc: '潇湘竹影 · 海棠诗社 · 葬花冢' },
+  { key: 'pur', icon: '⛰️', name: '神曲 · 炼狱山', en: 'Mount Purgatory', open: true, desc: '南海孤峰 · 七层螺旋涤七罪 · 山巅地上乐园' },
   { key: 'sirinfo', icon: '🧜‍♀️', name: '塞壬海域', en: 'The Sirens', open: false, desc: '巴格达与侏罗纪之间的危险水道,备好蜂蜡耳塞', note: '无航线,凭勇气' },
   { key: 'thy', icon: '🌸', name: '桃花源 · ???', en: 'Peach Blossom Spring', open: false, desc: '寻向所志,遂迷,不复得路——此地无航线', note: '有缘自遇' },
   { key: 'xiyou', icon: '🐒', name: '西游记', en: 'Journey to the West', open: false, desc: '花果山(在建)' },
@@ -869,6 +878,25 @@ const LORE = {
     desc: '一个赤裸的人的脚印,清清楚楚印在沙上。鲁滨逊盯着它看了整整一天——独居第十七年,这是他见过最可怕、也最动人的东西。' },
   flotsam: { icon: '📦', color: '#7a5230', title: '漂流物资', en: 'Flotsam', hint: '海上漂来的箱子',
     desc: '被海浪推上岸的木箱,裹着海藻。鲁滨逊说集齐五箱,他就把二十八年的生存术倾囊相授。(+2 SB)' },
+  // 神曲·炼狱山(七层螺旋 + 山门 + 山巅乐园)
+  purgate: { icon: '⛰️', color: '#3a4a6a', title: '涤罪滩', en: 'The Shore', hint: '炼狱山脚',
+    desc: '晨光里,一座孤峰从南海升起。守门的老者卡托拦住你:"用芦苇束腰,以露水净面——凡登此山者,须洗去脸上地狱的煤灰。"沿螺旋而上,七层各涤一罪。' },
+  purpride: { icon: '🪨', color: '#6a5a4a', title: '第一层 · 傲慢', en: 'Pride', hint: '俯身负石',
+    desc: '傲慢者背负巨石,压得直不起腰,只能盯着脚下——地面刻满谦卑的浮雕。"生前昂着的头,如今学着低下。"石头很重,但越走越轻。' },
+  purenvy:  { icon: '🧵', color: '#7a8a6a', title: '第二层 · 嫉妒', en: 'Envy', hint: '铁线缝眼',
+    desc: '嫉妒者穿灰色苦衣,靠墙而坐,眼睑被铁线缝合——生前用嫉妒的目光刺人,此刻什么也看不见,只能互相搀扶。风里有声音在念:凡爱人者有福了。' },
+  purwrath: { icon: '🌫️', color: '#4a4650', title: '第三层 · 愤怒', en: 'Wrath', hint: '浓烟蔽目',
+    desc: '刺鼻的黑烟裹住整层,伸手不见五指——愤怒曾蒙蔽人心,如今化作浓烟蒙蔽双眼。你屏住呼吸走过,烟里有人低声祈求平安。' },
+  pursloth: { icon: '🏃', color: '#5a6a5a', title: '第四层 · 怠惰', en: 'Sloth', hint: '不停奔跑',
+    desc: '怠惰者绕着山层疯狂奔跑,一刻也不敢停——生前爱得太冷淡、太迟缓,此刻要用奔跑补足。他们喊着彼此激励的口号,从你身边呼啸而过。' },
+  puravar:  { icon: '💰', color: '#6a5a3a', title: '第五层 · 贪财', en: 'Avarice', hint: '面朝尘土',
+    desc: '贪财者俯卧在地,面贴尘土,手脚被缚——"生前眼里只有地上的黄金,如今就让他们看个够。"有个教皇也在其中,谦卑地报出自己的名字。' },
+  purglut:  { icon: '🍎', color: '#7a4a3a', title: '第六层 · 贪吃', en: 'Gluttony', hint: '果树难及',
+    desc: '两株清泉浇灌的果树垂满鲜果,香气诱人;贪吃者形销骨立,却怎么也够不着——饥渴使他们瘦得眼窝深陷,却也第一次尝到节制的滋味。' },
+  purlust:  { icon: '🔥', color: '#b8482e', title: '第七层 · 色欲', en: 'Lust', hint: '穿火而行',
+    desc: '一堵火墙横贯整层,烈焰灼人却不伤形。要登顶,唯有穿火而过——但丁在此犹豫良久。维吉尔说:"这火与你和贝雅特丽齐之间,只隔一层。"于是他闭眼走了进去。' },
+  eden:    { icon: '🌸', color: '#4a8a5a', title: '山巅 · 地上乐园', en: 'Earthly Paradise', hint: '登临绝顶',
+    desc: '七层已尽,眼前豁然:一片神圣的森林,忘川(勒忒)与欢河(欧诺埃)在花间流淌。玛蒂尔达在对岸采花微笑。饮忘川之水,忘却罪的记忆;饮欢河之水,重拾行善的欢愉。贝雅特丽齐正乘光而来。(登顶奖励)' },
 };
 function loreCard(k) {
   const L = LORE[k];
@@ -900,6 +928,9 @@ function loreCard(k) {
   if (k === 'zanghua') btn = '<button class="again" data-flower>🌺 添一抔落花</button>';
   if (k === 'shishe') btn = '<button class="again" data-poem>📜 领今日诗题</button>';
   if (k === 'flotsam') btn = '<button class="again" data-flotsam>📦 撬开木箱</button>';
+  if (k === 'eden') btn = PSTORE.getItem('w1001.purg') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">你已饮过忘川之水,罪的记忆随流水而去,只余轻盈。</span>'
+    : '<button class="again" data-eden>🌸 饮忘川之水,登临乐园</button>';
   return `<div class="cardHead" style="background:${L.color}">${L.icon} ${esc(L.title)}</div>
     <div class="cardMedia"><div class="paperRoll">${L.icon}</div></div>
     <div class="cardTitle"><h3>${esc(L.title)}</h3><div class="en">${L.en}</div></div>
@@ -941,6 +972,7 @@ const SG_LIST = [
   ['nem', '🐚 鹦鹉螺锚地'], ['b612', '🌹 B-612'], ['jur', '🦖 侏罗纪'], ['hgs', '🐒 花果山'],
   ['alc', '🎩 爱丽丝仙境'], ['cbi', '🔥 赤壁'], ['lrs', '🏮 兰若寺'], ['lsp', '⚔️ 梁山泊'],
   ['fcy', '🌀 风车原野'], ['yfb', '⛓️ 伊夫堡'], ['rbx', '🏝️ 绝望岛'], ['dgy', '🏮 大观园'],
+  ['pur', '⛰️ 炼狱山'],
 ];
 function stargateCard() {
   if (PSTORE.getItem('w1001.stargate') !== '1') {
@@ -1043,7 +1075,8 @@ function openCard(s) {
     const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], sport: [-688, 122],
       shj: [SHJ.x, SHJ.z + 112], anh: [ANH.x, ANH.z - 106], nem: [NEM.x, NEM.z - 70], b612: [B612.x, B612.z - 48], jur: [JUR.x, JUR.z - 120],
       hgs: [HGS.x, HGS.z + 118], alc: [ALC.x, ALC.z + 102], cbi: [CBI.x, CBI.z + 110], lrs: [LRS.x, LRS.z + 92], lsp: [LSP.x + 118, LSP.z],
-      fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102], main: [372, 12] };
+      fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102],
+      pur: [PUR.x, PUR.z + PUR.r + 18], main: [372, 12] };
     const dest = dests[k] || dests.main;
     player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
     closeModals(); blip(520);
@@ -1066,7 +1099,8 @@ function openCard(s) {
       : k === 'fcy' ? '🌀 风车原野到了。那位骑士又在跟"巨人"较劲'
       : k === 'yfb' ? '⛓️ 伊夫堡到了。有人在墙里敲了二十年'
       : k === 'rbx' ? '🏝️ 绝望岛到了。沙滩上,好像有脚印'
-      : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好' : '🐋 回到收藏之岛(主世界)');
+      : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好'
+      : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪' : '🐋 回到收藏之岛(主世界)');
   }));
   cardBody.querySelector('[data-taogo]')?.addEventListener('click', () => {
     PSTORE.setItem('w1001.taofound', '1');
@@ -1121,6 +1155,14 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
     player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-eden]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.purg') === '1') return;
+    PSTORE.setItem('w1001.purg', '1');
+    earnSB(40); stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('🌸 七罪已涤,你登临山巅地上乐园 · ⚡+40 · ⭐+1');
+    blip(523); setTimeout(() => blip(659), 110); setTimeout(() => blip(784), 220);
   });
   cardBody.querySelector('[data-shrink]')?.addEventListener('click', () => {
     player.scale.setScalar(.55); scaleT = 60; closeModals(); toast('🍄 咻——世界忽然变得好大!(一分钟)'); blip(880);
@@ -1379,11 +1421,12 @@ function titleList() {
     siren:  PSTORE.getItem('w1001.siren') === '1',
     ticket: PSTORE.getItem('w1001.ticket') === '1',
     tao:    PSTORE.getItem('w1001.taofound') === '1',
+    purg:   PSTORE.getItem('w1001.purg') === '1',
   };
   const done = Object.values(f).filter(Boolean).length;
-  const tier = done >= 13 ? '👑 万世收藏之主' : done >= 9 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
+  const tier = done >= 14 ? '👑 万世收藏之主' : done >= 10 ? '🧭 多元宇宙巡礼者' : done >= 6 ? '⛵ 远洋收藏家' : done >= 3 ? '🗺️ 见习航海家' : '🎖️ 无名旅人';
   return [
-    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/13 传奇` },
+    { id: 'tier',   name: tier,           got: true,      note: `已成 ${done}/14 传奇` },
     { id: 'qitian', name: '🐒 齐天大圣',   got: f.jingu,   note: '拔出定海神针' },
     { id: 'ring',   name: '💍 护戒使者',   got: f.ring,    note: '销毁至尊魔戒' },
     { id: 'monte',  name: '💎 基督山伯爵', got: f.yfb,     note: '挖出黑岩宝藏' },
@@ -1392,8 +1435,10 @@ function titleList() {
     { id: 'hero',   name: '⚔️ 梁山好汉',   got: f.hero,    note: '纳投名状入伙' },
     { id: 'qian',   name: '🕯️ 兰若义士',   got: f.qian,    note: '井底救倩安魂' },
     { id: 'tao',    name: '🌸 桃源客',     got: f.tao,     note: '寻得桃花源秘境' },
+    { id: 'pilgrim', name: '⛰️ 神曲行者',  got: f.purg,    note: '涤七罪登临乐园' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
     { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
+    { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
 }
 function updateTitleHUD() {
@@ -1414,6 +1459,32 @@ function equipTitle(id) {
   openJournal();
 }
 
+function drawStarChart(cv3) {
+  if (!cv3) return;
+  const ctx = cv3.getContext('2d'), W = cv3.width, H = cv3.height, cx = W / 2, cy = H / 2, RR = Math.min(W, H) / 2 - 16;
+  ctx.clearRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, RR); g.addColorStop(0, '#0d1836'); g.addColorStop(1, '#05070f');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, RR, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,150,210,.22)'; ctx.lineWidth = 1;
+  for (const el of [30, 60]) { const r = (90 - el) / 90 * RR; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(cx, cy, RR, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#7f93c0'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+  for (const [t, a] of [['北', 0], ['东', 90], ['南', 180], ['西', 270]]) { const ar = a * Math.PI / 180; ctx.fillText(t, cx + Math.sin(ar) * (RR + 9), cy - Math.cos(ar) * (RR + 9) + 4); }
+  let idx = 0;
+  for (const cst of CONSTELLATIONS) {
+    const az = cst.az * Math.PI / 180, r = (90 - cst.el) / 90 * RR, px = cx + Math.sin(az) * r, py = cy - Math.cos(az) * r;
+    if (constSeen.has(idx)) {
+      let mx = 0, my = 0; for (const s of cst.stars) { mx += s[0]; my += s[1]; } mx /= cst.stars.length; my /= cst.stars.length;
+      const pts = cst.stars.map(([lx, ly]) => [px + (lx - mx) * 3, py - (ly - my) * 3]);
+      ctx.strokeStyle = 'rgba(255,220,120,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); for (const [i, j] of cst.lines) { ctx.moveTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[j][0], pts[j][1]); } ctx.stroke();
+      ctx.fillStyle = '#ffe799'; for (const p of pts) { ctx.beginPath(); ctx.arc(p[0], p[1], 1.4, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#ffefb0'; ctx.font = '9px system-ui';
+      ctx.fillText(cst.name.replace(/^.+·/, ''), px, py - 6);
+    } else { ctx.fillStyle = 'rgba(150,165,200,.32)'; ctx.beginPath(); ctx.arc(px, py, 1.3, 0, 7); ctx.fill(); }
+    idx++;
+  }
+}
 function openJournal() {
   const list = $('journalList');
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -1440,6 +1511,7 @@ function openJournal() {
     ['💎 塞壬珍宝(塞壬海域)', PSTORE.getItem('w1001.siren') === '1' ? '✅ 已取得' : '⏳ 备好蜂蜡耳塞'],
     ['🎫 德比票根(体育岛)', PSTORE.getItem('w1001.ticket') === '1' ? '✅ 收藏中' : '⏳ 找黄牛哥'],
     ['🌸 桃花源(秘境)', PSTORE.getItem('w1001.taofound') === '1' ? '✅ 曾入桃源' : '⏳ 仿佛若有光……'],
+    ['⛰️ 涤罪登顶(炼狱山)', PSTORE.getItem('w1001.purg') === '1' ? '✅ 已登乐园' : '⏳ 登临七层山巅'],
   ];
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
     ${LOGROWS.map(([nm2, st5]) => `<div class="qRow${st5.includes('✅') ? ' ok' : ''}"><span>${nm2}</span><span class="qn">${st5}</span></div>`).join('')}</div>`;
@@ -1449,7 +1521,10 @@ function openJournal() {
     ${titleList().map(t => `<div class="qRow${t.got ? ' ok' : ''}">
       <span>${t.got ? t.name : '🔒 ???'}</span>
       <span class="qn">${t.got ? (t.id === eqId ? '佩戴中' : `<button class="tEquip" data-eqtitle="${t.id}">佩戴</button>`) : t.note}</span></div>`).join('')}</div>`;
-  list.innerHTML = qHtml + titleHtml + logHtml + Object.keys(CATS).map(k => {
+  const chartHtml = `<div class="qBox"><div class="qTitle"><span>🌌 星图 · 认得的星座</span><span>${constSeen.size}/${constDirs.length}</span></div>
+    <canvas id="starChart" width="320" height="320" style="width:100%;max-width:340px;display:block;margin:8px auto;border-radius:10px"></canvas>
+    <div style="font-size:12px;color:#8a9a7c;text-align:center">夜里按 <b>K</b> 观星,把星座转到视野中央即可认得它</div></div>`;
+  list.innerHTML = qHtml + titleHtml + chartHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     const badge = mileTier(k);
@@ -1461,6 +1536,7 @@ function openJournal() {
       <a href="${cfg.link}" target="_blank" rel="noopener">网站 →</a></div>`;
   }).join('');
   $('journal').classList.remove('hidden'); modalOpen = true;
+  drawStarChart(list.querySelector('#starChart'));
   list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
   list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
 }
@@ -1700,8 +1776,17 @@ let constStars = null, constLines = null, constDirs = [];
   constLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x5f86bf, transparent: true, opacity: 0, fog: false, depthWrite: false }));
   starField.add(constStars, constLines);
 }
-/* --- 观星模式(K):夜间把视野内星座名投影到屏幕 --- */
+/* --- 观星模式(K):夜间把视野内星座名投影到屏幕;瞄准可「认得」 --- */
 let starGaze = false, constLabels = [], skyLabels = null, sgY = new THREE.Vector3(0, 1, 0), sgV = new THREE.Vector3();
+const constSeen = new Set((PSTORE.getItem('w1001.consts') || '').split(',').filter(Boolean).map(Number));
+function recognizeConst(i) {
+  if (constSeen.has(i)) return;
+  constSeen.add(i);
+  PSTORE.setItem('w1001.consts', [...constSeen].join(','));
+  const nm = constDirs[i].name.replace(/^.+·/, '');
+  toast(`🌟 认得了「${nm}」 · 星图 ${constSeen.size}/${constDirs.length}`);
+  if (constSeen.size === constDirs.length) toast('🔭 集齐 88 星座!你已是星图大师');
+}
 {
   skyLabels = document.createElement('div'); skyLabels.id = 'skyLabels';
   Object.assign(skyLabels.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '6', display: 'none', overflow: 'hidden' });
@@ -1725,7 +1810,10 @@ function updateStarGaze() {
     lab.style.left = ((sgV.x * .5 + .5) * W) + 'px';
     lab.style.top = ((-sgV.y * .5 + .5) * H) + 'px';
     const edge = Math.min(1, (1 - Math.abs(sgV.x)) * 3, (1 - Math.abs(sgV.y)) * 3);   // 近屏幕边缘淡出
-    lab.style.opacity = (fade * edge * .9).toFixed(2);
+    const known = constSeen.has(i);
+    lab.style.opacity = (fade * edge * (known ? 1 : .85)).toFixed(2);
+    if (known && lab.style.color !== 'rgb(255, 231, 153)') { lab.style.color = '#ffe799'; lab.textContent = '★ ' + constDirs[i].name; }
+    if (!known && Math.abs(sgV.x) < .42 && sgV.y > -.55 && edge > .95) recognizeConst(i);   // 瞄准中央区即认得
   }
 }
 /* --- 天气(按日期随机:晴/雨/雾) --- */
@@ -4065,6 +4153,58 @@ const boats = [];
   const dgySign = makeSign('红楼梦 · 大观园', 7, '#2a1c28', '#e8b8cc');
   dgySign.position.set(gx + 14, height(gx + 14, gz + 90) + 4.4, gz + 90); scene.add(dgySign);
 }
+/* —— 神曲 · 炼狱山(南海孤峰,七层螺旋涤七罪,山巅地上乐园) —— */
+{
+  const gx = PUR.x, gz = PUR.z, R2 = PUR.r * .82;
+  const SINS = [
+    ['purpride', '一层·傲慢', 0x6a5a4a], ['purenvy', '二层·嫉妒', 0x7a8a6a],
+    ['purwrath', '三层·愤怒', 0x4a4650], ['pursloth', '四层·怠惰', 0x5a6a5a],
+    ['puravar',  '五层·贪财', 0x6a5a3a], ['purglut', '六层·贪吃', 0x7a4a3a],
+    ['purlust',  '七层·色欲', 0xb8482e],
+  ];
+  for (let k = 0; k < 7; k++) {
+    const rk = k < 6 ? R2 * (1 - (k + .3) / 7) : 13, th = k * 1.15;
+    const px = gx + Math.cos(th) * rk, pz = gz + Math.sin(th) * rk, py = height(px, pz);
+    const stele = box(1.3, 2.6, .5, lam(SINS[k][2])); stele.position.set(px, py + 1.3, pz); scene.add(stele);
+    cirObs.push({ x: px, z: pz, r: 1 });
+    const sgn = makeSign(SINS[k][1], 3.6, '#2a2620', '#e6dcc4');
+    sgn.position.set(px + Math.cos(th) * 2.6, py + 3, pz + Math.sin(th) * 2.6); scene.add(sgn);
+    addSpot(px, pz, 'lore', SINS[k][0], { r: 6, y: py + 1 });
+  }
+  // 第七层火墙(色欲):一圈火焰,穿之而登顶
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2, fx = gx + Math.cos(a) * 10.5, fz = gz + Math.sin(a) * 10.5, fy = height(fx, fz);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(.6, 2.6, 6), new THREE.MeshBasicMaterial({ color: 0xff6a2a }));
+    flame.position.set(fx, fy + 1.3, fz); scene.add(flame);
+  }
+  // 山巅:地上乐园(圣林 + 忘川/欢河两潭 + 但丁与贝雅特丽齐)
+  const sy = height(gx, gz);
+  for (const [ox, oz] of [[-6, -4], [5, -6], [7, 4], [-5, 5]]) {
+    const tx = gx + ox, tz = gz + oz, ty = height(tx, tz);
+    const trunk = cyl(.4, .6, 3.4, M.wood); trunk.position.set(tx, ty + 1.7, tz); scene.add(trunk);
+    const cano = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 8), lam(0x4a8a4a)); cano.position.set(tx, ty + 4.4, tz); scene.add(cano);
+  }
+  for (const [ox, oz, col] of [[-2, 2, 0x6ab0d8], [3, -1, 0x8ad0b0]]) {
+    const pond = new THREE.Mesh(new THREE.CircleGeometry(2.6, 18), new THREE.MeshPhongMaterial({ color: col, transparent: true, opacity: .82 }));
+    pond.rotation.x = -Math.PI / 2; pond.position.set(gx + ox, height(gx + ox, gz + oz) + .2, gz + oz); scene.add(pond);
+  }
+  addSpot(gx, gz, 'lore', 'eden', { r: 8, y: sy + 1 });
+  addNpc({ x: gx - 3, z: gz + 3, name: '贝雅特丽齐', body: 0xf0f0e0, hat: 0x4a8a5a, opts: { tall: 1.05 },
+    lines: ['看着我!我就是,我就是贝雅特丽齐。', '你怎敢踏上这座山?难道不知这里人人皆有福?', '低头饮下忘川之水,忘掉那些眼泪吧。'] });
+  addNpc({ x: gx + 3, z: gz - 4, name: '但丁', body: 0x8c2f2f, hat: 0xb03a2e,
+    lines: ['在人生的中途,我发现自己身处一片幽暗的森林。', '我已随维吉尔走出地狱,登临此山七层。', '那推动太阳和群星的爱啊——我终于要见到她了。'] });
+  addNpc({ x: gx + 7, z: gz + 2, name: '玛蒂尔达', body: 0xe0e8d0, hat: 0xd9b26a, opts: { tall: .95 },
+    lines: ['一边采花,一边唱歌——你来得正好。', '这忘川的水,饮之忘却一切罪的记忆。', '那边的欢河,饮之重拾行善的欢愉。'] });
+  // 山脚:守门人卡托 + 渡口
+  addNpc({ x: gx, z: gz + PUR.r - 12, name: '卡托', body: 0x9a9088, hat: 0xcfc5b4, opts: { tall: 1.1 },
+    lines: ['是谁?竟从永夜的深渊逆流而上?', '去,用芦苇束腰,以露水净面——再登此山。', '自由诚可贵。我为它舍了性命——你可懂得?'] });
+  addSpot(gx, gz + PUR.r - 6, 'lore', 'purgate', { r: 7 });
+  const dk = height(gx, gz + PUR.r + 16);
+  const plank = box(5, .5, 9, M.wood); plank.position.set(gx, dk + .9, gz + PUR.r + 16); scene.add(plank);
+  addSpot(gx, gz + PUR.r + 12, 'ferry', 'ferry', { r: 8 });
+  const purSign = makeSign('神曲 · 炼狱山', 7, '#1e2436', '#ccd8f0');
+  purSign.position.set(gx + 12, height(gx + 12, gz + PUR.r) + 4.4, gz + PUR.r); scene.add(purSign);
+}
 const ISLES = [
   { c: SHJ, name: '山海经 · 异兽之野', icon: '🐉', theme: 'shanhai' },
   { c: THY, name: '桃花源', icon: '🌸', theme: 'taoyuan' },
@@ -4083,6 +4223,7 @@ const ISLES = [
   { c: MCD, name: '小基督山(宝藏屿)', icon: '💎', theme: 'chateau' },
   { c: RBX, name: '鲁滨逊 · 绝望岛', icon: '🏝️', theme: 'crusoe' },
   { c: DGY, name: '红楼梦 · 大观园', icon: '🏮', theme: 'daguan' },
+  { c: PUR, name: '神曲 · 炼狱山', icon: '⛰️', theme: 'purgatory' },
 ];
 /* 多元宇宙渡口(鲸岛东滩) */
 {
@@ -4217,7 +4358,7 @@ const MAP_LABELS = [
   ['一千零一夜', ANH.x, ANH.z], ['鹦鹉螺锚地', NEM.x, NEM.z], ['B-612', B612.x, B612.z], ['侏罗纪公园', JUR.x, JUR.z],
   ['花果山', HGS.x, HGS.z], ['爱丽丝仙境', ALC.x, ALC.z], ['赤壁', CBI.x, CBI.z], ['兰若寺', LRS.x, LRS.z],
   ['梁山泊', LSP.x, LSP.z], ['风车原野', FCY.x, FCY.z], ['伊夫堡', YFB.x, YFB.z], ['绝望岛', RBX.x, RBX.z],
-  ['大观园', DGY.x, DGY.z], ['塞壬海域⚠', SIR.x, SIR.z],
+  ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['塞壬海域⚠', SIR.x, SIR.z],
 ];
 function renderBigMap() {
   if (!bigCtx) return;
@@ -4291,6 +4432,7 @@ CP_MARKS.push({ x: FCY.x, z: FCY.z, col: '#e8d8a0' });
 CP_MARKS.push({ x: YFB.x, z: YFB.z, col: '#a8b8d0' });
 CP_MARKS.push({ x: RBX.x, z: RBX.z, col: '#d8c89a' });
 CP_MARKS.push({ x: DGY.x, z: DGY.z, col: '#e8b8cc' });
+CP_MARKS.push({ x: PUR.x, z: PUR.z, col: '#ccd8f0' });
 const CP_CARDS = [['北', Math.PI, '#ff8a7a'], ['东', Math.PI / 2, '#f0ead6'], ['南', 0, '#f0ead6'], ['西', -Math.PI / 2, '#f0ead6']];
 function renderCompass() {
   if (!cpCtx) return;
@@ -5382,6 +5524,7 @@ const BUCKETS = [
   { x: JUR.x, z: JUR.z }, { x: HGS.x, z: HGS.z }, { x: ALC.x, z: ALC.z }, { x: CBI.x, z: CBI.z },
   { x: LRS.x, z: LRS.z }, { x: LSP.x, z: LSP.z }, { x: FCY.x, z: FCY.z }, { x: YFB.x, z: YFB.z },
   { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
+  { x: PUR.x, z: PUR.z },
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
   const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies]);
@@ -5410,4 +5553,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList };
