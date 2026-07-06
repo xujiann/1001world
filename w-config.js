@@ -41,4 +41,10 @@ export const THEMES = {
   tempest:   { tempo: 66, wave: 'triangle', scale: [0, 2, 3, 5, 7, 10], base: 196, dens: .45, pad: true },
   moreau:    { tempo: 58, wave: 'sawtooth', scale: [0, 1, 4, 6, 7], base: 110, dens: .32, bass: true, vol: .72 },
   dolphin:   { tempo: 70, wave: 'sine', scale: [0, 2, 4, 7, 9, 11], base: 262, dens: .38, vol: .72 },
+  golding:   { tempo: 62, wave: 'square', scale: [0, 1, 3, 6, 7, 10], base: 123, dens: .4, bass: true, vol: .6 },
+  utopia:    { tempo: 68, wave: 'triangle', scale: [0, 2, 4, 5, 7, 9, 11], base: 196, dens: .42, pad: true, vol: .72 },
+  awaken:    { tempo: 48, wave: 'sine', scale: [0, 2, 4, 7, 9], base: 220, dens: .26, pad: true, vol: .78 },
+  gulliver:  { tempo: 112, wave: 'triangle', scale: [0, 2, 4, 5, 7, 9], base: 294, dens: .55, arp: true, vol: .64 },
+  neverland: { tempo: 92, wave: 'triangle', scale: [0, 2, 4, 7, 9, 12], base: 349, dens: .5, arp: true, vol: .68 },
+  coral:     { tempo: 74, wave: 'sine', scale: [0, 2, 5, 7, 9], base: 233, dens: .4, vol: .72 },
 };

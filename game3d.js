@@ -11,7 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES } from './w-config.js?v=3';
+import { THEMES } from './w-config.js?v=4';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 
 const D = window.WORLD_DATA;
@@ -109,6 +109,12 @@ const NISLES = [
   { key: 'tmp', x: -1780, z: 260, r: 88, mask: 2.0, h: 9, dock: [-1690, 247] },                            // 暴风雨岛
   { key: 'mor', x: -1490, z: -1010, r: 90, mask: 2.0, h: 7, dock: [-1406, -953] },                         // 莫罗博士岛
   { key: 'dol', x: 1300, z: 1350, r: 90, mask: 2.0, h: 6, dock: [1225, 1272] },                            // 蓝色海豚岛
+  { key: 'fly', x: -1050, z: -1450, r: 90, mask: 2.0, h: 7, peak: { r: 42, hh: 14 }, dock: [-993, -1380] }, // 蝇王
+  { key: 'uto', x: -1560, z: 850, r: 92, mask: 2.0, h: 6, dock: [-1476, 805] },                            // 乌托邦
+  { key: 'hux', x: -1150, z: 1350, r: 88, mask: 2.0, h: 6, dock: [-1084, 1272] },                          // 岛(赫胥黎)
+  { key: 'gul', x: 1440, z: -1060, r: 90, mask: 2.0, h: 6, dock: [1360, -1002] },                          // 格列佛
+  { key: 'nvl', x: -520, z: 1720, r: 90, mask: 2.0, h: 7, dock: [-500, 1636] },                            // 梦幻岛
+  { key: 'cor', x: 180, z: 1780, r: 86, mask: 2.0, h: 5, dock: [172, 1698] },                              // 珊瑚岛
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
@@ -4474,6 +4480,161 @@ const NI_CONTENT = {
       const canoe = box(1.6, .5, 5, lam(0x6a4a2a)); canoe.position.set(gx + 12, height(gx + 12, gz - 12) + .5, gz - 12); scene.add(canoe);
       for (let i = 0; i < 5; i++) { const kelp = cyl(.1, .12, 3, lam(0x2a6a4a)); const u = gx + 12 + (rnd() - .5) * 10, v = gz - 18 - rnd() * 6; kelp.position.set(u, .6, v); scene.add(kelp); }
       for (const [sx, sz] of [[-6, 8], [5, 10], [8, 2]]) { const sh = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), lam(0xf0e6d0)); const u = gx + sx, v = gz + sz; sh.position.set(u, height(u, v) + .3, v); scene.add(sh); }
+    },
+  },
+  fly: {
+    name: '蝇王', en: 'Lord of the Flies', icon: '🐚', theme: 'golding',
+    desc: '童岛 · 海螺号角 · 信号火堆 · 岛上没有怪物,怪物在人心',
+    ferryMsg: '🐚 一群孩子流落的荒岛。海螺还在,可召集会的规矩,正在一寸寸崩塌',
+    lore: {
+      flyconch: { icon: '🐚', color: '#d8b46a', title: '海螺', en: 'The Conch', hint: '谁拿着它,谁说话',
+        desc: '拉尔夫吹响这枚白色海螺,把散落沙滩的孩子召到一起——"拿着海螺的人才能发言"。文明,一度就系在这枚贝壳上。后来海螺碎了,规矩也碎了。' },
+      flybeast: { icon: '🔥', color: '#8c3a1a', title: '信号火堆', en: 'The Signal Fire', hint: '别让火灭了',
+        desc: '山顶的火堆,是他们回家的唯一指望。可孩子们宁愿去打猎、去跳舞、去害怕那头并不存在的"野兽"。西蒙说出了真相:野兽,就是我们自己。没人听。' },
+    },
+    spots: [[0, 4, 'flyconch'], [-2, -8, 'flybeast']],
+    npcs: [
+      { dx: -4, dz: 6, name: '拉尔夫', body: 0xd9c34a, hat: 0xb8a030, opts: { tall: .8 },
+        lines: ['我们得有规矩!拿着海螺才能说话。', '火堆不能灭——那是我们唯一能回家的办法。', '我在哭,为童年的终结,为人心的黑暗。'] },
+      { dx: 5, dz: 5, name: '猪崽子', body: 0xc86a6a, hat: 0x9a4a4a, opts: { wide: 1.3, tall: .78 },
+        lines: ['我的眼镜!没了它我什么都看不见——火也生不起来。', '到底是做人好,还是做打猎的野人好?', '拉尔夫,他们把海螺当回事的时候,一切还都好好的。'] },
+    ],
+    build: (gx, gz) => {
+      const cx = gx, cz = gz + 4, ch = height(cx, cz);
+      const rock = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), M.stone); rock.position.set(cx, ch + .8, cz); scene.add(rock);
+      const conch = new THREE.Mesh(new THREE.SphereGeometry(.6, 8, 6), lam(0xe8d090)); conch.scale.set(1, 1.4, 1); conch.position.set(cx, ch + 2, cz); scene.add(conch);
+      const fx = gx - 2, fz = gz - 8, fh = height(fx, fz);
+      for (let i = 0; i < 5; i++) { const log = cyl(.2, .24, 3, M.woodDark); log.rotation.z = Math.PI / 2; log.rotation.y = i / 5 * 3.14; log.position.set(fx, fh + .4, fz); scene.add(log); }
+      for (let i = 0; i < 4; i++) { const fl = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.8, 6), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); fl.position.set(fx + (rnd() - .5) * 1.4, fh + 1.4, fz + (rnd() - .5) * 1.4); scene.add(fl); }
+      const fire = new THREE.PointLight(0xff7a2a, 0, 90, 2); fire.position.set(fx, fh + 2, fz); fire.userData.pow = 20; nightLamps.push(fire); scene.add(fire);
+      for (const [mx, mz] of [[8, 6], [11, -2], [6, 10]]) { const u = gx + mx, v = gz + mz, mh = height(u, v); const stake = cyl(.1, .12, 2.4, M.woodDark); stake.position.set(u, mh + 1.2, v); scene.add(stake); const mask = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), lam(0xc23a2a)); mask.position.set(u, mh + 2.6, v); scene.add(mask); }
+    },
+  },
+  uto: {
+    name: '乌托邦', en: 'Utopia', icon: '🏛️', theme: 'utopia',
+    desc: '理想国岛 · 五十四座一模一样的城 · 以黄金为溺器',
+    ferryMsg: '🏛️ 乌托邦到了。这里没有私产、没有货币,人人劳作六小时——你会觉得完美,还是害怕?',
+    lore: {
+      utocity: { icon: '🏛️', color: '#7a8a9a', title: '规划之城', en: 'The Ideal City', hint: '五十四城,一模一样',
+        desc: '拉斐尔说:岛上五十四座城,街道、房屋、制度分毫不差,走遍一城便识全国。家家十年一换房,门不上锁——因为无物可偷。整齐得令人安心,也令人不寒而栗。' },
+      utogold: { icon: '🪙', color: '#b8862e', title: '夜壶里的黄金', en: 'Gold Chamber-pots', hint: '他们蔑视黄金',
+        desc: '乌托邦人把金银打成夜壶和囚犯的镣铐,让孩子拿珠宝当玩具——好让人从小就瞧不起它。"我们不明白,为何有人甘愿为一点会发光的金属,把自己活成奴隶。"' },
+    },
+    spots: [[0, 4, 'utocity'], [14, -8, 'utogold']],
+    npcs: [
+      { dx: -4, dz: 6, name: '拉斐尔', body: 0x5a7a8a, hat: 0x3a5a6a, opts: { tall: 1.05, cane: true },
+        lines: ['我周游过那座岛。那里没有钱,却什么都不缺。', '哪里有私有财产,哪里就难有公正与繁荣。', '完美的制度,代价是每个人都长得一样。你愿意吗?'] },
+      { dx: 8, dz: 8, name: '乌托邦市民', body: 0x8a9aa8, hat: 0x6a7a88,
+        lines: ['我们每天劳作六小时,其余时间读书、听讲、种花。', '黄金?我家的夜壶就是金的。', '门不必上锁——十年之后,这房子就是别家的了。'] },
+    ],
+    build: (gx, gz) => {
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+        const u = gx - 18 + c * 12, v = gz - 12 + r * 12, hh = height(u, v);
+        const house = box(7, 4, 6, lam(0xd8d2c4)); house.position.set(u, hh + 2, v); scene.add(house);
+        const rf = new THREE.Mesh(new THREE.ConeGeometry(5, 2.4, 4), lam(0x8a9098)); rf.rotation.y = Math.PI / 4; rf.position.set(u, hh + 5.2, v); scene.add(rf);
+      }
+      const hx = gx, hz = gz + 20, hh2 = height(hx, hz);
+      const hall = cyl(6, 6.6, 6, lam(0xe6e0d2), 12); hall.position.set(hx, hh2 + 3, hz); scene.add(hall); cirObs.push({ x: hx, z: hz, r: 6.6 });
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(6, 14, 10, 0, 6.283, 0, Math.PI / 2), lam(0xbfae6a)); dome.position.set(hx, hh2 + 6, hz); scene.add(dome);
+    },
+  },
+  hux: {
+    name: '帕拉岛', en: 'Island (Huxley)', icon: '🧘', theme: 'awaken',
+    desc: '醒觉岛 · 会说话的鸟 · 解脱与当下 · 没有战斗,只有理解',
+    ferryMsg: '🧘 帕拉到了。树上的八哥一遍遍提醒:"注意——此时,此地。"',
+    lore: {
+      mynah: { icon: '🐦', color: '#3a6a5a', title: '会说话的八哥', en: 'The Mynah Birds', hint: '注意!此时此地',
+        desc: '满岛的八哥被训练只说两句话:"注意!""此时,此地,伙计们!"帕拉人让鸟儿替他们记着——别活在悔恨的过去或焦虑的将来,就活在这一刻。' },
+      moksha: { icon: '🌸', color: '#8a5a9a', title: '解脱之药', en: 'The Moksha-medicine', hint: '冥想与觉知',
+        desc: '一种取自蘑菇的圣药,一年服用几回,让人短暂窥见万物一体的实相。帕拉把东方的禅、西方的科学、身体的觉知揉在一起,教人如何清醒地活、也清醒地死。' },
+    },
+    spots: [[0, 4, 'mynah'], [12, -6, 'moksha']],
+    npcs: [
+      { dx: -3, dz: 6, name: '苏珊娜医生', body: 0xd8c4d0, hat: 0x9a7a9a, opts: { tall: 1.0 },
+        lines: ['注意,此时此地——这是我们全部的功课。', '我们既不否认痛苦,也不沉溺其中;我们只是看着它。', '你从哪个焦虑的世界来?在这里,先学会呼吸。'] },
+      { dx: 7, dz: 5, name: '威尔', body: 0x6a7a6a, hat: 0x4a5a4a,
+        lines: ['我原是来搞石油生意的,却在这里第一次学会活着。', '那只鸟说得对:注意。我半辈子都没真正"注意"过。', '也许这样温柔的乌托邦,终究挡不住外面的坦克……但今天,还有今天。'] },
+    ],
+    build: (gx, gz) => {
+      const px = gx, pz = gz + 4, ph = height(px, pz);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; const col = cyl(.2, .24, 3.4, lam(0xc8a878)); col.position.set(px + Math.cos(a) * 4, ph + 1.7, pz + Math.sin(a) * 4); scene.add(col); }
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(5.4, 2.6, 6), lam(0xa86a4a)); roof.position.set(px, ph + 4.8, pz); scene.add(roof);
+      const pond = new THREE.Mesh(new THREE.CircleGeometry(4, 20), new THREE.MeshPhongMaterial({ color: 0x4a8ab0, transparent: true, opacity: .82 })); pond.rotation.x = -Math.PI / 2; pond.position.set(gx + 12, height(gx + 12, gz + 8) + .2, gz + 8); scene.add(pond);
+      for (const [tx, tz] of [[-12, -6], [10, -8], [14, 6]]) { const u = gx + tx, v = gz + tz, th = height(u, v); const tr = cyl(.3, .4, 4, M.wood); tr.position.set(u, th + 2, v); scene.add(tr); const cn = new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 6), lam(0x4a8a5a)); cn.position.set(u, th + 5, v); scene.add(cn); const bird = new THREE.Mesh(new THREE.SphereGeometry(.3, 6, 5), lam(0x2a2a2a)); bird.position.set(u, th + 6.4, v); scene.add(bird); }
+    },
+  },
+  gul: {
+    name: '格列佛群岛', en: "Gulliver's Travels", icon: '👣', theme: 'gulliver',
+    desc: '尺寸错位 · 小人国利立浦特 · 飞岛国拉普达 · 荒诞政治讽刺',
+    ferryMsg: '👣 利立浦特到了。小心脚下——这里的人只有你的手指高,却为"鸡蛋从哪头敲"打了三十六个月的仗',
+    lore: {
+      lilliput: { icon: '🥚', color: '#6a8a4a', title: '小人国', en: 'Lilliput', hint: '大端派 vs 小端派',
+        desc: '一寸高的小人,却有一寸高的党争:朝廷分"高跟党"与"低跟党",邻国因"敲鸡蛋该从大头还是小头"与之血战多年。格列佛一泡尿浇灭了皇宫大火,却因此获罪——救驾有功,弄脏御所有罪。' },
+      laputa: { icon: '🛸', color: '#8a8a9a', title: '飞岛拉普达', en: 'Laputa', hint: '沉思到需要人拍醒',
+        desc: '一座浮在空中的圆岛,住着满脑子数学与音乐、却生活不能自理的学者。他们沉思得太深,需仆人拿气囊拍打嘴巴和耳朵才想起该说话、该听话。楼下的科学院,正忙着从黄瓜里提取阳光。' },
+    },
+    spots: [[0, 3, 'lilliput'], [16, -10, 'laputa']],
+    npcs: [
+      { dx: -6, dz: 6, name: '利立浦特皇帝', body: 0xc23a3a, hat: 0xf2d13c, opts: { tall: .4 },
+        lines: ['宇宙的欢乐、万民的恐怖——朕,欢迎你这座"人山"。', '敲鸡蛋,必须从小头敲!此乃祖制!', '你救驾有功……但你在御花园撒尿,该当何罪?'] },
+      { dx: 8, dz: 7, name: '拉普达学者', body: 0x8a8a9a, hat: 0x5a5a6a, opts: { tall: 1.02 },
+        lines: ['请稍候……(仆人拍了他一下)……哦,你说什么?', '我正从这根黄瓜里,提取封存的阳光。', '实用之学?粗鄙!我们只研究纯粹而无用的真理。'] },
+    ],
+    build: (gx, gz) => {
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const u = gx - 16 + c * 6, v = gz - 8 + r * 6, hh = height(u, v); const h2 = box(1.6, 1.2, 1.4, lam([0xd8b088, 0xc8a878, 0xe0c498][(r + c) % 3])); h2.position.set(u, hh + .6, v); scene.add(h2); const rf = new THREE.Mesh(new THREE.ConeGeometry(1.3, 1, 4), lam(0x9a4a3a)); rf.rotation.y = .78; rf.position.set(u, hh + 1.7, v); scene.add(rf); }
+      const palace = box(3, 2.4, 2.6, lam(0xe8d8b0)); palace.position.set(gx, height(gx, gz) + 1.2, gz); scene.add(palace);
+      const lx = gx + 16, lz = gz - 10, lh = height(lx, lz) + 28;
+      const disc = cyl(9, 7, 2.4, M.stone, 16); disc.position.set(lx, lh, lz); scene.add(disc);
+      const ltop = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 8), lam(0x8a8a9a)); ltop.position.set(lx, lh + 2.4, lz); scene.add(ltop);
+      const lens = new THREE.Mesh(new THREE.SphereGeometry(1.4, 10, 8), new THREE.MeshBasicMaterial({ color: 0xbfd0e0 })); lens.position.set(lx, lh - 2, lz); scene.add(lens);
+    },
+  },
+  nvl: {
+    name: '梦幻岛', en: 'Neverland', icon: '🧚', theme: 'neverland',
+    desc: '永不长大岛 · 地下之家 · 美人鱼礁湖 · 飞行(原创致敬)',
+    ferryMsg: '🧚 梦幻岛到了。这里的孩子永远长不大——第二颗星向右转,一直飞到天亮',
+    lore: {
+      lostchildren: { icon: '🌳', color: '#3a5a3a', title: '地下之家', en: 'The Hollow Tree', hint: '长不大的孩子们',
+        desc: '一棵空心大树通向地下的家,住着一群从婴儿车里掉出来、没人认领的孩子。他们打海盗、追美人鱼、听那位会飞的少年吹排笛——只是,谁也说不清自己在这儿待了多久。因为在这里,时间是不长个子的。' },
+      mermaidlagoon: { icon: '🧜', color: '#2a7a8a', title: '美人鱼礁湖', en: 'The Lagoon', hint: '午后的礁湖别久留',
+        desc: '正午的礁湖,美人鱼们在礁石上梳头晒太阳,美得让人挪不开眼;可一到日落,湖水就泛起危险的幽光。她们并不友善——会笑着把爱听故事的人往水里拖。' },
+    },
+    spots: [[0, 4, 'lostchildren'], [16, -8, 'mermaidlagoon']],
+    npcs: [
+      { dx: -4, dz: 6, name: '长不大的少年', body: 0x3a7a3a, hat: 0x2a5a2a, opts: { tall: .82 },
+        lines: ['死亡,将是一场了不起的大冒险!', '你只要想着快乐的事,就能飞起来。', '我不想长大,永远都不想——来,和我们一起吧?'] },
+      { dx: 7, dz: 5, name: '钩子船长', body: 0x8c2f4e, hat: 0x2a2a2a, opts: { tall: 1.06, cane: true },
+        lines: ['听……那滴答声。那条吞了我一只手的鳄鱼,又来了。', '好风度!那才是最要紧的。', '总有一天,我要让那个会飞的臭小子付出代价。'] },
+    ],
+    build: (gx, gz) => {
+      const tx = gx, tz = gz + 4, th = height(tx, tz);
+      const trunk = cyl(2.2, 2.8, 7, M.wood, 10); trunk.position.set(tx, th + 3.5, tz); scene.add(trunk); cirObs.push({ x: tx, z: tz, r: 2.8 });
+      const cano = new THREE.Mesh(new THREE.SphereGeometry(5, 12, 9), lam(0x3a7a3a)); cano.position.set(tx, th + 8.5, tz); scene.add(cano);
+      const lag = new THREE.Mesh(new THREE.CircleGeometry(6, 22), new THREE.MeshPhongMaterial({ color: 0x2a9ab0, transparent: true, opacity: .82 })); lag.rotation.x = -Math.PI / 2; lag.position.set(gx + 16, height(gx + 16, gz - 8) + .2, gz - 8); scene.add(lag);
+      const ship = makeBoat(0x8c2f4e, .9); ship.userData = { anchor: [gx + 20, gz + 16] };
+      for (const [rx, rz] of [[13, -12], [19, -5]]) { const rock = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 6), M.stone); const u = gx + rx, v = gz + rz; rock.position.set(u, height(u, v) + .8, v); scene.add(rock); }
+    },
+  },
+  cor: {
+    name: '珊瑚岛', en: 'The Coral Island', icon: '🐠', theme: 'coral',
+    desc: '少年珊瑚岛 · 环礁潟湖 · 热带果林 · 潜水与冒险',
+    ferryMsg: '🐠 珊瑚岛到了。三个遇船难的少年在这片环礁上,过着他们此生最快活的日子',
+    lore: {
+      coralreef: { icon: '🐠', color: '#2a8aa0', title: '环礁潟湖', en: 'The Lagoon', hint: '潜进珊瑚花园',
+        desc: '一圈珊瑚礁围出平静的潟湖,水清得能看见海底的花园:紫的脑珊瑚、红的扇珊瑚,鱼群像碎金一样穿梭。拉尔夫屏一口气潜下去,发现了一个连海盗都不知道的水下岩洞。' },
+      coralboys: { icon: '🥥', color: '#8a6a3a', title: '少年们的营地', en: 'The Castaways', hint: '椰子、烤鱼与冒险',
+        desc: '拉尔夫、杰克、彼得金——三个英国少年在这荒岛上分工合作:砍椰子、造独木舟、烤鱼、躲海盗。没有大人,没有争吵,只有一场接一场的冒险。这是荒岛文学里,最阳光的一座岛。' },
+    },
+    spots: [[0, 4, 'coralreef'], [-12, -6, 'coralboys']],
+    npcs: [
+      { dx: -4, dz: 6, name: '彼得金', body: 0xe0a83a, hat: 0xb88420, opts: { tall: .8 },
+        lines: ['又是烤鱼!不过说真的,我一辈子没这么快活过。', '拉尔夫潜水,杰克啥都会,我嘛——负责逗大家笑。', '海盗要是敢来,咱们就用椰子砸他个落花流水!'] },
+    ],
+    build: (gx, gz) => {
+      const lag = new THREE.Mesh(new THREE.CircleGeometry(8, 24), new THREE.MeshPhongMaterial({ color: 0x2ab0c0, transparent: true, opacity: .8 })); lag.rotation.x = -Math.PI / 2; lag.position.set(gx, height(gx, gz) + .2, gz); scene.add(lag);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; const cor = new THREE.Mesh(new THREE.ConeGeometry(.8, 1.6, 5), lam([0xe86a8a, 0xd94040, 0xe0a040, 0x8a4ab0][i % 4])); const u = gx + Math.cos(a) * 9.5, v = gz + Math.sin(a) * 9.5; cor.position.set(u, height(u, v) + .8, v); scene.add(cor); }
+      for (const [tx, tz] of [[-12, -6], [12, -8], [10, 8], [-10, 8]]) { const u = gx + tx, v = gz + tz, th = height(u, v); const tr = cyl(.28, .4, 5.5, M.wood); tr.rotation.z = (rnd() - .5) * .3; tr.position.set(u, th + 2.7, v); scene.add(tr); const fr = new THREE.Mesh(new THREE.SphereGeometry(2, 7, 5), lam(0x4a9a4a)); fr.scale.set(1.4, .7, 1.4); fr.position.set(u, th + 5.6, v); scene.add(fr); }
+      const raft = box(3, .4, 4, M.woodDark); raft.position.set(gx + 11, height(gx + 11, gz + 10) + .5, gz + 10); scene.add(raft);
     },
   },
 };
