@@ -2538,6 +2538,7 @@ function addNpc(cfg) {
   const g = makePerson(cfg.body, cfg.hat ?? 0xf5efdc, cfg.opts || {});
   const y = cfg.y != null ? cfg.y : Math.max(height(cfg.x, cfg.z), 0);
   g.position.set(cfg.x, y, cfg.z);
+  if (cfg.faceUp) g.rotation.x = -0.34;   // 仰望姿态
   scene.add(g);
   if (!cfg.wander) cirObs.push({ x: cfg.x, z: cfg.z, r: .9 });
   const bub = document.createElement('div');
@@ -2555,8 +2556,15 @@ function addNpc(cfg) {
     lines: ['我这肚皮,装得下一百零一种精酿。', '世涛要慢慢品,人生要慢慢过。', '别催,戈多来了也得先喝完这杯。'] });
   addNpc({ x: -176, z: 238, y: hJazz, name: '剑敏大师', body: 0x6c3483, hat: 0x4a235a, opts: { tall: 1.08 },
     lines: ['听,这段即兴,像不像剑气?', '《Kind of Blue》,百听不厌。', '爵士的秘诀是留白,武学也是。'] });
-  addNpc({ x: 52, z: -222, y: hBooks, name: 'Jackie', body: 0xc0392b, hat: 0xe74c3c,
-    lines: ['这本我读了三遍,每遍都不一样。', '想入门?先从《小王子》开始。', '嘘——这里是图书馆哦。'] });
+  addNpc({ x: 300, z: -290, name: '康德', body: 0x3a4a6a, hat: 0x2a3a52, opts: { cane: true }, faceUp: true, face: '🔭',
+    lines: ['有两样东西,愈是持久地思索,愈使内心充满敬畏:头上的星空,和心中的道德律。',
+      '这漫天星座,今夜比往常更清晰。', '我几乎没离开过柯尼斯堡——可星空带我去过任何地方。'],
+    topics: [
+      { q: '你为何仰望星空?', a: '星空让我看见自己的渺小;道德律又让我重获尊严。二者都在我"之上",也都在我"之内"。' },
+      { q: '什么是启蒙?', a: 'Sapere aude——要有勇气运用你自己的理性。这就是启蒙的格言。' },
+      { q: '人应当如何行动?', a: '要只按照你同时愿意它成为普遍法则的准则去行动。' },
+      { q: '认得那些星座吗?', a: '(抬手一指)那是猎户,那是北斗七星……名字是人给的,秩序却是它们自己的。' },
+    ] });
   addNpc({ x: 68, z: -218, y: hBooks, name: '博尔赫斯', body: 0x707b7c, hat: 0x515a5a, opts: { cane: true },
     lines: ['我一直暗暗设想,天堂应该是图书馆的模样。', '我写作,是为了时光流逝使我心安。', '任何一本书,都是一座小径分岔的花园。'] });
   addNpc({ x: 32, z: 57, name: '墨丘利', body: 0x5d7a99, hat: 0xd9b26a,
@@ -4556,12 +4564,31 @@ addEventListener('keydown', e => {
   keys[k] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-let nearSpot = null, nearFspot = null;
+let nearSpot = null, nearFspot = null, nearNpc = null, talkNpc = null;
 function tryInteract() {
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
   if (nearSpot) { openCard(nearSpot); return; }
-  if (nearFspot) startCast(nearFspot);
+  if (nearFspot) { startCast(nearFspot); return; }
+  if (nearNpc) talkTo(nearNpc);
+}
+/* --- NPC 文字对话:走近按 E,选话题、听应答 --- */
+function talkTo(npc) { talkNpc = npc; npc._t = 0; renderTalk(npc.lines[0] || '(……)'); blip(520); }
+function renderTalk(text) {
+  const npc = talkNpc; if (!npc) return;
+  const topics = npc.topics || [];
+  cardBody.innerHTML = `<div class="cardHead" style="background:#3a4a6a">💬 与 ${esc(npc.name)} 交谈</div>
+    <div class="cardMedia"><div class="paperRoll">${npc.face || '🧑'}</div></div>
+    <div class="cardDesc" style="min-height:56px;font-size:15px;line-height:1.8">"${esc(text)}"</div>
+    <div style="padding:0 20px 16px">
+      ${topics.map((tp, i) => `<button class="gBtn off" data-topic="${i}" style="display:block;width:100%;margin:6px 0;text-align:left">${esc(tp.q)}</button>`).join('')}
+      <button class="gBtn off" data-more style="display:block;width:100%;margin:6px 0">…(听他再说些)</button>
+      <button class="gBtn" data-bye style="display:block;width:100%;margin:6px 0">告辞</button>
+    </div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelectorAll('[data-topic]').forEach(b => b.addEventListener('click', () => { renderTalk(topics[+b.dataset.topic].a); blip(660); }));
+  cardBody.querySelector('[data-more]')?.addEventListener('click', () => { npc._t = ((npc._t || 0) + 1) % npc.lines.length; renderTalk(npc.lines[npc._t]); });
+  cardBody.querySelector('[data-bye]')?.addEventListener('click', () => closeModals());
 }
 hintEl.addEventListener('click', tryInteract);
 $('btnAct').addEventListener('click', () => { modalOpen ? closeModals() : tryInteract(); });
@@ -5016,7 +5043,7 @@ function loop() {
   renderCompass();
 
   /* 最近藏品点 + 提示 */
-  nearSpot = null; nearFspot = null; let best = 1e9;
+  nearSpot = null; nearFspot = null; nearNpc = null; let best = 1e9;
   for (const s of spots) {
     const d2 = (s.x - player.position.x) ** 2 + (s.z - player.position.z) ** 2;
     if (d2 < s.r * s.r && d2 < best && Math.abs((s.y ?? 0) - player.position.y) < 8) { best = d2; nearSpot = s; }
@@ -5024,11 +5051,20 @@ function loop() {
   for (const fs of FSPOTS) {
     if ((fs.x - player.position.x) ** 2 + (fs.z - player.position.z) ** 2 < 36) nearFspot = fs;
   }
+  if (!nearSpot && !nearFspot) {   // 无藏品点时才找可交谈的 NPC
+    let nb = 34;
+    for (const n of allNpcs) {
+      if (n.g.visible === false) continue;
+      const d2 = (n.g.position.x - player.position.x) ** 2 + (n.g.position.z - player.position.z) ** 2;
+      if (d2 < nb) { nb = d2; nearNpc = n; }
+    }
+  }
   let hintTxt = null, hx = 0, hy = 0, hz = 0;
   if (fishing.state === 'bite') { hintTxt = '❗收竿!'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
   else if (fishing.state === 'wait') { hintTxt = '…等鱼上钩(E 收竿)'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
   else if (nearSpot) { hintTxt = HINTS[nearSpot.type] || '看看'; hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
   else if (nearFspot) { hintTxt = '🎣 抛竿钓鱼'; hx = nearFspot.bx; hy = 3; hz = nearFspot.bz; }
+  else if (nearNpc) { hintTxt = '💬 交谈'; hx = nearNpc.g.position.x; hy = nearNpc.g.position.y + 3.6; hz = nearNpc.g.position.z; }
   if (hintTxt && !modalOpen) {
     v3.set(hx, hy, hz).project(camera);
     if (v3.z < 1) {
@@ -5116,4 +5152,4 @@ if (!MOBILE) {
 }
 loop();
 
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID };
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo };
