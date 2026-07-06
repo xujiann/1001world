@@ -39,7 +39,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -895,6 +895,8 @@ const LORE = {
     desc: '两株清泉浇灌的果树垂满鲜果,香气诱人;贪吃者形销骨立,却怎么也够不着——饥渴使他们瘦得眼窝深陷,却也第一次尝到节制的滋味。' },
   purlust:  { icon: '🔥', color: '#b8482e', title: '第七层 · 色欲', en: 'Lust', hint: '穿火而行',
     desc: '一堵火墙横贯整层,烈焰灼人却不伤形。要登顶,唯有穿火而过——但丁在此犹豫良久。维吉尔说:"这火与你和贝雅特丽齐之间,只隔一层。"于是他闭眼走了进去。' },
+  peng:    { icon: '🕊️', color: '#2c4a6a', title: '大鹏', en: 'The Peng', hint: '乘之扶摇直上',
+    desc: '《逍遥游》:北冥有鱼,其名为鲲。鲲之大,不知其几千里也;化而为鸟,其名为鹏。鹏之背,不知其几千里也;怒而飞,其翼若垂天之云。——它低头看你,似在相邀:可要乘我扶摇直上,环游这一千零一个世界?' },
   eden:    { icon: '🌸', color: '#4a8a5a', title: '山巅 · 地上乐园', en: 'Earthly Paradise', hint: '登临绝顶',
     desc: '七层已尽,眼前豁然:一片神圣的森林,忘川(勒忒)与欢河(欧诺埃)在花间流淌。玛蒂尔达在对岸采花微笑。饮忘川之水,忘却罪的记忆;饮欢河之水,重拾行善的欢愉。贝雅特丽齐正乘光而来。(登顶奖励)' },
 };
@@ -928,6 +930,7 @@ function loreCard(k) {
   if (k === 'zanghua') btn = '<button class="again" data-flower>🌺 添一抔落花</button>';
   if (k === 'shishe') btn = '<button class="again" data-poem>📜 领今日诗题</button>';
   if (k === 'flotsam') btn = '<button class="again" data-flotsam>📦 撬开木箱</button>';
+  if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button>';
   if (k === 'eden') btn = PSTORE.getItem('w1001.purg') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">你已饮过忘川之水,罪的记忆随流水而去,只余轻盈。</span>'
     : '<button class="again" data-eden>🌸 饮忘川之水,登临乐园</button>';
@@ -1155,6 +1158,15 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-grow]')?.addEventListener('click', () => {
     player.scale.setScalar(1.5); scaleT = 60; closeModals(); toast('🍄 咕唧——你长到了一米八乘一点五!(一分钟)'); blip(520);
+  });
+  cardBody.querySelector('[data-peng]')?.addEventListener('click', () => {
+    const a0 = Math.atan2(player.position.z, player.position.x);
+    flight = { orbit: true, t: 0, dur: 34, cx: 0, cz: 0, radius: 1260, alt: 168, spins: 1, a0,
+      px0: player.position.x, pz0: player.position.z, msg: '🕊️ 大鹏收翼,轻轻落回栖石。“鹏程万里,后会有期。”' };
+    if (PSTORE.getItem('w1001.peng') !== '1') { PSTORE.setItem('w1001.peng', '1'); earnSB(5); }
+    closeModals();
+    toast('🕊️ 抟扶摇而上者九万里!且看这一千零一个世界……');
+    blip(392); setTimeout(() => blip(523), 120); setTimeout(() => blip(659), 240); setTimeout(() => blip(784), 360);
   });
   cardBody.querySelector('[data-eden]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.purg') === '1') return;
@@ -4205,6 +4217,32 @@ const boats = [];
   const purSign = makeSign('神曲 · 炼狱山', 7, '#1e2436', '#ccd8f0');
   purSign.position.set(gx + 12, height(gx + 12, gz + PUR.r) + 4.4, gz + PUR.r); scene.add(purSign);
 }
+/* —— 逍遥游 · 大鹏(可乘,扶摇直上环游诸岛) —— */
+const PENG_X = 78, PENG_Z = -52;
+let pengBird = null, pengWings = null;
+{
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), lam(0x3a2a1e)); body.scale.set(1, .82, 2.3); g.add(body);
+  const neck = cyl(.5, .72, 1.7, lam(0x43301e)); neck.position.set(0, .8, 2.4); neck.rotation.x = -.55; g.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.8, 10, 8), lam(0x4a3626)); head.position.set(0, 1.5, 3.2); g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.1, 6), lam(0xe0a02a)); beak.rotation.x = Math.PI / 2 + .3; beak.position.set(0, 1.4, 4.0); g.add(beak);
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(.3, .9, 5), lam(0xc0392b)); crown.position.set(0, 2.2, 3.0); g.add(crown);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3.4, 6), lam(0x2e2018)); tail.rotation.x = -Math.PI / 2; tail.position.set(0, .2, -3.2); tail.scale.set(1, .32, 1); g.add(tail);
+  pengWings = [];
+  for (const s of [-1, 1]) {
+    const wing = new THREE.Group();
+    const pane = box(7.5, .3, 3.6, lam(0x43301e)); pane.position.set(s * 4.2, 0, -.2); wing.add(pane);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(1.9, 4.4, 4), lam(0x241a10)); tip.rotation.z = -s * Math.PI / 2; tip.position.set(s * 8.8, 0, -.5); tip.scale.set(1, .35, .9); wing.add(tip);
+    wing.position.set(0, .6, 0); g.add(wing); pengWings.push({ w: wing, s });
+  }
+  g.position.set(PENG_X, height(PENG_X, PENG_Z) + 2.4, PENG_Z);
+  g.rotation.y = 2.2;
+  scene.add(g); pengBird = g;
+  // 栖石
+  const perch = cyl(2.6, 3.4, 4, M.stone, 8); perch.position.set(PENG_X, height(PENG_X, PENG_Z), PENG_Z); scene.add(perch);
+  cirObs.push({ x: PENG_X, z: PENG_Z, r: 3.2 });
+  addSpot(PENG_X, PENG_Z + 4.4, 'lore', 'peng', { r: 7 });
+}
 const ISLES = [
   { c: SHJ, name: '山海经 · 异兽之野', icon: '🐉', theme: 'shanhai' },
   { c: THY, name: '桃花源', icon: '🌸', theme: 'taoyuan' },
@@ -5333,7 +5371,19 @@ function loop() {
     } else spray.material.opacity = 0;
   }
   /* 飞毯航线(巴格达 → 收藏之岛) */
-  if (flight) {
+  if (flight && flight.orbit) {   // 大鹏环游:从栖石螺旋升空,环岛一周,再螺旋落回
+    flight.t += dt;
+    const k2 = Math.min(1, flight.t / flight.dur);
+    let ramp = k2 < .16 ? k2 / .16 : k2 > .84 ? (1 - k2) / .16 : 1; ramp = ramp * ramp * (3 - 2 * ramp);
+    const ang = flight.a0 + k2 * flight.spins * Math.PI * 2;
+    const orbX = flight.cx + Math.cos(ang) * flight.radius, orbZ = flight.cz + Math.sin(ang) * flight.radius;
+    const fx2 = flight.px0 + (orbX - flight.px0) * ramp, fz2 = flight.pz0 + (orbZ - flight.pz0) * ramp;
+    player.position.set(fx2, Math.max(height(fx2, fz2), 0) + 3 + flight.alt * ramp, fz2);
+    faceYaw = -ang; vy = 0;   // 面朝切线飞行方向(travel dir = (-sin,cos) → atan2 = -ang)
+    if (pengBird) { pengBird.visible = true; pengBird.position.set(fx2, player.position.y - 2.3, fz2); pengBird.rotation.y = faceYaw; }
+    if (k2 >= 1) { flight = null; toast('🕊️ 大鹏收翼,轻轻落回栖石。“鹏程万里,后会有期。”'); blip(659);
+      if (pengBird) { pengBird.position.set(PENG_X, height(PENG_X, PENG_Z) + 2.4, PENG_Z); pengBird.rotation.y = 2.2; } }
+  } else if (flight) {
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur);
     const e2 = k2 * k2 * (3 - 2 * k2);
@@ -5344,6 +5394,9 @@ function loop() {
     vy = 0;
     if (k2 >= 1) { const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660); }
   }
+  /* 大鹏振翅(骑乘时快扇,栖息时缓扇) */
+  if (pengWings) { const fl = (flight && flight.orbit) ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
+    for (const { w: wg, s } of pengWings) wg.rotation.z = s * fl; }
   updateFishing(dt, t);
   /* 泳衣:受寒提示 + 换装配色 */
   chowderT = Math.max(0, chowderT - dt);
@@ -5527,7 +5580,7 @@ const BUCKETS = [
   { x: PUR.x, z: PUR.z },
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
