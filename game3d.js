@@ -12,6 +12,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES } from './w-config.js?v=5';
@@ -1770,7 +1771,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null;
+let composer = null, bokehPass = null;
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -1788,6 +1789,7 @@ if (!MOBILE) {
     composer.addPass(gtao);
   } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
+  try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
@@ -5876,8 +5878,9 @@ addEventListener('keydown', e => {
   if (k === 'p') {   // 照片模式:隐藏全部 UI
     photoMode = !photoMode;
     for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
+    if (bokehPass) bokehPass.enabled = photoMode;   // 景深仅照片模式
     if (!photoMode) { cv.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
-    else toast('📷 照片模式(F 切换滤镜,P 退出)');
+    else toast('📷 照片模式:景深虚化开启(F 切换滤镜,P 退出)');
     return;
   }
   if (k === 'f' && photoMode) {   // 照片滤镜
