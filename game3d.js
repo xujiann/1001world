@@ -2175,22 +2175,28 @@ if (!MOBILE) {
 const clouds = [];
 {
   const rnd = mulberry32(11);
-  const cTop = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .92, depthWrite: false });
-  const cBot = new THREE.MeshLambertMaterial({ color: 0xccd6e6, transparent: true, opacity: .92, depthWrite: false });
-  const NC = MOBILE ? 12 : 18;
+  // 软云贴图(径向渐变),Sprite 广告牌永远柔和朝向相机
+  const cc = document.createElement('canvas'); cc.width = cc.height = 128; const cx = cc.getContext('2d');
+  const gr = cx.createRadialGradient(64, 64, 3, 64, 64, 63);
+  gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(.5, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  cx.fillStyle = gr; cx.beginPath(); cx.arc(64, 64, 63, 0, 7); cx.fill();
+  const cloudTex = new THREE.CanvasTexture(cc);
+  const NC = MOBILE ? 14 : 22;
   for (let i = 0; i < NC; i++) {
     const grp = new THREE.Group();
-    const big = .7 + rnd() * 1.1;
-    const puffs = 5 + Math.floor(rnd() * 4);
+    const tp = rnd();   // 云型:<.5 积云 / <.82 层云(扁平) / 其余 卷云(高·稀薄)
+    let puffs, size, spX, spY, spZ, alt, op, flat;
+    if (tp < .5) { puffs = 6 + (rnd() * 4 | 0); size = 26 + rnd() * 16; spX = size * 1.5; spY = size * .5; spZ = size; alt = 150 + rnd() * 70; op = .88; flat = 1; }
+    else if (tp < .82) { puffs = 8 + (rnd() * 4 | 0); size = 30 + rnd() * 14; spX = size * 2.7; spY = size * .2; spZ = size * 1.4; alt = 120 + rnd() * 40; op = .82; flat = .55; }
+    else { puffs = 5 + (rnd() * 3 | 0); size = 15 + rnd() * 10; spX = size * 3.6; spY = size * .3; spZ = size * .5; alt = 240 + rnd() * 90; op = .42; flat = .5; }
     for (let j = 0; j < puffs; j++) {
-      const r = (10 + rnd() * 14) * big;
-      const m = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), rnd() < .3 ? cBot : cTop);
-      m.position.set((j - puffs / 2) * 14 * big + (rnd() - .5) * 10, (rnd() - .3) * 6 * big, (rnd() - .5) * 18 * big);
-      m.scale.y = .5;
-      grp.add(m);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: true }));
+      const s = size * (.7 + rnd() * .6); sp.scale.set(s, s * flat, 1);
+      sp.position.set((rnd() - .5) * spX, (rnd() - .5) * spY, (rnd() - .5) * spZ);
+      grp.add(sp);
     }
-    grp.position.set(rnd() * 3000 - 1500, 150 + rnd() * 90, rnd() * 3000 - 1500);
-    grp.userData = { sp: .8 + rnd() * 1.8 };
+    grp.position.set(rnd() * 3600 - 1800, alt, rnd() * 3600 - 1800);
+    grp.userData = { sp: .5 + rnd() * 1.5, ph: rnd() * 6.28 };
     scene.add(grp); clouds.push(grp);
   }
 }
@@ -5689,7 +5695,7 @@ function setPlayerAct(name, fade = .22) {
 try {
   new GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
     gltf => {
-      playerRobot = gltf.scene; playerRobot.scale.setScalar(.46); playerRobot.position.y = 0; playerRobot.rotation.y = 0;
+      playerRobot = gltf.scene; playerRobot.scale.setScalar(.46); playerRobot.rotation.y = 0; playerRobot.position.y = 0;   // 该模型原点即脚底(与官方示例一致),配合物理 +.06 抬升防陷
       playerRobot.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
       player.add(playerRobot);
       for (const m of player.userData.procMeshes) m.visible = false;   // 隐藏程序化部件,保留提灯
@@ -5707,9 +5713,9 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
 {
-  const GN = MOBILE ? 900 : 2000, R = MOBILE ? 30 : 42;
-  const bladeGeo = new THREE.ConeGeometry(.17, .78, 3);   // 更矮更宽,不扎脚
-  bladeGeo.translate(0, .39, 0);   // 基部落到 y=0,便于自底摇摆
+  const GN = MOBILE ? 1000 : 2400, R = MOBILE ? 30 : 42;
+  const bladeGeo = new THREE.ConeGeometry(.055, .62, 3);   // 细小草叶(更像草,不像圆锥)
+  bladeGeo.translate(0, .31, 0);   // 基部落到 y=0,便于自底摇摆
   grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
   grassMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 };
@@ -5747,13 +5753,23 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   const kc = [new THREE.Color(0x8d8577), new THREE.Color(0x9a9184), new THREE.Color(0x77706a), new THREE.Color(0xa39a8c)];
   for (let i = 0; i < KN; i++) rockInst.setColorAt(i, kc[i % 4]);
 }
+/* 无草岛屿(按地理:火山岩/沙滩/岩石/荒岛/石铺港,不长草)*/
+const NO_GRASS = [
+  { x: -1780, z: -420, r: 108 },  // 神秘岛(火山岩)
+  { x: 1720, z: -520, r: 108 },   // 金银岛(海盗沙滩)
+  { x: 180, z: 1780, r: 100 },    // 珊瑚岛(珊瑚沙)
+  { x: -560, z: -1680, r: 100 },  // 禁闭岛(岩石)
+  { x: -1490, z: -1010, r: 100 }, // 莫罗博士岛(荒岛)
+  { x: 120, z: 800, r: 150 },     // 南塔开特(石铺捕鲸港)
+];
+function grassOK(x, z) { for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
 function redistributeGrass(cx, cz) {
   grassCx = cx; grassCz = cz;
   const u = grassBlades.userData, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
   for (let i = 0; i < u.GN; i++) {
     const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
     const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
-    if (h > 2.6 && h < 19 && fbm(x * .045, z * .045) > .47) {   // 草地高度带 + 噪声成簇(留出空地,不铺满)
+    if (h > 2.6 && h < 19 && grassOK(x, z) && fbm(x * .045, z * .045) > .5) {   // 草地高度带 + 地理门控 + 噪声成簇(留出空地)
       e.set(0, u.rnd() * 6.2832, 0);
       q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .7 + u.rnd() * .5, .9 + u.rnd() * .5);
       m4.compose(p.set(x, h, z), q, s);
@@ -5770,7 +5786,7 @@ function redistributeGrass(cx, cz) {
     for (let i = 0; i < fu.FN; i++) {
       const a = fu.rnd() * 6.2832, rr = Math.sqrt(fu.rnd()) * fu.R;
       const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
-      if (h > 2.8 && h < 17) { q.setFromEuler(e.set(0, fu.rnd() * 6.2832, 0)); s.set(1, 1, 1); m4.compose(p.set(x, h + .45, z), q, s); }
+      if (h > 2.8 && h < 17 && grassOK(x, z)) { q.setFromEuler(e.set(0, fu.rnd() * 6.2832, 0)); s.set(1, 1, 1); m4.compose(p.set(x, h + .45, z), q, s); }
       else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
       flowerInst.setMatrixAt(i, m4);
     }
@@ -5794,7 +5810,7 @@ function redistributeGrass(cx, cz) {
 /* --- 萤火虫(夜间草地随玩家浮动发光) --- */
 let fireflies = null, ffCx = 1e9, ffCz = 1e9;
 {
-  const FF = MOBILE ? 50 : 110;
+  const FF = MOBILE ? 20 : 42;
   const fc0 = document.createElement('canvas'); fc0.width = fc0.height = 32;
   const fx0 = fc0.getContext('2d');
   const fg = fx0.createRadialGradient(16, 16, 0, 16, 16, 16);
@@ -5803,7 +5819,7 @@ let fireflies = null, ffCx = 1e9, ffCz = 1e9;
   const ffTex = new THREE.CanvasTexture(fc0);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FF * 3), 3));
-  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ map: ffTex, color: 0xf2ffa0, size: 3.2, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+  fireflies = new THREE.Points(g, new THREE.PointsMaterial({ map: ffTex, color: 0xf2ffa0, size: 1.5, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
   fireflies.frustumCulled = false;
   const ph = new Float32Array(FF), r0 = mulberry32(555);
   for (let i = 0; i < FF; i++) ph[i] = r0() * 6.2832;
@@ -6135,7 +6151,7 @@ function loop() {
       player.rotation.x += (0 - player.rotation.x) * Math.min(1, dt * 8);
       vy -= 34 * dt;
       player.position.y += vy * dt;
-      if (player.position.y <= gh) { player.position.y = gh; vy = 0; grounded = true; } else grounded = false;
+      if (player.position.y <= gh + .06) { player.position.y = gh + .06; vy = 0; grounded = true; } else grounded = false;   // +.06 防止在崎岖地面轻微陷入
     }
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
@@ -6176,7 +6192,7 @@ function loop() {
     }
     wp.needsUpdate = true;
   }
-  for (const c of clouds) { c.position.x += dt * c.userData.sp; if (c.position.x > 1700) c.position.x = -1700; }
+  for (const c of clouds) { c.position.x += dt * c.userData.sp; if (c.position.x > 2000) c.position.x = -2000; c.scale.setScalar(1 + Math.sin(t * .1 + c.userData.ph) * .06); }   // 漂移 + 缓慢卷舒
   for (const f of seaFish) {
     const u = f.userData;
     const a = t * u.sp + u.ph;
