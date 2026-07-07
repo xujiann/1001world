@@ -1771,7 +1771,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null;
+let composer = null, bokehPass = null, gtaoPass = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -1783,16 +1783,17 @@ if (!MOBILE) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   try {   // GTAO 环境光遮蔽:接触/凹陷阴影,增强落地感
-    const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
-    gtao.output = GTAOPass.OUTPUT.Default;
-    if (gtao.updateGtaoMaterial) gtao.updateGtaoMaterial({ radius: 3.5, distanceExponent: 1, scale: 1, samples: 8, thickness: 1 });
-    composer.addPass(gtao);
+    gtaoPass = new GTAOPass(scene, camera, innerWidth, innerHeight);
+    gtaoPass.output = GTAOPass.OUTPUT.Default;
+    if (gtaoPass.updateGtaoMaterial) gtaoPass.updateGtaoMaterial({ radius: 3.5, distanceExponent: 1, scale: 1, samples: 8, thickness: 1 });
+    composer.addPass(gtaoPass);
   } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
+function applyQuality() { if (gtaoPass) gtaoPass.enabled = quality >= 2; }
 
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95);
 scene.add(hemi);
@@ -5890,6 +5891,7 @@ addEventListener('keydown', e => {
     return;
   }
   if (k === 'm') { toggleBigMap(); return; }
+  if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
   if (k === 'q' && diving) { fireSonar(); return; }   // 声呐探路
   if (k === 'k') {   // 观星模式:夜间显示星座名
     starGaze = !starGaze;
@@ -6599,6 +6601,7 @@ function loop() {
   fpsN++; fpsT += dt;
   if (fpsT >= 2.5) {
     const fps = fpsN / fpsT; fpsN = 0; fpsT = 0;
+    if (fps < 20 && quality > 0 && prScale <= .85) { quality--; applyQuality(); toast('🖥️ 帧率偏低,已自动降到' + ['低画质', '中画质'][quality] + '(G 键可手动调)'); }   // 先降像素比,仍卡再降画质档
     if (fps < 27 && prScale > .85) {
       prScale = Math.max(.85, prScale - .25);
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale));
@@ -6609,7 +6612,7 @@ function loop() {
       if (composer) composer.setSize(innerWidth, innerHeight);
     }
   }
-  if (composer) composer.render(); else renderer.render(scene, camera);
+  if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
 }
 /* ---------- 岛屿分桶距离显隐(性能:远岛整组不渲染) ---------- */
 const BUCKETS = [
@@ -6651,4 +6654,5 @@ loop();
 
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
-  usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct };
+  usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
+  quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null };
