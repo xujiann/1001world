@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>1001 世界 3D · 1001 World — 海岛开放世界</title>
 <meta name="description" content="三维开放世界:漫游一座收藏之岛,雪山、平原与大海,亲眼看到 1001×1001 的真实藏品。">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=11">
 <style>
   /* 3D 版补充样式 */
   #game { touch-action: none; }
@@ -109,8 +109,7 @@
   <div id="introCard">
     <h1>1001 世界</h1>
     <p class="tagline">收藏之岛 · 3D — Isle of 1001</p>
-    <p class="story">大海中央,一头鲸形的岛,收藏着世上一切美好之物的一千零一种;<br>
-    四面海上还漂着四十余座从名著里长出来的岛——中土、霍格沃茨、炼狱山……扬帆去吧。</p>
+    <p class="story">大海中央一头鲸形的岛,藏着世间美好之物的一千零一种;四面海上还漂着四十余座从名著里长出来的岛。扬帆去吧。</p>
 
     <div class="steps">
       <b>三步上手</b>
@@ -119,30 +118,46 @@
       <div>③ 每座岛都藏着一条故事线,按 <kbd>J</kbd> 看「航海日志」逐一点亮</div>
     </div>
 
-    <div class="guide">
-      <div class="gcol">
-        <div class="ghd">🎮 移动 / 视角</div>
-        <div class="grow"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>走动(或方向键)</div>
-        <div class="grow"><span><kbd>Shift</kbd></span>奔跑 · 潜水下沉</div>
-        <div class="grow"><span><kbd>空格</kbd></span>跳跃 · 游泳上浮</div>
-        <div class="grow"><span>🖱️ 拖动</span>转视角 · 滚轮缩放</div>
-      </div>
-      <div class="gcol">
-        <div class="ghd">👀 互动 / 面板</div>
-        <div class="grow"><span><kbd>E</kbd></span>查看 · 对话 · 支线</div>
-        <div class="grow"><span><kbd>J</kbd></span>图鉴 / 航海日志 / 星图</div>
-        <div class="grow"><span><kbd>M</kbd></span>世界海图</div>
-        <div class="grow"><span><kbd>B</kbd></span>背包 · 装备</div>
-      </div>
+    <div class="ctrlvis">
+      <figure>
+        <svg viewBox="0 0 250 150" xmlns="http://www.w3.org/2000/svg">
+          <g text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700">
+            <rect x="96" y="8" width="30" height="30" rx="6" fill="#ffd76a"/><text x="111" y="29" font-size="15" fill="#3a2405">W</text>
+            <rect x="62" y="42" width="30" height="30" rx="6" fill="#ffd76a"/><text x="77" y="63" font-size="15" fill="#3a2405">A</text>
+            <rect x="96" y="42" width="30" height="30" rx="6" fill="#ffd76a"/><text x="111" y="63" font-size="15" fill="#3a2405">S</text>
+            <rect x="130" y="42" width="30" height="30" rx="6" fill="#ffd76a"/><text x="145" y="63" font-size="15" fill="#3a2405">D</text>
+            <text x="172" y="30" font-size="12.5" fill="#c8d0b6" text-anchor="start">走动</text>
+            <text x="172" y="47" font-size="10.5" fill="#8a936f" text-anchor="start">或方向键</text>
+            <rect x="30" y="84" width="70" height="26" rx="6" fill="#3a4430" stroke="#5a664c"/><text x="65" y="101" font-size="12" fill="#f0ead6">⇧ Shift</text>
+            <rect x="108" y="84" width="112" height="26" rx="6" fill="#3a4430" stroke="#5a664c"/><text x="164" y="101" font-size="12" fill="#f0ead6">Space 空格</text>
+            <text x="65" y="126" font-size="10.5" fill="#9aa488">奔跑 / 下沉</text>
+            <text x="164" y="126" font-size="10.5" fill="#9aa488">跳跃 / 上浮</text>
+            <text x="125" y="145" font-size="11" fill="#8fbcd8">🖱️ 拖动转视角 · 滚轮缩放</text>
+          </g>
+        </svg>
+        <figcaption>⌨️ 电脑</figcaption>
+      </figure>
+      <figure>
+        <svg viewBox="0 0 250 150" xmlns="http://www.w3.org/2000/svg">
+          <rect x="12" y="14" width="226" height="122" rx="16" fill="#0e1a2a" stroke="#3a5a7a" stroke-width="2"/>
+          <line x1="125" y1="22" x2="125" y2="128" stroke="#2a3a4a" stroke-dasharray="4 4"/>
+          <circle cx="64" cy="72" r="27" fill="none" stroke="#6fb0ff" stroke-width="2" stroke-dasharray="4 4"/>
+          <circle cx="64" cy="72" r="12" fill="#6fb0ff" opacity="0.75"/>
+          <g fill="#8fd0ff" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif">
+            <text x="64" y="43">▲</text><text x="64" y="107">▼</text><text x="31" y="76">◀</text><text x="97" y="76">▶</text>
+          </g>
+          <text x="64" y="126" fill="#bcd4ee" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif">走动</text>
+          <path d="M152 58 A30 30 0 0 1 205 66" fill="none" stroke="#ffd76a" stroke-width="2.5"/>
+          <path d="M205 66 l-8 -5 l9 -2 z" fill="#ffd76a"/>
+          <text x="178" y="47" fill="#ffd76a" font-size="11.5" text-anchor="middle" font-family="system-ui,sans-serif">转视角</text>
+          <text x="163" y="93" fill="#9fb4c8" font-size="10" text-anchor="middle" font-family="system-ui,sans-serif">双指缩放</text>
+          <circle cx="208" cy="108" r="17" fill="#ffd76a"/><text x="208" y="114" font-size="16" text-anchor="middle">👀</text>
+          <text x="208" y="134" fill="#bcd4ee" font-size="9.5" text-anchor="middle" font-family="system-ui,sans-serif">互动</text>
+        </svg>
+        <figcaption>📱 手机</figcaption>
+      </figure>
     </div>
-    <div class="guide2">更多快捷键:<kbd>K</kbd> 夜间观星 · <kbd>P</kbd> 照片模式 · <kbd>G</kbd> 画质</div>
-
-    <div class="mobileops">
-      <b>📱 手机这样玩</b>
-      <div><span>👈 左半屏</span>拖动出<b>摇杆</b> → 走动</div>
-      <div><span>👉 右半屏</span>拖动 → <b>转视角</b>(双指缩放)</div>
-      <div><span>🔘 右下按钮</span>查看 · 对话 · 互动(相当于 E)</div>
-    </div>
+    <div class="guide2"><kbd>E</kbd> 互动 · <kbd>J</kbd> 图鉴 · <kbd>M</kbd> 海图 · <kbd>B</kbd> 背包 · <kbd>K</kbd> 观星 · <kbd>P</kbd> 照片 · <kbd>G</kbd> 画质</div>
 
     <button id="btnStart">⛵ 登上海岛</button>
   </div>
@@ -159,6 +174,6 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=70"></script>
+<script type="module" src="game3d.js?v=71"></script>
 </body>
 </html>
