@@ -2716,6 +2716,7 @@ function collectShard(s) {
 }
 
 /* --- 散布树 / 岩石 / 花 --- */
+const treeWindMats = [];
 {
   // 散布树:实例化(3 次绘制取代 ~180 个网格)
   const treePts = [];
@@ -2731,9 +2732,26 @@ function collectShard(s) {
   {
     const n = treePts.length;
     const trunkI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.42, .7, 5), M.wood, n);
-    const canoLo = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.7, 0), lam(0xffffff), n);
-    const canoAI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.2, 0), lam(0xffffff), n);
-    const canoBI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), lam(0xffffff), n);
+    const windMat = (ph) => {   // 树冠风摆:按实例世界坐标错相轻摇(零 CPU,同草地方案)
+      const m = lam(0xffffff);
+      m.onBeforeCompile = sh => {
+        sh.uniforms.uTime = { value: 0 };
+        sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+          `#include <begin_vertex>
+           #ifdef USE_INSTANCING
+             vec3 iP = instanceMatrix[3].xyz;
+           #else
+             vec3 iP = vec3(0.0);
+           #endif
+           float wv = sin(uTime * 1.15 + iP.x * .14 + iP.z * .1 + ${ph.toFixed(2)}) * .17;
+           transformed.x += wv; transformed.z += wv * .6;`);
+        m.userData.shader = sh;
+      };
+      treeWindMats.push(m); return m;
+    };
+    const canoLo = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.7, 0), windMat(0.0), n);
+    const canoAI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.2, 0), windMat(1.3), n);
+    const canoBI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), windMat(2.6), n);
     const m4t = new THREE.Matrix4(), qt = new THREE.Quaternion(), st = new THREE.Vector3(), pt = new THREE.Vector3();
     const gg1 = new THREE.Color(), gg2 = new THREE.Color(), gg3 = new THREE.Color();
     treePts.forEach(([x, z, h, sc], i) => {
@@ -5102,6 +5120,15 @@ const portalBeacons = [];
   Object.assign(d.style, { position: 'fixed', left: '50%', bottom: '96px', transform: 'translateX(-50%)', zIndex: '7', textAlign: 'center', pointerEvents: 'none', font: '13px system-ui,sans-serif', color: '#cfeeff', textShadow: '0 1px 3px #000' });
   d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveHint" style="margin-top:5px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
   document.body.appendChild(d);
+  /* 移动端潜水:上浮/下潜按钮(触屏时随潜水显隐,驱动 joy.up/joy.down) */
+  [['btnDiveUp', '⬆️', 258, 'up'], ['btnDiveDown', '⬇️', 178, 'down']].forEach(([id, sym, bottom, key]) => {
+    const b = document.createElement('button'); b.id = id; b.textContent = sym; b.className = 'hidden';
+    Object.assign(b.style, { position: 'fixed', right: '26px', bottom: bottom + 'px', zIndex: '30', width: '62px', height: '62px', borderRadius: '50%', border: '3px solid rgba(255,255,255,.45)', background: 'rgba(70,160,230,.8)', fontSize: '24px', touchAction: 'none' });
+    const set = v => e => { e.preventDefault(); joy[key] = v; };
+    b.addEventListener('pointerdown', set(true));
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, set(false));
+    document.body.appendChild(b);
+  });
 }
 /* 步行洞窟:围绕潜水潭建一座可走进的小洞(顶盖+半圈石壁+钟乳石),留前方开口 */
 function buildGrotto(sx, sz, gy) {
@@ -5184,6 +5211,7 @@ function enterDive(pi) {
   scene.fog.near = 3; scene.fog.far = gearOn('rope') ? 90 : 46; scene.fog.color.setHex(0x04121c);
   scene.background.setHex(0x04121c);
   $('diveHud').classList.remove('hidden');
+  if (matchMedia('(pointer: coarse)').matches) { $('btnDiveUp').classList.remove('hidden'); $('btnDiveDown').classList.remove('hidden'); }
   toast(gearOn('rope') ? '🤿 潜入蓝洞——顺着发光导绳,游向任意海岛的出口' : '🤿 潜入蓝洞……四下漆黑,没有导绳,当心迷路和憋气!');
 }
 function surfaceDive(pi) {
@@ -5192,6 +5220,7 @@ function surfaceDive(pi) {
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden');
+  $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
   player.position.set(sx, Math.max(height(sx, sz), pierHeight(sx, sz) || 0, 0) + 1.2, sz); vy = 0;
   if (pi !== diveEntry) {
     toast(`🌊 你从${p.isle}的蓝洞浮出水面!`);
@@ -6049,7 +6078,7 @@ addEventListener('pointermove', e => {
 });
 const endPtr = e => {
   if (stickBase && e.pointerId === stickBase.id) {
-    stickBase = null; joy = { on: false, vx: 0, vy: 0 };
+    stickBase = null; joy = { on: false, vx: 0, vy: 0, up: joy.up, down: joy.down };   // 保留潜水上浮/下潜按钮状态
     knob.style.transform = 'translate(-50%,-50%)'; stick.classList.add('hidden');
   }
   if (dragCam && e.pointerId === dragCam.id) dragCam = null;
@@ -6236,6 +6265,7 @@ function loop() {
   if (grassBlades) {
     if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 49) redistributeGrass(player.position.x, player.position.z);
     if (grassMat.userData.shader) grassMat.userData.shader.uniforms.uTime.value = t;
+    for (const m of treeWindMats) if (m.userData.shader) m.userData.shader.uniforms.uTime.value = t;   // 树冠风摆
   }
 
   /* 相机 */
