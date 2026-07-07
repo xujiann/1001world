@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>1001 世界 3D · 1001 World — 海岛开放世界</title>
 <meta name="description" content="三维开放世界:漫游一座收藏之岛,雪山、平原与大海,亲眼看到 1001×1001 的真实藏品。">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=6">
 <style>
   /* 3D 版补充样式 */
   #game { touch-action: none; }
@@ -109,19 +109,34 @@
   <div id="introCard">
     <h1>1001 世界</h1>
     <p class="tagline">收藏之岛 · 3D — Isle of 1001</p>
-    <p class="story">大海中央,浮着一头鲸形的岛:雪山是它的背鳍,尾鳍甩向东方的日出。<br>
-    岛上收藏着世上一切美好之物的一千零一种。四面的海上,还漂着四十余座从名著里长出来的岛——<br>
-    中土、霍格沃茨、白鲸的南塔开特、但丁的炼狱山,和一整条「海洋文学带」。扬帆去吧。</p>
-    <div class="keys">
-      <span>🎮 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/方向键移动 · <kbd>Shift</kbd> 奔跑 · <kbd>空格</kbd> 跳跃 · 鼠标拖动转视角、滚轮缩放</span>
-      <span>👀 <kbd>E</kbd> 查看·互动(藏品、NPC、支线) · <kbd>J</kbd> 图鉴/航海日志/星图/称号 · <kbd>M</kbd> 世界海图</span>
-      <span>⚡ 看藏品、钓鱼、做支线赚算力币(SB):酒馆买酒、报亭订两份报、装备行买泳衣鱼竿(<kbd>B</kbd> 背包)</span>
-      <span>🌙 有昼夜与潮汐:黄昏晚霞,夜里篝火观星 <kbd>K</kbd>(认全 88 星座)· ✨ 全域 24 枚星之碎片可拾</span>
-      <span>⛵ 东滩渡口通四十余座文学岛 · 🚂 9¾ 站台直达霍格沃茨 · 🕊️ 主岛栖石可乘大鹏环游诸岛</span>
-      <span>📖 每座岛都藏着一条故事线,按 <kbd>J</kbd> 看「航海日志」逐一点亮 · 🌸 还有一处秘境不在海图上</span>
-      <span>🤿 海底隧道迷宫串联各岛:主岛西岸「牛首回廊」海蚀洞可步行入洞下水,或从各岛蓝洞潜入——先买「导绳」,否则迷路憋气</span>
-      <span>🌊 可游进大海钓鱼(<kbd>P</kbd> 照片模式)· 📱 手机:左半屏摇杆、右半屏转视角、右下按钮互动</span>
+    <p class="story">大海中央,一头鲸形的岛,收藏着世上一切美好之物的一千零一种;<br>
+    四面海上还漂着四十余座从名著里长出来的岛——中土、霍格沃茨、炼狱山……扬帆去吧。</p>
+
+    <div class="steps">
+      <b>三步上手</b>
+      <div>① 走近按 <kbd>E</kbd> 看藏品、和 NPC 说话、做支线 → 赚算力币 <b style="color:#ffd76a">⚡</b></div>
+      <div>② 去<b>东滩渡口</b>出海,四十余座文学岛任你逛(霍格沃茨走 9¾ 站台火车)</div>
+      <div>③ 每座岛都藏着一条故事线,按 <kbd>J</kbd> 看「航海日志」逐一点亮</div>
     </div>
+
+    <div class="guide">
+      <div class="gcol">
+        <div class="ghd">🎮 移动 / 视角</div>
+        <div class="grow"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>走动(或方向键)</div>
+        <div class="grow"><span><kbd>Shift</kbd></span>奔跑 · 潜水下沉</div>
+        <div class="grow"><span><kbd>空格</kbd></span>跳跃 · 游泳上浮</div>
+        <div class="grow"><span>🖱️ 拖动</span>转视角 · 滚轮缩放</div>
+      </div>
+      <div class="gcol">
+        <div class="ghd">👀 互动 / 面板</div>
+        <div class="grow"><span><kbd>E</kbd></span>查看 · 对话 · 支线</div>
+        <div class="grow"><span><kbd>J</kbd></span>图鉴 / 航海日志 / 星图</div>
+        <div class="grow"><span><kbd>M</kbd></span>世界海图</div>
+        <div class="grow"><span><kbd>B</kbd></span>背包 · 装备</div>
+      </div>
+    </div>
+    <div class="guide2">更多:<kbd>K</kbd> 夜间观星 · <kbd>P</kbd> 照片模式 · <kbd>G</kbd> 画质 &nbsp;|&nbsp; 📱 手机:左半屏摇杆 · 右半屏转视角 · 右下按钮互动</div>
+
     <button id="btnStart">⛵ 登上海岛</button>
   </div>
 </div>
