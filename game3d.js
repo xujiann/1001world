@@ -11,6 +11,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES } from './w-config.js?v=5';
@@ -1780,6 +1781,12 @@ addEventListener('resize', resize); resize();
 if (!MOBILE) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  try {   // GTAO 环境光遮蔽:接触/凹陷阴影,增强落地感
+    const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+    gtao.output = GTAOPass.OUTPUT.Default;
+    if (gtao.updateGtaoMaterial) gtao.updateGtaoMaterial({ radius: 3.5, distanceExponent: 1, scale: 1, samples: 8, thickness: 1 });
+    composer.addPass(gtao);
+  } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
@@ -2210,6 +2217,26 @@ const M = {
                : new THREE.MeshStandardMaterial({ color: 0xd9b26a, roughness: .38, metalness: .75 }),
   white: lam(0xf5efdc),
 };
+/* 程序化法线贴图:给岩石/木头表面加起伏细节(桌面 PBR)*/
+function makeNoiseNormal(size, freq, strength) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size), d = img.data, H = (x, y) => fbm(x * freq, y * freq);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    let nx = (H(x - 1, y) - H(x + 1, y)) * strength, ny = (H(x, y - 1) - H(x, y + 1)) * strength, nz = 1;
+    const inv = 1 / Math.hypot(nx, ny, nz); nx *= inv; ny *= inv; nz *= inv;
+    const o = (y * size + x) * 4; d[o] = (nx * .5 + .5) * 255; d[o + 1] = (ny * .5 + .5) * 255; d[o + 2] = (nz * .5 + .5) * 255; d[o + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+}
+if (!MOBILE) {
+  const rockNrm = makeNoiseNormal(128, .07, 2.4); rockNrm.repeat.set(3, 3);
+  const woodNrm = makeNoiseNormal(128, .05, 1.6); woodNrm.repeat.set(2, 4);
+  M.stone.normalMap = rockNrm; M.stone.normalScale.set(.7, .7); M.stone.roughness = .95;
+  M.wood.normalMap = woodNrm; M.wood.normalScale.set(.45, .45);
+  M.woodDark.normalMap = woodNrm; M.woodDark.normalScale.set(.45, .45);
+  M.stone.needsUpdate = M.wood.needsUpdate = M.woodDark.needsUpdate = true;
+}
 const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
 const cyl = (rT, rB, h, mat, seg = 10) => new THREE.Mesh(new THREE.CylinderGeometry(rT, rB, h, seg), mat);
 
@@ -2760,6 +2787,7 @@ function makePerson(bodyCol, hatCol, opts = {}) {
   else { const h = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.44 * tall; g.add(h); }
   if (opts.cane) { const c1 = cyl(.05, .05, 1.9, M.woodDark); c1.position.set(.72, .95, .2); g.add(c1); }
   g.userData.limbs = limbs;
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });   // NPC 投影落地
   return g;
 }
 /* 四肢摆动:走路时手脚交替、静止时轻微呼吸摆 */
