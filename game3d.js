@@ -2768,6 +2768,14 @@ function animLimbs(g, phase, amt) {
   L.legL.rotation.x = s; L.legR.rotation.x = -s;
   L.armL.rotation.x = -s * .8; L.armR.rotation.x = s * .8;
 }
+/* 游泳姿态:配合俯身,打腿 + 交替划水 */
+function animSwim(g, phase) {
+  const L = g.userData.limbs; if (!L) return;
+  const k = Math.sin(phase * 2);
+  L.legL.rotation.x = k * .45; L.legR.rotation.x = -k * .45;
+  L.armL.rotation.x = -1.4 + Math.sin(phase) * 1.3;
+  L.armR.rotation.x = -1.4 + Math.sin(phase + Math.PI) * 1.3;
+}
 const NPC_HUB3 = [14, 24];
 const allNpcs = [];
 function addNpc(cfg) {
@@ -5954,7 +5962,7 @@ function loop() {
       if (Math.hypot(mx, mz) > .1) { faceYaw = camYaw; pMoving = true; walkPhase += dt * 6; }
     }
     clampToMaze(player.position);
-    player.rotation.x = -camPitch * .5;
+    player.rotation.x += ((-1.2 - camPitch * .25) - player.rotation.x) * Math.min(1, dt * 6);   // 潜水俯身姿态
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
     diveLight.intensity = 2.4;
     if (causticLight) {   // 焦散光斑自上而下,贴图缓慢漂移
@@ -6067,9 +6075,9 @@ function loop() {
     if (swimming) {
       vy = 0; grounded = false;
       player.position.y += ((-.55 + tideY) - player.position.y) * Math.min(1, dt * 6);
-      player.rotation.x = Math.sin(t * 2.4) * .06;
+      player.rotation.x += ((-1.15 + Math.sin(t * 2.4) * .08) - player.rotation.x) * Math.min(1, dt * 5);   // 俯身入水
     } else {
-      player.rotation.x = 0;
+      player.rotation.x += (0 - player.rotation.x) * Math.min(1, dt * 8);
       vy -= 34 * dt;
       player.position.y += vy * dt;
       if (player.position.y <= gh) { player.position.y = gh; vy = 0; grounded = true; } else grounded = false;
@@ -6077,7 +6085,8 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
-  animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
+  if (swimming || diving) animSwim(player, t * 6.5);
+  else animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
 
