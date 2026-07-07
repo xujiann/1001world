@@ -1574,8 +1574,25 @@ function drawStarChart(cv3) {
     idx++;
   }
 }
+/* 主线阶段:由已有进度 flag 推导「追查海底真相」的当前目标(无新增存档)*/
+function mainQuest() {
+  const seenAny = Object.keys(CATS).some(k => (seen[k] || []).length > 0);
+  const hasRope = gear.owned.includes('rope');
+  const caved = PSTORE.getItem('w1001.caved') === '1';
+  const clues = ['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length;
+  const skel = PSTORE.getItem('w1001.skeleton') === '1';
+  if (skel) return { st: '终章 · 主线已通关', tip: '你已窥破世界骨架的真相。剩下的旅程,是把每座岛的故事都走一遍——看下方各馆藏进度。', done: true };
+  if (caved || clues > 0) return { st: `第四章 · 世界骨架 · 线索 ${clues}/3`, tip: '海底迷宫并非天然。潜入深处集齐三线索:🫀 潮汐之心(迷宫正中)· 🖼️ 海底壁画(某条死路尽头)· 📖 巴别海窟(满月夜穿过潮汐门)。' };
+  if (hasRope) return { st: '第三章 · 潜入海底', tip: '带上导绳,从主岛西岸「牛首回廊」海蚀洞、或各岛蓝洞潜入海底隧道迷宫,顺着发光导绳穿行到别的岛。' };
+  if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,逛四十余座文学岛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——那是海底迷宫的钥匙。' };
+  return { st: '第一章 · 初来乍到', tip: '在收藏之岛四处走走:走近按 E 看藏品、和 NPC 说话、做支线,攒算力币 ⚡。' };
+}
 function openJournal() {
   const list = $('journalList');
+  const mq = mainQuest();
+  const mHtml = `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
+    <div style="font-size:13.5px;color:#8fd0ff;font-weight:700;padding:2px 2px 5px">${mq.st}</div>
+    <div style="font-size:12.5px;color:#c4d2c0;padding:0 2px 4px;line-height:1.6">👉 ${mq.tip}</div></div>`;
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
     ${quest.cats.map(c => {
       const need = QUEST_TPL[c][0], p = Math.min(quest.prog[c], need), ok = p >= need;
@@ -1619,7 +1636,7 @@ function openJournal() {
   const chartHtml = `<div class="qBox"><div class="qTitle"><span>🌌 星图 · 认得的星座</span><span>${constSeen.size}/${constDirs.length}</span></div>
     <canvas id="starChart" width="320" height="320" style="width:100%;max-width:340px;display:block;margin:8px auto;border-radius:10px"></canvas>
     <div style="font-size:12px;color:#8a9a7c;text-align:center">夜里按 <b>K</b> 观星,把星座转到视野中央即可认得它</div></div>`;
-  list.innerHTML = qHtml + titleHtml + chartHtml + logHtml + Object.keys(CATS).map(k => {
+  list.innerHTML = mHtml + qHtml + titleHtml + chartHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     const badge = mileTier(k);
@@ -1648,6 +1665,7 @@ function openGuide() {
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——东滩渡口通往四十余座岛(中土、霍格沃茨走 9¾ 站台的火车;南海有但丁的炼狱山,外环是一整条「海洋文学带」:金银岛、神秘岛、无人生还岛……)。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮,按 <b>M</b> 看海图。<br><br>
     <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
+    <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
   modal.classList.remove('hidden'); modalOpen = true;
