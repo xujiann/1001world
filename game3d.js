@@ -15,8 +15,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES } from './w-config.js?v=5';
+import { THEMES, NI_QUESTS } from './w-config.js?v=6';
 import { CONSTELLATIONS } from './constellations.js?v=1';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=1';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -4919,94 +4920,11 @@ for (const s of NISLES) {
   const sgn = makeSign(c.name, 6.5, '#1e2430', '#dfe8f0'); const sgz = gz + (gz > 0 ? -s.r * .6 : s.r * .6);
   sgn.position.set(gx + 10, height(gx + 10, sgz) + 4, sgz); scene.add(sgn);
 }
-/* 海洋文学带故事线:每岛一条支线(挂在某个 lore 卡上,完成得 SB+⭐,列入航海日志)*/
-const NI_QUESTS = {
-  mys:  { lore: 'mystnemo',     btn: '🐚 循光潜入海底洞穴',   sb: 20, log: '🌋 神秘的恩人(神秘岛)',       pend: '⏳ 探海底洞穴',   done: '✅ 见过尼摩',   msg: '🐚 海底洞穴里,垂死的尼摩握住你的手:"这是我最后的秘密。" ⚡+20 · ⭐+1' },
-  chr:  { lore: 'tensoldiers',  btn: '🪆 对着童谣推演真凶',   sb: 20, log: '🔪 童谣杀人(无人生还岛)',     pend: '⏳ 数一数瓷兵',   done: '✅ 真相已记',   msg: '🪆 死亡的顺序,与童谣一句句对上了——凶手,正是那个"最先离场"的人。 ⚡+20 · ⭐+1' },
-  tmp:  { lore: 'prospero',     btn: '📖 劝法师折杖宽恕',     sb: 20, log: '⛈️ 折断法杖(暴风雨岛)',       pend: '⏳ 劝普洛斯彼罗', done: '✅ 仇已释怀',   msg: '📖 普洛斯彼罗把魔法书沉入海底:"稀有的德性,是宽恕,而非报复。" ⚡+20 · ⭐+1' },
-  mor:  { lore: 'morlaw',       btn: '📜 随兽人诵一遍律法',   sb: 20, log: '🧪 兽人律法(莫罗博士岛)',     pend: '⏳ 参加诵法',     done: '✅ 律法已诵',   msg: '🧪 你随兽人齐诵:"我们不是人吗?"——念着念着,连你也分不清人兽的界线。 ⚡+20 · ⭐+1' },
-  dol:  { lore: 'karana',       btn: '🦦 给受伤的海獭喂食',   sb: 15, log: '🐬 驯服獠牙(蓝色海豚岛)',     pend: '⏳ 结交海獭',     done: '✅ 有了朋友',   msg: '🦦 那只叫"獠牙"的海獭,终于肯从你手里接食——卡拉娜笑了,十八年来头一次。 ⚡+15 · ⭐+1' },
-  fly:  { lore: 'flyconch',     btn: '🐚 吹响海螺重开集会',   sb: 20, log: '🐚 重整秩序(蝇王)',           pend: '⏳ 吹响海螺',     done: '✅ 火重新亮',   msg: '🐚 海螺一响,散去的孩子又围拢过来,信号火重新烧起——文明,续上了一口气。 ⚡+20 · ⭐+1' },
-  uto:  { lore: 'utocity',      btn: '📖 记录理想国的制度',   sb: 15, log: '🏛️ 理想国见闻(乌托邦)',       pend: '⏳ 走访全城',     done: '✅ 已成手记',   msg: '🏛️ 六小时工作、无货币、金夜壶……你都记进本子。完美,还是可怕?留给读者判断。 ⚡+15 · ⭐+1' },
-  hux:  { lore: 'moksha',       btn: '🧘 随八哥冥想此时此地', sb: 15, log: '🧘 注意·当下(帕拉岛)',       pend: '⏳ 练一次觉知',   done: '✅ 已然清醒',   msg: '🧘 "注意!此时,此地。"你跟着呼吸,第一次真正地在场。 ⚡+15 · ⭐+1' },
-  gul:  { lore: 'lilliput',     btn: '🥚 调停敲蛋战争',       sb: 20, log: '👣 敲蛋和约(格列佛)',         pend: '⏳ 调停两党',     done: '✅ 已促和谈',   msg: '👣 你提议:今后各敲各的那头。大小端两派竟都答应了——天大的仇,原来起于一枚鸡蛋。 ⚡+20 · ⭐+1' },
-  nvl:  { lore: 'lostchildren', btn: '✨ 想着快乐的事飞起来', sb: 15, log: '🧚 学会飞行(梦幻岛)',         pend: '⏳ 试着起飞',     done: '✅ 飞过一回',   msg: '✨ 你想起最快乐的一件事,脚尖离了地——原来长大,只是忘了怎么飞。 ⚡+15 · ⭐+1' },
-  cor:  { lore: 'coralreef',    btn: '🤿 潜入水下岩洞',       sb: 15, log: '🐠 水下岩洞(珊瑚岛)',         pend: '⏳ 屏气下潜',     done: '✅ 探过秘洞',   msg: '🐠 你屏一口气潜到礁底,钻进一个连海盗都不知道的水下岩洞——里面亮得像撒了金子。 ⚡+15 · ⭐+1' },
-  typ:  { lore: 'typeevalley',  btn: '🌴 助汤莫逃回海边',     sb: 20, log: '🌴 逃离山谷(泰皮)',           pend: '⏳ 寻机逃亡',     done: '✅ 已回大海',   msg: '🌴 趁法亚薇拨开禁忌绳,你和汤莫跳上独木舟冲向捕鲸船——文明还是野蛮,他终究做了选择。 ⚡+20 · ⭐+1' },
-  tah:  { lore: 'studio',       btn: '🖼️ 在烧毁前抢一幅画',   sb: 20, log: '🎨 抢救杰作(画家岛)',         pend: '⏳ 冲进画室',     done: '✅ 留下一幅',   msg: '🎨 火舌舔上四壁前,你抢出一幅画——斯特里克兰要毁掉的乐园,总算留下一角。 ⚡+20 · ⭐+1' },
-  daw:  { lore: 'worldsend',    btn: '🐭 送雷佩契普越浪墙',   sb: 20, log: '🐉 世界尽头(黎明踏浪号)',     pend: '⏳ 划向东方',     done: '✅ 已抵尽头',   msg: '🐭 你目送雷佩契普的小舟越过最后一道浪墙,驶入满是百合与光的国度——它到家了。 ⚡+20 · ⭐+1' },
-  rain: { lore: 'missionary',   btn: '☔ 记下这场雨中的对峙', sb: 20, log: '🌧️ 帕果帕果的雨(雨岛)',       pend: '⏳ 旁观牧师',     done: '✅ 已见结局',   msg: '☔ 牧师倒在海滩,汤普森小姐冷笑一声"猪猡"。雨,还在下。你合上了本子。 ⚡+20 · ⭐+1' },
-  shu:  { lore: 'shulighthouse',btn: '🗼 登灯塔查明真相',     sb: 20, log: '🌫️ 灯塔的真相(禁闭岛)',     pend: '⏳ 闯进灯塔',     done: '✅ 真相已明',   msg: '🗼 塔顶没有秘密实验,只有考利医生一句"欢迎回来"——那么,谁才是病人? ⚡+20 · ⭐+1' },
-};
+/* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
 const NIQ_BY_LORE = {}, NIQ_BY_FLAG = {};
 for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }, NI_QUESTS[k]); NIQ_BY_LORE[q.lore] = q; NIQ_BY_FLAG[q.flag] = q; }
 /* ===== 海底隧道迷宫 · 洞穴潜水(导绳=关键装备)===== */
-const MAZE_NODES = [
-  [0, -70, 0], [70, -78, 10], [80, -86, 80], [10, -76, 100], [-70, -84, 80], [-85, -72, 10],
-  [-70, -92, -70], [0, -82, -95], [75, -96, -70], [0, -104, 0], [45, -100, 45], [-45, -90, -45],
-  [122, -80, 96], [58, -112, -94], [-40, -116, -120],
-  [-115, -84, -30], [-100, -70, 60], [30, -92, -115], [95, -90, -20],
-  [105, -104, -95], [-30, -72, 110], [-30, -110, -30], [-120, -92, -70], [120, -96, -40], [-100, -80, 90], [40, -114, -70], [50, -74, 110],
-  [-60, -118, -80], [130, -88, -70], [-125, -78, 20], [20, -70, 115], [130, -108, 40], [70, -70, 120], [-70, -108, -110], [110, -84, 50],
-  [-140, -90, -50], [-60, -76, 130], [145, -92, 10], [-10, -100, -140], [60, -104, -130], [-140, -86, 40], [150, -78, 70], [-115, -96, -100],
-];
-/* 主题分区:整座海底迷宫分四区(+巴别密室),各区管壁配色/雾色/地标不同 */
-const ZONES = [
-  { name: '🪸 珊瑚回廊', col: 0x2a7a6a, fog: 0x0a2620 },
-  { name: '⚓ 沉船墓地', col: 0x4a4234, fog: 0x141008 },
-  { name: '✨ 星象水道', col: 0x2a3266, fog: 0x080a1e },
-  { name: '🐋 鲸骨王朝', col: 0x5a5448, fog: 0x100c08 },
-];
-const NODE_ZONE = [0, 1, 1, 0, 2, 2, 2, 3, 1, 3, 1, 2, 0, 1, 3, 2, 2, 3, 1, 1, 0, 3, 2, 1, 2, 3, 0, 3, 1, 2, 0, 1, 0, 3, 1, 2, 0, 1, 3, 3, 2, 0, 3];
-const MAZE_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 1], [0, 9], [9, 10], [10, 2], [9, 6], [6, 11], [2, 12], [8, 13], [7, 14], [5, 16], [16, 15], [15, 6], [7, 17], [1, 18], [18, 8], [13, 19], [3, 20], [9, 21], [6, 22], [8, 23], [4, 24], [7, 25], [2, 26], [19, 23], [24, 16], [21, 17], [25, 27], [23, 28], [15, 29], [20, 30], [10, 31], [26, 32], [17, 33], [1, 34], [27, 33], [28, 34], [29, 24], [15, 35], [22, 35], [20, 36], [30, 36], [34, 37], [18, 37], [17, 38], [14, 38], [13, 39], [17, 39], [29, 40], [16, 40], [12, 41], [34, 41], [22, 42], [33, 42]];
-const AIR_NODES = [12, 4];   // 气室(补给氧气)
-const GATES = [   // 潮汐门:潮起潮落定时开合;满月门:仅满月夜开(通往巴别海窟)
-  { a: 1, b: 2, kind: 'tide', phase: 0 },
-  { a: 4, b: 5, kind: 'tide', phase: 2.2 },
-  { a: 7, b: 14, kind: 'moon' },
-];
-const DISC = {   // 死路/中心的发现(迷路奖励)
-  11: { kind: 'mural', flag: 'd_mural', title: '海底壁画', msg: '🖼️ 死路尽头一面壁画:一头鲸与一座灯塔并肩——像在暗示,这两座岛曾经由陆地相连。(世界骨架 · 线索 1/3)' },
-  13: { kind: 'wreck', flag: 'wreck', sb: 18, title: '沉船宝箱', msg: '⚓ 沉船残骸里一只铁箱,锁早锈穿了——金币、旧海图、一枚灯塔徽章。⚡+18' },
-  9:  { kind: 'heart', flag: 'd_heart', title: '潮汐之心', msg: '🫀 迷宫正中,一颗缓缓搏动的巨核悬在水里——古文明留下的"潮汐之心"。原来这些隧道不是天然的:整座星球的海底,是一张刻意铺就的迷宫。(世界骨架 · 线索 2/3)' },
-  14: { kind: 'babel', flag: 'babel', sb: 40, star: true, title: '巴别海窟', msg: '📖 满月之门后,是一间六边形的密室——博尔赫斯的巴别图书馆沉入了海底。架上不是书,是发光的贝壳、珊瑚片、鲸歌的回响。你在这里,读到了整座迷宫的地图。⚡+40 · ⭐+1(世界骨架 · 线索 3/3)' },
-};
-const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标, col=浮标色
-  { n: 0, isle: '收藏之岛', surf: [-338, 180], col: 0x9fe0ff },
-  { n: 3, isle: '蓝色海豚岛', surf: [1225, 1272], col: 0x6ab0d8 },
-  { n: 5, isle: '神秘岛', surf: [-1690, -400], col: 0xff8a4a },
-  { n: 7, isle: '金银岛', surf: [1632, -498], col: 0xe0c040 },
-  { n: 10, isle: '珊瑚岛', surf: [172, 1698], col: 0x2ab0c0 },
-  { n: 16, isle: '暴风雨岛', surf: [-1690, 247], col: 0x8a6ad0 },
-  { n: 15, isle: '黎明踏浪号', surf: [1686, 172], col: 0x6affc0 },
-  { n: 17, isle: '无人生还岛', surf: [-76, -1690], col: 0xc0c0c8 },
-  { n: 18, isle: '泰皮', surf: [772, 1544], col: 0x4a9a4a },
-  { n: 19, isle: '莫罗博士岛', surf: [-1406, -953], col: 0xe0dcd2, cave: true },
-  { n: 20, isle: '蝇王', surf: [-993, -1380], col: 0xd8b46a },
-  { n: 21, isle: '乌托邦', surf: [-1476, 805], col: 0x9fb0c0 },
-  { n: 22, isle: '格列佛', surf: [1360, -1002], col: 0xc23a3a },
-  { n: 23, isle: '侏罗纪公园', surf: [1020, 800], col: 0x9cc46a, cave: true },
-  { n: 24, isle: '一千零一夜', surf: [-1020, 534], col: 0xe8c86a },
-  { n: 25, isle: '花果山', surf: [150, -1142], col: 0xf5c9a0, cave: true },
-  { n: 26, isle: '大观园', surf: [1250, -560], col: 0xe8b8cc },
-  { n: 27, isle: '山海经', surf: [-520, -908], col: 0xc9d8a0 },
-  { n: 28, isle: '赤壁', surf: [700, -1052], col: 0xe8a45e },
-  { n: 29, isle: '兰若寺', surf: [-950, -708], col: 0xa0b0c8, cave: true },
-  { n: 30, isle: '梁山泊', surf: [-1120, -300], col: 0xe8d06a },
-  { n: 31, isle: '伊夫堡', surf: [-130, 1162], col: 0xa8b8d0, cave: true },
-  { n: 32, isle: '绝望岛', surf: [420, 1216], col: 0xd8c89a },
-  { n: 33, isle: '炼狱山', surf: [-1060, 1070], col: 0xccd8f0 },
-  { n: 34, isle: '南塔开特', surf: [120, 702], col: 0xbfe0e8 },
-  { n: 35, isle: '帕拉岛', surf: [-1084, 1272], col: 0x9a7a9a },
-  { n: 36, isle: '梦幻岛', surf: [-500, 1636], col: 0x3a9a4a, cave: true },
-  { n: 37, isle: '画家岛', surf: [1584, 743], col: 0xb85a2e },
-  { n: 38, isle: '雨岛', surf: [620, -1568], col: 0x4a5a6a },
-  { n: 39, isle: '禁闭岛', surf: [-536, -1598], col: 0x5a5a64, cave: true },
-  { n: 40, isle: '风车原野', surf: [-600, 1050], col: 0xe8d8a0 },
-  { n: 41, isle: 'B-612', surf: [1120, 282], col: 0xf2d13c },
-  { n: 42, isle: '体育岛', surf: [-688, 122], col: 0xff6b7e },
-];
-const TUBE_R = 6;
+/* 迷宫拓扑/分区/门/发现点/出入口 → w-maze.js(纯数据模块,顶部 import) */
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
 let causticLight = null, causticTex = null;
