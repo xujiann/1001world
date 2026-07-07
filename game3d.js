@@ -9,6 +9,7 @@ import { Water } from 'three/addons/objects/Water.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES } from './w-config.js?v=5';
@@ -1780,6 +1781,7 @@ if (!MOBILE) {
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
   composer.addPass(new OutputPass());
+  composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
 
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95);
@@ -2735,16 +2737,36 @@ function collectShard(s) {
 /* --- 人物与 NPC --- */
 function makePerson(bodyCol, hatCol, opts = {}) {
   const g = new THREE.Group();
-  const wide = opts.wide || 1, tall = opts.tall || 1;
-  const body = cyl(.5 * wide, .62 * wide, 1.4 * tall, lam(bodyCol)); body.position.y = 1.1 * tall; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.5, 9, 7), lam(0xf2c9a0)); head.position.y = 2.15 * tall; g.add(head);
-  if (opts.hat === 'cone') {
-    const h = new THREE.Mesh(new THREE.ConeGeometry(.55, .7, 8), lam(hatCol)); h.position.y = 2.75 * tall; g.add(h);
-  } else {
-    const h = new THREE.Mesh(new THREE.SphereGeometry(.52, 9, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.3 * tall; g.add(h);
+  const wide = opts.wide || 1, tall = opts.tall || 1, skin = 0xf2c9a0;
+  const body = cyl(.44 * wide, .54 * wide, 1.15 * tall, lam(bodyCol)); body.position.y = 1.42 * tall; g.add(body);   // children[0](供 bob/换色沿用)
+  const limbs = {};
+  for (const s of [-1, 1]) {   // 腿:髋关节可摆
+    const hip = new THREE.Group(); hip.position.set(.2 * wide * s, .82 * tall, 0);
+    const leg = cyl(.15 * wide, .17 * wide, .82 * tall, lam(bodyCol)); leg.position.y = -.41 * tall; hip.add(leg);
+    const foot = box(.22 * wide, .14, .42, M.woodDark); foot.position.set(0, -.82 * tall + .05, .12); hip.add(foot);
+    g.add(hip); limbs[s < 0 ? 'legL' : 'legR'] = hip;
   }
-  if (opts.cane) { const c1 = cyl(.05, .05, 1.8, M.woodDark); c1.position.set(.72, .9, .2); g.add(c1); }
+  for (const s of [-1, 1]) {   // 臂:肩关节可摆
+    const sh = new THREE.Group(); sh.position.set(.52 * wide * s, 1.78 * tall, 0);
+    const arm = cyl(.12 * wide, .14 * wide, .82 * tall, lam(bodyCol)); arm.position.y = -.41 * tall; sh.add(arm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(.13, 6, 5), lam(skin)); hand.position.y = -.82 * tall; sh.add(hand);
+    g.add(sh); limbs[s < 0 ? 'armL' : 'armR'] = sh;
+  }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.48, 12, 9), lam(skin)); head.position.y = 2.28 * tall; g.add(head);
+  for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.075, 6, 5), lam(0x222222)); eye.position.set(.16 * s, 2.33 * tall, .42); g.add(eye); }
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), lam(0xe0b088)); nose.position.set(0, 2.24 * tall, .47); g.add(nose);
+  if (opts.hat === 'cone') { const h = new THREE.Mesh(new THREE.ConeGeometry(.55, .74, 8), lam(hatCol)); h.position.y = 2.92 * tall; g.add(h); }
+  else { const h = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.44 * tall; g.add(h); }
+  if (opts.cane) { const c1 = cyl(.05, .05, 1.9, M.woodDark); c1.position.set(.72, .95, .2); g.add(c1); }
+  g.userData.limbs = limbs;
   return g;
+}
+/* 四肢摆动:走路时手脚交替、静止时轻微呼吸摆 */
+function animLimbs(g, phase, amt) {
+  const L = g.userData.limbs; if (!L) return;
+  const s = Math.sin(phase) * amt;
+  L.legL.rotation.x = s; L.legR.rotation.x = -s;
+  L.armL.rotation.x = -s * .8; L.armR.rotation.x = s * .8;
 }
 const NPC_HUB3 = [14, 24];
 const allNpcs = [];
@@ -4892,6 +4914,7 @@ const MAZE_PORTALS = [   // n=节点索引, isle=浮出海岛, surf=浮出坐标
 const TUBE_R = 6;
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
+let causticLight = null, causticTex = null;
 const gateMeshes = [];
 const _zfog = new THREE.Color();
 const diveGroup = new THREE.Group(); diveGroup.visible = false; scene.add(diveGroup);
@@ -4930,6 +4953,16 @@ const portalBeacons = [];
     ropeGroup.add(g); portalBeacons.push(g);
   }
   diveLight = new THREE.PointLight(0xbfeaff, 0, 70, 1.6); diveLight.visible = false; scene.add(diveLight);
+  /* 水下焦散:自上而下投影一张晃动的光斑贴图(桌面) */
+  if (!MOBILE) {
+    const cc = document.createElement('canvas'); cc.width = cc.height = 256; const cg = cc.getContext('2d');
+    cg.fillStyle = '#000'; cg.fillRect(0, 0, 256, 256); cg.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 46; i++) { const x = Math.random() * 256, y = Math.random() * 256, r = 16 + Math.random() * 40; const grd = cg.createRadialGradient(x, y, 0, x, y, r); grd.addColorStop(0, 'rgba(190,235,255,.55)'); grd.addColorStop(.55, 'rgba(120,200,255,.12)'); grd.addColorStop(1, 'rgba(0,0,0,0)'); cg.fillStyle = grd; cg.beginPath(); cg.arc(x, y, r, 0, 7); cg.fill(); }
+    causticTex = new THREE.CanvasTexture(cc); causticTex.wrapS = causticTex.wrapT = THREE.RepeatWrapping; causticTex.repeat.set(2.2, 2.2);
+    causticLight = new THREE.SpotLight(0xafe4ff, 0, 110, Math.PI / 2.6, .7, 1.1);
+    causticLight.map = causticTex; causticLight.castShadow = true; causticLight.shadow.mapSize.set(512, 512); causticLight.shadow.camera.far = 120;
+    causticLight.visible = false; scene.add(causticLight); scene.add(causticLight.target);
+  }
   /* 观景廊外的巨鲸剪影(周期性掠过玻璃隧道) */
   mazeWhale = new THREE.Group();
   const wbody = new THREE.Mesh(new THREE.SphereGeometry(9, 14, 10), new THREE.MeshBasicMaterial({ color: 0x0a1a26, fog: false })); wbody.scale.set(1, .7, 2.7); mazeWhale.add(wbody);
@@ -5069,6 +5102,7 @@ function enterDive(pi) {
   const n = MAZE_NODES[MAZE_PORTALS[pi].n];
   player.position.set(n[0], n[1], n[2]); vy = 0;
   diveGroup.visible = true; diveLight.visible = true;
+  if (causticLight) causticLight.visible = true;
   ropeGroup.visible = gearOn('rope');
   scene.fog.near = 3; scene.fog.far = gearOn('rope') ? 90 : 46; scene.fog.color.setHex(0x04121c);
   scene.background.setHex(0x04121c);
@@ -5078,6 +5112,7 @@ function enterDive(pi) {
 function surfaceDive(pi) {
   const p = MAZE_PORTALS[pi], [sx, sz] = p.surf;
   diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false;
+  if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden');
   player.position.set(sx, Math.max(height(sx, sz), pierHeight(sx, sz) || 0, 0) + 1.2, sz); vy = 0;
@@ -5133,6 +5168,7 @@ function updateNpcs3(dt) {
       p.y = Math.max(height(p.x, p.z), 0);
     } else { n.phase += dt * 2.2; }
     n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (n.wander && n.wp ? .05 : .02);
+    animLimbs(n.g, n.phase, (n.wander && n.wp) ? .5 : .06);
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
     if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
@@ -5583,6 +5619,21 @@ const player = new THREE.Group();
   cap.position.y = 2.5; player.add(cap);
   const brim = box(.7, .1, .5, lam(0xc0392b)); brim.position.set(0, 2.5, .62); player.add(brim);
   const pack = box(.9, 1.1, .5, lam(0x7a5230)); pack.position.set(0, 1.5, -.62); player.add(pack);
+  const plimbs = {};
+  for (const s of [-1, 1]) {   // 腿
+    const hip = new THREE.Group(); hip.position.set(.22 * s, .78, 0);
+    const leg = cyl(.17, .19, .8, lam(0x2c5578)); leg.position.y = -.4; hip.add(leg);
+    const foot = box(.24, .14, .44, M.woodDark); foot.position.set(0, -.78, .12); hip.add(foot);
+    player.add(hip); plimbs[s < 0 ? 'legL' : 'legR'] = hip;
+  }
+  for (const s of [-1, 1]) {   // 臂
+    const sh = new THREE.Group(); sh.position.set(.6 * s, 1.6, 0);
+    const arm = cyl(.13, .15, .82, lam(0x3b6ea5)); arm.position.y = -.41; sh.add(arm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 5), lam(0xf2c9a0)); hand.position.y = -.82; sh.add(hand);
+    player.add(sh); plimbs[s < 0 ? 'armL' : 'armR'] = sh;
+  }
+  for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.08, 6, 5), lam(0x222222)); eye.position.set(.17 * s, 2.4, .48); player.add(eye); }
+  player.userData.limbs = plimbs;
   lantern = new THREE.PointLight(0xffc978, 0, 22, 2);
   lantern.position.set(0, 2.6, .6); player.add(lantern);
 }
@@ -5886,6 +5937,7 @@ function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
   const t = clock.elapsedTime;
+  let pMoving = false;
 
   /* 海底潜水:自由 3D 游动 + 隧道约束 + 气瓶 + 出口检测 */
   if (diving) {
@@ -5899,12 +5951,17 @@ function loop() {
       player.position.z += (fz * -mz + rz * mx) * sp;
       if (keys[' '] || joy.up) player.position.y += sp;
       if (keys.shift || joy.down) player.position.y -= sp;
-      if (Math.hypot(mx, mz) > .1) faceYaw = camYaw;
+      if (Math.hypot(mx, mz) > .1) { faceYaw = camYaw; pMoving = true; walkPhase += dt * 6; }
     }
     clampToMaze(player.position);
     player.rotation.x = -camPitch * .5;
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
     diveLight.intensity = 2.4;
+    if (causticLight) {   // 焦散光斑自上而下,贴图缓慢漂移
+      causticLight.position.set(player.position.x, player.position.y + 34, player.position.z);
+      causticLight.target.position.set(player.position.x, player.position.y - 6, player.position.z);
+      causticLight.intensity = 2.6; causticTex.offset.x = t * .035; causticTex.offset.y = t * .022;
+    }
     // 气瓶(气室内回充)
     let inAir = false;
     for (const ni of AIR_NODES) { const n = MAZE_NODES[ni]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < TUBE_R + 3) { inAir = true; break; } }
@@ -5957,7 +6014,7 @@ function loop() {
       let dx = (fx * -mz + rx * mx) * sp, dz = (fz * -mz + rz * mx) * sp;
       player.position.x += dx; player.position.z += dz;
       faceYaw = Math.atan2(dx, dz);
-      walkPhase += dt * 10;
+      walkPhase += dt * 10; pMoving = true;
     }
     // 边界
     const pd = Math.hypot(player.position.x, player.position.z);
@@ -6020,6 +6077,7 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
+  animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
 
