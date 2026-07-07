@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -5642,9 +5643,30 @@ const player = new THREE.Group();
   }
   for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.08, 6, 5), lam(0x222222)); eye.position.set(.17 * s, 2.4, .48); player.add(eye); }
   player.userData.limbs = plimbs;
+  player.userData.procMeshes = player.children.filter(c => c.isMesh || c.userData.limbs || c.type === 'Group');   // 程序化可见部件(加载 glTF 后隐藏)
   lantern = new THREE.PointLight(0xffc978, 0, 22, 2);
   lantern.position.set(0, 2.6, .6); player.add(lantern);
 }
+/* --- 玩家 glTF 骨骼模型(RobotExpressive,Three CDN 自带,含骨骼动画;加载失败则沿用程序化模型)--- */
+let playerMixer = null, playerActions = {}, playerAct = '', usingGLTF = false, playerRobot = null;
+function setPlayerAct(name, fade = .22) {
+  if (!playerMixer || playerAct === name || !playerActions[name]) return;
+  const nx = playerActions[name]; nx.reset().fadeIn(fade).play();
+  if (playerActions[playerAct]) playerActions[playerAct].fadeOut(fade);
+  playerAct = name;
+}
+try {
+  new GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+    gltf => {
+      playerRobot = gltf.scene; playerRobot.scale.setScalar(.46); playerRobot.position.y = 0; playerRobot.rotation.y = 0;
+      playerRobot.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      player.add(playerRobot);
+      for (const m of player.userData.procMeshes) m.visible = false;   // 隐藏程序化部件,保留提灯
+      playerMixer = new THREE.AnimationMixer(playerRobot);
+      for (const c of gltf.animations) playerActions[c.name] = playerMixer.clipAction(c);
+      usingGLTF = true; playerAct = 'Idle'; playerActions['Idle'] && playerActions['Idle'].play();
+    }, undefined, () => {/* 加载失败:保留程序化模型 */ });
+} catch (e) {}
 const blob = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3 }));
 blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
@@ -6085,7 +6107,10 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
-  if (swimming || diving) animSwim(player, t * 6.5);
+  if (usingGLTF) {
+    playerMixer.update(dt);
+    setPlayerAct((swimming || diving) ? 'Running' : (pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle'));
+  } else if (swimming || diving) animSwim(player, t * 6.5);
   else animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
@@ -6594,4 +6619,5 @@ if (!MOBILE) {
 loop();
 
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
-  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR };
+  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
+  usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct };
