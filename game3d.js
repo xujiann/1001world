@@ -5456,6 +5456,7 @@ const portalBeacons = [];
     rope.position.copy(mid); rope.quaternion.copy(q); ropeGroup.add(rope);
   });
   for (let i = 0; i < MAZE_NODES.length; i++) {   // 交汇处开阔洞室 + 分区地标
+    if (i === 14) continue;   // 巴别海窟自带六壁书房,不套岩壁球(否则挡死无限回廊)
     const n = MAZE_NODES[i], z = NODE_ZONE[i];
     const cav = new THREE.Mesh(new THREE.SphereGeometry(TUBE_R + 3, 12, 10), zoneMats[z]);
     cav.position.copy(V(i)); diveGroup.add(cav);
@@ -5535,6 +5536,7 @@ const portalBeacons = [];
   /* 巴别海窟(满月门后):博尔赫斯式六边形图书馆——
      五层书架·三十二册书脊 / 名为"灯"的球形果实 / 门厅螺旋梯 / 两侧无限回廊(逐级缩小变暗的错觉) */
   { const n = MAZE_NODES[14], hex = new THREE.Group(); hex.position.set(n[0], n[1], n[2]);
+    hex.add(new THREE.Mesh(new THREE.SphereGeometry(54, 18, 12), new THREE.MeshBasicMaterial({ color: 0x05080f, side: THREE.BackSide, fog: false })));   // 密闭外壳:封住天空透光,让无限回廊没入黑暗
     // 书脊贴图:深底上三十二道随机高矮/色相的窄书脊
     const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 48; const bx2 = bcv.getContext('2d');
     bx2.fillStyle = '#10141c'; bx2.fillRect(0, 0, 256, 48);
@@ -5699,7 +5701,8 @@ function clampToMaze(pos) {
     const d = Math.hypot(px - qx, py - qy, pz - qz);
     if (d < best) { best = d; cx = qx; cy = qy; cz = qz; nearEdge = ei; }
   }
-  const R = TUBE_R - 1.3;
+  const n14b = MAZE_NODES[14];
+  const R = (Math.hypot(px - n14b[0], py - n14b[1], pz - n14b[2]) < 10) ? 7.4 : TUBE_R - 1.3;   // 巴别书房内活动范围放宽
   if (best > R) { const f = R / best; pos.x = cx + (px - cx) * f; pos.y = cy + (py - cy) * f; pos.z = cz + (pz - cz) * f; }
   return best;
 }
