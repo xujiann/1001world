@@ -825,5 +825,137 @@ export function makeNIContent(C) {
       const wl = new THREE.PointLight(0xffc888, 0, 90, 2); wl.position.set(gx - 12, height(gx - 12, gz + 8) + 3, gz + 8); wl.userData.pow = 18; nightLamps.push(wl); scene.add(wl);   // 守望者的窗灯
     },
   },
+
+  gunkan: {
+    name: '废矿海城', en: 'The Concrete Ship', icon: '🏭', theme: 'gunkan',
+    desc: '组合岛:军舰岛的混凝土森林 × 海底两万里的深处',
+    ferryMsg: '🏭 废矿海城到了。五千人在这六公顷上活过——如今只有海浪替他们关窗',
+    lore: {
+      gunkwall: { icon: '🌊', color: '#4a545e', title: '防波堤', en: 'The Seawall', hint: '像一艘搁浅的军舰',
+        desc: '从海上望,整座岛就是一艘抛锚的灰色军舰——混凝土堤坝围出的轮廓骗过了不止一艘真军舰。堤上挡了百年台风的墙皮剥落处,露出一行小孩的粉笔字:"浪再大,我们楼里见。"' },
+      gunkflats: { icon: '🏢', color: '#5a6068', title: '九层公寓', en: 'Building No.30', hint: '钢筋混凝土的祖母',
+        desc: '1916 年落成,钢筋混凝土高层的老祖母。巅峰时全岛每公顷五千人,挤过全世界任何地方——走廊晾衣绳还拴在锈栏杆上,某扇窗台摆着一只碗,像随时有人回来吃饭。' },
+      gunkschool: { icon: '🏫', color: '#6a7078', title: '天台操场', en: 'The Rooftop School', hint: '看不见一棵树的童年',
+        desc: '楼顶围着铁丝网的小操场——全岛没有土,孩子们在混凝土上跑圈长大。留存的毕业作文里,有个孩子写的题目是:《我想踩一次泥土》。老师批语:会的。' },
+      gunkshaft: { icon: '⛏️', color: '#3e444c', title: '竖井口', en: 'The Shaft', hint: '海底之下,还有一座城',
+        desc: '罐笼井直落海面之下六百米——矿工在海底挖了几十年的煤,巷道网比岛上的楼道还密。老矿工都说,挖到最深处能听见"邻居"的动静:海的另一侧,好像也有谁在凿壁。' },
+      gunkkey: { icon: '🔑', color: '#6a5a42', title: '钥匙板', en: 'The Key Board', hint: '1974 年 4 月',
+        desc: '关矿的通告贴出后,全岛三个月撤空。传达室的钥匙板上挂满钥匙,每一把都端端正正写着门牌号——没人带走家门钥匙,好像只是集体出了趟远门。' },
+    },
+    spots: [[-6, 34, 'gunkwall'], [4, -6, 'gunkflats'], [14, 6, 'gunkschool'], [-16, -12, 'gunkshaft'], [22, -18, 'gunkkey']],
+    npcs: [
+      { dx: -10, dz: 14, name: '回来的老矿工', body: 0x4a4e56, hat: 0x33363c, opts: { wide: 1.12 },
+        lines: ['我在这楼里出生,在井下成年。撤岛那年我二十三。', '五十年了,我带着孙子的照片回来——给老邻居们看看。', '井下六百米不黑,心里没底才黑。'] },
+      { dx: 16, dz: -22, name: '废墟摄影师', body: 0x5a5a52, hat: 0x3e3e38, opts: { tall: 1.03 },
+        lines: ['我拍的不是废墟,是刚刚离开的人。', '你看那窗台的碗、那把伞、那块黑板——他们没走远。', '混凝土会记事,比胶片久。'] },
+    ],
+    build: (gx, gz) => {
+      const hts = [14, 9, 12, 7, 15, 10, 8, 11];   // 混凝土楼群:高低错落
+      for (let i = 0; i < 8; i++) {
+        const bx2 = gx - 14 + (i % 4) * 10, bz2 = gz - 14 + Math.floor(i / 4) * 13, bh2 = height(bx2, bz2), H = hts[i];
+        const bld = box(7, H, 8, lam(i % 2 ? 0x6a7076 : 0x5e646c)); bld.position.set(bx2, bh2 + H / 2, bz2); scene.add(bld); cirObs.push({ x: bx2, z: bz2, r: 5 });
+        for (let w = 0; w < 3; w++) { const strip = box(5.6, .7, .15, lam(0x22262c)); strip.position.set(bx2, bh2 + 2.5 + w * (H / 3.6), bz2 + 4.06); scene.add(strip); } }
+      for (let i = 0; i < 5; i++) { const a = -.5 + i * .25;   // 防波堤弧
+        const sw = box(12, 2.6, 2.4, lam(0x757b82)); sw.position.set(gx - 4 + Math.cos(a) * 34, height(gx, gz + 34) + 1, gz + 20 + Math.sin(a) * 22); sw.rotation.y = -a; scene.add(sw); }
+      const kx = gx - 16, kz = gz - 12, kh = height(kx, kz);   // 矿井架:四腿+天轮
+      for (const [ox, oz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) { const lg = box(.3, 11, .3, lam(0x4a3e34)); lg.position.set(kx + ox * (1 - .04), kh + 5.5, kz + oz); lg.rotation.z = ox * .04; scene.add(lg); }
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.4, .2, 6, 14), lam(0x3a3e44)); wheel.position.set(kx, kh + 11.6, kz); scene.add(wheel); cirObs.push({ x: kx, z: kz, r: 2.6 });
+      const cable = cyl(.05, .05, 10.6, lam(0x22262a), 4); cable.position.set(kx, kh + 6, kz); scene.add(cable);
+      const sx2 = gx + 14, sz2 = gz + 6, sh3 = height(sx2, sz2);   // 天台操场:矮楼+铁丝网杆+旗
+      const sch = box(9, 5, 8, lam(0x707880)); sch.position.set(sx2, sh3 + 2.5, sz2); scene.add(sch); cirObs.push({ x: sx2, z: sz2, r: 5.5 });
+      for (let i = 0; i < 6; i++) { const p2 = cyl(.06, .06, 1.6, lam(0x3a3e44), 4); p2.position.set(sx2 - 4 + (i % 3) * 4, sh3 + 5.8, sz2 + (i < 3 ? -3.8 : 3.8)); scene.add(p2); }
+      const fp = cyl(.08, .1, 4, M.woodDark, 5); fp.position.set(sx2 + 3.6, sh3 + 7, sz2); scene.add(fp);
+      const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshLambertMaterial({ color: 0xd8d4c8, side: THREE.DoubleSide })); fl.position.set(sx2 + 4.4, sh3 + 8.6, sz2); scene.add(fl);
+      for (const [ox, oz] of [[-4, -6], [18, -20]]) { const wl = new THREE.PointLight(0xffe2a8, 0, 70, 2); wl.position.set(gx + ox, height(gx + ox, gz + oz) + 6, gz + oz); wl.userData.pow = 14; nightLamps.push(wl); scene.add(wl); }
+    },
+  },
+  soco: {
+    name: '真名植物岛', en: 'The Isle of True Names', icon: '🌳', theme: 'soco',
+    desc: '组合岛:索科特拉的异形植物 × 地海的真名法术',
+    ferryMsg: '🌳 真名植物岛到了。这里的树长得不像地球——因为它们记得更早的名字',
+    lore: {
+      socodragon: { icon: '🌳', color: '#8c3a2a', title: '龙血树王', en: 'The Elder Dragon Tree', hint: '千年的伞,龙的血',
+        desc: '树冠撑成一把千年的伞,枝杈密得雨落不到根。割开树皮,渗出的树脂红得像血——古代商人拿它当"龙血"卖遍地中海,染过小提琴,也入过药。树不解释,树只是继续红。' },
+      socobottle: { icon: '🌸', color: '#b06a7a', title: '瓶子树坡', en: 'The Bottle Trees', hint: '沙漠玫瑰',
+        desc: '满坡的树把树干鼓成瓶肚,里面存着整个旱季的水;最旱的时候,反而开出满树粉花。旅人叫它沙漠玫瑰。采香人说:攒够了苦水,才开得起花——这话他是对着树说的,像在说自己。' },
+      sococave: { icon: '🪨', color: '#7a7062', title: '风化岩洞', en: 'The Trader Cave', hint: '五种文字的到此一游',
+        desc: '海风把石灰岩掏成了洞。洞壁上刻着希腊文、南阿拉伯文、婆罗米文、埃塞俄比亚文和一种没人认得的字——两千年间的水手都在这躲过风,顺手留名。最深处那行没人认得的,刻得最深。' },
+      socoincense: { icon: '🕯️', color: '#a8863a', title: '乳香台', en: 'The Frankincense Altar', hint: '两千年的一缕烟',
+        desc: '石台上的乳香树脂在炭火上冒烟冒了两千年,买家从罗马排到长安。烟很直,风都绕着走。采香人守着火,说他家干这行八十代:"香是树的话。烧它,是替树把话说完。"' },
+      soconame: { icon: '🗿', color: '#4a5a66', title: '真名石', en: 'The Naming Stone', hint: '万物皆有更老的名字',
+        desc: '一块青石立在龙血树王的影子里,面上无字。缄默的名师说,万物出生前都领过一个真名——石头听得见,人多半忘了怎么听。把耳朵贴上去,等风穿过树冠的那一刻……' },
+    },
+    spots: [[0, 4, 'socodragon'], [20, 18, 'socobottle'], [-24, 12, 'sococave'], [16, -16, 'socoincense'], [-6, -8, 'soconame']],
+    npcs: [
+      { dx: 12, dz: -12, name: '采香人', body: 0x8a6a3a, hat: 0x6a5028, opts: { wide: 1.06 },
+        lines: ['我家割乳香割了八十代。树认得我家的刀。', '割三刀,歇一年——跟树讲道理,树才跟你讲收成。', '香是树的话。烧它,是替树把话说完。'] },
+      { dx: -12, dz: -4, name: '缄默的名师', body: 0x4a5a6a, hat: 0x36424e, opts: { tall: 1.06, cane: true },
+        lines: ['……', '名字不是标签,是绳子——系着你,也系着它。', '知其真名,是为了相守,不是为了驱使。这一课,大多数法师毕不了业。'] },
+    ],
+    build: (gx, gz) => {
+      const dtree = (tx, tz, s) => { const th = height(tx, tz);   // 龙血树:伞形树冠
+        const trunk = cyl(.5 * s, .9 * s, 4 * s, lam(0x8a7458), 7); trunk.position.set(tx, th + 2 * s, tz); scene.add(trunk); cirObs.push({ x: tx, z: tz, r: 1 * s });
+        const can = new THREE.Mesh(new THREE.SphereGeometry(3.4 * s, 10, 7, 0, 6.283, 0, Math.PI / 2.6), lam(0x3a6e46)); can.scale.y = .5; can.position.set(tx, th + 4 * s, tz); scene.add(can); };
+      dtree(gx, gz + 4, 1.7); dtree(gx - 10, gz + 14, 1.1); dtree(gx + 12, gz + 10, 1.2); dtree(gx - 4, gz + 24, 1);
+      for (let i = 0; i < 3; i++) { const bx2 = gx + 16 + i * 5, bz2 = gz + 16 + (i % 2) * 5, bh2 = height(bx2, bz2);   // 瓶子树
+        const bt = cyl(.5, 1.5, 3.4, lam(0x9a8a72), 8); bt.position.set(bx2, bh2 + 1.7, bz2); scene.add(bt);
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(.8, 7, 5), lam(0xc88a9a)); tuft.position.set(bx2, bh2 + 3.8, bz2); scene.add(tuft); }
+      const cvx = gx - 24, cvz = gz + 12, cvh = height(cvx, cvz);   // 风化岩洞
+      const cave = new THREE.Mesh(new THREE.SphereGeometry(4.2, 12, 8, 0, 6.283, 0, Math.PI / 2.3), new THREE.MeshLambertMaterial({ color: 0x8a8072, side: THREE.DoubleSide }));
+      cave.scale.y = .72; cave.position.set(cvx, cvh, cvz); scene.add(cave);
+      const ax2 = gx + 16, az2 = gz - 16, ah2 = height(ax2, az2);   // 乳香台:石台+一缕直烟
+      const alt = cyl(1.3, 1.6, 1.2, M.stone, 9); alt.position.set(ax2, ah2 + .6, az2); scene.add(alt);
+      const smoke = cyl(.16, .05, 5, new THREE.MeshBasicMaterial({ color: 0xcfd4d8, transparent: true, opacity: .35, depthWrite: false }), 6);
+      smoke.position.set(ax2, ah2 + 3.8, az2); scene.add(smoke);
+      const ember2 = new THREE.PointLight(0xff9a4a, 0, 50, 2); ember2.position.set(ax2, ah2 + 1.6, az2); ember2.userData.pow = 12; nightLamps.push(ember2); scene.add(ember2);
+      const ns = box(1.6, 2.6, .7, lam(0x4a5a66)); ns.position.set(gx - 6, height(gx - 6, gz - 8) + 1.3, gz - 8); ns.rotation.y = .3; scene.add(ns); cirObs.push({ x: gx - 6, z: gz - 8, r: 1.2 });   // 真名石
+    },
+  },
+  skell: {
+    name: '静默之岩', en: 'The Silent Rock', icon: '🕯️', theme: 'skell',
+    desc: '组合岛:斯凯利格的海上修道院 × 瓦尔登湖的简朴',
+    ferryMsg: '🕯️ 静默之岩到了。上山六百级,请把话留在山脚',
+    lore: {
+      skellsteps: { icon: '🪜', color: '#6a6a62', title: '六百级石阶', en: 'The Six Hundred Steps', hint: '没有栏杆的朝圣路',
+        desc: '一千四百年前的修士徒手在岩壁上凿出六百级台阶,没有栏杆,一侧是海。石阶被脚掌磨出了凹——每一级的凹,都是同一个动作重复了一千四百年。上山的人不聊天:喘,就是这条路的祷词。' },
+      skellcell: { icon: '🛖', color: '#7a7468', title: '蜂巢石屋', en: 'The Beehive Cells', hint: '干石头咬干石头',
+        desc: '六座蜂巢形石屋蹲在崖顶平台上,不用一撮灰浆,全靠石头咬石头,层层收拢成穹顶——雨水一滴渗不进,一站一千四百年。屋里一张石床、一个壁龛。修士的全部家当,比你此刻背包里的还少。' },
+      skellgarden: { icon: '🌱', color: '#4a7a4a', title: '巴掌菜园', en: 'The Terrace Garden', hint: '种豆得豆',
+        desc: '崖顶背风处一小片梯田,土是一篮一篮从山下背上来的。种豆、萝卜和一点药草——湖畔来客看见豆田眼睛就亮了:"我在瓦尔登也种豆。锄豆的时候,豆也在锄我。"' },
+      skellbook: { icon: '📜', color: '#8a7452', title: '写字石桌', en: 'The Scriptorium Stone', hint: '风是最老的读者',
+        desc: '一方被磨平的石桌,风口处压着镇石。修士们在这里抄了几个世纪的书——羊皮上一笔一画,窗外浪碎千堆。桌角有两行不同年代的刻字,竟是同一句话:"简单些,再简单些。"' },
+      skellbird: { icon: '🐧', color: '#3a4a5a', title: '海鹦崖', en: 'The Puffin Ledges', hint: '穿僧袍的小鸟',
+        desc: '崖缝里住满海鹦——白胸黑背橙嘴,像一群穿僧袍的小胖修士。它们不怕人,歪头看你,看完继续叼鱼。湖畔来客记道:"此地飞鸟着装,比波士顿的绅士更得体。"' },
+    },
+    spots: [[-8, 30, 'skellsteps'], [2, -2, 'skellcell'], [14, 6, 'skellgarden'], [-10, 2, 'skellbook'], [-2, -24, 'skellbird']],
+    npcs: [
+      { dx: 8, dz: -8, name: '缄默修士', body: 0x5a5248, hat: 0x3e382e, opts: { wide: 1.02 },
+        lines: ['(他向你点头,指了指海,又指了指天。)', '(他在石板上写:话省下来,就成了别的东西。)', '(他递给你一杯接的雨水。很甜。)'] },
+      { dx: -12, dz: 14, name: '湖畔来客', body: 0x4a6a52, hat: 0x35503c, opts: { tall: 1.04 },
+        lines: ['我的湖结冰了,我来看看海。', '大多数人过着平静的绝望生活——这岛上的人不是。他们过的是平静的平静生活。', '我到林中去,是因为我希望谨慎地生活。他们到岩上来,大概也是。'] },
+    ],
+    build: (gx, gz) => {
+      const cellAt = (cx2, cz2, s) => { const chh = height(cx2, cz2);   // 蜂巢石屋:叠涩穹顶
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(1.9 * s, 10, 8, 0, 6.283, 0, Math.PI / 2.1), lam(0x736d60)); dome.scale.y = 1.15; dome.position.set(cx2, chh + .2, cz2); scene.add(dome); cirObs.push({ x: cx2, z: cz2, r: 1.9 * s });
+        const door = box(.8 * s, 1.1 * s, .3, lam(0x2a2620)); door.position.set(cx2, chh + .7, cz2 + 1.8 * s); scene.add(door); };
+      cellAt(gx + 2, gz - 2, 1.1); cellAt(gx + 7, gz - 6, 1); cellAt(gx - 3, gz - 8, .95); cellAt(gx + 3, gz - 12, 1); cellAt(gx - 6, gz - 14, .9); cellAt(gx + 9, gz - 14, .85);
+      for (let i = 0; i < 12; i++) { const t = i / 12;   // 六百级石阶(示意 12 级,沿南坡蜿蜒)
+        const stx = gx - 8 + Math.sin(t * 2.4) * 6, stz = gz + 34 - t * 30;
+        const st = box(2.4, .5, 1.4, M.stone); st.position.set(stx, height(stx, stz) + .3, stz); st.rotation.y = Math.cos(t * 2.4) * .4; scene.add(st); }
+      const gx2 = gx + 14, gz2 = gz + 6, gh2 = height(gx2, gz2);   // 巴掌菜园:梯田+豆架
+      const bed = box(6, .4, 4, lam(0x4a6a3a)); bed.position.set(gx2, gh2 + .25, gz2); scene.add(bed);
+      for (let i = 0; i < 4; i++) { const pole = cyl(.05, .05, 1.8, M.woodDark, 4); pole.position.set(gx2 - 2 + i * 1.4, gh2 + 1.2, gz2); scene.add(pole); }
+      const tbl = box(2.2, .3, 1.4, M.stone); tbl.position.set(gx - 10, height(gx - 10, gz + 2) + 1, gz + 2); scene.add(tbl);   // 写字石桌
+      const legT = box(.5, 1, .5, M.stone); legT.position.set(gx - 10, height(gx - 10, gz + 2) + .5, gz + 2); scene.add(legT);
+      { const pts = []; const bx3 = gx - 2, bz3 = gz - 26, bh3 = height(bx3, bz3);   // 海鹦崖:鸟点云
+        for (let i = 0; i < 60; i++) pts.push(bx3 - 12 + rnd() * 24, bh3 + 2 + rnd() * 10, bz3 - 8 + rnd() * 12);
+        const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        scene.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xf0eee6, size: .45, transparent: true, opacity: .9 }))); }
+      const cross = box(.3, 2.2, .3, M.stone), arm = box(1.3, .3, .3, M.stone);   // 山顶石十字
+      const chx = gx, chz = gz - 4, chh2 = height(chx, chz);
+      cross.position.set(chx, chh2 + 3.4, chz - 3); arm.position.set(chx, chh2 + 3.9, chz - 3); scene.add(cross); scene.add(arm);
+      const cl = new THREE.PointLight(0xffe8c0, 0, 60, 2); cl.position.set(gx + 2, height(gx + 2, gz - 2) + 3, gz - 2); cl.userData.pow = 12; nightLamps.push(cl); scene.add(cl);   // 石屋烛光
+    },
+  },
 };
 }
