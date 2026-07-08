@@ -5432,6 +5432,8 @@ let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = n
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
 let causticLight = null, causticTex = null;
 let abyssLight = null, MAZE_FLOW = null, flowPts = null, nearEdge = 0;
+let babelBook = null, babelDust = null;
+const babelLamps = [];
 const jellies = [];
 const gateMeshes = [];
 const _zfog = new THREE.Color();
@@ -5530,12 +5532,72 @@ const portalBeacons = [];
     grp.add(bars); diveGroup.add(grp);
     gateMeshes.push({ cfg: g, bars, mid, openY: TUBE_R * 2 + 2 });
   }
-  /* 巴别海窟(满月门后的六边形密室) */
+  /* 巴别海窟(满月门后):博尔赫斯式六边形图书馆——
+     五层书架·三十二册书脊 / 名为"灯"的球形果实 / 门厅螺旋梯 / 两侧无限回廊(逐级缩小变暗的错觉) */
   { const n = MAZE_NODES[14], hex = new THREE.Group(); hex.position.set(n[0], n[1], n[2]);
-    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; const wall = box(9, 12, .6, new THREE.MeshStandardMaterial({ color: 0x1e2a3a, roughness: 1, side: THREE.BackSide })); wall.position.set(Math.cos(a) * 8, 0, Math.sin(a) * 8); wall.rotation.y = -a + Math.PI / 2; hex.add(wall);
-      for (let s = 0; s < 3; s++) { const shelf = box(7, .3, .8, new THREE.MeshBasicMaterial({ color: [0x6ffcff, 0xffd76a, 0xd98ac8][s], fog: false })); shelf.position.set(Math.cos(a) * 7.2, -3 + s * 3, Math.sin(a) * 7.2); shelf.rotation.y = -a + Math.PI / 2; hex.add(shelf); } }
-    const lamp = new THREE.PointLight(0x9fd0ff, 1.6, 40, 2); hex.add(lamp);
-    hex.add(new THREE.Mesh(new THREE.OctahedronGeometry(1.4, 0), new THREE.MeshBasicMaterial({ color: 0xbfe4ff, fog: false })));
+    // 书脊贴图:深底上三十二道随机高矮/色相的窄书脊
+    const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 48; const bx2 = bcv.getContext('2d');
+    bx2.fillStyle = '#10141c'; bx2.fillRect(0, 0, 256, 48);
+    const r7 = mulberry32(1001);
+    for (let i = 0; i < 32; i++) { const bw2 = 5 + r7() * 3, x = i * 8 + 1, h2 = 30 + r7() * 14;
+      bx2.fillStyle = `hsl(${(r7() * 360) | 0},${35 + r7() * 30}%,${34 + r7() * 22}%)`; bx2.fillRect(x, 48 - h2, bw2, h2);
+      bx2.fillStyle = 'rgba(255,220,150,.5)'; bx2.fillRect(x, 48 - h2 + 3, bw2, 1); }
+    const spineTex = new THREE.CanvasTexture(bcv);
+    const woodM = new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: .8 });
+    // 主室:六壁(±X 两面留门),每壁五层书架
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * 6.283, doorway = (i === 0 || i === 3);
+      const wx5 = Math.cos(a) * 8, wz5 = Math.sin(a) * 8, ry = -a + Math.PI / 2;
+      if (doorway) {   // 门框:两柱一楣,门外是"无限"
+        for (const s of [-1, 1]) { const post = box(1.2, 12, .8, woodM); post.position.set(wx5 + Math.sin(a) * s * 3.4, 0, wz5 - Math.cos(a) * s * 3.4); post.rotation.y = ry; hex.add(post); }
+        const lintel = box(8.2, 1.4, .8, woodM); lintel.position.set(wx5, 5.3, wz5); lintel.rotation.y = ry; hex.add(lintel);
+        continue;
+      }
+      const wall = box(9, 12, .6, new THREE.MeshStandardMaterial({ color: 0x161c28, roughness: 1 })); wall.position.set(wx5, 0, wz5); wall.rotation.y = ry; hex.add(wall);
+      for (let s = 0; s < 5; s++) {
+        const sy = -4.6 + s * 2.15;
+        const board = box(7.4, .22, .9, woodM); board.position.set(Math.cos(a) * 7.3, sy, Math.sin(a) * 7.3); board.rotation.y = ry; hex.add(board);
+        const spines = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.6), new THREE.MeshBasicMaterial({ map: spineTex, fog: false }));
+        spines.position.set(Math.cos(a) * 7.62, sy + 1, Math.sin(a) * 7.62); spines.rotation.y = ry + Math.PI; hex.add(spines);
+      }
+    }
+    // 地面/穹顶:六角磨石地 + 暗顶
+    const flr = new THREE.Mesh(new THREE.CircleGeometry(8.4, 6), new THREE.MeshPhongMaterial({ color: 0x1a2230, shininess: 80 })); flr.rotation.x = -Math.PI / 2; flr.rotation.z = Math.PI / 6; flr.position.y = -6; hex.add(flr);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(5.6, .08, 6, 6), new THREE.MeshBasicMaterial({ color: 0x8a6a2a, fog: false })); rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI / 6; rim.position.y = -5.9; hex.add(rim);
+    const ceil2 = new THREE.Mesh(new THREE.CircleGeometry(8.4, 6), new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 1 })); ceil2.rotation.x = Math.PI / 2; ceil2.rotation.z = Math.PI / 6; ceil2.position.y = 6; hex.add(ceil2);
+    // 名为"灯"的球形果实:每室横放两枚,暖光呼吸
+    for (const s of [-1, 1]) {
+      const wire = cyl(.03, .03, 2.2, woodM, 4); wire.position.set(s * 3.2, 4.9, 0); hex.add(wire);
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(.55, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe0a8, fog: false })); fruit.position.set(s * 3.2, 3.6, 0); hex.add(fruit);
+      const fl3 = new THREE.PointLight(0xffd9a0, 1.1, 26, 2); fl3.position.set(s * 3.2, 3.6, 0); hex.add(fl3);
+      babelLamps.push({ mesh: fruit, light: fl3, ph: s });
+    }
+    // 门厅螺旋梯(-Z 侧):深不见底、高不见顶
+    { const sc = new THREE.Group(); sc.position.set(0, 0, 5.2);
+      const col2 = cyl(.34, .34, 12.4, woodM, 8); sc.add(col2);
+      for (let k = 0; k < 18; k++) { const st = box(2.1, .16, .8, woodM); const aa = k * .62; st.position.set(Math.cos(aa) * 1.25, -5.8 + k * .68, Math.sin(aa) * 1.25); st.rotation.y = -aa; sc.add(st); }
+      hex.add(sc); }
+    // 中央「总目之书」:悬浮翻开的书,缓缓旋转
+    { babelBook = new THREE.Group();
+      for (const s of [-1, 1]) { const page = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.05), new THREE.MeshBasicMaterial({ color: 0xf5ecd2, fog: false, side: THREE.DoubleSide })); page.rotation.z = s * .42; page.rotation.x = -.2; page.position.x = s * .68; babelBook.add(page); }
+      const spine2 = box(.14, .1, 1.05, M.gold); babelBook.add(spine2);
+      const halo = new THREE.PointLight(0xfff2cc, 1.3, 18, 2); halo.position.y = .6; babelBook.add(halo);
+      babelBook.position.y = -.6; hex.add(babelBook); }
+    // 两侧「无限回廊」:逐级缩小、变暗的六边形门洞,消失在雾里
+    for (const dir of [-1, 1]) for (let k = 1; k <= 4; k++) {
+      const s2 = Math.pow(.78, k), dim = Math.pow(.62, k), dx6 = dir * (10.5 + k * 8.2 * s2);
+      const fm = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x2a2018).multiplyScalar(dim), roughness: .9 });
+      for (const s of [-1, 1]) { const p2 = box(1.1 * s2, 11.6 * s2, .7 * s2, fm); p2.position.set(dx6, 0, s * 3.4 * s2); hex.add(p2); }
+      const l2 = box(.7 * s2, 1.3 * s2, 7.6 * s2, fm); l2.position.set(dx6, 5.1 * s2, 0); hex.add(l2);
+      for (const s of [-1, 1]) { const strip = new THREE.Mesh(new THREE.PlaneGeometry(6.4 * s2, .5 * s2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xc8a86a).multiplyScalar(dim), fog: false })); strip.rotation.y = Math.PI / 2; strip.position.set(dx6 + dir * 3.6 * s2, s * 1.6 * s2, 0); hex.add(strip); }
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(.32 * s2, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffe0a8).multiplyScalar(Math.max(dim, .18)), fog: false })); dot.position.set(dx6, 3.4 * s2, 0); hex.add(dot);
+    }
+    // 金色微尘:字母在暗处漂浮
+    { const DN = 70, dp = new Float32Array(DN * 3), r8 = mulberry32(888);
+      for (let i = 0; i < DN; i++) { dp[i * 3] = (r8() - .5) * 13; dp[i * 3 + 1] = (r8() - .5) * 10; dp[i * 3 + 2] = (r8() - .5) * 13; }
+      const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+      babelDust = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xd8b86a, size: .14, transparent: true, opacity: .75, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      hex.add(babelDust); }
     diveGroup.add(hex); }
   /* 深渊竖井:星球之脐(暗色巨缆没入地核 + 幽蓝搏动) */
   { const n = MAZE_NODES[43];
@@ -6641,6 +6703,9 @@ function loop() {
     }
     for (const jf of jellies) { jf.position.y = jf.userData.by + Math.sin(t * .9 + jf.userData.ph) * 1.4; const ps = 1 + Math.sin(t * 2.2 + jf.userData.ph) * .18; jf.children[0].scale.set(ps, 1, ps); }
     if (abyssLight) abyssLight.intensity = 1 + Math.sin(t * 1.1) * .6;
+    if (babelBook) { babelBook.rotation.y = t * .35; babelBook.position.y = -.6 + Math.sin(t * .8) * .35; }
+    for (const bl of babelLamps) { const br2 = 1 + Math.sin(t * 1.4 + bl.ph * 2) * .18; bl.light.intensity = 1.1 * br2; bl.mesh.scale.setScalar(.9 + br2 * .12); }
+    if (babelDust) babelDust.rotation.y = t * .04;
     // 气瓶(气室内回充)
     let inAir = false;
     for (const ni of AIR_NODES) { const n = MAZE_NODES[ni]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < TUBE_R + 3) { inAir = true; break; } }
