@@ -52,6 +52,7 @@ export const THEMES = {
   dawntreader: { tempo: 78, wave: 'sine', scale: [0, 2, 4, 7, 9, 11, 12], base: 262, dens: .46, pad: true, vol: .76 },
   rainisle:  { tempo: 52, wave: 'sine', scale: [0, 2, 3, 5, 7, 8], base: 139, dens: .3, pad: true, vol: .66 },
   shutter:   { tempo: 46, wave: 'sawtooth', scale: [0, 1, 3, 6, 7, 9], base: 104, dens: .28, pad: true, vol: .58 },
+  capital:   { tempo: 54, wave: 'sine', scale: [0, 2, 3, 7, 8, 12], base: 175, dens: .3, pad: true, vol: .72 },
 };
 
 /* 海洋文学带故事线(纯数据):每岛一条支线,挂在 lore 卡上,完成得 SB+⭐,列入航海日志 */
