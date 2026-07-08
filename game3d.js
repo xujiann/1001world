@@ -2184,6 +2184,14 @@ function updateDayNight(t) {
 
 /* --- 地形网格 --- */
 const TER = 4000, SEG = MOBILE ? 190 : 300;
+/* 视觉着地高度:按地形网格双线性采样,与渲染三角面贴合(防人物浮空/陷入) */
+function heightMesh(x, z) {
+  const st = TER / SEG, hx = (x + TER / 2) / st, hz = (z + TER / 2) / st;
+  const ix = Math.floor(hx), iz = Math.floor(hz), fx = hx - ix, fz = hz - iz;
+  const x0 = ix * st - TER / 2, z0 = iz * st - TER / 2;
+  const h00 = height(x0, z0), h10 = height(x0 + st, z0), h01 = height(x0, z0 + st), h11 = height(x0 + st, z0 + st);
+  return h00 * (1 - fx) * (1 - fz) + h10 * fx * (1 - fz) + h01 * (1 - fx) * fz + h11 * fx * fz;
+}
 {
   const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
   g.rotateX(-Math.PI / 2);
@@ -2301,21 +2309,21 @@ const clouds = [];
   // 蓬松云形贴图:多团柔和白斑叠成不规则云廓(底平顶鼓),Sprite 单张即像一朵云
   const CW = 200, CH = 120, cc = document.createElement('canvas'); cc.width = CW; cc.height = CH; const cx = cc.getContext('2d');
   const blob = (x, y, r, a) => { const g = cx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,' + a + ')'); g.addColorStop(.7, 'rgba(255,255,255,' + (a * .42) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.fill(); };
-  for (let i = 0; i < 7; i++) blob(28 + i * 24, 84, 32, .5);        // 底部一排(平底)
-  for (let i = 0; i < 5; i++) blob(42 + i * 29, 64, 40, .5);        // 中层
-  blob(66, 50, 30, .46); blob(108, 44, 37, .5); blob(150, 52, 28, .46);   // 顶部鼓包
+  for (let i = 0; i < 7; i++) blob(28 + i * 24, 84, 32, .78);        // 底部一排(平底)
+  for (let i = 0; i < 5; i++) blob(42 + i * 29, 64, 40, .74);        // 中层
+  blob(66, 50, 30, .66); blob(108, 44, 37, .72); blob(150, 52, 28, .66);   // 顶部鼓包
   const cloudTex = new THREE.CanvasTexture(cc);
-  const NC = MOBILE ? 14 : 22;
+  const NC = MOBILE ? 18 : 30;
   for (let i = 0; i < NC; i++) {
     const grp = new THREE.Group();
     const tp = rnd();   // 云型:<.5 积云(少而大) / <.82 层云(扁平铺展) / 其余 卷云(高·稀薄)
     let puffs, size, spX, spY, spZ, alt, op, flat;
-    if (tp < .5) { puffs = 3 + (rnd() * 3 | 0); size = 44 + rnd() * 26; spX = size * .9; spY = size * .22; spZ = size * .7; alt = 150 + rnd() * 70; op = .92; flat = .62; }
-    else if (tp < .82) { puffs = 4 + (rnd() * 3 | 0); size = 54 + rnd() * 24; spX = size * 1.7; spY = size * .12; spZ = size * 1.1; alt = 120 + rnd() * 40; op = .82; flat = .4; }
-    else { puffs = 3 + (rnd() * 3 | 0); size = 30 + rnd() * 16; spX = size * 2.6; spY = size * .16; spZ = size * .5; alt = 245 + rnd() * 90; op = .5; flat = .4; }
+    if (tp < .5) { puffs = 5 + (rnd() * 3 | 0); size = 88 + rnd() * 46; spX = size * 1.05; spY = size * .24; spZ = size * .8; alt = 265 + rnd() * 100; op = .92; flat = .62; }
+    else if (tp < .82) { puffs = 6 + (rnd() * 3 | 0); size = 110 + rnd() * 40; spX = size * 1.8; spY = size * .12; spZ = size * 1.2; alt = 235 + rnd() * 60; op = .82; flat = .42; }
+    else { puffs = 4 + (rnd() * 3 | 0); size = 62 + rnd() * 26; spX = size * 2.8; spY = size * .16; spZ = size * .5; alt = 390 + rnd() * 90; op = .5; flat = .42; }
     for (let j = 0; j < puffs; j++) {
-      const py = (rnd() - .5) * spY, shade = py < 0 ? .86 : 1;   // 底部略压暗 → 体积感
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: true, color: new THREE.Color(shade, shade * .99, shade * 1.03) }));
+      const py = (rnd() - .5) * spY, shade = py < 0 ? .8 : 1;   // 底部略压暗 → 体积感
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: false, color: new THREE.Color(shade, shade, shade) }));
       const s = size * (.8 + rnd() * .5); sp.scale.set(s, s * flat, 1);
       sp.position.set((rnd() - .5) * spX, py, (rnd() - .5) * spZ);
       grp.add(sp);
@@ -5815,7 +5823,7 @@ function updateNpcs3(dt) {
           n.phase += dt * 9;
         }
       }
-      p.y = Math.max(height(p.x, p.z), 0);
+      p.y = Math.max(heightMesh(p.x, p.z), 0);
     } else { n.phase += dt * 2.2; }
     n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (n.wander && n.wp ? .05 : .02);
     animLimbs(n.g, n.phase, (n.wander && n.wp) ? .5 : .06);
@@ -6801,7 +6809,7 @@ function loop() {
     }
   }
   /* 重力 / 游泳(桥面可行走) */
-  let gh = height(player.position.x, player.position.z);
+  let gh = heightMesh(player.position.x, player.position.z);   // 视觉网格采样,贴合脚下三角面
   let bh = null;
   if (!diving) {
     bh = bridgeHeight(player.position.x, player.position.z);
