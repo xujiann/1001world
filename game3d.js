@@ -6723,40 +6723,42 @@ try {
 let camYaw = Math.PI, camPitch = .42, camDist = 15;
 const keys = {};
 let joy = { on: false, vx: 0, vy: 0 }, photoMode = false;
+/* 键盘/触屏共用的功能开关(P 照片 · F 滤镜 · K 观星 · V 蓝图幻影) */
+function togglePhoto() {
+  photoMode = !photoMode;
+  for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
+  if (bokehPass) bokehPass.enabled = photoMode;   // 景深仅照片模式
+  if (!photoMode) { renderer.domElement.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
+  else toast(isTouch ? '📷 照片模式:景深虚化开启(🎞️ 换滤镜,再点 📷 退出)' : '📷 照片模式:景深虚化开启(F 切换滤镜,P 退出)');
+  syncMobMenu();
+}
+function nextFilter() {
+  photoFilter = (photoFilter + 1) % PHOTO_FILTERS.length;
+  renderer.domElement.style.filter = PHOTO_FILTERS[photoFilter][1];
+  toast('🎞️ 滤镜:' + PHOTO_FILTERS[photoFilter][0]);
+}
+function toggleStarGaze() {
+  starGaze = !starGaze;
+  toast(starGaze ? (curDA >= .32 ? '🔭 观星模式已开(夜幕降临后仰望星空)' : '🔭 观星模式:仰望星空,星座之名浮现') : '观星模式已关');
+}
+function tryPhantom() {
+  if (Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) > 175) return;
+  const bp = [1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length;
+  if (!bp) { toast('📐 手里还没有蓝图——去神殿、法庭、运动场和塔基找找'); return; }
+  unjPhantomT = 6; toast('📐 蓝图幻影:这座城本该的样子……几秒后,又只剩海风。'); blip(880);
+}
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 'escape') { closeModals(); return; }
   if (k === 'j') { modalOpen && !$('journal').classList.contains('hidden') ? closeModals() : openJournal(); return; }
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
-  if (k === 'p') {   // 照片模式:隐藏全部 UI
-    photoMode = !photoMode;
-    for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
-    if (bokehPass) bokehPass.enabled = photoMode;   // 景深仅照片模式
-    if (!photoMode) { cv.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
-    else toast('📷 照片模式:景深虚化开启(F 切换滤镜,P 退出)');
-    return;
-  }
-  if (k === 'f' && photoMode) {   // 照片滤镜
-    photoFilter = (photoFilter + 1) % PHOTO_FILTERS.length;
-    cv.style.filter = PHOTO_FILTERS[photoFilter][1];
-    toast('🎞️ 滤镜:' + PHOTO_FILTERS[photoFilter][0]);
-    return;
-  }
+  if (k === 'p') { togglePhoto(); return; }
+  if (k === 'f' && photoMode) { nextFilter(); return; }
   if (k === 'm') { toggleBigMap(); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
-  if (k === 'v') {   // 蓝图幻影(未竟之都)
-    if (Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) > 175) return;
-    const bp = [1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length;
-    if (!bp) { toast('📐 手里还没有蓝图——去神殿、法庭、运动场和塔基找找'); return; }
-    unjPhantomT = 6; toast('📐 蓝图幻影:这座城本该的样子……几秒后,又只剩海风。'); blip(880);
-    return;
-  }
+  if (k === 'v') { tryPhantom(); return; }   // 蓝图幻影(未竟之都)
   if (k === 'q' && diving) { fireSonar(); return; }   // 声呐探路
-  if (k === 'k') {   // 观星模式:夜间显示星座名
-    starGaze = !starGaze;
-    toast(starGaze ? (curDA >= .32 ? '🔭 观星模式已开(夜幕降临后仰望星空)' : '🔭 观星模式:仰望星空,星座之名浮现') : '观星模式已关');
-    return;
-  }
+  if (k === 'k') { toggleStarGaze(); return; }   // 观星模式:夜间显示星座名
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
   if (k === ' ') { e.preventDefault(); keys[' '] = true; if (!diving && grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
@@ -6795,8 +6797,43 @@ function renderTalk(text) {
 hintEl.addEventListener('click', tryInteract);
 $('btnAct').addEventListener('click', () => { modalOpen ? closeModals() : tryInteract(); });
 
-const isTouch = matchMedia('(pointer: coarse)').matches;
+const isTouch = matchMedia('(pointer: coarse)').matches || location.hash.includes('touch');
 if (isTouch) $('btnAct').classList.remove('hidden');
+/* 移动端快捷菜单:⋯ 展开 海图/观星/照片(+滤镜)/蓝图幻影;潜水时收起、改出 📡 声呐钮 */
+let mobMenuOpen = false, mobBtns = {};
+function syncMobMenu() {
+  if (!mobBtns.wrap) return;
+  mobBtns.wrap.style.display = diving ? 'none' : 'flex';
+  mobBtns.pane.style.display = mobMenuOpen ? 'flex' : 'none';
+  mobBtns.filter.style.display = photoMode ? '' : 'none';
+  mobBtns.phantom.style.display = Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) < 175 ? '' : 'none';
+  mobBtns.sonar.style.display = diving ? '' : 'none';
+}
+if (isTouch) {
+  const mk = (sym, title) => { const b = document.createElement('button'); b.textContent = sym; b.title = title;
+    Object.assign(b.style, { width: '54px', height: '54px', borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', background: 'rgba(16,34,52,.82)', fontSize: '23px', touchAction: 'manipulation', flex: 'none' }); return b; };
+  const wrap = document.createElement('div'); wrap.id = 'mobMenu';
+  Object.assign(wrap.style, { position: 'fixed', right: '28px', bottom: '188px', zIndex: '31', display: 'flex', flexDirection: 'row-reverse', gap: '10px', alignItems: 'center' });
+  const tog = mk('⋯', '更多功能');
+  const pane = document.createElement('div');
+  Object.assign(pane.style, { display: 'none', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '246px', gap: '10px' });
+  const bMap = mk('🗺️', '海图'), bStar = mk('🔭', '观星'), bPhoto = mk('📷', '照片模式'), bFilm = mk('🎞️', '滤镜'), bPh = mk('📐', '蓝图幻影');
+  pane.append(bPh, bFilm, bPhoto, bStar, bMap);
+  wrap.append(tog, pane); document.body.appendChild(wrap);
+  const bSonar = mk('📡', '声呐探路');
+  Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
+  document.body.appendChild(bSonar);
+  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar };
+  bSonar.addEventListener('click', () => fireSonar());
+  tog.addEventListener('click', () => { mobMenuOpen = !mobMenuOpen; syncMobMenu(); blip(640); });
+  bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleBigMap(); });
+  bStar.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleStarGaze(); });
+  bPhoto.addEventListener('click', togglePhoto);
+  bFilm.addEventListener('click', nextFilter);
+  bPh.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); tryPhantom(); });
+  setInterval(syncMobMenu, 1000);
+  syncMobMenu();
+}
 const stick = $('stick'), knob = $('stickKnob');
 let stickBase = null, dragCam = null;
 addEventListener('pointerdown', e => {
@@ -6943,7 +6980,9 @@ function loop() {
     nearPortal = -1;
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
     const dh = $('diveHint');
-    if (dh) dh.textContent = nearPortal >= 0 ? `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : `${ZONES[diveZone].name} · 空格上浮 Shift下潜 · Q 声呐 · 找浮标按 E 出水`;
+    if (dh) dh.textContent = nearPortal >= 0
+      ? (isTouch ? `⬆️ 点 👀 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面`)
+      : (isTouch ? `${ZONES[diveZone].name} · ⬆️⬇️钮浮潜 · 📡 声呐 · 找浮标点 👀 出水` : `${ZONES[diveZone].name} · 空格上浮 Shift下潜 · Q 声呐 · 找浮标按 E 出水`);
   }
   /* 移动 */
   if (!modalOpen && !flight && !diving) {
