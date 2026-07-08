@@ -5254,6 +5254,23 @@ for (const s of NISLES) {
   const sgn = makeSign(c.name, 6.5, '#1e2430', '#dfe8f0'); const sgz = gz + (gz > 0 ? -s.r * .6 : s.r * .6);
   sgn.position.set(gx + 10, height(gx + 10, sgz) + 4, sgz); scene.add(sgn);
 }
+/* 启动页「岛屿一览」:由九馆 CATS + WORLDS + 海上传奇自动生成,与游戏数据同步 */
+{
+  const el = document.getElementById('isleList');
+  if (el) {
+    const row = (i, n, d) => `<div class="iRow"><span>${i}</span><b>${esc(n)}</b><i>${esc(d)}</i></div>`;
+    let h = '<div class="iHd">🐋 收藏之岛(主岛九大馆)</div>';
+    h += Object.values(CATS).map(c => row(c.icon, c.name, `${c.tot} ${c.unit}的完整收藏`)).join('');
+    h += '<div class="iHd">⛵ 渡口通往的世界(文学与传奇之岛)</div>';
+    h += WORLDS.filter(w2 => w2.key !== 'xiyou').map(w2 => row(w2.icon, w2.name, w2.desc || w2.note || '')).join('');
+    h += '<div class="iHd">🌊 海上另有传奇</div>';
+    h += [['🐺', '幽灵号', '海狼拉森的黑帆猎船(北海)'], ['🎣', '"我们在这儿"号', '《怒海余生》的纽芬兰渔船(东北渔场)'],
+      ['🎩', '福克先生的邮轮', '八十天环游地球(东海)'], ['🍾', '格兰特船长的瓶中信', '37°11′——在南海漂着'],
+      ['🕊️', '大鹏', '主岛栖石,乘之扶摇环游诸岛'], ['🤿', '海底隧道迷宫', '蓝洞潜入,串联 33 座岛的世界骨架']]
+      .map(([i, n, d]) => row(i, n, d)).join('');
+    el.innerHTML = h;
+  }
+}
 /* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
 const NIQ_BY_LORE = {}, NIQ_BY_FLAG = {};
 for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }, NI_QUESTS[k]); NIQ_BY_LORE[q.lore] = q; NIQ_BY_FLAG[q.flag] = q; }
