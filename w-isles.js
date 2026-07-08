@@ -644,5 +644,186 @@ export function makeNIContent(C) {
       for (let i = 0; i < 6; i++) { const gr = box(.8, 1.2 + (i % 3) * .3, .18, M.stone); gr.position.set(gx + 15 + (i % 3) * 2.2, height(gx + 15, gz + 16) + .6, gz + 14 + Math.floor(i / 3) * 2.4); gr.rotation.z = (i % 2 ? .06 : -.08); scene.add(gr); }   // 风暴墓园碑群
     },
   },
+
+  /* ================= 岛屿组合第一批:现实地貌 × 文学主题 ================= */
+  gala: {
+    name: '进化群岛', en: 'The Evolving Isles', icon: '🐢', theme: 'gala',
+    desc: '组合岛:加拉帕戈斯的火山生态 × 博物学家的目光',
+    ferryMsg: '🐢 进化群岛到了。请轻声——这里的每一只动物,都比你的家谱古老',
+    lore: {
+      galacrater: { icon: '🌋', color: '#5a4636', title: '熔岩龟原', en: 'The Tortoise Lava Field', hint: '与巨龟同龄的石头',
+        desc: '黑色熔岩一直流进海里,凝成了今天的滩。几只巨龟在上面走,每一步要想很久——它们有的比岛上任何一块凉下来的石头都老。守护员说:在这里,"慢",是一种资历。' },
+      galastation: { icon: '🔭', color: '#3a6a5a', title: '观察站', en: 'The Observation Post', hint: '一张吊床和一架望远镜',
+        desc: '木屋、吊床、一架黄铜望远镜,桌上摊着写了一半的笔记:"它们不怕人。不是因为勇敢,是因为这里从来没有值得怕的东西。"落款没有名字,只画了一只雀。' },
+      galafinch: { icon: '🐦', color: '#8a6a3a', title: '十三种喙', en: 'Thirteen Beaks', hint: '同一种雀,十三把钥匙',
+        desc: '谷地里落着十三群雀,喙形各不相同:有的粗如钳,有的细如针,有的弯成钩。老博物学家说,它们的祖先是同一群——被十三座岛各自磨了一万年。"造物无需奇迹,时间就是奇迹。"' },
+      galaiguana: { icon: '🦎', color: '#3a4a4a', title: '海鬣蜥礁', en: 'The Marine Iguana Reef', hint: '会潜水的蜥蜴',
+        desc: '一排黑色的海鬣蜥趴在黑色的礁石上晒太阳,朝海的方向打喷嚏——那是在排盐。全世界只有这里的蜥蜴学会了下海吃海藻。第一个见到它们的人写道:"丑得像黑暗里的小鬼。"它们不在乎。' },
+      galalab: { icon: '⚗️', color: '#6a5a6a', title: '废弃的育种棚', en: 'The Abandoned Breeding Shed', hint: '有人想替时间赶路',
+        desc: '半塌的棚子,生锈的铁笼,一本发霉的记录册:"第 41 代,仍不稳定。进化太慢了,我来替它赶路。"最后一页只有守护员补的一行字:"他被请离了这座岛。时间不接受代办。"(西北海上,据说有一座岛走得更远……)' },
+    },
+    spots: [[6, 20, 'galacrater'], [-18, -8, 'galastation'], [22, -14, 'galafinch'], [-26, 18, 'galaiguana'], [30, 8, 'galalab']],
+    npcs: [
+      { dx: -14, dz: -12, name: '老博物学家', body: 0x5a6a52, hat: 0x3e4a38, opts: { tall: 1.04 },
+        lines: ['我随船来了五周,住下来三十年——船先走的。', '别问"这是什么鸟"。问:"它为什么长成这样?"', '物种不是被造好的,是被海风、饥饿和一万年,慢慢商量出来的。'] },
+      { dx: 18, dz: 16, name: '生态守护员', body: 0x3a6a5a, hat: 0x2a4a40, opts: { wide: 1.08 },
+        lines: ['规矩只有一条:看,别碰。', '巨龟走得慢?它们赶的路,以万年计。', '西北海上有座岛,有人想当上帝。我们只想当读者。'] },
+    ],
+    build: (gx, gz) => {
+      const tort = (tx, tz, s) => { const th = height(tx, tz);   // 巨龟:壳半球+头
+        const sh = new THREE.Mesh(new THREE.SphereGeometry(1.6 * s, 10, 8, 0, 6.283, 0, Math.PI / 2), lam(0x4a4636)); sh.position.set(tx, th + .3, tz); sh.scale.y = .62; scene.add(sh);
+        const hd = cyl(.28 * s, .34 * s, 1 * s, lam(0x5a5644), 6); hd.rotation.z = 1.2; hd.position.set(tx + 1.5 * s, th + .55, tz); scene.add(hd); cirObs.push({ x: tx, z: tz, r: 1.7 * s }); };
+      tort(gx + 4, gz + 22, 1.2); tort(gx + 12, gz + 26, .9); tort(gx - 2, gz + 30, 1);
+      for (let i = 0; i < 6; i++) { const ix = gx - 26 + (i % 3) * 3, iz = gz + 16 + Math.floor(i / 3) * 3;   // 海鬣蜥:黑礁上的小黑蜥
+        const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4), lam(0x2e3236)); rk.position.set(ix, height(ix, iz) + .5, iz); rk.rotation.set(rnd() * 3, rnd() * 3, 0); scene.add(rk);
+        const ig = box(1.1, .25, .3, lam(0x22262a)); ig.position.set(ix, height(ix, iz) + 1.3, iz); ig.rotation.y = rnd() * 6.28; scene.add(ig); }
+      const sx = gx - 18, sz = gz - 8, sh2 = height(sx, sz);   // 观察站木屋+望远镜
+      const hut = box(6, 3.4, 5, lam(0x6a5a42)); hut.position.set(sx, sh2 + 1.7, sz); scene.add(hut); cirObs.push({ x: sx, z: sz, r: 3.6 });
+      const tri = cyl(.1, .14, 2.6, M.woodDark, 5); tri.position.set(sx + 4.4, sh2 + 1.3, sz + 1); scene.add(tri);
+      const scope = cyl(.16, .2, 1.6, lam(0xb08d4a), 8); scope.rotation.z = .7; scope.position.set(sx + 4.4, sh2 + 2.8, sz + 1); scene.add(scope);
+      const bx2 = gx + 30, bz2 = gz + 8, bh2 = height(bx2, bz2);   // 废棚:塌了半边
+      const shed = box(5, 2.6, 4, lam(0x5a525a)); shed.position.set(bx2, bh2 + 1.3, bz2); shed.rotation.z = .1; scene.add(shed);
+      const cage = box(1.4, 1.4, 1.4, lam(0x3a3e42)); cage.position.set(bx2 + 3.4, bh2 + .7, bz2 + 1); scene.add(cage);
+      for (let i = 0; i < 4; i++) { const cac = cyl(.4, .5, 2.6 + (i % 2), lam(0x4a7a4a), 7); const cx2 = gx - 6 + i * 7, cz3 = gz - 24;   // 仙人掌
+        cac.position.set(cx2, height(cx2, cz3) + 1.4, cz3); scene.add(cac); }
+      const g = new THREE.PointLight(0xffd08a, 0, 120, 2); g.position.set(sx, sh2 + 4, sz); g.userData.pow = 20; nightLamps.push(g); scene.add(g);
+    },
+  },
+  moai: {
+    name: '星历仙岛', en: 'The Star-Calendar Isle', icon: '🗿', theme: 'moai',
+    desc: '组合岛:复活节岛的巨像 × 蓬莱仙山的凝望',
+    ferryMsg: '🗿 星历仙岛到了。七尊石像已经等了一千年——等的未必是你,但你来了',
+    lore: {
+      moairow: { icon: '🗿', color: '#6a6a62', title: '七贤台', en: 'The Seven Watchers', hint: '背海而立的巨像',
+        desc: '七尊巨石像在石台上一字排开,一律背对大海,面朝岛内——雕它们的人说,祖先要看护的是活人,不是浪。它们的眼窝早空了,可你站在视线里,还是会不自觉地站直一点。' },
+      moaiquarry: { icon: '⛏️', color: '#5a5248', title: '半成的巨像', en: 'The Unfinished Giant', hint: '停在一半的凿痕',
+        desc: '采石场里躺着一尊没凿完的巨像,脸已成形,背还长在山体里。凿子就扔在旁边,像工匠只是去吃了顿饭。没有人知道那天发生了什么——只知道从那以后,再没有石像站起来。' },
+      moaidan: { icon: '⚱️', color: '#8a6a3a', title: '海客的丹炉', en: 'The Alchemist Furnace', hint: '两千年的炉火',
+        desc: '一尊三足青铜炉蹲在石台边,炉膛里的灰还是温的。传说有位方士替皇帝出海找不死药,船队到了这里就没再走。药炼没炼成没人知道——但炉边石头上刻着一行小字:"药不在海上。"' },
+      moaigaze: { icon: '🌌', color: '#3a4266', title: '凝望之谜', en: 'Who Gazes at Whom', hint: '夜里顺着视线望去',
+        desc: '守像人说,七尊石像的头顶各悬一粒星珠,夜里连成天上的勺子。可若顺着他们的视线望去,七道目光交于夜空同一点——那里,什么星都没有。是星历?是航标?还是一句没人听懂的遗言?' },
+      moaicrane: { icon: '🦩', color: '#c8ccc8', title: '鹤栖石', en: 'The Crane Rock', hint: '仙山的信使',
+        desc: '两只白鹤常年栖在坡顶的青石上,不怕人,也不理人。方士说它们是蓬莱来的信使,守像人说它们只是两只鹤。你看着它们单腿立在暮色里——忽然觉得,两种说法讲的是同一件事。' },
+    },
+    spots: [[0, 28, 'moairow'], [26, 20, 'moaiquarry'], [-16, 4, 'moaidan'], [8, 38, 'moaigaze'], [-8, -26, 'moaicrane']],
+    npcs: [
+      { dx: 10, dz: -2, name: '守像人', body: 0x6a5a4a, hat: 0x4a3e32, opts: { wide: 1.1 },
+        lines: ['他们不是看你。他们是替看不见的人,看着你。', '每尊像立起来,要一百人拉一年。值不值?你去问立像的人——哦,他们都成灰了。', '夜里来。夜里,他们头顶的星会亮。'] },
+      { dx: -14, dz: 10, name: '不肯说名字的方士', body: 0x8a8494, hat: 0x6a6478, opts: { tall: 1.05, cane: true },
+        lines: ['两千年前我替皇帝找不死药。船停在这里,就没再走。', '这些石像比我早到几百年——他们也在找,也没找到。', '后来我懂了:蓬莱不可至。凝望,即是抵达。'] },
+    ],
+    build: (gx, gz) => {
+      const ahx = gx, ahz = gz + 34, ah = height(ahx, ahz);   // 七贤台:南岸石台+七尊巨像(背海、面朝岛内)
+      const plat = box(30, 1.6, 6, lam(0x5a564e)); plat.position.set(ahx, ah + .8, ahz); scene.add(plat);
+      for (let i = 0; i < 7; i++) { const mx = ahx - 12 + i * 4;
+        const body2 = box(2.1, 5 + (i % 3) * .4, 1.5, lam(0x6a665e)); body2.position.set(mx, ah + 4.1, ahz); scene.add(body2);
+        const head = box(1.6, 2.3, 1.3, lam(0x74706a)); head.position.set(mx, ah + 7.8 + (i % 3) * .4, ahz - .12); head.rotation.x = .06; scene.add(head);
+        const nose = box(.34, 1.1, .3, lam(0x7a766e)); nose.position.set(mx, ah + 7.7 + (i % 3) * .4, ahz - .8); scene.add(nose);
+        const dip = [[0, 0], [1.2, .5], [2.2, .2], [3.2, .6], [4.4, .4], [5.2, 1.1], [6.4, 1.4]][i];   // 头顶星珠:连成北斗
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), new THREE.MeshBasicMaterial({ color: 0xaFd8ff, transparent: true, opacity: .5, fog: false, blending: THREE.AdditiveBlending, depthWrite: false }));
+        orb.position.set(mx - 1.2 + dip[0] * .4, ah + 10.6 + dip[1], ahz); scene.add(orb); }
+      cirObs.push({ x: ahx, z: ahz, r: 15 });
+      const qx = gx + 26, qz = gz + 20, qh = height(qx, qz);   // 采石场:躺倒的半成像
+      const lay = box(6.5, 1.6, 2.2, lam(0x625e56)); lay.position.set(qx, qh + .8, qz); lay.rotation.y = .6; lay.rotation.z = .06; scene.add(lay);
+      const lhd = box(2, 1.5, 1.8, lam(0x6e6a62)); lhd.position.set(qx + 3.4, qh + .9, qz + 2.2); lhd.rotation.y = .6; scene.add(lhd);
+      const dx2 = gx - 16, dz2 = gz + 4, dh2 = height(dx2, dz2);   // 丹炉:三足青铜+炉火
+      const cald = cyl(1.3, 1, 1.8, lam(0x6a5a30), 10); cald.position.set(dx2, dh2 + 1.6, dz2); scene.add(cald); cirObs.push({ x: dx2, z: dz2, r: 1.6 });
+      for (let i = 0; i < 3; i++) { const leg = cyl(.14, .18, 1.2, lam(0x584a28), 6); const a = i * 2.09; leg.position.set(dx2 + Math.cos(a) * .9, dh2 + .6, dz2 + Math.sin(a) * .9); scene.add(leg); }
+      const ember = new THREE.PointLight(0xff8a3a, 0, 60, 2); ember.position.set(dx2, dh2 + 2.2, dz2); ember.userData.pow = 16; nightLamps.push(ember); scene.add(ember);
+      const crx = gx - 8, crz = gz - 26, crh = height(crx, crz);   // 鹤栖石:青石+两只白鹤
+      const bld = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2), lam(0x5a6a66)); bld.position.set(crx, crh + 1, crz); scene.add(bld); cirObs.push({ x: crx, z: crz, r: 2.2 });
+      for (const [ox, oz] of [[-.6, .4], [.9, -.3]]) {
+        const cb = new THREE.Mesh(new THREE.SphereGeometry(.42, 8, 6), lam(0xf0eee8)); cb.scale.set(1.25, .9, .8); cb.position.set(crx + ox, crh + 3.4, crz + oz); scene.add(cb);
+        const neck = cyl(.06, .07, .9, lam(0xf0eee8), 5); neck.rotation.z = .5; neck.position.set(crx + ox + .45, crh + 3.9, crz + oz); scene.add(neck);
+        const leg2 = cyl(.03, .03, 1.2, lam(0x3a3632), 4); leg2.position.set(crx + ox, crh + 2.6, crz + oz); scene.add(leg2); }
+    },
+  },
+  fogjail: {
+    name: '雾中牢岛', en: 'The Fog Penitentiary', icon: '🔦', theme: 'fogjail',
+    desc: '组合岛:恶魔岛的铁窗 × 禁闭岛的迷雾',
+    ferryMsg: '🔦 雾中牢岛到了。灯塔的光扫过来——你是来调查的,还是被调查的?',
+    lore: {
+      fogcell: { icon: '🛏️', color: '#4a4e56', title: 'D 区 14 号牢房', en: 'Cell 14, Block D', hint: '被子叠得太整齐了',
+        desc: '牢门敞着,被子叠成豆腐块,墙上用指甲刻满"正"字——数到第 4383 天停了。枕头底下压着半张纸:"你数过自己的日子吗?数过的话,你和我,谁在里面?"' },
+      fogfile: { icon: '🗂️', color: '#5a5244', title: '档案室', en: 'The Records Room', hint: '三份 14 号档案',
+        desc: '铁皮柜里翻出三份关于 14 号的卷宗:一份写"越狱成功,下落不明";一份写"游泳溺亡,遗体未获";一份盖着红章——"查无此人"。三份档案的经办签名,笔迹一模一样。' },
+      foglight: { icon: '🗼', color: '#8a8478', title: '灯塔', en: 'The Lighthouse', hint: '塔顶只有一面镜子',
+        desc: '西海岸最老的灯塔,一晚一晚替海雾数着船。你爬到塔顶,发现灯室里没有灯——只有一面很旧的镜子,对着你。光,是从你身后来的。' },
+      fogyard: { icon: '⛓️', color: '#3e4248', title: '放风场', en: 'The Exercise Yard', hint: '规章第一条',
+        desc: '空荡荡的水泥场,篮筐锈成了褐色。墙上的规章还认得出第一条:"你有权保持沉默。"底下有人用石子补了一行:"你确定你行使过吗?还是说,沉默的这些年,都算?"' },
+      fogescape: { icon: '🛶', color: '#5a4a3a', title: '雨衣筏残片', en: 'The Raincoat Raft', hint: '1962 年 6 月的夜',
+        desc: '礁石缝里卡着几块缝在一起的雨衣胶布——有人用五十件雨衣做了一只筏子,趁雾划了出去。官方说他们淹死了。可每年 6 月,监狱长办公室都会收到一张没有署名的明信片。' },
+    },
+    spots: [[-6, -10, 'fogcell'], [10, 2, 'fogfile'], [24, -20, 'foglight'], [-20, 12, 'fogyard'], [-2, 30, 'fogescape']],
+    npcs: [
+      { dx: 4, dz: 14, name: '老看守', body: 0x4a505a, hat: 0x32363e, opts: { wide: 1.12 },
+        lines: ['监狱早关了,我看守的是"关过人"这件事。', '我数过:进来 14 个,出去 13 个。少的那个……我记不清是谁了。', '雾大的晚上别靠近灯塔。不是危险——是你会想留下。'] },
+      { dx: 22, dz: -14, name: '灯塔管理员', body: 0x6a6a62, hat: 0x4e4e46, opts: { tall: 1.03 },
+        lines: ['灯我擦了三十年。你问哪盏?……你上去过?', '这岛上每个人都觉得别人才是囚犯。包括我。包括你。', '光扫过去的时候别回头——回头的人,档案里都多了一页。'] },
+    ],
+    build: (gx, gz) => {
+      const mx = gx - 4, mz = gz - 8, mh = height(mx, mz);   // 监狱主楼:混凝土+铁窗
+      const main = box(16, 8, 9, lam(0x707068)); main.position.set(mx, mh + 4, mz); scene.add(main); cirObs.push({ x: mx, z: mz, r: 9 });
+      const wing = box(8, 6, 7, lam(0x686860)); wing.position.set(mx - 11, mh + 3, mz + 2); scene.add(wing); cirObs.push({ x: mx - 11, z: mz + 2, r: 5 });
+      for (let i = 0; i < 6; i++) { const bar = box(.9, 1.3, .12, lam(0x22262c)); bar.position.set(mx - 6.5 + i * 2.6, mh + 5.4, mz + 4.56); scene.add(bar); }
+      const lx = gx + 24, lz = gz - 20, lh = height(lx, lz);   // 灯塔:白身红顶
+      const lt = cyl(1.4, 2, 12, lam(0xe8e4da), 10); lt.position.set(lx, lh + 6, lz); scene.add(lt); cirObs.push({ x: lx, z: lz, r: 2.2 });
+      const cap = cyl(1.7, 1.7, 1.6, lam(0xa03a2e), 10); cap.position.set(lx, lh + 12.8, lz); scene.add(cap);
+      const beam = new THREE.PointLight(0xfff2cc, 0, 260, 1.6); beam.position.set(lx, lh + 12.5, lz); beam.userData.pow = 34; nightLamps.push(beam); scene.add(beam);
+      const wx = gx - 20, wz = gz + 12, wh = height(wx, wz);   // 放风场:围栏水泥场
+      const yard = box(14, .3, 12, lam(0x7a7a72)); yard.position.set(wx, wh + .2, wz); scene.add(yard);
+      for (let i = 0; i < 8; i++) { const p = cyl(.08, .08, 2.6, lam(0x3a3e44), 5); p.position.set(wx - 7 + (i % 4) * 4.66, wh + 1.3, wz + (i < 4 ? -6 : 6)); scene.add(p); }
+      const tx = gx + 8, tz = gz + 20, th = height(tx, tz);   // 瞭望塔
+      for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const lg = cyl(.14, .16, 6, M.woodDark, 5); lg.position.set(tx + ox, th + 3, tz + oz); scene.add(lg); }
+      const cab = box(3, 2, 3, lam(0x5a5a52)); cab.position.set(tx, th + 6.8, tz); scene.add(cab); cirObs.push({ x: tx, z: tz, r: 1.8 });
+      for (let i = 0; i < 5; i++) { const fog2 = new THREE.Mesh(new THREE.PlaneGeometry(22, 14),   // 低雾片
+        new THREE.MeshBasicMaterial({ color: 0xcdd4da, transparent: true, opacity: .1, depthWrite: false, side: THREE.DoubleSide }));
+        const fx2 = gx - 30 + rnd() * 60, fz2 = gz - 30 + rnd() * 60;
+        fog2.rotation.x = -Math.PI / 2; fog2.position.set(fx2, height(fx2, fz2) + 2.2 + rnd() * 1.5, fz2); scene.add(fog2); }
+    },
+  },
+  kilda: {
+    name: '风暴孤岛', en: 'The Last Evacuation', icon: '🌬️', theme: 'kilda',
+    desc: '组合岛:圣基尔达的孤绝 × 鲁滨逊的守望',
+    ferryMsg: '🌬️ 风暴孤岛到了。两千年的炊烟在 1930 年熄了——只剩风、海鸟,和一个不肯走的人',
+    lore: {
+      kildastreet: { icon: '🏚️', color: '#5a5a52', title: '主街', en: 'The Street', hint: '十六户人家的一排石屋',
+        desc: '全岛唯一的一条街:十六座石屋肩并肩弯成一道弧,一半已经没了屋顶。1930 年 8 月 29 日清晨,最后三十六个人在各家壁炉上放了一把燕麦、一本翻开的圣经,锁上门,上了船。钥匙,都留在了锁眼里。' },
+      kildacleit: { icon: '🪨', color: '#6a6458', title: '石仓群', en: 'The Cleitean', hint: '一千四百座石冢',
+        desc: '满山坡都是乌龟壳一样的小石屋——储鸟肉、储蛋、储泥炭的"石仓",全岛一千四百多座。没有灰浆,全靠石头咬石头,两千年不倒。风从缝里过,像有人在很轻地吹口哨。' },
+      kildacliff: { icon: '🐦', color: '#4a5a6a', title: '千鸟崖', en: 'The Fowler Cliffs', hint: '不列颠最高的海崖',
+        desc: '四百米的绝壁直插进浪里,几万只海鸟贴着崖面盘旋,叫声盖过风。岛民曾赤脚缒绳下崖掏蛋捕鸟——男孩的成人礼,是单脚立在崖顶那块探空的"少年石"上。悬崖不原谅失误,所以这里没人失误。' },
+      kildamail: { icon: '📮', color: '#8a6a4a', title: '圣基尔达邮件船', en: 'The St Kilda Mailboat', hint: '木盒+浮囊,寄给全世界',
+        desc: '岛民的邮政:把信装进掏空的木盒,拴上一只羊皮浮囊,扔进海里,潮流会把它带去苏格兰——十有三四,真能送到。滩头正躺着一只没寄出的:里面是最后一批居民的信。要替他们寄出去吗?' },
+      kildahearth: { icon: '🔥', color: '#4a4238', title: '最后的炉灶', en: 'The Last Hearth', hint: '烧了两千年的火',
+        desc: '岛上的火种从不熄灭——邻里之间借火续火,一续两千年。撤离那天早上,每家都任炉火自己烧完。这座灶的灰,是全岛最后凉下来的。守望者每天来看一眼,说不是想点燃它,"是想陪陪它"。' },
+    },
+    spots: [[-4, 2, 'kildastreet'], [16, -14, 'kildacleit'], [4, -30, 'kildacliff'], [-8, 34, 'kildamail'], [8, 4, 'kildahearth']],
+    npcs: [
+      { dx: -12, dz: 8, name: '不肯走的守望者', body: 0x5a5248, hat: 0x3e3830, opts: { wide: 1.1 },
+        lines: ['全岛撤走那天,我躲进了石仓。船开远了我才出来——从此岛是我的,我也是岛的。', '你问我孤独吗?城市里的人才是漂流者,我可是在家。', '海鸟三万,石屋十六,风一种——这份家当,够我守一辈子。'] },
+      { dx: 10, dz: -10, name: '海鸟学者', body: 0x4a5a6a, hat: 0x36424e, opts: { tall: 1.02 },
+        lines: ['我来数塘鹅,一数数了九年。数清的那天,大概就舍不得走了。', '暴风鹱认得他——守望者一上崖,鸟群就让出一条道。', '人走了,鸟回来了。你说这算失去,还是归还?'] },
+    ],
+    build: (gx, gz) => {
+      for (let i = 0; i < 6; i++) {   // 主街:弧形一排石屋,半数无顶
+        const a = -0.5 + i * .2, sx = gx - 6 + Math.cos(a) * 18, sz = gz + 2 + Math.sin(a) * 18, sh2 = height(sx, sz);
+        const hs = box(4.6, 2.6, 3.6, lam(0x6a665c)); hs.position.set(sx, sh2 + 1.3, sz); hs.rotation.y = -a; scene.add(hs); cirObs.push({ x: sx, z: sz, r: 2.8 });
+        if (i % 2) { const rf = box(5, .3, 4.2, lam(0x4a4640)); rf.rotation.z = .5; rf.rotation.y = -a; rf.position.set(sx, sh2 + 3.1, sz); scene.add(rf); } }
+      for (let i = 0; i < 9; i++) {   // 石仓群:满坡小石冢
+        const cx2 = gx + 8 + (i % 3) * 7 + rnd() * 3, cz3 = gz - 22 + Math.floor(i / 3) * 7 + rnd() * 3;
+        const cl = new THREE.Mesh(new THREE.SphereGeometry(1.3, 8, 6, 0, 6.283, 0, Math.PI / 2), lam(0x5e5a50)); cl.scale.y = .75; cl.position.set(cx2, height(cx2, cz3) + .2, cz3); scene.add(cl); }
+      { const pts = []; const cx3 = gx + 4, cz4 = gz - 30, ch4 = height(cx3, cz4);   // 千鸟崖:鸟群点云
+        for (let i = 0; i < 90; i++) pts.push(cx3 - 14 + rnd() * 28, ch4 + 6 + rnd() * 14, cz4 - 10 + rnd() * 16);
+        const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        scene.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xf2f2ee, size: .5, transparent: true, opacity: .85 }))); }
+      const mbx = gx - 8, mbz = gz + 34, mbh = Math.max(height(mbx, mbz), .1);   // 邮件船:木盒+浮囊
+      const mb = box(1.2, .6, .8, lam(0x8a6a42)); mb.position.set(mbx, mbh + .5, mbz); scene.add(mb);
+      const blad = new THREE.Mesh(new THREE.SphereGeometry(.45, 8, 6), lam(0xc8b490)); blad.position.set(mbx + 1, mbh + .6, mbz); scene.add(blad);
+      const hx2 = gx + 8, hz2 = gz + 4, hh2 = height(hx2, hz2);   // 最后的炉灶:石圈冷灰
+      for (let i = 0; i < 7; i++) { const st = new THREE.Mesh(new THREE.DodecahedronGeometry(.4), M.stone); const a = i / 7 * 6.28; st.position.set(hx2 + Math.cos(a) * 1.1, hh2 + .3, hz2 + Math.sin(a) * 1.1); scene.add(st); }
+      const wl = new THREE.PointLight(0xffc888, 0, 90, 2); wl.position.set(gx - 12, height(gx - 12, gz + 8) + 3, gz + 8); wl.userData.pow = 18; nightLamps.push(wl); scene.add(wl);   // 守望者的窗灯
+    },
+  },
 };
 }

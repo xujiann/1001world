@@ -53,6 +53,10 @@ export const THEMES = {
   rainisle:  { tempo: 52, wave: 'sine', scale: [0, 2, 3, 5, 7, 8], base: 139, dens: .3, pad: true, vol: .66 },
   shutter:   { tempo: 46, wave: 'sawtooth', scale: [0, 1, 3, 6, 7, 9], base: 104, dens: .28, pad: true, vol: .58 },
   capital:   { tempo: 54, wave: 'sine', scale: [0, 2, 3, 7, 8, 12], base: 175, dens: .3, pad: true, vol: .72 },
+  gala:      { tempo: 72, wave: 'sine', scale: [0, 2, 4, 7, 9, 12], base: 175, dens: .36, vol: .7 },
+  moai:      { tempo: 56, wave: 'sine', scale: [0, 2, 5, 7, 9, 12], base: 147, dens: .3, pad: true, vol: .78 },
+  fogjail:   { tempo: 44, wave: 'sawtooth', scale: [0, 1, 3, 6, 8], base: 98, dens: .26, pad: true, vol: .56 },
+  kilda:     { tempo: 58, wave: 'sine', scale: [0, 3, 5, 7, 10], base: 131, dens: .3, pad: true, vol: .7 },
 };
 
 /* 海洋文学带故事线(纯数据):每岛一条支线,挂在 lore 卡上,完成得 SB+⭐,列入航海日志 */
@@ -74,4 +78,8 @@ export const NI_QUESTS = {
   rain: { lore: 'missionary',   btn: '☔ 记下这场雨中的对峙', sb: 20, log: '🌧️ 帕果帕果的雨(雨岛)',       pend: '⏳ 旁观牧师',     done: '✅ 已见结局',   msg: '☔ 牧师倒在海滩,汤普森小姐冷笑一声"猪猡"。雨,还在下。你合上了本子。 ⚡+20 · ⭐+1' },
   shu:  { lore: 'shulighthouse',btn: '🗼 登灯塔查明真相',     sb: 20, log: '🌫️ 灯塔的真相(禁闭岛)',     pend: '⏳ 闯进灯塔',     done: '✅ 真相已明',   msg: '🗼 塔顶没有秘密实验,只有考利医生一句"欢迎回来"——那么,谁才是病人? ⚡+20 · ⭐+1' },
   grant: { lore: 'grantbottle', btn: '🍾 捞起瓶中信',         sb: 15, log: '🍾 瓶中信 · 37°11′(南海)',   pend: '⏳ 海上漂着',     done: '✅ 已捞起',     msg: '🍾 三张泡烂的纸,拼出半句坐标:"37°11′——格兰特船长"。你把它收好——总会有一艘邓肯号,为这半句话绕地球一圈。 ⚡+15 · ⭐+1' },
+  gala: { lore: 'galafinch',   btn: '📓 为十三种雀喙画一页图谱', sb: 20, log: '🐢 活的博物馆(进化群岛)',   pend: '⏳ 画雀喙图谱',   done: '✅ 图谱已成', msg: '📓 十三种喙,十三把钥匙——同一群雀,被十三座岛各自磨了一万年。你画完最后一笔忽然懂了:造物无需奇迹,时间就是奇迹。 ⚡+20 · ⭐+1' },
+  moai: { lore: 'moaigaze',    btn: '🗿 顺着七尊石像的视线望去', sb: 20, log: '🗿 谁在凝望谁(星历仙岛)',   pend: '⏳ 顺视线望星',   done: '✅ 已解凝望', msg: '🗿 七道目光交于夜空同一点——那里没有星。守像人说:\"他们望的是还没升起来的那颗。\"方士在旁边轻轻补了一句:\"蓬莱不可至。凝望,即是抵达。\" ⚡+20 · ⭐+1' },
+  fogjail: { lore: 'fogfile',  btn: '🗂️ 把三份 14 号档案对到一起', sb: 20, log: '🌫️ 第十四号(雾中牢岛)', pend: '⏳ 核对档案',     done: '✅ 已对齐(?)', msg: '🗂️ 越狱成功/溺亡/查无此人——三份档案,同一个笔迹。灯塔的光扫过来,一圈,又一圈。你合上卷宗,忽然想不起自己是几号。 ⚡+20 · ⭐+1' },
+  kilda: { lore: 'kildamail',  btn: '📮 把邮件船放进浪里',       sb: 20, log: '🌬️ 最后的邮件(风暴孤岛)', pend: '⏳ 寄出邮件船',   done: '✅ 已托付大海', msg: '📮 木盒里是最后三十六个人的信:\"我们不是被打败的,我们只是累了。\"你把邮件船推进浪里——两千年的炊烟,就此托付给海流。 ⚡+20 · ⭐+1' },
 };

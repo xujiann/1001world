@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=1';
+import { makeNIContent } from './w-isles.js?v=2';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -16,9 +16,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=8';
+import { THEMES, NI_QUESTS } from './w-config.js?v=9';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=3';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=4';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -127,6 +127,11 @@ const NISLES = [
   { key: 'daw', x: 1770, z: 180, r: 86, mask: 2.0, h: 5, dock: [1686, 172] },                              // 黎明踏浪号
   { key: 'rain', x: 650, z: -1650, r: 88, mask: 2.0, h: 6, dock: [620, -1568] },                           // 雨岛
   { key: 'shu', x: -560, z: -1680, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 14 }, dock: [-536, -1598] }, // 禁闭岛
+  /* —— 岛屿组合(现实地貌 × 文学主题)第一批 —— */
+  { key: 'gala', x: 1120, z: -1560, r: 92, mask: 2.0, h: 6, peak: { r: 38, hh: 18 }, dock: [1068, -1487] },  // 进化群岛(加拉帕戈斯×博物学)
+  { key: 'moai', x: -1180, z: 1700, r: 90, mask: 2.0, h: 7, peak: { r: 34, hh: 14 }, dock: [-1130, 1628] },  // 星历仙岛(复活节岛×蓬莱)
+  { key: 'fogjail', x: 1740, z: 1150, r: 88, mask: 2.0, h: 8, dock: [1665, 1100] },                          // 雾中牢岛(恶魔岛×禁闭岛)
+  { key: 'kilda', x: -1750, z: -880, r: 90, mask: 2.0, h: 10, peak: { r: 32, hh: 16 }, dock: [-1670, -840] },// 风暴孤岛(圣基尔达×鲁滨逊)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
