@@ -46,6 +46,7 @@ function curProfileName() {
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews'];
+SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1075,6 +1076,16 @@ const LORE = {
     desc: '未完成区捡到的会议记录:出席四人,议题三项——石料欠款、工人遣散、塔顶灯罩是否先付定金。末尾是主持人发言:"诸位,今天先散会。城是给后人建的,后人会来接着开。"此后再无下一页。' },
   unjnews: { icon: '🗞️', color: '#4a4a44', title: '记者的打字机', en: "The Reporter's Typewriter", hint: '最后一篇报道',
     desc: '旧时代记者的行军桌上,一台打字机压着空白稿纸,色带早就干了。她要的线索有三样:港口的邀请函、法庭的电报底稿、工地的会议记录——集齐了,这篇拖了一百年的报道就能发稿。' },
+  unjlobby: { icon: '🗣️', color: '#7a6a9a', title: '翻译回廊', en: 'The Hall of Tongues', hint: '三百间翻译间',
+    desc: '一间挨一间的格子间,门上的语言名牌从阿非利卡语一直排到祖鲁语,整整三百间。只有 17 号的椅子被坐得发亮——其余二百九十九间,连灰尘都还是崭新的。回廊深处立着三块「误译碑」:一句话在三百种语言里绕了一百年,回来时已经面目全非。' },
+  unjw1: { icon: '🫛', color: '#5a7a4a', title: '误译碑 · 之一', en: 'Mistranslation I', hint: '差一个字母的世界',
+    desc: '碑上刻着一句话的漂流史:出发时字字千钧,辗转三十种语言后,抵达的却是——「请给豌豆一个机会」。修复系统需要原文。想想:什么词,和豌豆只差一个字母?' },
+  unjw2: { icon: '📝', color: '#7a6a4a', title: '误译碑 · 之二', en: 'Mistranslation II', hint: '绕地球一圈的宣言',
+    desc: '这句宣言本该刻上万国广场的地面,绕地球一圈回来,成了——「我们都是错别字」。翻译员当年在页边批注:"接近了。但世界要的不是这句。"修复系统需要原文。' },
+  unjw3: { icon: '🏠', color: '#8a5a4a', title: '误译碑 · 之三', en: 'Mistranslation III', hint: '掉了一个字母的词',
+    desc: '设计师想把这个词刻在城门上,让每个登岛的人第一眼看见。可它在第一百次转译时掉了最后一个字母,成了「hom」——一个没写完的词,一座没建完的城。修复系统需要原文。' },
+  unjlang: { icon: '💡', color: '#9a8ac8', title: '17 号翻译间', en: 'Booth No.17', hint: '全楼唯一用过的一间',
+    desc: '三百间里唯一被用过的翻译间——万国翻译员四十年都坐在这里。桌上有三枚修复插销,对应回廊里的三块误译碑。全部归位时,三百间的灯会一起亮:那将是这座城说过的最长的一句话。' },
   // —— 船只 encounter:海上四艘传奇 ——
   ghostship: { icon: '🐺', color: '#2a2e36', title: '幽灵号', en: 'The Ghost', hint: '海狼的猎场',
     desc: '一艘漆黑的捕猎帆船,船长"海狼"拉森一手掌舵、一手读勃朗宁。"人生是发酵的酵母,大鱼吃小鱼,只为保持自己的游动。"落水的文弱书生凡·卫登被他捞起,从"少爷手"被锤炼成真正的水手——杰克·伦敦把尼采装进了一条船。' },
@@ -1136,6 +1147,14 @@ function loreCard(k) {
   if (k === 'unjnews') { const na = [1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length;
     btn = PSTORE.getItem('w1001.unjnews') === '1' ? '<span style="color:#8a7c62;font-size:13px">报道已发。全世界的读者:你,和风。</span>'
       : (na >= 3 ? '<button class="again" data-unjnews>🗞️ 换上新色带,替她把报道打出来</button>' : `<span style="color:#8a7c62;font-size:13px">(档案 ${na}/3——港口仓库、法庭档案柜、未完成区)</span>`); }
+  if (k === 'unjw1' || k === 'unjw2' || k === 'unjw3') { const wi = k.slice(-1);
+    const CHOICES = { 1: [['和平', 1], ['豌豆汤', 0], ['安静', 0]], 2: [['我们都是完人', 0], ['我们都是人', 1], ['我们都是名人', 0]], 3: [['火腿', 0], ['旅馆', 0], ['家', 1]] };
+    btn = PSTORE.getItem('w1001.' + k) === '1'
+      ? '<span style="color:#8a7c62;font-size:13px">碑文已修复,插销亮着柔光。</span>'
+      : CHOICES[wi].map(([t, ok]) => `<button class="again" style="display:block;width:100%;margin:6px 0" data-unjw="${wi}" data-ok="${ok}">「${t}」</button>`).join(''); }
+  if (k === 'unjlang') { const nw = [1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length;
+    btn = PSTORE.getItem('w1001.unjlang') === '1' ? '<span style="color:#8a7c62;font-size:13px">三百盏灯都亮着。这座城,终于把那句话说完了。</span>'
+      : (nw >= 3 ? '<button class="again" data-unjlang>💡 按下总闸,让三百间一起开口</button>' : `<span style="color:#8a7c62;font-size:13px">(修复插销 ${nw}/3——先去回廊修好三块误译碑)</span>`); }
   if (k === 'treasuredig') btn = PSTORE.getItem('w1001.treasure') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">坑已挖开,弗林特的黄金归你——空气里还飘着一点朗姆酒味。</span>'
     : '<button class="again" data-treasure>⛏️ 照着藏宝图,挖!</button>';
@@ -1410,6 +1429,23 @@ function openCard(s) {
   });
   cardBody.querySelector('[data-unjgames]')?.addEventListener('click', () => { closeModals(); startUnjGames(); });
   cardBody.querySelector('[data-unjnews]')?.addEventListener('click', () => showUnjNews());
+  cardBody.querySelectorAll('[data-unjw]').forEach(b => b.addEventListener('click', () => {
+    const wi = b.dataset.unjw;
+    if (b.dataset.ok !== '1') {
+      const jokes = { 1: '❌ 系统提示:全城食堂的菜单被改成了豌豆汤。再想想。', 2: '❌ 翻译员的批注浮现:"完人?名人?世界要的不是这句。"', 3: '❌ 系统提示:城门上总不能刻火腿。再想想。' };
+      toast(jokes[wi]); blip(220); return;
+    }
+    PSTORE.setItem('w1001.unjw' + wi, '1'); earnSB(8);
+    const fixed = { 1: '请给和平一个机会', 2: '我们都是人', 3: '家' };
+    const got = [1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length;
+    toast(`✅ 插销归位(${got}/3)· ⚡+8——碑文重新亮起:「${fixed[wi]}」`); blip(760); closeModals();
+  }));
+  cardBody.querySelector('[data-unjlang]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.unjlang') === '1') return;
+    PSTORE.setItem('w1001.unjlang', '1'); earnSB(30); stars++; saveQuest(); updateQuestHUD();
+    if (unjLangLight) unjLangLight.intensity = 22;
+    toast('💡 三百间翻译间的灯同时亮起!有些话绕了一百年,终于被听懂 · ⚡+30 · ⭐+1 · 新称号「通天塔修补匠」'); blip(900); closeModals();
+  });
   cardBody.querySelector('[data-treasure]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.treasure') === '1') return;
     PSTORE.setItem('w1001.treasure', '1');
@@ -1724,6 +1760,7 @@ function titleList() {
     { id: 'abysser', name: '🕳️ 深渊潜者', got: PSTORE.getItem('w1001.abyss') === '1', note: '触及星球之脐' },
     { id: 'unjer', name: '🏛️ 未竟之都的见证者', got: !!PSTORE.getItem('w1001.unjend'), note: '为人类之都做出抉择' },
     { id: 'unjnews', name: '🗞️ 迟到百年的头版', got: PSTORE.getItem('w1001.unjnews') === '1', note: '发出未竟之都的最后一篇报道' },
+    { id: 'unjlang', name: '🗣️ 通天塔修补匠', got: PSTORE.getItem('w1001.unjlang') === '1', note: '修复万国翻译系统' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1832,6 +1869,7 @@ function openJournal() {
     ['🏛️ 未竟之都(五章主线)', PSTORE.getItem('w1001.unjend') ? '✅ ' + ['', '修复之城', '纪念之墟', '旅人花园'][+PSTORE.getItem('w1001.unjend')] : (PSTORE.getItem('w1001.unjlit') === '1' ? '🕊️ 去广场开会' : `⏳ 蓝图 ${[1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length}/4`)],
     ['🔥 幻影运动会(未竟之都)', PSTORE.getItem('w1001.unjgames') === '1' ? '✅ 圣火亮过一夜' : '⏳ 夜里帮守夜人点火炬'],
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
+    ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
   ];
@@ -5791,6 +5829,7 @@ makeBoat(null, .7).userData = { anchor: [14, 408] };   // 栈桥边的小舢板
 /* ================= 未竟之都:世界交流中心遗址(白石几何岛) ================= */
 let unjTowerOn = PSTORE.getItem('w1001.unjlit') === '1', unjFountainOn = PSTORE.getItem('w1001.unjend') === '3';
 let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh = null, unjPhantom = null;
+let unjLangLight = null;
 {
   const gx = UNJ.x, gz = UNJ.z, G = 6;
   const marble = MOBILE ? new THREE.MeshLambertMaterial({ color: 0xe8e4da }) : new THREE.MeshStandardMaterial({ color: 0xe8e4da, roughness: .55 });
@@ -5888,13 +5927,31 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
   addNpc({ x: gx - 6, z: gz + 14, name: '规划师的影子', body: 0x9aa4b0, hat: 0x7a8490, opts: { tall: 1.06, cane: true },
     lines: ['我们不是要建一座城市——我们是要给人类,建一个共同的房间。', '每条大道通向塔;每条隧道,通向世界。', '图纸都画完了。人,没有来。'] });
   addNpc({ x: gx + 10, z: gz - 4, name: '万国翻译员', body: 0x8a6a9a, hat: 0x6a4a7a, opts: { tall: .98 },
-    lines: ['这里备了三百个翻译间。用过的,只有一个。', '误解从来不是语言问题,是利益问题——这句话,我翻译了四十年。', '我可以替你翻译任何语言。除了沉默。'] });
+    lines: ['这里备了三百个翻译间。用过的,只有一个。', '误解从来不是语言问题,是利益问题——这句话,我翻译了四十年。', '我可以替你翻译任何语言。除了沉默。'],
+    topics: [{ q: '翻译回廊里那三块碑是什么?', a: '误译碑。三句最要紧的话,在三百种语言里绕了一百年,回来时全变了形。去广场西南的回廊,把它们修回来——修好了,来 17 号间找我按总闸。那三百盏灯,我想看四十年了。' }] });
   addNpc({ x: gx + 46, z: gz - 38, name: '旧时代记者', body: 0x5a5a52, hat: 0x3e3e38,
     lines: ['我在查这座城为什么失败。线索指向资本、战争、虚荣——和太干净的理想。', '雕塑家先生给各国君主写了一千封信。回信,不到十封。', '每个"为了人类",我都想追问一句:具体是哪些人?'],
     topics: [{ q: '你还缺什么线索?', a: '三样:港口仓库那批没人拆的邀请函、法庭档案柜里的电报底稿、未完成区散落的最后一次工地会议记录。都抄来给我——我桌上那台打字机,还欠这座城一篇报道。' }] });
   addNpc({ x: gx + 52, z: gz + 40, name: '守夜人', body: 0x6a5a42, hat: 0x4a3e2c, opts: { wide: 1.15 },
     lines: ['圣火二十年前就该点了。我每晚来点一次——点的是习惯,也是念想。', '这座场没办过一场比赛。但跑道,是按马拉松的梦想量的。', '要跑一圈吗?没有观众——风会给你鼓掌。'] });
-  { unjPhantom = new THREE.Group(); unjPhantom.visible = false;   // —— 蓝图幻影(V):塔的补全 + 喷泉水 + 万国旗升起 ——
+  { const cx0 = gx - 48, cz0 = gz + 46;   // —— 翻译回廊(西南):3×4 格子间 + 三块误译碑 + 17 号间 ——
+    for (let r2 = 0; r2 < 3; r2++) for (let c2 = 0; c2 < 4; c2++) {
+      const bx3 = cx0 - 12 + c2 * 8, bz3 = cz0 - 8 + r2 * 8;
+      for (const [ox, oz] of [[-2.6, -2.6], [2.6, -2.6], [-2.6, 2.6], [2.6, 2.6]]) { const col2 = cyl(.32, .38, 3.6, marbleDim, 7); col2.position.set(bx3 + ox, G + 1.8, bz3 + oz); scene.add(col2); }
+      const roof3 = box(6.6, .4, 6.6, marble); roof3.position.set(bx3, G + 3.9, bz3); scene.add(roof3);
+    }
+    const stela = (sx3, sz3) => { const st3 = box(1.7, 2.8, .5, lam(0x3a4048)); st3.position.set(sx3, G + 1.4, sz3); st3.rotation.y = .2; scene.add(st3); cirObs.push({ x: sx3, z: sz3, r: 1.2 }); };
+    stela(cx0 - 8, cz0 - 8); stela(cx0 + 6, cz0 + 6); stela(cx0 - 10, cz0 + 8);
+    const desk17 = box(2.2, 1, 1.2, lam(0x5a4a36)); desk17.position.set(cx0, G + .5, cz0); scene.add(desk17);
+    unjLangLight = new THREE.PointLight(0xc8b8ff, PSTORE.getItem('w1001.unjlang') === '1' ? 22 : 0, 90, 1.8);
+    unjLangLight.position.set(cx0, G + 8, cz0); scene.add(unjLangLight);
+    addSpot(cx0 + 14, cz0 - 12, 'lore', 'unjlobby', { r: 8 });
+    addSpot(cx0 - 8, cz0 - 8, 'lore', 'unjw1', { r: 5 });
+    addSpot(cx0 + 6, cz0 + 6, 'lore', 'unjw2', { r: 5 });
+    addSpot(cx0 - 10, cz0 + 8, 'lore', 'unjw3', { r: 5 });
+    addSpot(cx0, cz0, 'lore', 'unjlang', { r: 5 });
+  }
+  { unjPhantom = new THREE.Group(); unjPhantom.visible = false;   // —— 蓝图幻影(V):塔的补全 + 喷泉水 + 万国旗升起 ——  { unjPhantom = new THREE.Group(); unjPhantom.visible = false;   // —— 蓝图幻影(V):塔的补全 + 喷泉水 + 万国旗升起 ——
     const gm = new THREE.MeshBasicMaterial({ color: 0x9fd8e8, transparent: true, opacity: .22, fog: false });
     const g1 = cyl(4.2, 5.2, 22, gm, 12); g1.position.set(gx, G + 39, gz - 64); unjPhantom.add(g1);
     const g2 = new THREE.Mesh(new THREE.ConeGeometry(3, 9, 10), gm.clone()); g2.material.opacity = .26; g2.position.set(gx, G + 54, gz - 64); unjPhantom.add(g2);
