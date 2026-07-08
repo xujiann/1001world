@@ -1737,7 +1737,13 @@ function mainQuest() {
   const caved = PSTORE.getItem('w1001.caved') === '1';
   const clues = ['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length;
   const skel = PSTORE.getItem('w1001.skeleton') === '1';
-  if (skel) return { st: '终章 · 主线已通关', tip: '你已窥破世界骨架的真相。剩下的旅程,是把每座岛的故事都走一遍——看下方各馆藏进度。', done: true };
+  if (skel) {   // 世界骨架之后:第五、六章在未竟之都收束
+    if (PSTORE.getItem('w1001.unjend')) return { st: '终章 · 主线已通关', tip: '你看穿了世界的骨架,也替那座未完成的人类之都做出了抉择。剩下的旅程,是把每座岛的故事都走一遍——看下方各馆藏进度。', done: true };
+    const bps = [1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length;
+    if (PSTORE.getItem('w1001.unjlit') === '1') return { st: '第六章 · 无人会议', tip: '塔灯已重燃。回到万国广场的会议厅,听幻影代表们吵完最后一架——然后,替全人类做一个小小的决定。' };
+    if (bps > 0) return { st: `第五章 · 未竟之都 · 蓝图 ${bps}/4`, tip: '在神殿、法庭、运动场、塔基各找一张蓝图,集齐后去塔底重燃「人类之灯」。(持蓝图按 V/📐,可以看这座城本该的样子)' };
+    return { st: '第五章 · 未竟之都', tip: '你已看穿骨架——但迷宫的每条隧道,最终都通向正中的「潮汐之心」。从那里的蓝洞浮上去:一座为全人类而建、却从未完成的首都在等你。(东滩渡口也有直达船)' };
+  }
   if (caved || clues > 0) return { st: `第四章 · 世界骨架 · 线索 ${clues}/3`, tip: '海底迷宫并非天然。潜入深处集齐三线索:🫀 潮汐之心(迷宫正中)· 🖼️ 海底壁画(某条死路尽头)· 📖 巴别海窟(满月夜穿过潮汐门)。' };
   if (hasRope) return { st: '第三章 · 潜入海底', tip: '带上导绳,从主岛西岸「牛首回廊」海蚀洞、或各岛蓝洞潜入海底隧道迷宫,顺着发光导绳穿行到别的岛。' };
   if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,逛四十余座文学岛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——那是海底迷宫的钥匙。' };
