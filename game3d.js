@@ -44,7 +44,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews'];
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1054,6 +1054,18 @@ const LORE = {
     desc: '万国运动场图纸:跑道按马拉松的梦想丈量,火炬设计为"永不熄灭"。背面有人用铅笔写:如果人类必须竞争,让他们在这里竞争。' },
   unjb4: { icon: '📐', color: '#4a6a8a', title: '蓝图 · 塔基卷', en: 'Blueprint IV', hint: '拾取蓝图(4/4)',
     desc: '进步之塔的地基图:塔心预留一根中空导管,直通地下交流网——设计者要让塔灯的电,来自所有隧道的汇流。图纸最下方写着:待全体人类到齐后点亮。' },
+  unjtorch: { icon: '🔥', color: '#a85a2a', title: '冷火炬', en: 'The Cold Torch', hint: '守夜人的念想',
+    desc: '火炬台是冷的,炬身却被摸得发亮——守夜人每晚来"点"一次,点的是习惯,也是念想。基座刻着一行小字:圣火不熄,直到最后一个人退场。下面有人用铅笔补了一句:可惜第一个人还没进场。(夜里可以帮他真点一次)' },
+  unjtop: { icon: '🌆', color: '#8fa8c8', title: '断口平台', en: 'The Broken Summit', hint: '塔停下的地方',
+    desc: '沿脚手架边的螺旋坡道爬到塔的断口——这里本该继续向上两百多米。往下看,大道、广场、神殿、法庭,全城的几何一览无余;往远看是海,和海那头四十几座各过各的日子的岛。风很大,像谁在这里叹了一百年的气。' },
+  unjn1: { icon: '📮', color: '#7a6a4a', title: '退回的邀请函', en: 'Returned Invitations', hint: '记者的档案 1/3',
+    desc: '港务仓库的木箱里堆着几十捆烫金邀请函,收件人是各国君主与议会——绝大多数原封退回,邮戳盖着"查无此意愿"。雕塑家写了一千封信,回信不到十封。第一箱上贴着他的手迹:继续寄。' },
+  unjn2: { icon: '📠', color: '#6a7080', title: '电报底稿', en: 'The Telegram Drafts', hint: '记者的档案 2/3',
+    desc: '法庭档案柜里的一沓电报底稿,日期停在 1914 年夏天:"资金撤回""银行观望""欧洲情势不明,建都事宜恕难再议"。最后一封只有半句:战争恐怕——后面没有了。' },
+  unjn3: { icon: '📋', color: '#8a8478', title: '最后一次工地会议记录', en: 'The Final Site Meeting', hint: '记者的档案 3/3',
+    desc: '未完成区捡到的会议记录:出席四人,议题三项——石料欠款、工人遣散、塔顶灯罩是否先付定金。末尾是主持人发言:"诸位,今天先散会。城是给后人建的,后人会来接着开。"此后再无下一页。' },
+  unjnews: { icon: '🗞️', color: '#4a4a44', title: '记者的打字机', en: "The Reporter's Typewriter", hint: '最后一篇报道',
+    desc: '旧时代记者的行军桌上,一台打字机压着空白稿纸,色带早就干了。她要的线索有三样:港口的邀请函、法庭的电报底稿、工地的会议记录——集齐了,这篇拖了一百年的报道就能发稿。' },
   // —— 船只 encounter:海上四艘传奇 ——
   ghostship: { icon: '🐺', color: '#2a2e36', title: '幽灵号', en: 'The Ghost', hint: '海狼的猎场',
     desc: '一艘漆黑的捕猎帆船,船长"海狼"拉森一手掌舵、一手读勃朗宁。"人生是发酵的酵母,大鱼吃小鱼,只为保持自己的游动。"落水的文弱书生凡·卫登被他捞起,从"少爷手"被锤炼成真正的水手——杰克·伦敦把尼采装进了一条船。' },
@@ -1105,6 +1117,16 @@ function loreCard(k) {
     btn = end ? '<span style="color:#8a7c62;font-size:13px">会议已散。命运已定:' + ['', '修复之城', '纪念之墟', '旅人花园'][+end] + '。</span>'
       : (PSTORE.getItem('w1001.unjlit') === '1' ? '<button class="again" data-unjmeet>🕊️ 启动投影,召开无人会议</button>'
         : '<span style="color:#8a7c62;font-size:13px">(塔灯亮起之日,投影系统方能启动)</span>'); }
+  if (k === 'unjtorch') btn = '<button class="again" data-unjgames>🔥 帮守夜人点燃圣火</button>';
+  if (k === 'unjtop') btn = PSTORE.getItem('w1001.unjtop') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">你在断口的风里站过了。塔记得每一个爬上来的人。</span>'
+    : '<button class="again" data-unjtop>🌆 在断口的风里站一会儿</button>';
+  if (k === 'unjn1' || k === 'unjn2' || k === 'unjn3') { const ni2 = k.slice(-1);
+    btn = PSTORE.getItem('w1001.' + k) === '1' ? '<span style="color:#8a7c62;font-size:13px">这份档案已抄录——记得带给旧时代记者。</span>'
+      : `<button class="again" data-unjn="${ni2}">🗂️ 抄录这份档案</button>`; }
+  if (k === 'unjnews') { const na = [1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length;
+    btn = PSTORE.getItem('w1001.unjnews') === '1' ? '<span style="color:#8a7c62;font-size:13px">报道已发。全世界的读者:你,和风。</span>'
+      : (na >= 3 ? '<button class="again" data-unjnews>🗞️ 换上新色带,替她把报道打出来</button>' : `<span style="color:#8a7c62;font-size:13px">(档案 ${na}/3——港口仓库、法庭档案柜、未完成区)</span>`); }
   if (k === 'treasuredig') btn = PSTORE.getItem('w1001.treasure') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">坑已挖开,弗林特的黄金归你——空气里还飘着一点朗姆酒味。</span>'
     : '<button class="again" data-treasure>⛏️ 照着藏宝图,挖!</button>';
@@ -1366,6 +1388,19 @@ function openCard(s) {
     toast('🗼 汇流接通——断口上,那盏"照向全人类的灯"重新亮起。⚡+30 · ⭐+1'); blip(523); setTimeout(() => blip(784), 200);
   });
   cardBody.querySelector('[data-unjmeet]')?.addEventListener('click', () => unjMeeting());
+  cardBody.querySelectorAll('[data-unjn]').forEach(b => b.addEventListener('click', () => {
+    const i = b.dataset.unjn; if (PSTORE.getItem('w1001.unjn' + i) === '1') return;
+    PSTORE.setItem('w1001.unjn' + i, '1'); earnSB(6);
+    const got = [1, 2, 3].filter(j => PSTORE.getItem('w1001.unjn' + j) === '1').length;
+    toast(got >= 3 ? '🗂️ 三份档案集齐了 · ⚡+6——去找旧时代记者的打字机!' : `🗂️ 档案已抄录(${got}/3)· ⚡+6`); blip(700); closeModals();
+  }));
+  cardBody.querySelector('[data-unjtop]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.unjtop') === '1') return;
+    PSTORE.setItem('w1001.unjtop', '1'); earnSB(15);
+    toast('🌆 断口平台 · ⚡+15——三百二十米的梦,你替它到了一半。'); blip(760); closeModals();
+  });
+  cardBody.querySelector('[data-unjgames]')?.addEventListener('click', () => { closeModals(); startUnjGames(); });
+  cardBody.querySelector('[data-unjnews]')?.addEventListener('click', () => showUnjNews());
   cardBody.querySelector('[data-treasure]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.treasure') === '1') return;
     PSTORE.setItem('w1001.treasure', '1');
@@ -1679,6 +1714,7 @@ function titleList() {
     { id: 'caver',  name: '🤿 洞穴潜水员', got: f.caved,   note: '穿越海底隧道迷宫' },
     { id: 'abysser', name: '🕳️ 深渊潜者', got: PSTORE.getItem('w1001.abyss') === '1', note: '触及星球之脐' },
     { id: 'unjer', name: '🏛️ 未竟之都的见证者', got: !!PSTORE.getItem('w1001.unjend'), note: '为人类之都做出抉择' },
+    { id: 'unjnews', name: '🗞️ 迟到百年的头版', got: PSTORE.getItem('w1001.unjnews') === '1', note: '发出未竟之都的最后一篇报道' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1785,6 +1821,8 @@ function openJournal() {
     ['🤿 海底隧道迷宫(蓝洞)', PSTORE.getItem('w1001.caved') === '1' ? '✅ 已穿越' : '⏳ 带导绳潜蓝洞'],
     ['📖 巴别海窟(满月秘门)', PSTORE.getItem('w1001.babel') === '1' ? '✅ 已入密室' : '⏳ 满月夜过潮汐门'],
     ['🏛️ 未竟之都(五章主线)', PSTORE.getItem('w1001.unjend') ? '✅ ' + ['', '修复之城', '纪念之墟', '旅人花园'][+PSTORE.getItem('w1001.unjend')] : (PSTORE.getItem('w1001.unjlit') === '1' ? '🕊️ 去广场开会' : `⏳ 蓝图 ${[1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length}/4`)],
+    ['🔥 幻影运动会(未竟之都)', PSTORE.getItem('w1001.unjgames') === '1' ? '✅ 圣火亮过一夜' : '⏳ 夜里帮守夜人点火炬'],
+    ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
   ];
@@ -5845,6 +5883,47 @@ function showSkeletonCard() {
   blip(196); setTimeout(() => blip(262), 220); setTimeout(() => blip(392), 440); setTimeout(() => blip(523), 700);
 }
 /* 未竟之都:无人会议(主线终章) */
+/* 幻影运动会:夜里点燃冷火炬,幽蓝的选手绕场跑完他们等了一百年的比赛 */
+let unjGamesT = 0, unjGamesGrp = null, unjFlame = null;
+function startUnjGames() {
+  if (curDA >= .35 && !location.hash.includes('night')) { toast('🔥 守夜人摇头:白天点不出那种光。等夜幕降临再来。'); return; }
+  const sx = UNJ.x + 52, sz = UNJ.z + 52;
+  if (!unjGamesGrp) {
+    unjGamesGrp = new THREE.Group();
+    const gm = new THREE.MeshBasicMaterial({ color: 0x9fd8e8, transparent: true, opacity: .3, fog: false, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (let i = 0; i < 8; i++) { const r = new THREE.Group();
+      const body2 = cyl(.32, .38, 1.5, gm, 8); body2.position.y = 1.1; r.add(body2);
+      const head2 = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), gm); head2.position.y = 2.15; r.add(head2);
+      r.userData = { a0: i / 8 * Math.PI * 2, sp: .55 + (i % 4) * .12 }; unjGamesGrp.add(r); }
+    unjFlame = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3, 9), new THREE.MeshBasicMaterial({ color: 0xffb45a, transparent: true, opacity: .85, fog: false, blending: THREE.AdditiveBlending, depthWrite: false }));
+    unjFlame.position.set(sx, 15.4, sz - 14); unjGamesGrp.add(unjFlame);
+    const fl3 = new THREE.PointLight(0xffa04a, 0, 90, 2); fl3.position.set(sx, 15.5, sz - 14); unjGamesGrp.add(fl3); unjGamesGrp.userData.light = fl3;
+    scene.add(unjGamesGrp);
+  }
+  unjGamesT = 75; unjGamesGrp.visible = true; unjGamesGrp.userData.light.intensity = 30;
+  toast('🔥 圣火腾起!幽蓝的身影从看台涌上跑道——这场比赛,他们等了一百年。'); blip(880);
+  if (PSTORE.getItem('w1001.unjgames') !== '1') {
+    PSTORE.setItem('w1001.unjgames', '1'); earnSB(25); stars++; saveQuest(); updateQuestHUD();
+    setTimeout(() => toast('🏟️ 幻影运动会 · ⚡+25 ⭐+1——没有观众,守夜人在鼓掌,风也在。'), 2600);
+  }
+}
+/* 记者调查线终章:三份档案 → 替她把最后一篇报道打出来 */
+function showUnjNews() {
+  cardBody.innerHTML = `<div class="paper"><div class="pMast">世界报</div>
+    <div class="pSub">LE JOURNAL DU MONDE · 终刊号 · 迟到一百余年</div>
+    <div class="pHead">未竟之都:一座城市的讣告,或情书</div>
+    <div class="pBody">本报记者踏勘港口、法庭与工地,查得三证:数十箱原封退回的烫金邀请函(邮戳:查无此意愿);一沓停在 1914 年夏天的电报底稿(最后半句是"战争恐怕——");以及最后一次工地会议记录("城是给后人建的,后人会来接着开")。<br><br>
+    于是真相并不复杂:杀死这座城的不是资本,不是战争,甚至不是虚荣——是"全人类"这个收件人,当年查无此址。<br><br>
+    但本报仍需更正一处旧闻:它没有失败。每条海底隧道至今通向它的广场,每个旅人仍在它的断塔下抬头。一座城市若能让路过的人想把它建完——它就还在施工中。</div>
+    <div class="pFoot">主笔:旧时代记者 × 一位旅人 · 印数:2 份(她一份,你一份)· 全世界的读者:你,和风</div></div>
+    <div style="padding:12px 20px 16px"><button class="again" data-signoff style="width:100%">🗞️ 签下你的名字,发稿</button></div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelector('[data-signoff]')?.addEventListener('click', () => closeModals());
+  if (PSTORE.getItem('w1001.unjnews') !== '1') {
+    PSTORE.setItem('w1001.unjnews', '1'); earnSB(30); stars++; saveQuest(); updateQuestHUD();
+    toast('🗞️ 最后一篇报道已发 · ⚡+30 ⭐+1 · 新称号「迟到百年的头版」'); blip(900);
+  }
+}
 function unjMeeting() {
   cardBody.innerHTML = `<div class="cardHead" style="background:#3a4456">🕊️ 无人会议 · The Congress of Nobody</div>
     <div class="cardMedia"><div class="paperRoll">🗣️</div></div>
@@ -6191,6 +6270,17 @@ function stadiumHeight(x, z) {
   const i = Math.min(19, Math.floor((d - 26.8) / 1.05));
   return 6 + 1.02 * (i + 1);
 }
+/* 进步之塔螺旋坡道 + 断口平台(可拾级登顶,cirObs 的 top 字段放行高处) */
+function unjTowerHeight(x, z) {
+  const dx = x - UNJ.x, dz = z - (UNJ.z - 64), d = Math.hypot(dx, dz);
+  if (d > 12) return null;
+  if (d < 6.2) return 32.06;                                  // 二层塔顶(断口平台)
+  let a = Math.atan2(dz, dx); if (a < 0) a += Math.PI * 2;
+  if (Math.abs(a - Math.PI * 1.86) < .3 && d < 11.4) return 32.03;   // 尽头连桥
+  if (a > Math.PI * 1.78 || d < 9.2) return null;
+  const i = Math.min(33, Math.floor(a / (Math.PI * 1.78) * 34));     // 与坡道台阶同一公式
+  return 6.5 + (i + .5) / 34 * 25.5 + .18;
+}
 function bridgeHeight(x, z) {
   const t = ((x - BR_A[0]) * brDX + (z - BR_A[1]) * brDZ) / (brDX * brDX + brDZ * brDZ);
   if (t < 0 || t > 1) return null;
@@ -6343,6 +6433,8 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
       const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1), new THREE.MeshLambertMaterial({ color: 0xb8b4aa, side: THREE.DoubleSide })); fl.position.set(px + .85, G + 6.3, hz + 3.4); scene.add(fl); }
     [[0xf5efdc, -34, 116], [0x22262c, -16, 120], [0x8fb6c8, 6, 118], [0xd94f6b, 24, 121], [null, 38, 116]].forEach(([c, ox, oz], i) => { makeBoat(c, .8 + (i % 3) * .15).userData = { anchor: [gx + ox, gz + oz] }; });
     addSpot(gx - 8, hz, 'lore', 'unjport', { r: 8 });
+    for (let i = 0; i < 3; i++) { const cr = box(1.6, 1.2, 1.2, lam(0x8a7a5a)); cr.position.set(gx + 20 + i * 2, G + .6, hz - 3); scene.add(cr); }   // 港务仓库的邀请函箱
+    addSpot(gx + 22, hz - 3, 'lore', 'unjn1', { r: 5 });
   }
   { const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 36), MOBILE ? new THREE.MeshLambertMaterial({ color: 0xdfdbd0 }) : new THREE.MeshPhongMaterial({ color: 0xdfdbd0, shininess: 40 }));   // —— 万国广场 ——
     disc.rotation.x = -Math.PI / 2; disc.position.set(gx, G + .15, gz); scene.add(disc);
@@ -6367,6 +6459,8 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
     const steps2 = box(20, 1, 5, marble); steps2.position.set(cx, G + .5, cz2 + 10.5); scene.add(steps2);
     addSpot(cx, cz2 + 14, 'lore', 'unjcourt', { r: 8 });
     addSpot(cx + 9, cz2 + 12, 'lore', 'unjb2', { r: 5 });
+    const cab = box(1.2, 2.2, .8, lam(0x4e5460)); cab.position.set(cx - 9, G + 1.1, cz2 + 11); scene.add(cab);   // 档案柜
+    addSpot(cx - 9, cz2 + 12, 'lore', 'unjn2', { r: 5 });
   }
   { const sx = gx + 52, sz = gz + 52;   // —— 万国运动场(东南) ——
     for (let i = 0; i < 8; i++) { const a = Math.PI * .1 + i / 8 * Math.PI * .8; const st = box(9, 2.4 + (i % 2), 3, marbleDim); st.position.set(sx + Math.cos(a) * 16, G + 1.2, sz + Math.sin(a) * 16); st.rotation.y = -a + Math.PI / 2; scene.add(st); }
@@ -6374,9 +6468,10 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
     const bowl2 = cyl(1.4, .9, 1, lam(0x4a4640), 10); bowl2.position.set(sx, G + 7.4, sz - 14); scene.add(bowl2);
     addSpot(sx, sz, 'lore', 'unjstadium', { r: 9 });
     addSpot(sx - 8, sz - 10, 'lore', 'unjb3', { r: 5 });
+    addSpot(sx + 2, sz - 12, 'lore', 'unjtorch', { r: 6 });
   }
   { const tx = gx, tz = gz - 64;   // —— 进步之塔(北,断顶 + 脚手架) ——
-    const t1 = cyl(7, 8.5, 14, marble, 12); t1.position.set(tx, G + 7, tz); scene.add(t1); cirObs.push({ x: tx, z: tz, r: 9 });
+    const t1 = cyl(7, 8.5, 14, marble, 12); t1.position.set(tx, G + 7, tz); scene.add(t1); cirObs.push({ x: tx, z: tz, r: 9, top: 31 });
     const t2 = cyl(5.2, 6.4, 12, marble, 12); t2.position.set(tx, G + 20, tz); scene.add(t2);
     for (let i = 0; i < 5; i++) { const jag = box(2.2, 3 + (i % 3), 2.2, marbleDim); const a = i * 1.3; jag.position.set(tx + Math.cos(a) * 3.6, G + 27.5, tz + Math.sin(a) * 3.6); jag.rotation.y = a; scene.add(jag); }
     for (let i = 0; i < 4; i++) { const sc = box(.18, 26, .18, lam(0x6a5a42)); sc.position.set(tx + 8.6, G + 13, tz - 5 + i * 3.4); scene.add(sc); }
@@ -6385,6 +6480,15 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
     unjTowerBulb = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff2cc, transparent: true, opacity: .9, fog: false })); unjTowerBulb.position.set(tx, G + 29.5, tz); unjTowerBulb.visible = unjTowerOn; scene.add(unjTowerBulb);
     addSpot(tx, tz + 12, 'lore', 'unjtower', { r: 9 });
     addSpot(tx - 9, tz + 9, 'lore', 'unjb4', { r: 5 });
+    for (let i = 0; i < 34; i++) {   // 螺旋坡道:贴着脚手架绕塔 0.89 圈,登上断口(物理见 unjTowerHeight)
+      const a = (i + .5) / 34 * Math.PI * 1.78;
+      const st2 = box(3.2, .35, 2.2, marbleDim);
+      st2.position.set(tx + Math.cos(a) * 10.6, 6.5 + (i + .5) / 34 * 25.5, tz + Math.sin(a) * 10.6);
+      st2.rotation.y = -(a + Math.PI / 2); scene.add(st2);
+    }
+    { const ab = Math.PI * 1.86; const br2 = box(6.2, .35, 3, marbleDim);   // 坡道尽头连桥 → 二层塔顶断口
+      br2.position.set(tx + Math.cos(ab) * 8.2, 31.85, tz + Math.sin(ab) * 8.2); br2.rotation.y = -ab; scene.add(br2); }
+    addSpot(tx, tz + 2, 'lore', 'unjtop', { r: 6, y: 32.5 });
   }
   { const rx = gx + 42, rz = gz - 44;   // —— 未完成区(东北) ——
     for (let i = 0; i < 5; i++) colAt(rx - 8 + i * 4, rz, 5 + (i % 3) * 2, .7);
@@ -6396,6 +6500,10 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
     const cable = cyl(.04, .04, 6, lam(0x2a2a2a), 4); cable.position.set(rx + 8.6, G + 12, rz - 10); scene.add(cable);
     for (let i = 0; i < 5; i++) { const paper = new THREE.Mesh(new THREE.PlaneGeometry(.8, 1.1), new THREE.MeshLambertMaterial({ color: 0xf0ecd8, side: THREE.DoubleSide })); paper.rotation.x = -Math.PI / 2; paper.rotation.z = i * 1.2; paper.position.set(rx - 6 + i * 3, G + .2, rz + 8 + (i % 2) * 2); scene.add(paper); }
     addSpot(rx, rz + 8, 'lore', 'unjruin', { r: 8 });
+    addSpot(rx - 6, rz + 11, 'lore', 'unjn3', { r: 5 });
+    const desk = box(1.8, .9, 1, lam(0x5a4a36)); desk.position.set(gx + 49, G + .45, gz - 34); scene.add(desk);   // 记者的行军桌
+    const tw = box(.7, .4, .5, lam(0x2e2e2a)); tw.position.set(gx + 49, G + 1.1, gz - 34); scene.add(tw);
+    addSpot(gx + 49, gz - 33, 'lore', 'unjnews', { r: 6 });
   }
   { const kx = 350, kz = 592;   // —— 地下交流网入口(白石亭罩蓝洞) ——
     for (const [sx2, sz2] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) colAt(kx + sx2, kz + sz2, 6, .5);
@@ -6411,7 +6519,8 @@ let unjPhantomT = 0, unjTowerLight = null, unjTowerBulb = null, unjFountainMesh 
   addNpc({ x: gx + 10, z: gz - 4, name: '万国翻译员', body: 0x8a6a9a, hat: 0x6a4a7a, opts: { tall: .98 },
     lines: ['这里备了三百个翻译间。用过的,只有一个。', '误解从来不是语言问题,是利益问题——这句话,我翻译了四十年。', '我可以替你翻译任何语言。除了沉默。'] });
   addNpc({ x: gx + 46, z: gz - 38, name: '旧时代记者', body: 0x5a5a52, hat: 0x3e3e38,
-    lines: ['我在查这座城为什么失败。线索指向资本、战争、虚荣——和太干净的理想。', '雕塑家先生给各国君主写了一千封信。回信,不到十封。', '每个"为了人类",我都想追问一句:具体是哪些人?'] });
+    lines: ['我在查这座城为什么失败。线索指向资本、战争、虚荣——和太干净的理想。', '雕塑家先生给各国君主写了一千封信。回信,不到十封。', '每个"为了人类",我都想追问一句:具体是哪些人?'],
+    topics: [{ q: '你还缺什么线索?', a: '三样:港口仓库那批没人拆的邀请函、法庭档案柜里的电报底稿、未完成区散落的最后一次工地会议记录。都抄来给我——我桌上那台打字机,还欠这座城一篇报道。' }] });
   addNpc({ x: gx + 52, z: gz + 40, name: '守夜人', body: 0x6a5a42, hat: 0x4a3e2c, opts: { wide: 1.15 },
     lines: ['圣火二十年前就该点了。我每晚来点一次——点的是习惯,也是念想。', '这座场没办过一场比赛。但跑道,是按马拉松的梦想量的。', '要跑一圈吗?没有观众——风会给你鼓掌。'] });
   { unjPhantom = new THREE.Group(); unjPhantom.visible = false;   // —— 蓝图幻影(V):塔的补全 + 喷泉水 + 万国旗升起 ——
@@ -7012,6 +7121,7 @@ function loop() {
     // 障碍推离
     const pr = .9;
     for (const o of cirObs) {
+      if (o.top && player.position.y > o.top) continue;   // 高处放行(如进步之塔断口平台)
       const dx = player.position.x - o.x, dz = player.position.z - o.z, d = Math.hypot(dx, dz), min = o.r + pr;
       if (d < min && d > .001) { player.position.x = o.x + dx / d * min; player.position.z = o.z + dz / d * min; }
     }
@@ -7053,6 +7163,8 @@ function loop() {
     if (ph2 != null && player.position.y > ph2 - 1.4) gh = Math.max(gh, ph2);
     const sth = stadiumHeight(player.position.x, player.position.z);
     if (sth != null && player.position.y > sth - 2.4) gh = Math.max(gh, sth);
+    const uth = unjTowerHeight(player.position.x, player.position.z);
+    if (uth != null && player.position.y > uth - 2.4) gh = Math.max(gh, uth);
     swimming = gh < -.6;
     if (swimming) {
       vy = 0; grounded = false;
@@ -7108,6 +7220,20 @@ function loop() {
   if (unjTowerLight) { unjTowerLight.intensity = unjTowerOn ? 46 + Math.sin(t * 2.2) * 6 : 0; unjTowerBulb.visible = unjTowerOn; }
   if (unjFountainMesh) unjFountainMesh.visible = unjFountainOn || unjPhantomT > 0;
   if (unjPhantom) { if (unjPhantomT > 0) { unjPhantomT -= dt; unjPhantom.visible = true; } else unjPhantom.visible = false; }
+  if (unjGamesT > 0) {   // 幻影运动会:选手绕场 + 圣火摇曳,尾声 6 秒渐隐
+    unjGamesT -= dt;
+    const sx9 = UNJ.x + 52, sz9 = UNJ.z + 52;
+    for (const r of unjGamesGrp.children) {
+      if (!r.userData.sp) continue;
+      const a9 = r.userData.a0 + t * r.userData.sp;
+      const rx9 = sx9 + Math.cos(a9) * 11.5, rz9 = sz9 + Math.sin(a9) * 8.5;
+      r.position.set(rx9, height(rx9, rz9) + .1, rz9); r.rotation.y = -a9;
+    }
+    const fade = unjGamesT > 6 ? 1 : Math.max(0, unjGamesT / 6);
+    unjFlame.scale.y = 1 + Math.sin(t * 9) * .15; unjFlame.material.opacity = .85 * fade;
+    unjGamesGrp.userData.light.intensity = 30 * fade;
+    if (unjGamesT <= 0) { unjGamesGrp.visible = false; toast('…比赛结束了。跑道空了,火炬又冷了。守夜人朝你脱帽。'); }
+  }
   for (const f of seaFish) {
     const u = f.userData;
     const a = t * u.sp + u.ph;
@@ -7587,4 +7713,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
-  maybeRevealSkeleton, showSkeletonCard };
+  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight };
