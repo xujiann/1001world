@@ -6484,8 +6484,9 @@ function loop() {
       walkPhase += dt * 10; pMoving = true;
     }
     // 边界
-    const pd = Math.hypot(player.position.x, player.position.z);
-    if (pd > 1950) { player.position.x *= 1950 / pd; player.position.z *= 1950 / pd; }
+    // 世界边界:方形 ±1960(地形网格为 ±2000 方格,四角亦可驻岛)
+    player.position.x = Math.max(-1960, Math.min(1960, player.position.x));
+    player.position.z = Math.max(-1960, Math.min(1960, player.position.z));
     // 障碍推离
     const pr = .9;
     for (const o of cirObs) {
