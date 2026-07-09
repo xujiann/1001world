@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=6';
+import { makeNIContent } from './w-isles.js?v=7';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -16,9 +16,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=12';
+import { THEMES, NI_QUESTS } from './w-config.js?v=13';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=7';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=8';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -143,6 +143,9 @@ const NISLES = [
   { key: 'sanxian', x: 980, z: -1310, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [927, -1240] }, // 三仙岛(蓬莱三山×海市蜃楼)
   { key: 'shixia', x: -1450, z: -1400, r: 90, mask: 2.0, h: 9, peak: { r: 38, hh: 18 }, dock: [-1385, -1338] },// 石刻武学岛(侠客石窟)
   { key: 'taozhen', x: 1120, z: 1560, r: 90, mask: 2.0, h: 7, dock: [1068, 1487] },                            // 桃阵岛(桃花八阵)
+  { key: 'venezia', x: 620, z: 1840, r: 90, mask: 2.0, h: 5, dock: [591, 1755] },                             // 看不见的水城(威尼斯×卡尔维诺)
+  { key: 'saga', x: -1870, z: -60, r: 92, mask: 2.0, h: 8, peak: { r: 38, hh: 16 }, dock: [-1778, -57] },      // 冰火萨迦岛(冰岛×埃达)
+  { key: 'atl', x: -330, z: -1880, r: 88, mask: 2.0, h: 7, peak: { r: 34, hh: 12 }, dock: [-315, -1793] },     // 沉环之岛(圣托里尼×柏拉图)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
@@ -1800,7 +1803,7 @@ function titleList() {
     { id: 'unjer', name: '🏛️ 未竟之都的见证者', got: !!PSTORE.getItem('w1001.unjend'), note: '为人类之都做出抉择' },
     { id: 'unjnews', name: '🗞️ 迟到百年的头版', got: PSTORE.getItem('w1001.unjnews') === '1', note: '发出未竟之都的最后一篇报道' },
     { id: 'unjlang', name: '🗣️ 通天塔修补匠', got: PSTORE.getItem('w1001.unjlang') === '1', note: '修复万国翻译系统' },
-    { id: 'combo', name: '🧭 组合群岛勘察员', got: ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen'].every(k => PSTORE.getItem('w1001.nq_' + k) === '1'), note: '走完全部十三座组合岛的故事线' },
+    { id: 'combo', name: '🧭 组合群岛勘察员', got: ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl'].every(k => PSTORE.getItem('w1001.nq_' + k) === '1'), note: '走完全部十六座组合岛的故事线' },
     { id: 'kao', name: '📚 群岛考据学家', got: PSTORE.getItem('w1001.kaodone') === '1', note: '装订《群岛互文考》' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -1911,7 +1914,7 @@ function openJournal() {
     ['🔥 幻影运动会(未竟之都)', PSTORE.getItem('w1001.unjgames') === '1' ? '✅ 圣火亮过一夜' : '⏳ 夜里帮守夜人点火炬'],
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
-    ['🧭 组合群岛(十三座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 13 ? '✅ 勘察完毕' : `⏳ ${n}/13`; })()],
+    ['🧭 组合群岛(十六座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 16 ? '✅ 勘察完毕' : `⏳ ${n}/16`; })()],
     ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4, 5].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/5`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],

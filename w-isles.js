@@ -1212,5 +1212,132 @@ export function makeNIContent(C) {
       const g5 = new THREE.PointLight(0xff9aae, 0, 90, 2); g5.position.set(px4, ph6 + 4.5, pz4); g5.userData.pow = 18; nightLamps.push(g5); scene.add(g5);
     },
   },
+
+  venezia: {
+    name: '看不见的水城', en: 'The Invisible City', icon: '🛶', theme: 'venezia',
+    desc: '组合岛:威尼斯的水巷 × 卡尔维诺的五十五种描述',
+    ferryMsg: '🛶 看不见的水城到了。这里的街道是水做的——每个来过的人,描述的都不是同一座城',
+    lore: {
+      vzcanal: { icon: '🛶', color: '#4a7a8a', title: '大水巷', en: 'The Grand Canal', hint: '街道是水做的',
+        desc: '这座城不修路,修水:门槛直接泡在浪里,台阶往水下多凿三级——给退潮时的客人用。撑船人说,在这里迷路的方式和别处不同:别处是走错了街,这里是"跟错了倒影"。' },
+      vzbridge: { icon: '🌉', color: '#8a7a5a', title: '一百零一桥', en: 'The Hundred Bridges', hint: '桥比街多的城',
+        desc: '城里桥比街多。最老的一座没有栏杆——老人们说那是故意的:过桥的人得专心,专心的人不胡思乱想。桥洞里刻着一行小字:"你数过第几座了?数桥的人,永远数不到自己脚下这座。"' },
+      vzmarco: { icon: '📜', color: '#a8863a', title: '说书人的座位', en: "The Storyteller's Bench", hint: '五十五种描述',
+        desc: '码头石凳上,说书的旅人日复一日向看不见的可汗汇报他走过的城市:轻的城、连绵的城、死者的城、天空的城……五十五座讲完,可汗发现他说的一直是同一座——他的故乡。石凳扶手被摩挲得发亮,像一枚旧印章。' },
+      vzmask: { icon: '🎭', color: '#8a5a7a', title: '面具铺', en: 'The Mask Shop', hint: '人人露出真面目',
+        desc: '铺子里挂满面具:月亮脸、乌鸦嘴、镀金的太阳。掌柜的从不问你要哪张,只看你一眼,取一张递过来——十有八九,正是你不敢承认想要的那张。他说这城的规矩:人人戴面具,于是人人露出了真面目。' },
+      vzflood: { icon: '📏', color: '#5a7a8a', title: '水位刻度', en: 'The Flood Marks', hint: '慢慢启程的城',
+        desc: '墙根一排刻度,记着历年大水的高度,最上面那道快齐人肩了。城每年往下沉一点,居民不修堤,只把家往楼上搬一层。撑船人耸耸肩:"它不是在沉没——它是在慢慢启程。"' },
+    },
+    spots: [[0, 10, 'vzcanal'], [-16, -2, 'vzbridge'], [12, 26, 'vzmarco'], [16, -12, 'vzmask'], [-8, 22, 'vzflood']],
+    npcs: [
+      { dx: 8, dz: 22, name: '说书的旅人', body: 0x8a6a3a, hat: 0x6a5028, opts: { tall: 1.02 },
+        lines: ['我向可汗描述过五十五座城市。他后来发现,说的都是我的故乡。', '城市不肯说自己的过去,只把它写在街角、栏杆和旗杆上,像手相。', '你也走过不少岛吧?坐下说说——说着说着,你就知道自己的故乡长什么样了。'] },
+      { dx: -6, dz: 6, name: '撑船人', body: 0x3a5a6a, hat: 0x2a4450, opts: { wide: 1.05 },
+        lines: ['上船不要问去哪。水认得路。', '涨潮送你出门,退潮接你回家——这城的时刻表是月亮排的。', '桥底下别说愿望,回声会替你改词。'] },
+    ],
+    build: (gx, gz) => {
+      const cols = [0xc86a5a, 0xd8a05a, 0x8aa06a, 0x6a8ab0, 0xb07a8a, 0xd8c08a];
+      for (let i = 0; i < 8; i++) {   // 两排彩色窄楼夹一条水巷
+        const side = i < 4 ? -1 : 1, bx2 = gx - 10 + (i % 4) * 7, bz2 = gz + 8 + side * 5.5, H2 = 5 + (i % 3) * 1.5, bh2 = height(bx2, bz2);
+        const hs2 = box(5.4, H2, 4, lam(cols[i % 6])); hs2.position.set(bx2, bh2 + H2 / 2, bz2); scene.add(hs2); cirObs.push({ x: bx2, z: bz2, r: 3.2 });
+        for (let w2 = 0; w2 < 2; w2++) { const win2 = box(.8, 1.1, .12, lam(0x2e3440)); win2.position.set(bx2 - 1.2 + w2 * 2.4, bh2 + H2 - 1.6, bz2 - side * 2.06); scene.add(win2); } }
+      const canal = box(30, .25, 4.6, new THREE.MeshPhongMaterial({ color: 0x2a5a6a, shininess: 80, transparent: true, opacity: .85 }));
+      canal.position.set(gx, height(gx, gz + 8) + .32, gz + 8); scene.add(canal);   // 水巷
+      for (let i = 0; i < 3; i++) {   // 三座小拱桥
+        const brx = gx - 9 + i * 9, brh = height(brx, gz + 8);
+        const arch2 = box(2.2, .3, 6.4, lam(0xb0a890)); arch2.position.set(brx, brh + 1.5, gz + 8); scene.add(arch2);
+        for (const so of [-2.6, 2.6]) { const ramp2 = box(2.2, .28, 1.8, lam(0xb0a890)); ramp2.position.set(brx, brh + 1, gz + 8 + so); ramp2.rotation.x = so > 0 ? .5 : -.5; scene.add(ramp2); } }
+      for (let i = 0; i < 3; i++) {   // 贡多拉:黑舟翘首
+        const gnx = gx - 12 + i * 10, gnh = height(gnx, gz + 8);
+        const gon = box(3.6, .5, .9, lam(0x1e2226)); gon.position.set(gnx + 2, gnh + .8, gz + 8); scene.add(gon);
+        const prow = box(.5, 1, .2, lam(0x1e2226)); prow.rotation.z = .5; prow.position.set(gnx + 3.8, gnh + 1.2, gz + 8); scene.add(prow); }
+      const cmp = box(3, 14, 3, lam(0xa85a48)); cmp.position.set(gx + 18, height(gx + 18, gz - 10) + 7, gz - 10); scene.add(cmp); cirObs.push({ x: gx + 18, z: gz - 10, r: 2.4 });   // 钟楼
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.4, 4), lam(0x3a6a5a)); spire.rotation.y = .78; spire.position.set(gx + 18, height(gx + 18, gz - 10) + 15.6, gz - 10); scene.add(spire);
+      const stall2 = box(3.6, 2.6, 2.6, lam(0x6a4a6a)); stall2.position.set(gx + 15, height(gx + 15, gz - 13) + 1.3, gz - 13); scene.add(stall2);   // 面具铺
+      const wl3 = new THREE.PointLight(0xffd8a0, 0, 90, 2); wl3.position.set(gx, height(gx, gz + 8) + 5, gz + 8); wl3.userData.pow = 20; nightLamps.push(wl3); scene.add(wl3);
+    },
+  },
+  saga: {
+    name: '冰火萨迦岛', en: 'The Saga Isle', icon: '❄️', theme: 'saga',
+    desc: '组合岛:冰岛的冰川与火山 × 埃达史诗的预言',
+    ferryMsg: '❄️ 冰火萨迦岛到了。冰川和火山一墙之隔——诗人说,世界就是这么造出来的',
+    lore: {
+      sggeyser: { icon: '⛲', color: '#8fb8c8', title: '间歇泉', en: 'The Geyser', hint: '大地在换气',
+        desc: '一汪幽蓝的圆池,每隔一炷香猛地喷起十几米的白水柱,又安静下去。向导说别用"喷发"这么凶的词——"那是大地在换气。你屏住呼吸听,喷完那一下,整座岛都松了口气。"' },
+      sglava: { icon: '🌋', color: '#8c3a1a', title: '熔岩裂缝', en: 'The Lava Rift', hint: '一墙之隔的冰与火',
+        desc: '黑色的熔岩原上裂着一道细缝,深处透出橘红的光,像大地没合拢的伤口。十步之外就是冰川的白舌头——冰与火在这里只隔一堵石墙。埃达里说,世界正是从冰与火的相遇处诞生的;这里像是留了个火种,以备重来一次。' },
+      sgrune: { icon: '🪨', color: '#5a5a66', title: '预言石', en: 'The Prophecy Stone', hint: '末日诗的最后一句',
+        desc: '一块爬满地衣的符文石,刻着女先知的预言:狼吞日,蛇搅海,诸神赴死,大地沉没——最后一行字最小,得蹲下才看得清:"而后大地将再度从海中升起,绿意盎然,瀑布下有鹰掠过。"末日预言的最后一句,是希望。' },
+      sgskald: { icon: '🔥', color: '#a86a2a', title: '吟游诗人的火堆', en: "The Skald's Fire", hint: '萨迦是围着火讲的',
+        desc: '石圈里一堆终年不熄的火,几段原木当座。萨迦从来不是读的,是围着火听的——风越大,讲得越好。诗人的规矩:讲死亡时添一根柴,讲出生时也添一根。"火分不清悲喜,火只管把夜撑住。"' },
+      sgaurora: { icon: '🌌', color: '#3a6a5a', title: '极光崖', en: 'The Aurora Cliff', hint: '渡鸦在替谁翻书',
+        desc: '晴朗的冬夜,崖顶上空会垂下绿色的光帘,慢慢卷动,像一页页翻过。向导的祖母说那是奥丁的两只渡鸦在替他翻阅世界;向导自己念过书,知道那是太阳风——"可我每次看,还是先想起祖母的说法。知识管白天,故事管夜里。"' },
+    },
+    spots: [[-12, 18, 'sggeyser'], [16, -8, 'sglava'], [-4, -2, 'sgrune'], [6, 14, 'sgskald'], [-6, -26, 'sgaurora']],
+    npcs: [
+      { dx: 10, dz: 16, name: '吟游诗人', body: 0x5a4a3a, hat: 0x42362a, opts: { tall: 1.04 },
+        lines: ['萨迦的第一句永远是名字——人没了,名字还得有人念。', '我唱过一百遍诸神黄昏。听众最安静的,永远是最后那句绿意盎然。', '坐。风这么大,正是讲故事的好天气。'] },
+      { dx: -14, dz: 14, name: '冰川向导', body: 0x4a6a7a, hat: 0x365060, opts: { wide: 1.08 },
+        lines: ['冰川每年退一点。我的工作迟早会变成"指着照片讲从前"。', '间歇泉要等,极光要碰——这岛教人的第一课是:急不来。', '踩我踩过的地方。冰的脾气,我认得。'] },
+    ],
+    build: (gx, gz) => {
+      const gyx = gx - 12, gyz = gz + 18, gyh = height(gyx, gyz);   // 间歇泉:池+白水柱
+      const pool2 = new THREE.Mesh(new THREE.CircleGeometry(2.6, 14), new THREE.MeshPhongMaterial({ color: 0x4a9ab0, shininess: 90 })); pool2.rotation.x = -Math.PI / 2; pool2.position.set(gyx, gyh + .15, gyz); scene.add(pool2);
+      const jet = cyl(.5, 1.1, 12, new THREE.MeshBasicMaterial({ color: 0xeaf6fa, transparent: true, opacity: .55, depthWrite: false }), 8); jet.position.set(gyx, gyh + 6, gyz); scene.add(jet);
+      const lvx = gx + 16, lvz = gz - 8, lvh = height(lvx, lvz);   // 熔岩裂缝:黑岩+橘光
+      for (let i = 0; i < 6; i++) { const bk = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 + (i % 3) * .5), lam(0x26242a)); bk.position.set(lvx - 6 + i * 2.4, lvh + .7, lvz + (i % 2) * 2); bk.rotation.set(i, i * 2, 0); scene.add(bk); }
+      const rift = box(9, .3, .9, new THREE.MeshBasicMaterial({ color: 0xff6a2a, fog: false })); rift.position.set(lvx, lvh + .2, lvz + 1); scene.add(rift);
+      const lglow = new THREE.PointLight(0xff5a1a, 1.2, 30, 2); lglow.position.set(lvx, lvh + 1.5, lvz + 1); scene.add(lglow);
+      for (let i = 0; i < 4; i++) { const ice = box(2.4, 1.6 + (i % 2), 2, new THREE.MeshPhongMaterial({ color: 0xd8ecf4, transparent: true, opacity: .8, shininess: 100 }));   // 冰川舌
+        ice.position.set(lvx - 2 + i * 2.2, lvh + .8, lvz - 6); ice.rotation.y = i; scene.add(ice); }
+      const rs2 = box(1.5, 3, .7, lam(0x5a5a66)); rs2.position.set(gx - 4, height(gx - 4, gz - 2) + 1.5, gz - 2); rs2.rotation.y = .3; scene.add(rs2); cirObs.push({ x: gx - 4, z: gz - 2, r: 1.2 });   // 预言石
+      const fx4 = gx + 6, fz4 = gz + 14, fh5 = height(fx4, fz4);   // 火堆+原木座
+      const fire2 = new THREE.Mesh(new THREE.ConeGeometry(.8, 1.6, 7), new THREE.MeshBasicMaterial({ color: 0xffa04a, transparent: true, opacity: .85, fog: false })); fire2.position.set(fx4, fh5 + .9, fz4); scene.add(fire2);
+      for (let i = 0; i < 3; i++) { const log2 = cyl(.3, .3, 2.6, M.woodDark, 6); const a2 = i * 2.09; log2.rotation.z = Math.PI / 2; log2.rotation.y = a2; log2.position.set(fx4 + Math.cos(a2) * 2.2, fh5 + .3, fz4 + Math.sin(a2) * 2.2); scene.add(log2); }
+      const fglow = new THREE.PointLight(0xff9a4a, 0, 80, 2); fglow.position.set(fx4, fh5 + 2, fz4); fglow.userData.pow = 22; nightLamps.push(fglow); scene.add(fglow);
+    },
+  },
+  atl: {
+    name: '沉环之岛', en: 'The Sunken Ring', icon: '🌀', theme: 'atl',
+    desc: '组合岛:圣托里尼的月牙崖城 × 柏拉图的亚特兰蒂斯',
+    ferryMsg: '🌀 沉环之岛到了。白屋蓝顶在崖上,三道环在湾底——哲学家两千年前就写好了说明书',
+    lore: {
+      atcliff: { icon: '🏘️', color: '#5a7ab0', title: '白蓝崖城', en: 'The White Cliff Town', hint: '悬在火山口上的家',
+        desc: '一排雪白的方屋沿崖顶铺开,圆顶蓝得和海分不清。整座镇子悬在古火山口的边缘上——脚下就是当年塌陷的巨湾。住在"末日现场"的人反而最从容:他们把墙刷得最白,把门漆得最蓝,像跟大海讲和了。' },
+      atplato: { icon: '📐', color: '#8a7a4a', title: '哲学家的尺子', en: "The Philosopher's Measure", hint: '对不上的数字',
+        desc: '崖顶石桌上钉着一页抄本:环城三道水、三道墙,宫殿居中,金银为饰——哲学家言之凿凿,说得像去过。两千年来无数人拿着尺子来量,数字从没对上过。可黄昏退潮时从崖顶往湾里看……你自己看吧。' },
+      atruin: { icon: '🏛️', color: '#6a8a9a', title: '沉没的柱廊', en: 'The Drowned Colonnade', hint: '湾底的影子',
+        desc: '湾里露出几截白石柱子,涨潮时只剩柱头,退潮时能看见断裂的拱和铺地的残纹。渔民从不把船系在柱子上——"人家的城门口,懂点礼数。"没人说得清它沉了多少年:久到海把它当成了自己的。' },
+      atbell: { icon: '🔔', color: '#4a5a6a', title: '沉钟', en: 'The Sunken Bell', hint: '涨潮夜的声音',
+        desc: '涨大潮的夜里,湾底会传来沉沉的钟声,一下,又一下。学者说是洋流撞响了沉在水下的铜钟;酿酒师说是浮标撞礁;守夜的老狗什么也不说,只是每次都朝着海,竖起耳朵。' },
+      atvine: { icon: '🍇', color: '#7a5a8a', title: '火山葡萄园', en: 'The Basket Vines', hint: '末日土壤上的甜',
+        desc: '葡萄藤不搭架,盘成一圈圈贴地的篮子——挡风,也兜露水。火山灰的地里长出的葡萄小而极甜,酿的酒带一点烟味。酿酒师倒了一杯:"尝尝。末日和甜,可以出自同一片土。"' },
+    },
+    spots: [[0, -4, 'atcliff'], [-14, 8, 'atplato'], [6, 30, 'atruin'], [18, 24, 'atbell'], [16, -14, 'atvine']],
+    npcs: [
+      { dx: 10, dz: -8, name: '老酿酒师', body: 0x6a4a5a, hat: 0x503846, opts: { wide: 1.1 },
+        lines: ['我的葡萄长在两千年前的火山灰里——年份?你说的是哪一层的年份?', '游客来找亚特兰蒂斯,住两晚,最后都在找我的酒窖。', '大海拿走了半座岛,还回来的是甜。这买卖,我们认了。'] },
+      { dx: -12, dz: 10, name: '寻找沉城的学者', body: 0x4a5a7a, hat: 0x384660, opts: { tall: 1.05 },
+        lines: ['我找了四十年。同行都说我找错了地方——他们说得可能都对。', '柏拉图写的若不是实录,就是预言。两样我都接受。', '我不怕找不到。我怕的是找到以后,没有东西可找了。'] },
+    ],
+    build: (gx, gz) => {
+      for (let i = 0; i < 6; i++) {   // 崖顶白屋蓝顶
+        const wx2 = gx - 12 + i * 5, wz2 = gz - 4 - (i % 2) * 4, wh3 = height(wx2, wz2);
+        const cube = box(3.6, 3, 3.6, lam(0xf2f0ea)); cube.position.set(wx2, wh3 + 1.5, wz2); scene.add(cube); cirObs.push({ x: wx2, z: wz2, r: 2.4 });
+        if (i % 2) { const dome2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8, 0, 6.283, 0, Math.PI / 2), lam(0x2a6ab0)); dome2.position.set(wx2, wh3 + 3, wz2); scene.add(dome2); } }
+      { const wmx = gx + 14, wmz = gz - 18, wmh = height(wmx, wmz);   // 风车
+        const tower2 = cyl(1.2, 1.6, 5, lam(0xf2f0ea), 9); tower2.position.set(wmx, wmh + 2.5, wmz); scene.add(tower2); cirObs.push({ x: wmx, z: wmz, r: 1.6 });
+        for (let i = 0; i < 6; i++) { const bl = box(.24, 2.6, .06, lam(0xd8d4c8)); const a2 = i / 6 * 6.283; bl.position.set(wmx + Math.sin(a2) * 1.1, wmh + 5.4 + Math.cos(a2) * 1.1, wmz + 1.5); bl.rotation.z = -a2; scene.add(bl); } }
+      for (let i = 0; i < 5; i++) {   // 湾底沉柱(半没于水)
+        const px5 = gx + 2 + i * 5, pz5 = gz + 32 + (i % 2) * 4;
+        const col5 = cyl(.7, .8, 3 + (i % 3), lam(0xdcd8cc), 9); col5.position.set(px5, .4 + (i % 3) * .5, pz5); col5.rotation.z = (i % 2) * .18 - .09; scene.add(col5); }
+      const arch3 = box(4.6, .8, 1, lam(0xd0ccc0)); arch3.position.set(gx + 9, 1.6, gz + 34); arch3.rotation.z = .12; scene.add(arch3);   // 断拱
+      for (let i = 0; i < 6; i++) { const ring2 = new THREE.Mesh(new THREE.TorusGeometry(.9, .18, 6, 12), lam(0x4a6a3a));   // 篮圈葡萄藤
+        const vx2 = gx + 14 + (i % 3) * 3, vz2 = gz - 12 - Math.floor(i / 3) * 3; ring2.rotation.x = Math.PI / 2; ring2.position.set(vx2, height(vx2, vz2) + .3, vz2); scene.add(ring2); }
+      const bell3 = cyl(.6, .8, 1, lam(0x6a5a30), 9); bell3.position.set(gx + 18, .2, gz + 26); scene.add(bell3);   // 沉钟(潮间带)
+      const wl4 = new THREE.PointLight(0xffe2b0, 0, 90, 2); wl4.position.set(gx - 2, height(gx - 2, gz - 6) + 4.5, gz - 6); wl4.userData.pow = 18; nightLamps.push(wl4); scene.add(wl4);
+    },
+  },
 };
 }
