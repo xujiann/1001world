@@ -819,8 +819,8 @@ let scaleT = 0, curDA = 1, photoFilter = 0;
 const PHOTO_FILTERS = [['原色', ''], ['旧梦', 'sepia(.55) contrast(1.06)'], ['黑白', 'grayscale(1) contrast(1.12)'], ['暖阳', 'saturate(1.4) hue-rotate(-8deg) brightness(1.04)'], ['冷冽', 'saturate(1.2) hue-rotate(12deg) contrast(1.1) brightness(.94)']];
 let windFlip = PSTORE.getItem('w1001.wind') === '1';
 /* 存档版本(为未来字段迁移预留) */
-const SAVE_V = '2';
-try { if (PSTORE.getItem('w1001.savev') !== SAVE_V) { /* v1→v2:字段全部向后兼容,无需迁移 */ PSTORE.setItem('w1001.savev', SAVE_V); } } catch (e) {}
+const SAVE_V = '3';
+try { if (PSTORE.getItem('w1001.savev') !== SAVE_V) { /* v3:stamps 改存 PASSPORT 索引(载入时自动迁移旧名单) */ PSTORE.setItem('w1001.savev', SAVE_V); } } catch (e) {}
 const COUPLETS = [
   ['寒塘渡鹤影', '冷月葬花魂'], ['芳情只自遣', '雅趣向谁言'], ['宝鼎茶闲烟尚绿', '幽窗棋罢指犹凉'],
   ['绕堤柳借三篙翠', '隔岸花分一脉香'], ['吟成豆蔻才犹艳', '睡足酴醿梦亦香'], ['珠玉自应传盛世', '神仙何幸下瑶台'],
@@ -5033,11 +5033,18 @@ const PASSPORT = [
   ['霍格沃茨', '⚡'], ['南塔开特', '🐳'], ['体育岛', '⚽'],
   ...ISLES.map(z2 => [z2.name, z2.icon]),
 ];
-const stamps = new Set((PSTORE.getItem('w1001.stamps') || '').split('|').filter(Boolean));
+const stamps = new Set((() => {   // 兼容旧名单格式,新格式为 PASSPORT 索引(存档码更短)
+  const raw = PSTORE.getItem('w1001.stamps') || '';
+  if (!raw) return [];
+  if (/^[0-9,]+$/.test(raw)) return raw.split(',').map(i9 => (PASSPORT[+i9] || [])[0]).filter(Boolean);
+  return raw.split('|').filter(Boolean);
+})());
+function saveStamps() { PSTORE.setItem('w1001.stamps', [...stamps].map(nm9 => PASSPORT.findIndex(p9 => p9[0] === nm9)).filter(i9 => i9 >= 0).join(',')); }
+saveStamps();   // 旧格式即时迁移
 function addStamp(nm) {
   if (stamps.has(nm)) return;
   stamps.add(nm);
-  PSTORE.setItem('w1001.stamps', [...stamps].join('|'));
+  saveStamps();
   const n = stamps.size, total = PASSPORT.length;
   toast(`🛂 环球护照 · 新盖章「${nm}」(${n}/${total})`); blip(700);
   if (n >= 10 && PSTORE.getItem('w1001.pass10') !== '1') { PSTORE.setItem('w1001.pass10', '1'); earnSB(20); setTimeout(() => toast('🛂 十岛达成 · ⚡+20——护照第一页,盖满了'), 1800); }
