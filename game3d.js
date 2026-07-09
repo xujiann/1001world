@@ -5648,7 +5648,7 @@ function toggleBigMap() {
   else { bigmapEl.classList.add('hidden'); modalOpen = false; cancelAnimationFrame(globeRAF); }
 }
 /* --- 🌐 地球仪视图:海图烘焙图贴球(A 方案)--- */
-let globeOn = false, globeInit = false, globeR = null, globeScene = null, globeCam = null, globeGrp = null, globeCv = null, globeMk = null, globeRAF = 0, globeDrag = null;
+let globeOn = PSTORE.getItem('w1001.mapmode') !== 'flat', globeInit = false, globeR = null, globeScene = null, globeCam = null, globeGrp = null, globeCv = null, globeMk = null, globeRAF = 0, globeDrag = null;
 const globeRot = { x: -.3, y: -Math.PI / 2 };
 let globeDist = 3.4;
 function initGlobe() {
@@ -5667,6 +5667,14 @@ function initGlobe() {
   globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 32, 24), new THREE.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: .1, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));   // 大气辉光
   globeMk = new THREE.Mesh(new THREE.SphereGeometry(.02, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd76a }));
   globeGrp.add(globeMk);
+  const COMBO_COLS = { gala: 0x6ac08a, moai: 0x8fa8e8, fogjail: 0x8a929a, kilda: 0xb8c4d0, gunkan: 0x6a7684, soco: 0xc05a4a, skell: 0xd8d2c2, mada: 0x8ac06a, helena: 0xb0a8c8, komodo: 0xc8a04a, sanxian: 0x9fc8e8, shixia: 0xd8ccb0, taozhen: 0xf0b8c8, venezia: 0x6ab0c8, saga: 0xbfe8f0, atl: 0x9ab0c0 };
+  for (const s2 of NISLES) {   // 十六座组合岛:迷宫浮标同色的星点
+    const c2 = COMBO_COLS[s2.key]; if (!c2) continue;
+    const d2 = new THREE.Mesh(new THREE.SphereGeometry(.013, 8, 6), new THREE.MeshBasicMaterial({ color: c2 }));
+    d2.position.copy(globeVec(s2.x, s2.z)).multiplyScalar(1.008); globeGrp.add(d2);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(.022, 8, 6), new THREE.MeshBasicMaterial({ color: c2, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.position.copy(d2.position); globeGrp.add(halo);
+  }
   globeScene.add(globeGrp);
   { const pts = [];   // 星幕
     for (let i = 0; i < 260; i++) { const a = Math.random() * 6.283, b = Math.acos(Math.random() * 2 - 1), rr = 20; pts.push(rr * Math.sin(b) * Math.cos(a), rr * Math.cos(b), rr * Math.sin(b) * Math.sin(a)); }
@@ -5694,25 +5702,60 @@ function initGlobe() {
     mapPick((hit.uv.x - .5) * 4000, (hit.uv.y - .5) * 4000);
   });
 }
-function globeFrame() {
-  if (!globeOn || bigmapEl.classList.contains('hidden')) return;
-  if (!globeDrag) globeRot.y += .0016;   // 闲置缓转
+function globeVec(wx, wz) {   // 世界坐标 → 单位球面(与 SphereGeometry UV 同式)
+  const u = wx / 4000 + .5, v = wz / 4000 + .5, th = (1 - v) * Math.PI, ph = u * Math.PI * 2;
+  return new THREE.Vector3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th));
+}
+let arcLine = null, arcDot = null, arcT = -1, arcPending = null;
+function startArc(entry) {   // 直航大圆弧:起点=玩家,终点=目的岛
+  const a = globeVec(player.position.x, player.position.z), b = globeVec(entry[2], entry[3]);
+  const om = Math.acos(Math.min(1, Math.max(-1, a.dot(b)))) || .0001, pts = [];
+  for (let i = 0; i <= 48; i++) {
+    const t2 = i / 48;
+    const p2 = a.clone().multiplyScalar(Math.sin((1 - t2) * om) / Math.sin(om)).add(b.clone().multiplyScalar(Math.sin(t2 * om) / Math.sin(om)));
+    pts.push(p2.normalize().multiplyScalar(1.018 + Math.sin(t2 * Math.PI) * .07));   // 弧线离面一点,中段更高
+  }
+  if (arcLine) globeGrp.remove(arcLine);
+  arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xffd76a, transparent: true, opacity: .95 }));
+  arcLine.geometry.setDrawRange(0, 0); arcLine.userData.pts = pts; globeGrp.add(arcLine);
+  if (!arcDot) { arcDot = new THREE.Mesh(new THREE.SphereGeometry(.017, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2cc })); globeGrp.add(arcDot); }
+  arcDot.visible = true; arcT = 0;
+  arcPending = entry[0];
+}
+function globeTick() {
+  if (!globeDrag && arcT < 0) globeRot.y += .0016;   // 闲置缓转(航迹播放时不转)
+  if (arcT >= 0 && arcLine) {
+    arcT += .014;
+    const k = Math.min(48, Math.floor(arcT * 48));
+    arcLine.geometry.setDrawRange(0, k + 1);
+    arcDot.position.copy(arcLine.userData.pts[k]);
+    if (arcT >= 1.25) {   // 弧画完稍作停留 → 启航
+      globeGrp.remove(arcLine); arcLine = null; arcDot.visible = false; arcT = -1;
+      const k2 = arcPending; arcPending = null;
+      toggleBigMap(); ferryGo(k2);
+      return;
+    }
+  }
   globeGrp.rotation.set(globeRot.x, globeRot.y, 0);
   globeCam.position.set(0, 0, globeDist);
   globeR.render(globeScene, globeCam);
+}
+function globeFrame() {
+  if (!globeOn || bigmapEl.classList.contains('hidden')) return;
+  globeTick();
   globeRAF = requestAnimationFrame(globeFrame);
 }
 function startGlobe() {
   renderBigMap();   // 确保 bigBase 已烘焙(纹理源)
   if (!globeInit) { globeInit = true; initGlobe(); }
-  const u = player.position.x / 4000 + .5, v = player.position.z / 4000 + .5;   // 玩家 → 球面(与 SphereGeometry UV 同式)
-  const th = (1 - v) * Math.PI, ph = u * Math.PI * 2;
-  globeMk.position.set(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).multiplyScalar(1.012);
+  globeMk.position.copy(globeVec(player.position.x, player.position.z)).multiplyScalar(1.012);
   bigCv.style.display = 'none'; globeCv.style.display = '';
+  const b0 = document.getElementById('btnGlobe'); if (b0) b0.textContent = '🗺️ 平面海图';
   cancelAnimationFrame(globeRAF); globeFrame();
 }
 function setGlobe(on) {
   globeOn = on;
+  PSTORE.setItem('w1001.mapmode', on ? 'globe' : 'flat');
   if (on) startGlobe();
   else { cancelAnimationFrame(globeRAF); if (globeCv) globeCv.style.display = 'none'; bigCv.style.display = ''; }
   const b = document.getElementById('btnGlobe'); if (b) b.textContent = on ? '🗺️ 平面海图' : '🌐 地球仪';
@@ -5742,8 +5785,9 @@ function initGoBar() {
   goBar.querySelector('#goBarGo').addEventListener('click', () => {
     if (!mapSel) return;
     if (diving) { toast('🤿 潜水中不能叫船——先浮上去'); return; }
-    const k = mapSel[0]; goBar.style.display = 'none'; mapSel = null;
-    toggleBigMap(); ferryGo(k);
+    const sel = mapSel; goBar.style.display = 'none'; mapSel = null;
+    if (globeOn && globeCv && globeCv.style.display !== 'none') startArc(sel);   // 🌐 先画大圆弧,再启航
+    else { toggleBigMap(); ferryGo(sel[0]); }
   });
   goBar.querySelector('#goBarNo').addEventListener('click', () => { goBar.style.display = 'none'; mapSel = null; renderBigMap(); });
 }
@@ -7375,4 +7419,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
-  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight };
+  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }) };
