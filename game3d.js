@@ -47,7 +47,7 @@ function curProfileName() {
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
-SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kaodone');   // 群岛考据线
+SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kaodone');   // 群岛考据线
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1094,7 +1094,7 @@ const LORE = {
   unjlang: { icon: '💡', color: '#9a8ac8', title: '17 号翻译间', en: 'Booth No.17', hint: '全楼唯一用过的一间',
     desc: '三百间里唯一被用过的翻译间——万国翻译员四十年都坐在这里。桌上有三枚修复插销,对应回廊里的三块误译碑。全部归位时,三百间的灯会一起亮:那将是这座城说过的最长的一句话。' },
   unjkao: { icon: '📚', color: '#7a6248', title: '考据学会的长桌', en: 'The Intertext Society', hint: '会员:一人',
-    desc: '和平港边一张堆满卡片和线绳的长桌——「群岛考据学会」,全部会员:一人。他坚信这五十三座岛是同一本书的五十三页,证据就藏在各岛的只言片语里。长桌上摊着四份未完成的考据,每一份都需要两处岛屿的见闻互证。' },
+    desc: '和平港边一张堆满卡片和线绳的长桌——「群岛考据学会」,全部会员:一人。他坚信这五十三座岛是同一本书的五十三页,证据就藏在各岛的只言片语里。长桌上摊着五份未完成的考据,每一份都需要两处岛屿的见闻互证。' },
   // —— 船只 encounter:海上四艘传奇 ——
   ghostship: { icon: '🐺', color: '#2a2e36', title: '幽灵号', en: 'The Ghost', hint: '海狼的猎场',
     desc: '一艘漆黑的捕猎帆船,船长"海狼"拉森一手掌舵、一手读勃朗宁。"人生是发酵的酵母,大鱼吃小鱼,只为保持自己的游动。"落水的文弱书生凡·卫登被他捞起,从"少爷手"被锤炼成真正的水手——杰克·伦敦把尼采装进了一条船。' },
@@ -1170,6 +1170,7 @@ function loreCard(k) {
       ['被请离的客人', ['nq_gala', '去进化群岛画雀喙图谱'], ['nq_mor', '去莫罗博士岛随兽人诵律法']],
       ['等了一百年的那句话', ['nq_soco', '去真名植物岛听龙血树的真名'], ['unjlang', '修复本岛翻译回廊(三块误译碑+总闸)']],
       ['两个不肯走的人', ['nq_kilda', '去风暴孤岛寄出邮件船'], ['flotsam5', '去绝望岛收齐 5 箱漂流物资']],
+      ['不可至之地', ['nq_sanxian', '去三仙岛驾舟追一次蜃楼'], ['taofound', '寻见桃花源(仿佛若有光……)']],
     ];
     const kaoHas = f => f === 'flotsam5' ? (PSTORE.getItem('w1001.flotsam') || '').split(',').filter(Boolean).length >= 5 : PSTORE.getItem('w1001.' + f) === '1';
     if (PSTORE.getItem('w1001.kaodone') === '1') btn = '<span style="color:#8a7c62;font-size:13px">《群岛互文考》已装订付印。印数 2 册:他一册,你一册。</span>';
@@ -1178,7 +1179,7 @@ function loreCard(k) {
       if (kaoHas(K2[1][0]) && kaoHas(K2[2][0])) return `<button class="again" data-kao="${i2 + 1}" style="display:block;width:100%;margin:6px 0">📎 提交考据:${K2[0]}</button>`;
       const miss = [K2[1], K2[2]].filter(p2 => !kaoHas(p2[0])).map(p2 => p2[1]).join(';');
       return `<div style="font-size:12px;color:#8a7c62;margin:6px 0;line-height:1.5">⏳ 「${K2[0]}」尚缺见闻:${miss}</div>`;
-    }).join('') + ([1, 2, 3, 4].every(i2 => PSTORE.getItem('w1001.kao' + i2) === '1') ? '<button class="again" data-kaodone style="display:block;width:100%;margin:8px 0">📚 装订《群岛互文考》</button>' : '');
+    }).join('') + ([1, 2, 3, 4, 5].every(i2 => PSTORE.getItem('w1001.kao' + i2) === '1') ? '<button class="again" data-kaodone style="display:block;width:100%;margin:8px 0">📚 装订《群岛互文考》</button>' : '');
   }
   if (k === 'treasuredig') btn = PSTORE.getItem('w1001.treasure') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">坑已挖开,弗林特的黄金归你——空气里还飘着一点朗姆酒味。</span>'
@@ -1479,6 +1480,7 @@ function openCard(s) {
       2: '📎 育种棚记录册上"我来替时间赶路"的笔迹,与莫罗岛的实验日志如出一辙——他被请离之后,去西北那座岛把名字改成了"博士"。',
       3: '📎 名师说"知其真名方可相守";三百盏灯亮起那晚说的是同一件事——语言的尽头不是理解,是相守。',
       4: '📎 守望者躲进石仓留了下来,鲁滨逊拼了命想回去——离开与留下,原来是同一种忠诚。',
+      5: '📎 蓬莱近之则隐,桃花源不在任何海图上——一个拒绝抵达,一个拒绝被找。可你两处都到过:不可至之地,只对「寻」关闭,对「遇」敞开。',
     };
     toast(FINDS[i] + ' ⚡+12'); blip(760); closeModals();
   }));
@@ -1910,7 +1912,7 @@ function openJournal() {
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
     ['🧭 组合群岛(十三座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 13 ? '✅ 勘察完毕' : `⏳ ${n}/13`; })()],
-    ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/4`],
+    ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4, 5].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/5`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
   ];
@@ -5376,8 +5378,8 @@ function showKaoEssay() {
   cardBody.innerHTML = `<div class="paper"><div class="pMast">群岛互文考</div>
     <div class="pSub">群岛考据学会 · 会刊创刊号(亦为终刊号)</div>
     <div class="pHead">这不是群岛,是一本被海水打散的书</div>
-    <div class="pBody">考据四则,兹录其要:矿工五十年前听见的凿壁声,与迷宫正中的搏动同源——隧道不是天然的,是有人在写(考据一);进化群岛被请离的那位客人,后来在西北的岛上自称博士——一页的反派,原是另一页的伏笔(考据二);真名石与三百盏灯说的是同一句话:语言的尽头不是理解,是相守(考据三);石仓里留下的人与荒岛上想回去的人,忠于的都是同一件事——自己选定的生活(考据四)。<br><br>
-    结论:五十三座岛互为注脚。所谓幻想地球,是一本被海水打散的书;而每一位旅人,都是它的装订线。</div>
+    <div class="pBody">考据四则,兹录其要:矿工五十年前听见的凿壁声,与迷宫正中的搏动同源——隧道不是天然的,是有人在写(考据一);进化群岛被请离的那位客人,后来在西北的岛上自称博士——一页的反派,原是另一页的伏笔(考据二);真名石与三百盏灯说的是同一句话:语言的尽头不是理解,是相守(考据三);石仓里留下的人与荒岛上想回去的人,忠于的都是同一件事——自己选定的生活(考据四);蜃楼近之则隐,桃源不载于图,却都容留过不抱目的的人——「不可至」,是最古老的邀请函(考据五)。<br><br>
+    结论:五十六座岛互为注脚。所谓幻想地球,是一本被海水打散的书;而每一位旅人,都是它的装订线。</div>
     <div class="pFoot">主编:群岛考据学会(会员一人)· 特约校对:一位旅人 · 藏于未竟之都和平港</div></div>
     <div style="padding:12px 20px 16px"><button class="again" data-kaoclose style="width:100%">📚 签名装订</button></div>`;
   modal.classList.remove('hidden'); modalOpen = true;
@@ -6008,7 +6010,7 @@ let unjLangLight = null;
     lines: ['我在查这座城为什么失败。线索指向资本、战争、虚荣——和太干净的理想。', '雕塑家先生给各国君主写了一千封信。回信,不到十封。', '每个"为了人类",我都想追问一句:具体是哪些人?'],
     topics: [{ q: '你还缺什么线索?', a: '三样:港口仓库那批没人拆的邀请函、法庭档案柜里的电报底稿、未完成区散落的最后一次工地会议记录。都抄来给我——我桌上那台打字机,还欠这座城一篇报道。' }] });
   addNpc({ x: gx - 24, z: gz + 89, name: '群岛考据学家', body: 0x7a6248, hat: 0x5a4834, opts: { tall: 1.02 },
-    lines: ['五十三座岛,五十三页——这不是群岛,是一本被海水打散的书。', '我做考据四十年,最好的注脚都不在书里,在船票上。', '你去过的地方比我多。长桌上那四份考据,帮我补完可好?'] });
+    lines: ['五十六座岛,五十六页——这不是群岛,是一本被海水打散的书。', '我做考据四十年,最好的注脚都不在书里,在船票上。', '你去过的地方比我多。长桌上那四份考据,帮我补完可好?'] });
   addNpc({ x: gx + 52, z: gz + 40, name: '守夜人', body: 0x6a5a42, hat: 0x4a3e2c, opts: { wide: 1.15 },
     lines: ['圣火二十年前就该点了。我每晚来点一次——点的是习惯,也是念想。', '这座场没办过一场比赛。但跑道,是按马拉松的梦想量的。', '要跑一圈吗?没有观众——风会给你鼓掌。'] });
   { const cx0 = gx - 48, cz0 = gz + 46;   // —— 翻译回廊(西南):3×4 格子间 + 三块误译碑 + 17 号间 ——
