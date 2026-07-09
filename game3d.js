@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=3';
+import { makeNIContent } from './w-isles.js?v=4';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -16,9 +16,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=10';
+import { THEMES, NI_QUESTS } from './w-config.js?v=11';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=5';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=6';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -136,6 +136,9 @@ const NISLES = [
   { key: 'gunkan', x: 350, z: -1760, r: 88, mask: 2.0, h: 7, dock: [333, -1672] },                          // 废矿海城(军舰岛×海底两万里)
   { key: 'soco', x: -1760, z: 560, r: 90, mask: 2.0, h: 8, peak: { r: 36, hh: 10 }, dock: [-1674, 533] },   // 真名植物岛(索科特拉×地海)
   { key: 'skell', x: 1520, z: -1520, r: 86, mask: 2.0, h: 9, peak: { r: 30, hh: 20 }, dock: [1456, -1456] },// 静默之岩(斯凯利格×瓦尔登湖)
+  { key: 'mada', x: -1700, z: 1480, r: 100, mask: 2.0, h: 7, peak: { r: 44, hh: 12 }, dock: [-1626, 1416] }, // 方舟大陆岛(马达加斯加×诺亚方舟)
+  { key: 'helena', x: 1720, z: 1720, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 10 }, dock: [1658, 1658] },  // 风中庄园(圣赫勒拿×李尔王)
+  { key: 'komodo', x: 1760, z: -1760, r: 92, mask: 2.0, h: 6, peak: { r: 40, hh: 12 }, dock: [1696, -1696] },// 龙蜥荒原(科莫多×贝奥武甫)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)

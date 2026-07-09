@@ -957,5 +957,135 @@ export function makeNIContent(C) {
       const cl = new THREE.PointLight(0xffe8c0, 0, 60, 2); cl.position.set(gx + 2, height(gx + 2, gz - 2) + 3, gz - 2); cl.userData.pow = 12; nightLamps.push(cl); scene.add(cl);   // 石屋烛光
     },
   },
+
+  mada: {
+    name: '方舟大陆岛', en: 'The Ark Continent', icon: '🐒', theme: 'mada',
+    desc: '组合岛:马达加斯加的第八大陆 × 提前出发的方舟',
+    ferryMsg: '🐒 方舟大陆岛到了。这艘船八千万年前就解缆了——乘客们至今没换船',
+    lore: {
+      madaark: { icon: '📜', color: '#6a5a3a', title: '搁浅的龙骨', en: 'The Ark Keel', hint: '一艘提前出发的方舟',
+        desc: '滩头半埋着一排巨大的木肋,像哪艘老船的龙骨——守林人说是波浪堆的,老树医说是方舟的。八千万年前这块大陆从冈瓦纳解缆,像一艘提前出发的方舟:船上的乘客从此走了另一条路,狐猴代替了猴子,猴面包树代替了森林。' },
+      madabaobab: { icon: '🌳', color: '#a8763a', title: '猴面包树大道', en: 'The Avenue of Baobabs', hint: '倒栽的巨树',
+        desc: '两排两千岁的巨树夹出一条土路,树干粗得像谷仓,顶上一小撮枝叶——传说神嫌它太骄傲,把它头朝下重栽了一遍。黄昏时整条大道燃成金红,连赶路的人都会停下来,把影子借给它。' },
+      madalemur: { icon: '🐒', color: '#8a8a92', title: '环尾谷', en: 'The Ring-tail Valley', hint: '世界上最幸运的木筏',
+        desc: '几十只环尾狐猴在谷地列队晒太阳,肚皮朝天,像一排做早操的小老头。它们的祖先当年抱着浮木漂过海峡——科学家管那叫"木筏假说",老树医管那叫"它们也有它们的方舟"。' },
+      madadance: { icon: '💃', color: '#c8c4ba', title: '跳舞的西法卡', en: 'The Dancing Sifaka', hint: '横着走的白衣舞者',
+        desc: '白毛西法卡狐猴过空地从不爬行——双脚横跳,双臂高举,像一排赶去上课的芭蕾学生。守林人说它们不是在跳舞,是树太少了不得不下地;可它们跳得那么高兴,你宁愿相信是在跳舞。' },
+      madanight: { icon: '🌙', color: '#4a4a5a', title: '指猴之夜', en: 'The Aye-aye Hour', hint: '被误解的手指',
+        desc: '夜里出没的指猴长着一根细长的中指,敲树听虫,像给树把脉。旧俗说见者不祥,曾经见一只杀一只——保护站的牌子只写了一行:"它那根手指,是用来敲树的,不是用来指你的。"' },
+    },
+    spots: [[-10, 38, 'madaark'], [4, 2, 'madabaobab'], [-24, -10, 'madalemur'], [22, -16, 'madadance'], [18, 20, 'madanight']],
+    npcs: [
+      { dx: -8, dz: 18, name: '守林向导', body: 0x6a5a3a, hat: 0x4c3f28, opts: { wide: 1.06 },
+        lines: ['这里的规矩叫"法迪"——有的树不能指,有的谷不能唱歌。别问为什么,树比我们老。', '全世界的狐猴都在这一艘"船"上。船票,是不打扰。', '你脚下这条路,黄昏时值得再走一遍。'] },
+      { dx: 14, dz: -8, name: '老树医', body: 0x4a6a4a, hat: 0x35503a, opts: { tall: 1.05, cane: true },
+        lines: ['我给那棵猴面包树看了四十年病。它两千岁,我算它的晚辈。', '它们把整个雨季存在肚子里——你们管这叫囤积,树管这叫记性好。', '方舟没有沉,年轻人。它只是还在航行。'] },
+    ],
+    build: (gx, gz) => {
+      for (let i = 0; i < 6; i++) {   // 猴面包树大道:两排巨树
+        const bx2 = gx - 10 + (i % 3) * 14, bz2 = gz - 4 + (i < 3 ? -7 : 7), bh2 = height(bx2, bz2);
+        const trunk = cyl(1.2, 2, 9, lam(0xa8825a), 9); trunk.position.set(bx2, bh2 + 4.5, bz2); scene.add(trunk); cirObs.push({ x: bx2, z: bz2, r: 2.2 });
+        for (let k = 0; k < 4; k++) { const br = cyl(.14, .2, 2.2, lam(0x8a6a48), 5); const a = k * 1.57 + i;
+          br.position.set(bx2 + Math.cos(a) * 1.1, bh2 + 9.6, bz2 + Math.sin(a) * 1.1); br.rotation.z = Math.cos(a) * .9; br.rotation.x = Math.sin(a) * .9; scene.add(br); }
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(1.7, 8, 6), lam(0x5a7a3a)); tuft.scale.y = .5; tuft.position.set(bx2, bh2 + 10.2, bz2); scene.add(tuft); }
+      const lemur = (lx, lz, up) => { const lh2 = height(lx, lz);   // 环尾狐猴:灰身黑白环尾
+        const bd = new THREE.Mesh(new THREE.SphereGeometry(.34, 8, 6), lam(0x9a9aa2)); bd.position.set(lx, lh2 + .5, lz); scene.add(bd);
+        const hd = new THREE.Mesh(new THREE.SphereGeometry(.2, 7, 5), lam(0xd8d8dc)); hd.position.set(lx, lh2 + .88, lz + .12); scene.add(hd);
+        const tl = cyl(.06, .08, 1.1, lam(0x2e2e34), 5); tl.rotation.x = up ? -.5 : .9; tl.position.set(lx, lh2 + .8, lz - .35); scene.add(tl); };
+      for (let i = 0; i < 7; i++) lemur(gx - 26 + (i % 4) * 2.2, gz - 12 + Math.floor(i / 4) * 2.4, i % 2);
+      for (let i = 0; i < 3; i++) { const sx3 = gx + 20 + i * 2.6, sz3 = gz - 16, sh4 = height(sx3, sz3);   // 西法卡:白衣横跳
+        const sb2 = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), lam(0xe8e6de)); sb2.scale.y = 1.4; sb2.position.set(sx3, sh4 + 1 + (i % 2) * .5, sz3); scene.add(sb2);
+        const arm2 = cyl(.05, .05, .9, lam(0xe8e6de), 4); arm2.rotation.z = 2.6; arm2.position.set(sx3 + .3, sh4 + 1.6 + (i % 2) * .5, sz3); scene.add(arm2); }
+      for (let i = 0; i < 5; i++) { const rib = box(.5, 4 + (i % 2), .6, lam(0x6a5236));   // 搁浅的龙骨
+        rib.position.set(gx - 16 + i * 3, height(gx - 16 + i * 3, gz + 38) + 1.4, gz + 38); rib.rotation.z = .5 - (i % 3) * .18; scene.add(rib); }
+      const st = box(5, 3, 4, lam(0x5a6a4a)); st.position.set(gx + 17, height(gx + 17, gz + 20) + 1.5, gz + 20); scene.add(st); cirObs.push({ x: gx + 17, z: gz + 20, r: 3 });   // 保护站
+      const g2 = new THREE.PointLight(0xffd89a, 0, 90, 2); g2.position.set(gx + 17, height(gx + 17, gz + 20) + 4, gz + 20); g2.userData.pow = 16; nightLamps.push(g2); scene.add(g2);
+    },
+  },
+  helena: {
+    name: '风中庄园', en: 'The Windward Estate', icon: '👑', theme: 'helena',
+    desc: '组合岛:圣赫勒拿的流放岁月 × 李尔王的荒野',
+    ferryMsg: '👑 风中庄园到了。退了位的王都会来这里坐坐——有的带着地图,有的只带着风',
+    lore: {
+      helwood: { icon: '🏠', color: '#5a6a5a', title: '长木庄园', en: 'Longwood House', hint: '风从不敲门',
+        desc: '一栋孤零零的长条平房,绿窗板被海风拍得褪了色。风从不敲门就进来,掀他的地图,吹他的蜡烛。他曾指挥过六十万人,如今指挥不动一扇窗——庄园里的钟停在某个清晨五点四十九分,再没人舍得拨动。' },
+      helgarden: { icon: '🥀', color: '#7a6a4a', title: '皇帝的菜园', en: "The Emperor's Garden", hint: '人生最后一场战役',
+        desc: '他人生最后的战役,是和海风抢一畦豌豆:挖沟、筑墙、引水,清晨五点亲自浇园。卫兵在日志里写:"他指挥花草,像指挥军团。"这一仗他打赢了——豌豆熟了两季,他没能等到第三季。' },
+      helwalk: { icon: '👣', color: '#6a6a62', title: '散步的路', en: 'The Daily Walk', hint: '每天同一条路',
+        desc: '一条被踩得发白的小路,通向能望海的转角。他每天走到那儿站定,望很久——望的是海,还是海那头?哨兵的日志写了几百遍同一句:"下午四时,他又在看海。"最后一页补了半句:"今天没有。"' },
+      hellear: { icon: '👑', color: '#4a4252', title: '荒野王座', en: 'The Heath Throne', hint: '退位者的尺度',
+        desc: '山脊上立着一把风化的木椅,面朝大西洋,不知是谁搬上来的。弄人说,退了位的王都会来坐坐:有位带着丢掉的国土的地图,有位只带着三个女儿的名字。风雨大的夜里,椅子上像总坐着人——在跟风对喊。' },
+      helstar: { icon: '🔭', color: '#3a4266', title: '观星台', en: 'The Star Terrace', hint: '星星不认得皇冠',
+        desc: '流放者夜里在这认星。他说军校学过的星图,到了南半球全不作数——得从头学,像重新做人。日记里有一句:"星星不认得皇冠。这是它们最大的美德,也是我最大的安慰。"' },
+    },
+    spots: [[0, 0, 'helwood'], [12, 12, 'helgarden'], [-18, 22, 'helwalk'], [-6, -22, 'hellear'], [16, -14, 'helstar']],
+    npcs: [
+      { dx: 8, dz: 4, name: '守庄园的老仆', body: 0x5a5a62, hat: 0x42424a, opts: { wide: 1.04 },
+        lines: ['钟停在他走的那一刻。我每天还是擦两遍。', '他最后的日子总说同一句:"下辈子,做个种地的。"', '床、地图、望远镜,都按原样摆着——他随时可能回来查岗。'] },
+      { dx: -10, dz: -16, name: '弄人', body: 0x8a4a5a, hat: 0xa8862a, opts: { tall: .82 },
+        lines: ['我给两位国王当过差:一位丢了国土,一位丢了整块大陆。', '笑话讲给谁听都一样苦——所以我讲给风听,风笑得最响。', '孩子,王冠这东西,戴上去要两个人,摘下来只要一阵风。'] },
+    ],
+    build: (gx, gz) => {
+      const wh2 = height(gx, gz);   // 长木庄园:长条平房+绿窗板
+      const house = box(16, 4, 7, lam(0xcac2b0)); house.position.set(gx, wh2 + 2, gz); scene.add(house); cirObs.push({ x: gx, z: gz, r: 9 });
+      const roof2 = box(17, 1, 8, lam(0x4a4a44)); roof2.position.set(gx, wh2 + 4.5, gz); scene.add(roof2);
+      for (let i = 0; i < 5; i++) { const sh5 = box(1, 1.4, .15, lam(0x3a5e42)); sh5.position.set(gx - 6 + i * 3, wh2 + 2.2, gz + 3.6); scene.add(sh5); }
+      const gx3 = gx + 12, gz3 = gz + 12, gh3 = height(gx3, gz3);   // 菜园:畦垄+矮墙
+      for (let i = 0; i < 3; i++) { const bed = box(5, .4, 1.6, lam(0x4a6a38)); bed.position.set(gx3, gh3 + .25, gz3 - 2.4 + i * 2.4); scene.add(bed); }
+      for (const [ox, oz, w2] of [[-3, 0, .5], [3, 0, .5]]) { const wall = box(w2, 1, 7, M.stone); wall.position.set(gx3 + ox, gh3 + .5, gz3); scene.add(wall); }
+      const chx = gx - 6, chz = gz - 22, chh = height(chx, chz);   // 荒野王座:山脊孤椅
+      const seat = box(1.2, .18, 1, M.woodDark); seat.position.set(chx, chh + .8, chz); scene.add(seat);
+      const back = box(1.2, 1.3, .16, M.woodDark); back.position.set(chx, chh + 1.5, chz - .45); scene.add(back);
+      for (const [ox, oz] of [[-.5, -.35], [.5, -.35], [-.5, .35], [.5, .35]]) { const lg2 = box(.14, .8, .14, M.woodDark); lg2.position.set(chx + ox, chh + .4, chz + oz); scene.add(lg2); }
+      const tx2 = gx + 16, tz2 = gz - 14, th2 = height(tx2, tz2);   // 观星台:石台+铜管
+      const ped2 = cyl(.9, 1.1, 1.2, M.stone, 8); ped2.position.set(tx2, th2 + .6, tz2); scene.add(ped2);
+      const tube2 = cyl(.14, .18, 1.7, lam(0xb08d4a), 8); tube2.rotation.z = .8; tube2.position.set(tx2, th2 + 1.7, tz2); scene.add(tube2);
+      const path = box(1.6, .12, 26, lam(0xc0b8a4)); path.position.set(gx - 14, height(gx - 14, gz + 12) + .1, gz + 12); path.rotation.y = .5; scene.add(path);   // 散步的路
+      const wl2 = new THREE.PointLight(0xffe2b0, 0, 80, 2); wl2.position.set(gx, wh2 + 5.5, gz); wl2.userData.pow = 16; nightLamps.push(wl2); scene.add(wl2);
+    },
+  },
+  komodo: {
+    name: '龙蜥荒原', en: 'The Dragon Heath', icon: '🐉', theme: 'komodo',
+    desc: '组合岛:科莫多的巨蜥草原 × 贝奥武甫的屠龙诗',
+    ferryMsg: '🐉 龙蜥荒原到了。放心,龙一天要晒足八小时太阳,现在多半没空理你',
+    lore: {
+      komdragon: { icon: '🐉', color: '#6a6a3a', title: '巨蜥王', en: 'The Dragon King', hint: '现实里的最后一条龙',
+        desc: '三米长的"龙"趴在草坡上晒太阳,分叉的舌头一吐一收,尝着空气里的消息。屠龙诗里它守着黄金喷着火;现实里它守着体温——一天晒不足八小时,连走路的力气都没有。传说与真相之间,隔着一个太阳。' },
+      komsaga: { icon: '🪨', color: '#5a5a66', title: '贝奥武甫石', en: 'The Beowulf Stone', hint: '龙没读过它的差评',
+        desc: '一块北方来的符文石,刻着老英雄屠龙的最后一战:他杀死了龙,自己也死于龙毒。不知谁把它千里迢迢立在这,像要提醒龙"你们的名声很坏"。龙没读过。龙翻了个身,继续晒。' },
+      komsavanna: { icon: '🌾', color: '#a8923a', title: '干金草原', en: 'The Golden Savanna', hint: '干渴的金色',
+        desc: '旱季把整面山坡烤成金黄,鹿群在枯草间竖着耳朵吃草——它们知道草丛里趴着什么,但草总要吃。守林员说这里的规则简单得残酷:跑得快的活到雨季,晒得够的活过今天。' },
+      komstation: { icon: '🏕️', color: '#4a6a5a', title: '护林站', en: 'The Ranger Post', hint: '我们不救公主,我们救龙',
+        desc: '木屋门口钉着块手写牌:"本站不提供屠龙服务。"护林员每天巡山数龙,给每条都起了名字——最老的那条叫"爷爷",三米一,四十斤重的鹿一口吞一半。牌子背面还有一行小字:"它们比诗老,让它们比诗活得久。"' },
+      komreef: { icon: '🏖️', color: '#c88a9a', title: '粉沙湾', en: 'The Pink Beach', hint: '龙的后花园',
+        desc: '红珊瑚磨成的粉沙,把整个海湾染成淡淡的胭脂色——凶名在外的荒原背后,藏着全星球最温柔的一片滩。偶尔有巨蜥慢吞吞横穿沙滩去游泳:是的,龙会游泳,而且姿势意外地优雅。' },
+    },
+    spots: [[2, 6, 'komdragon'], [-18, -8, 'komsaga'], [16, -18, 'komsavanna'], [-8, 22, 'komstation'], [10, 34, 'komreef']],
+    npcs: [
+      { dx: -12, dz: 26, name: '老护林员', body: 0x4a6a5a, hat: 0x35503f, opts: { wide: 1.1 },
+        lines: ['贝奥武甫要是生在今天,会失业的。', '数龙三十年:六条在晒,四条在睡,一条走两步又躺下了——一切正常。', '游客总问龙危不危险。危险。所以看,别摸;敬,别拜。'] },
+      { dx: 14, dz: 10, name: '来写诗的人', body: 0x6a5a6a, hat: 0x4e424e, opts: { tall: 1.02 },
+        lines: ['我来写一首屠龙诗。写到第三天,改成了一首晒太阳诗。', '史诗里漏了一句:龙的一生,大部分时候只是想暖和一点。', '英雄需要怪物,怪物不需要英雄——你看它睡得多好。'] },
+    ],
+    build: (gx, gz) => {
+      const drag = (dx2, dz2, s, a) => { const dh3 = height(dx2, dz2);   // 巨蜥:低伏长身+尾+头
+        const bd2 = box(2.6 * s, .55 * s, .9 * s, lam(0x6a6444)); bd2.position.set(dx2, dh3 + .35, dz2); bd2.rotation.y = a; scene.add(bd2);
+        const tl2 = new THREE.Mesh(new THREE.ConeGeometry(.3 * s, 2.4 * s, 6), lam(0x605a3e)); tl2.rotation.z = Math.PI / 2; tl2.rotation.y = a; tl2.position.set(dx2 - Math.cos(a) * 2.4 * s, dh3 + .3, dz2 + Math.sin(a) * 2.4 * s); scene.add(tl2);
+        const hd2 = box(.8 * s, .4 * s, .5 * s, lam(0x74704e)); hd2.position.set(dx2 + Math.cos(a) * 1.6 * s, dh3 + .38, dz2 - Math.sin(a) * 1.6 * s); hd2.rotation.y = a; scene.add(hd2);
+        for (const sgn of [-1, 1]) for (const fx of [-.8, .8]) { const leg3 = box(.18 * s, .4 * s, .18 * s, lam(0x605a3e)); leg3.position.set(dx2 + Math.cos(a) * fx * s - Math.sin(a) * sgn * .55 * s, dh3 + .18, dz2 + Math.sin(a) * fx * s + Math.cos(a) * sgn * .55 * s); scene.add(leg3); }
+        cirObs.push({ x: dx2, z: dz2, r: 1.6 * s }); };
+      drag(gx + 2, gz + 8, 1.3, .4); drag(gx + 10, gz + 2, 1, 2.2); drag(gx - 6, gz + 14, .9, 1.1); drag(gx + 18, gz - 20, 1.1, 3.5); drag(gx + 6, gz + 36, .8, 5.2);
+      const rs = box(1.4, 3.2, .7, lam(0x5a5a66)); rs.position.set(gx - 18, height(gx - 18, gz - 8) + 1.6, gz - 8); rs.rotation.y = .4; scene.add(rs); cirObs.push({ x: gx - 18, z: gz - 8, r: 1.2 });   // 符文石
+      for (let i = 0; i < 4; i++) { const rn = box(.5, .1, .06, lam(0x8a8a96)); rn.position.set(gx - 18 + Math.sin(i) * .3, height(gx - 18, gz - 8) + 1 + i * .6, gz - 7.6); rn.rotation.y = .4; rn.rotation.z = (i % 2) * .5; scene.add(rn); }
+      for (let i = 0; i < 6; i++) { const dt = cyl(.12, .18, 3 + (i % 3), lam(0x8a7a5a), 5);   // 旱季枯树
+        const tx3 = gx + 10 + (i % 3) * 8, tz3 = gz - 14 - Math.floor(i / 3) * 8; dt.position.set(tx3, height(tx3, tz3) + 1.6, tz3); dt.rotation.z = (i % 2 ? .16 : -.12); scene.add(dt);
+        const db = cyl(.05, .07, 1.6, lam(0x7a6a4c), 4); db.rotation.z = 1.1; db.position.set(tx3 + .6, height(tx3, tz3) + 2.8, tz3); scene.add(db); }
+      const hut2 = box(5, 3, 4, lam(0x4a6a5a)); hut2.position.set(gx - 8, height(gx - 8, gz + 22) + 1.5, gz + 22); scene.add(hut2); cirObs.push({ x: gx - 8, z: gz + 22, r: 3 });   // 护林站
+      const sign2 = box(1.6, 1, .1, lam(0xd8d0b8)); sign2.position.set(gx - 5, height(gx - 5, gz + 24) + 1.2, gz + 24); scene.add(sign2);
+      for (let i = 0; i < 8; i++) { const pk = new THREE.Mesh(new THREE.CircleGeometry(1.6 + rnd() * 1.4, 9), new THREE.MeshLambertMaterial({ color: 0xe8c0c8 }));   // 粉沙湾
+        const px2 = gx + 6 + rnd() * 14, pz2 = gz + 30 + rnd() * 10; pk.rotation.x = -Math.PI / 2; pk.position.set(px2, Math.max(height(px2, pz2), .1) + .06, pz2); scene.add(pk); }
+      const g3 = new THREE.PointLight(0xffd8a0, 0, 70, 2); g3.position.set(gx - 8, height(gx - 8, gz + 22) + 4, gz + 22); g3.userData.pow = 14; nightLamps.push(g3); scene.add(g3);
+    },
+  },
 };
 }
