@@ -18,7 +18,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES, NI_QUESTS } from './w-config.js?v=13';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=8';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=9';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -112,40 +112,40 @@ const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,�
 const UNJ = { x: 350, z: 620, r: 115 };     // 未竟之都(人工几何岛:世界交流中心遗址)
 /* —— 海洋文学带:外环诸岛(数据驱动,内容见 NI_CONTENT)—— */
 const NISLES = [
-  { key: 'mys', x: -1780, z: -420, r: 92, mask: 2.0, h: 7, peak: { r: 52, hh: 30 }, dock: [-1690, -400] }, // 神秘岛(火山)
-  { key: 'trs', x: 1720, z: -520, r: 92, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [1632, -498] },   // 金银岛(望远山)
-  { key: 'chr', x: -80, z: -1780, r: 88, mask: 2.0, h: 8, dock: [-76, -1690] },                            // 无人生还岛
-  { key: 'tmp', x: -1780, z: 260, r: 88, mask: 2.0, h: 9, dock: [-1690, 247] },                            // 暴风雨岛
-  { key: 'mor', x: -1490, z: -1010, r: 90, mask: 2.0, h: 7, dock: [-1406, -953] },                         // 莫罗博士岛
-  { key: 'dol', x: 1300, z: 1350, r: 90, mask: 2.0, h: 6, dock: [1225, 1272] },                            // 蓝色海豚岛
-  { key: 'fly', x: -1050, z: -1450, r: 90, mask: 2.0, h: 7, peak: { r: 42, hh: 14 }, dock: [-993, -1380] }, // 蝇王
-  { key: 'uto', x: -1560, z: 850, r: 92, mask: 2.0, h: 6, dock: [-1476, 805] },                            // 乌托邦
-  { key: 'hux', x: -1150, z: 1350, r: 88, mask: 2.0, h: 6, dock: [-1084, 1272] },                          // 岛(赫胥黎)
-  { key: 'gul', x: 1440, z: -1060, r: 90, mask: 2.0, h: 6, dock: [1360, -1002] },                          // 格列佛
-  { key: 'nvl', x: -520, z: 1720, r: 90, mask: 2.0, h: 7, dock: [-500, 1636] },                            // 梦幻岛
-  { key: 'cor', x: 180, z: 1780, r: 86, mask: 2.0, h: 5, dock: [172, 1698] },                              // 珊瑚岛
-  { key: 'typ', x: 820, z: 1620, r: 90, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [772, 1544] },     // 泰皮
-  { key: 'tah', x: 1660, z: 780, r: 88, mask: 2.0, h: 6, dock: [1584, 743] },                              // 画家岛(塔希提)
-  { key: 'daw', x: 1770, z: 180, r: 86, mask: 2.0, h: 5, dock: [1686, 172] },                              // 黎明踏浪号
-  { key: 'rain', x: 650, z: -1650, r: 88, mask: 2.0, h: 6, dock: [620, -1568] },                           // 雨岛
-  { key: 'shu', x: -560, z: -1680, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 14 }, dock: [-536, -1598] }, // 禁闭岛
+  { key: 'mys', x: -1500, z: -1400, r: 92, mask: 2.0, h: 7, peak: { r: 52, hh: 30 }, dock: [-1434, -1339] }, // 神秘岛(火山)
+  { key: 'trs', x: -560, z: 380, r: 92, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [-486, 329] },   // 金银岛(望远山)
+  { key: 'chr', x: -340, z: 980, r: 88, mask: 2.0, h: 8, dock: [-312, 899] },                            // 无人生还岛
+  { key: 'tmp', x: -560, z: 660, r: 88, mask: 2.0, h: 9, dock: [-504, 594] },                            // 暴风雨岛
+  { key: 'mor', x: -1270, z: 20, r: 90, mask: 2.0, h: 7, dock: [-1182, 19] },                         // 莫罗博士岛
+  { key: 'dol', x: -1300, z: 760, r: 90, mask: 2.0, h: 6, dock: [-1224, 716] },                            // 蓝色海豚岛
+  { key: 'fly', x: -1690, z: -1000, r: 90, mask: 2.0, h: 7, peak: { r: 42, hh: 14 }, dock: [-1614, -955] }, // 蝇王
+  { key: 'uto', x: -560, z: -620, r: 92, mask: 2.0, h: 6, dock: [-500, -553] },                            // 乌托邦
+  { key: 'hux', x: 880, z: 120, r: 88, mask: 2.0, h: 6, dock: [795, 108] },                          // 岛(赫胥黎)
+  { key: 'gul', x: 980, z: -480, r: 90, mask: 2.0, h: 6, dock: [901, -441] },                          // 格列佛
+  { key: 'nvl', x: 1600, z: 1600, r: 90, mask: 2.0, h: 7, dock: [1538, 1538] },                            // 梦幻岛
+  { key: 'cor', x: -1780, z: -660, r: 86, mask: 2.0, h: 5, dock: [-1701, -631] },                              // 珊瑚岛
+  { key: 'typ', x: -1500, z: -100, r: 90, mask: 2.0, h: 7, peak: { r: 40, hh: 16 }, dock: [-1412, -94] },     // 泰皮
+  { key: 'tah', x: -1560, z: -420, r: 88, mask: 2.0, h: 6, dock: [-1477, -398] },                              // 画家岛(塔希提)
+  { key: 'daw', x: 1850, z: -500, r: 86, mask: 2.0, h: 5, dock: [1769, -478] },                              // 黎明踏浪号
+  { key: 'rain', x: -1760, z: -230, r: 88, mask: 2.0, h: 6, dock: [-1675, -219] },                           // 雨岛
+  { key: 'shu', x: -760, z: 880, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 14 }, dock: [-704, 815] }, // 禁闭岛
   /* —— 岛屿组合(现实地貌 × 文学主题)第一批 —— */
-  { key: 'gala', x: 1120, z: -1560, r: 92, mask: 2.0, h: 6, peak: { r: 38, hh: 18 }, dock: [1068, -1487] },  // 进化群岛(加拉帕戈斯×博物学)
-  { key: 'moai', x: -1180, z: 1700, r: 90, mask: 2.0, h: 7, peak: { r: 34, hh: 14 }, dock: [-1130, 1628] },  // 星历仙岛(复活节岛×蓬莱)
-  { key: 'fogjail', x: 1740, z: 1150, r: 88, mask: 2.0, h: 8, dock: [1665, 1100] },                          // 雾中牢岛(恶魔岛×禁闭岛)
-  { key: 'kilda', x: -1750, z: -880, r: 90, mask: 2.0, h: 10, peak: { r: 32, hh: 16 }, dock: [-1670, -840] },// 风暴孤岛(圣基尔达×鲁滨逊)
-  { key: 'gunkan', x: 350, z: -1760, r: 88, mask: 2.0, h: 7, dock: [333, -1672] },                          // 废矿海城(军舰岛×海底两万里)
-  { key: 'soco', x: -1760, z: 560, r: 90, mask: 2.0, h: 8, peak: { r: 36, hh: 10 }, dock: [-1674, 533] },   // 真名植物岛(索科特拉×地海)
-  { key: 'skell', x: 1520, z: -1520, r: 86, mask: 2.0, h: 9, peak: { r: 30, hh: 20 }, dock: [1456, -1456] },// 静默之岩(斯凯利格×瓦尔登湖)
-  { key: 'mada', x: -1700, z: 1480, r: 100, mask: 2.0, h: 7, peak: { r: 44, hh: 12 }, dock: [-1626, 1416] }, // 方舟大陆岛(马达加斯加×诺亚方舟)
-  { key: 'helena', x: 1720, z: 1720, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 10 }, dock: [1658, 1658] },  // 风中庄园(圣赫勒拿×李尔王)
-  { key: 'komodo', x: 1760, z: -1760, r: 92, mask: 2.0, h: 6, peak: { r: 40, hh: 12 }, dock: [1696, -1696] },// 龙蜥荒原(科莫多×贝奥武甫)
-  { key: 'sanxian', x: 980, z: -1310, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [927, -1240] }, // 三仙岛(蓬莱三山×海市蜃楼)
-  { key: 'shixia', x: -1450, z: -1400, r: 90, mask: 2.0, h: 9, peak: { r: 38, hh: 18 }, dock: [-1385, -1338] },// 石刻武学岛(侠客石窟)
-  { key: 'taozhen', x: 1120, z: 1560, r: 90, mask: 2.0, h: 7, dock: [1068, 1487] },                            // 桃阵岛(桃花八阵)
-  { key: 'venezia', x: 620, z: 1840, r: 90, mask: 2.0, h: 5, dock: [591, 1755] },                             // 看不见的水城(威尼斯×卡尔维诺)
-  { key: 'saga', x: -1870, z: -60, r: 92, mask: 2.0, h: 8, peak: { r: 38, hh: 16 }, dock: [-1778, -57] },      // 冰火萨迦岛(冰岛×埃达)
-  { key: 'atl', x: -330, z: -1880, r: 88, mask: 2.0, h: 7, peak: { r: 34, hh: 12 }, dock: [-315, -1793] },     // 沉环之岛(圣托里尼×柏拉图)
+  { key: 'gala', x: -980, z: -120, r: 92, mask: 2.0, h: 6, peak: { r: 38, hh: 18 }, dock: [-891, -109] },  // 进化群岛(加拉帕戈斯×博物学)
+  { key: 'moai', x: -1010, z: -520, r: 90, mask: 2.0, h: 7, peak: { r: 34, hh: 14 }, dock: [-932, -480] },  // 星历仙岛(复活节岛×蓬莱)
+  { key: 'fogjail', x: -1500, z: 1050, r: 88, mask: 2.0, h: 8, dock: [-1430, 1001] },                          // 雾中牢岛(恶魔岛×禁闭岛)
+  { key: 'kilda', x: -360, z: 1480, r: 90, mask: 2.0, h: 10, peak: { r: 32, hh: 16 }, dock: [-339, 1394] },// 风暴孤岛(圣基尔达×鲁滨逊)
+  { key: 'gunkan', x: 1520, z: 460, r: 88, mask: 2.0, h: 7, dock: [1438, 435] },                          // 废矿海城(军舰岛×海底两万里)
+  { key: 'soco', x: 640, z: 260, r: 90, mask: 2.0, h: 8, peak: { r: 36, hh: 10 }, dock: [558, 227] },   // 真名植物岛(索科特拉×地海)
+  { key: 'skell', x: -160, z: 1660, r: 86, mask: 2.0, h: 9, peak: { r: 30, hh: 20 }, dock: [-152, 1576] },// 静默之岩(斯凯利格×瓦尔登湖)
+  { key: 'mada', x: 360, z: -620, r: 100, mask: 2.0, h: 7, peak: { r: 44, hh: 12 }, dock: [311, -535] }, // 方舟大陆岛(马达加斯加×诺亚方舟)
+  { key: 'helena', x: -160, z: -1060, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 10 }, dock: [-147, -975] },  // 风中庄园(圣赫勒拿×李尔王)
+  { key: 'komodo', x: 1390, z: -120, r: 92, mask: 2.0, h: 6, peak: { r: 40, hh: 12 }, dock: [1300, -112] },// 龙蜥荒原(科莫多×贝奥武甫)
+  { key: 'sanxian', x: 1400, z: 940, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [1329, 892] }, // 三仙岛(蓬莱三山×海市蜃楼)
+  { key: 'shixia', x: 620, z: -1450, r: 90, mask: 2.0, h: 9, peak: { r: 38, hh: 18 }, dock: [585, -1369] },// 石刻武学岛(侠客石窟)
+  { key: 'taozhen', x: 1650, z: 700, r: 90, mask: 2.0, h: 7, dock: [1569, 666] },                            // 桃阵岛(桃花八阵)
+  { key: 'venezia', x: 330, z: 1020, r: 90, mask: 2.0, h: 5, dock: [303, 936] },                             // 看不见的水城(威尼斯×卡尔维诺)
+  { key: 'saga', x: -700, z: 1560, r: 92, mask: 2.0, h: 8, peak: { r: 38, hh: 16 }, dock: [-663, 1478] },      // 冰火萨迦岛(冰岛×埃达)
+  { key: 'atl', x: 540, z: 850, r: 88, mask: 2.0, h: 7, peak: { r: 34, hh: 12 }, dock: [494, 777] },     // 沉环之岛(圣托里尼×柏拉图)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
@@ -4993,7 +4993,7 @@ for (const s of NISLES) {
 }
 /* 三仙岛蜃楼:蓬莱、方丈——远望可见,近之则隐(loop 里按距离渐隐) */
 const mirages = [];
-for (const [mx, mz, s] of [[1260, -1400, 1], [880, -1580, .78]]) {
+for (const [mx, mz, s] of [[1640, 1080, 1], [1240, 1240, .78]]) {
   const g = new THREE.Group(); const mats = [];
   const mm2 = op => { const m2 = new THREE.MeshBasicMaterial({ color: 0xbfd8e8, transparent: true, opacity: op, fog: false, depthWrite: false }); m2.userData.base = op; mats.push(m2); return m2; };
   const hill = new THREE.Mesh(new THREE.ConeGeometry(52 * s, 40 * s, 9), mm2(.32)); hill.position.y = 8; g.add(hill);
@@ -5016,7 +5016,7 @@ for (const [mx, mz, s] of [[1260, -1400, 1], [880, -1580, .78]]) {
     ship.rotation.y = -a0 - Math.PI / 2;
     g.add(ship);
   }
-  g.position.set(1150, 0, -1150); g.userData.mats = mats; g.userData.orbit = .016;
+  g.position.set(1600, 0, 1180); g.userData.mats = mats; g.userData.orbit = .016;
   scene.add(g); mirages.push(g);
 }
 /* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) *//* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
@@ -5540,7 +5540,7 @@ function renderMinimap() {
   if (!mctx) return;
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
-  const W2X = x => (x / 3950 + .5) * mm.width, W2Y = z => (z / 3850 + .5) * mm.height;
+  const W2X = x => (x / 3950 + .5) * mm.width, W2Y = z => (.5 - z / 3850) * mm.height;   // 北朝上
   for (const zn of ZONES3D) {
     if (zn.key === 'plaza') continue;
     mctx.fillStyle = CATS[zn.key].color;
@@ -5569,7 +5569,7 @@ function renderMinimap() {
   }
   // 玩家朝向箭头
   const px = W2X(player.position.x), py = W2Y(player.position.z);
-  mctx.save(); mctx.translate(px, py); mctx.rotate(-camYaw);
+  mctx.save(); mctx.translate(px, py); mctx.scale(1, -1); mctx.rotate(-camYaw);   // 随地图翻转镜像
   mctx.fillStyle = '#fff';
   mctx.beginPath(); mctx.moveTo(0, -5); mctx.lineTo(3.4, 4); mctx.lineTo(-3.4, 4); mctx.closePath(); mctx.fill();
   mctx.restore();
@@ -5590,13 +5590,13 @@ const MAP_LABELS = [
 function renderBigMap() {
   if (!bigCtx) return;
   const W3 = bigCv.width, H3 = bigCv.height, SC2 = 4000;
-  const BX = x => (x / SC2 + .5) * W3, BY = z => (z / (SC2 * H3 / W3) + .5) * H3;
+  const BX = x => (x / SC2 + .5) * W3, BY = z => (.5 - z / (SC2 * H3 / W3)) * H3;   // 北朝上
   if (!bigBase) {
     bigBase = document.createElement('canvas'); bigBase.width = W3; bigBase.height = H3;
     const c = bigBase.getContext('2d');
     const img = c.createImageData(W3, H3);
     for (let py = 0; py < H3; py += 2) for (let px = 0; px < W3; px += 2) {
-      const x = (px / W3 - .5) * SC2, z = (py / H3 - .5) * (SC2 * H3 / W3);
+      const x = (px / W3 - .5) * SC2, z = (.5 - py / H3) * (SC2 * H3 / W3);
       const h = height(x, z);
       let r2, g3, b2;
       if (h < -.5) { r2 = 24; g3 = 62; b2 = 92; }
@@ -5620,6 +5620,7 @@ function renderBigMap() {
     }
   }
   bigCtx.drawImage(bigBase, 0, 0);
+  bigCtx.fillStyle = '#f5efdc'; bigCtx.font = 'bold 15px sans-serif'; bigCtx.textAlign = 'center'; bigCtx.fillText('北', W3 - 26, 26); bigCtx.fillText('▲', W3 - 26, 42);
   if (PSTORE.getItem('w1001.skeleton') === '1') {   // 世界脐带:海底隧道网浮现为符号(自中心辐射 + 外环)
     const pts = MAZE_PORTALS.map(p => [BX(p.surf[0]), BY(p.surf[1])]);
     const cX = BX(0), cZ = BY(0);
