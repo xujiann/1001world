@@ -1924,15 +1924,33 @@ function openJournal() {
       <div class="num">${n}/${embed}</div>
       <a href="${cfg.link}" target="_blank" rel="noopener">网站 →</a></div>`;
   }).join('');
-  const J_TABS = [['over', '🧭 总览'], ['log', '📜 日志'], ['pass', '🛂 护照'], ['title', '🎖️ 称号'], ['star', '✨ 星图'], ['coll', '🏛️ 馆藏']];
+  let cards9 = []; try { cards9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
+  const cardsHtml = (cards9.length ? '' : '<div style="color:#93a07f;font-size:13px;padding:12px 4px">集邮册还空着——按 P 进照片模式,再按 C(或点 📸)拍下第一张明信片。</div>')
+    + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">${cards9.map((cd, i9) => `
+      <div style="background:#fff;padding:5px 5px 7px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25)">
+        <img src="${cd.d}" style="width:100%;border-radius:3px;display:block">
+        <div style="font-size:11px;color:#3a3226;padding:5px 2px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cd.nm)}</div>
+        <div style="display:flex;gap:5px">${cd.sent ? '<span style="font-size:10.5px;color:#2c7a4b;padding:3px 2px">✅ 已寄出</span>' : `<button class="gBtn" data-sendc="${i9}" style="padding:3px 9px;font-size:11px">寄出</button>`}
+        <a class="gBtn off" style="padding:3px 9px;font-size:11px;text-decoration:none" href="${cd.d}" download="postcard-${i9 + 1}.jpg">下载</a></div>
+      </div>`).reverse().join('')}</div>`;
+  const J_TABS = [['over', '🧭 总览'], ['log', '📜 日志'], ['pass', '🛂 护照'], ['cards', '💌 集邮册'], ['title', '🎖️ 称号'], ['star', '✨ 星图'], ['coll', '🏛️ 馆藏']];
   const tabBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;position:sticky;top:0;z-index:2;padding:4px 0;background:inherit">${J_TABS.map(([id2, nm2]) => `<button data-jtab="${id2}" class="gBtn${journalTab === id2 ? '' : ' off'}" style="padding:6px 13px;font-size:12.5px">${nm2}</button>`).join('')}</div>`;
-  const J_CONTENT = { over: mHtml + qHtml, log: logHtml, pass: passHtml, title: titleHtml, star: chartHtml, coll: collHtml };
+  const J_CONTENT = { over: mHtml + qHtml, log: logHtml, pass: passHtml, cards: cardsHtml, title: titleHtml, star: chartHtml, coll: collHtml };
   list.innerHTML = tabBar + (J_CONTENT[journalTab] || '');
   $('journal').classList.remove('hidden'); modalOpen = true;
   const sc9 = list.querySelector('#starChart'); if (sc9) drawStarChart(sc9);
   list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
   list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
   list.querySelectorAll('[data-jtab]').forEach(b => b.addEventListener('click', () => { journalTab = b.dataset.jtab; openJournal(); blip(600); }));
+  list.querySelectorAll('[data-sendc]').forEach(b => b.addEventListener('click', () => {
+    const i9 = +b.dataset.sendc;
+    let cs9 = []; try { cs9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
+    if (!cs9[i9] || cs9[i9].sent) return;
+    cs9[i9].sent = 1; PSTORE.setItem('w1001.cards', JSON.stringify(cs9));
+    const who = nearNpc ? nearNpc.name : '海风';
+    toast('💌 已寄出。' + who + ' 回信:「' + PC_REPLIES[(i9 + cs9[i9].nm.length) % PC_REPLIES.length] + '」'); blip(700);
+    openJournal();
+  }));
 }
 $('btnJournal').addEventListener('click', openJournal);
 $('hudQuest').addEventListener('click', openJournal);
@@ -5926,6 +5944,48 @@ function setGlobe(on) {
   syncMapTitle();
 }
 document.getElementById('btnGlobe')?.addEventListener('click', () => setGlobe(!globeOn));
+/* ===== 💌 明信片:照片模式里按 C / 点 📸 拍摄,帧末从渲染画布取图合成 ===== */
+let pcPending = false;
+const btnSnap = document.createElement('button');
+btnSnap.textContent = '📸 明信片 (C)';
+btnSnap.style.cssText = 'display:none;position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;border:none;border-radius:999px;padding:10px 22px;background:rgba(16,34,52,.85);color:#ffd76a;font-size:14px;touch-action:manipulation';
+document.body.appendChild(btnSnap);
+btnSnap.addEventListener('click', () => { pcPending = true; });
+const PC_REPLIES = [
+  '收到了。窗外的海,和你拍的这一片,是同一片。',
+  '照片钉在墙上了。原来我住的地方,在别人眼里这么好看。',
+  '风把邮票都吹卷了边,可画面一点没皱。谢谢你路过这里。',
+  '我把它读了两遍:一遍看风景,一遍找你站的位置。',
+  '下次别只寄照片——把讲这张照片的那顿茶也留下来。',
+  '收到明信片的人有个特权:可以假装自己也去过了。',
+];
+function makePostcard() {
+  try {
+    const src = renderer.domElement;
+    const cw = 480, ch = 320, cnv = document.createElement('canvas'); cnv.width = cw; cnv.height = ch;
+    const c = cnv.getContext('2d');
+    c.fillStyle = '#f7f3e8'; c.fillRect(0, 0, cw, ch);
+    const m9 = 14, tw = cw - m9 * 2, th = ch - 72;
+    let sw = src.width, sh = src.height;
+    if (sw / sh > tw / th) sw = sh * tw / th; else sh = sw * th / tw;
+    c.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, m9, m9, tw, th);
+    const nm = $('zoneName').textContent;
+    c.fillStyle = '#3a3226'; c.font = 'bold 17px Georgia, "Noto Serif SC", serif'; c.textAlign = 'left';
+    c.fillText(nm, m9 + 2, ch - 30);
+    c.font = '12px Georgia, serif'; c.fillStyle = '#8a7c62';
+    c.fillText('1001 世界 · ' + new Date().toLocaleDateString('zh-CN'), m9 + 2, ch - 12);
+    c.fillStyle = '#fff'; c.fillRect(cw - 66, m9 + 5, 46, 56);
+    c.strokeStyle = '#b9ae98'; c.setLineDash([3, 3]); c.strokeRect(cw - 66, m9 + 5, 46, 56); c.setLineDash([]);
+    c.font = '26px serif'; c.textAlign = 'center'; c.fillText($('zoneIcon').textContent, cw - 43, m9 + 43);
+    c.font = '9px serif'; c.fillStyle = '#8a7c62'; c.fillText('QJ POST', cw - 43, m9 + 56);
+    const data = cnv.toDataURL('image/jpeg', .62);
+    let cards9 = []; try { cards9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
+    cards9.push({ d: data, nm, ts: Date.now(), sent: 0 });
+    while (cards9.length > 24) cards9.shift();
+    PSTORE.setItem('w1001.cards', JSON.stringify(cards9));
+    toast('💌 明信片已收入集邮册(' + cards9.length + '/24)——图鉴 💌 页可寄出或下载'); blip(760);
+  } catch (e) { toast('📸 拍摄失败:' + e.message); }
+}
 /* --- ⛵ 海图点选直航:平面图反演坐标 / 球面 uv 拾取,金环高亮 + 确认条 --- */
 let FERRY_IDX = null, mapSel = null, goBar = null;
 function buildFerryIdx() {
@@ -6766,6 +6826,7 @@ function togglePhoto() {
   photoMode = !photoMode;
   for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
   if (bokehPass) bokehPass.enabled = photoMode;   // 景深仅照片模式
+  btnSnap.style.display = photoMode ? '' : 'none';
   if (!photoMode) { renderer.domElement.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
   else toast(isTouch ? '📷 照片模式:景深虚化开启(🎞️ 换滤镜,再点 📷 退出)' : '📷 照片模式:景深虚化开启(F 切换滤镜,P 退出)');
   syncMobMenu();
@@ -6792,6 +6853,7 @@ addEventListener('keydown', e => {
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
   if (k === 'p') { togglePhoto(); return; }
   if (k === 'f' && photoMode) { nextFilter(); return; }
+  if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
   if (k === 'm') { mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
@@ -7652,6 +7714,7 @@ function loop() {
     }
   }
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
+  if (pcPending) { pcPending = false; makePostcard(); }
 }
 /* ---------- 岛屿分桶距离显隐(性能:远岛整组不渲染) ---------- */
 const BUCKETS = [
@@ -7696,4 +7759,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
