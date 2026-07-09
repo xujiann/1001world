@@ -6648,7 +6648,7 @@ let mobMenuOpen = false, mobBtns = {};
 function syncMobMenu() {
   if (!mobBtns.wrap) return;
   mobBtns.wrap.style.display = diving ? 'none' : 'flex';
-  mobBtns.pane.style.display = mobMenuOpen ? 'flex' : 'none';
+  mobBtns.pane.style.display = mobMenuOpen ? 'grid' : 'none';
   mobBtns.filter.style.display = photoMode ? '' : 'none';
   mobBtns.phantom.style.display = Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) < 175 ? '' : 'none';
   mobBtns.sonar.style.display = diving ? '' : 'none';
@@ -6656,13 +6656,20 @@ function syncMobMenu() {
 if (isTouch) {
   const mk = (sym, title) => { const b = document.createElement('button'); b.textContent = sym; b.title = title;
     Object.assign(b.style, { width: '54px', height: '54px', borderRadius: '50%', border: '2px solid rgba(255,255,255,.4)', background: 'rgba(16,34,52,.82)', fontSize: '23px', touchAction: 'manipulation', flex: 'none' }); return b; };
+  const mkItem = (sym, label) => {   // 宫格项:图标 + 小字标签
+    const b = document.createElement('button'); b.title = label;
+    b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;width:58px;padding:8px 0 6px;border:none;border-radius:12px;background:rgba(255,255,255,.07);color:#dfe8f0;font-size:22px;line-height:1;touch-action:manipulation';
+    b.innerHTML = sym + '<span style="font-size:10px;letter-spacing:1px;color:#aecbdd">' + label + '</span>';
+    return b;
+  };
   const wrap = document.createElement('div'); wrap.id = 'mobMenu';
-  Object.assign(wrap.style, { position: 'fixed', right: '28px', bottom: '188px', zIndex: '31', display: 'flex', flexDirection: 'row-reverse', gap: '10px', alignItems: 'center' });
+  Object.assign(wrap.style, { position: 'fixed', right: '24px', bottom: '188px', zIndex: '31', display: 'flex', flexDirection: 'row-reverse', gap: '10px', alignItems: 'flex-end' });
   const tog = mk('⋯', '更多功能');
   const pane = document.createElement('div');
-  Object.assign(pane.style, { display: 'none', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '246px', gap: '10px' });
-  const bMap = mk('🗺️', '海图'), bGlb = mk('🌐', '地球仪'), bStar = mk('🔭', '观星'), bPhoto = mk('📷', '照片模式'), bFilm = mk('🎞️', '滤镜'), bPh = mk('📐', '蓝图幻影');
-  pane.append(bPh, bFilm, bPhoto, bStar, bGlb, bMap);
+  pane.style.cssText = 'display:none;grid-template-columns:repeat(3,58px);gap:8px;padding:10px;background:rgba(8,20,32,.9);border:1px solid rgba(140,200,255,.2);border-radius:16px;backdrop-filter:blur(5px);box-shadow:0 10px 34px rgba(0,0,0,.5);transform-origin:bottom right;animation:mobPop .16s ease-out';
+  { const st3 = document.createElement('style'); st3.textContent = '@keyframes mobPop{from{transform:scale(.9);opacity:0}}'; document.head.appendChild(st3); }
+  const bMap = mkItem('🗺️', '海图'), bGlb = mkItem('🌐', '地球仪'), bStar = mkItem('🔭', '观星'), bPhoto = mkItem('📷', '照片'), bFilm = mkItem('🎞️', '滤镜'), bPh = mkItem('📐', '幻影');
+  pane.append(bMap, bGlb, bStar, bPhoto, bFilm, bPh);
   wrap.append(tog, pane); document.body.appendChild(wrap);
   const bSonar = mk('📡', '声呐探路');
   Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
