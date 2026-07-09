@@ -1846,6 +1846,7 @@ function mainQuest() {
   if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,或按 M 在海图上点岛直航——五十八座岛任你逛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——那是海底迷宫的钥匙。' };
   return { st: '第一章 · 初来乍到', tip: '在收藏之岛四处走走:走近按 E 看藏品、和 NPC 说话、做支线,攒算力币 ⚡。' };
 }
+let journalTab = 'over';   // 图鉴当前标签页
 function openJournal() {
   const list = $('journalList');
   const mq = mainQuest();
@@ -1911,7 +1912,7 @@ function openJournal() {
         return `<div style="${got ? '' : 'opacity:.32;filter:grayscale(1)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${nm2}">${ic2} ${shortNm}</div>`; }).join('')}
       </div></div>`;
   })();
-  list.innerHTML = mHtml + qHtml + titleHtml + chartHtml + passHtml + logHtml + Object.keys(CATS).map(k => {
+  const collHtml = Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     const badge = mileTier(k);
@@ -1922,10 +1923,15 @@ function openJournal() {
       <div class="num">${n}/${embed}</div>
       <a href="${cfg.link}" target="_blank" rel="noopener">网站 →</a></div>`;
   }).join('');
+  const J_TABS = [['over', '🧭 总览'], ['log', '📜 日志'], ['pass', '🛂 护照'], ['title', '🎖️ 称号'], ['star', '✨ 星图'], ['coll', '🏛️ 馆藏']];
+  const tabBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;position:sticky;top:0;z-index:2;padding:4px 0;background:inherit">${J_TABS.map(([id2, nm2]) => `<button data-jtab="${id2}" class="gBtn${journalTab === id2 ? '' : ' off'}" style="padding:6px 13px;font-size:12.5px">${nm2}</button>`).join('')}</div>`;
+  const J_CONTENT = { over: mHtml + qHtml, log: logHtml, pass: passHtml, title: titleHtml, star: chartHtml, coll: collHtml };
+  list.innerHTML = tabBar + (J_CONTENT[journalTab] || '');
   $('journal').classList.remove('hidden'); modalOpen = true;
-  drawStarChart(list.querySelector('#starChart'));
+  const sc9 = list.querySelector('#starChart'); if (sc9) drawStarChart(sc9);
   list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
   list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
+  list.querySelectorAll('[data-jtab]').forEach(b => b.addEventListener('click', () => { journalTab = b.dataset.jtab; openJournal(); blip(600); }));
 }
 $('btnJournal').addEventListener('click', openJournal);
 $('hudQuest').addEventListener('click', openJournal);
