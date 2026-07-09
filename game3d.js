@@ -1337,40 +1337,7 @@ function openCard(s) {
     openCard(s);
   });
   bindGear(() => openCard(s));
-  cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => {
-    const k = b.dataset.goworld;
-    const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], sport: [-688, 122],
-      shj: [SHJ.x, SHJ.z + 112], anh: [ANH.x, ANH.z - 106], nem: [NEM.x, NEM.z - 70], b612: [B612.x, B612.z - 48], jur: [JUR.x, JUR.z - 120],
-      hgs: [HGS.x, HGS.z + 118], alc: [ALC.x, ALC.z + 102], cbi: [CBI.x, CBI.z + 110], lrs: [LRS.x, LRS.z + 92], lsp: [LSP.x + 118, LSP.z],
-      fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102],
-      pur: [PUR.x, PUR.z + PUR.r + 18], unj: [UNJ.x, UNJ.z + UNJ.r + 14], main: [372, 12] };
-    const dest = dests[k] || NI_DEST[k] || dests.main;
-    player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
-    closeModals(); blip(520);
-    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
-      : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多'
-      : k === 'hp' ? '⚡ 呜——!霍格沃茨特快抵达霍格莫德站'
-      : k === 'mainstation' ? '🚂 呜——!列车抵达 9¾ 站台'
-      : k === 'mob' ? '🐳 南塔开特到了。海上有咸腥味,和一个关于白鲸的传说'
-      : k === 'sport' ? '⚽ 体育岛到了——听,梦剧场的声浪!'
-      : k === 'shj' ? '🐉 山海经·异兽之野——石阙之后,群兽候君'
-      : k === 'anh' ? '🪔 巴格达到了。今夜,又是一千零一夜的开始'
-      : k === 'nem' ? '🐚 锚地到了。那艘钢铁鲸鱼,就是鹦鹉螺号'
-      : k === 'b612' ? '🌹 B-612 到了。小心猴面包树,替玫瑰盖好罩子'
-      : k === 'jur' ? '🦖 侏罗纪公园到了——电网是通电的,别摸'
-      : k === 'hgs' ? '🐒 花果山福地到了!山顶有神针,瀑后有洞天'
-      : k === 'alc' ? '🎩 仙境到了。这里全是疯子——包括渡你来的船'
-      : k === 'cbi' ? '🔥 赤壁到了。江风微紧,战船相连'
-      : k === 'lrs' ? '🏮 兰若寺到了。白日无妨——夜里,自己小心'
-      : k === 'lsp' ? '⚔️ 梁山泊到了。好汉,可带了投名状?'
-      : k === 'fcy' ? '🌀 风车原野到了。那位骑士又在跟"巨人"较劲'
-      : k === 'yfb' ? '⛓️ 伊夫堡到了。有人在墙里敲了二十年'
-      : k === 'rbx' ? '🏝️ 绝望岛到了。沙滩上,好像有脚印'
-      : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好'
-      : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪'
-      : k === 'unj' ? '🏛️ 未竟之都到了。广播还在循环:"欢迎来到人类共同的首都。"——港口空无一人'
-      : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
-  }));
+  cardBody.querySelectorAll('[data-goworld]').forEach(b => b.addEventListener('click', () => ferryGo(b.dataset.goworld)));
   cardBody.querySelector('[data-taogo]')?.addEventListener('click', () => {
     PSTORE.setItem('w1001.taofound', '1');
     player.position.set(THY.x - 90, height(THY.x - 90, THY.z) + 1, THY.z); vy = 0;
@@ -5640,6 +5607,40 @@ function renderBigMap() {
   bigCtx.fillStyle = '#26211a';
   bigCtx.beginPath(); bigCtx.arc(BX(player.position.x), BY(player.position.z), 2.6, 0, 7); bigCtx.fill();
 }
+/* 直航(渡口卡与海图点选共用):k=世界键 */
+function ferryGo(k) {
+    const dests = { truman: [694, 624], lotr: [-150, -558], hp: [588, -492], mainstation: [146, -84], mob: [120, 702], sport: [-688, 122],
+      shj: [SHJ.x, SHJ.z + 112], anh: [ANH.x, ANH.z - 106], nem: [NEM.x, NEM.z - 70], b612: [B612.x, B612.z - 48], jur: [JUR.x, JUR.z - 120],
+      hgs: [HGS.x, HGS.z + 118], alc: [ALC.x, ALC.z + 102], cbi: [CBI.x, CBI.z + 110], lrs: [LRS.x, LRS.z + 92], lsp: [LSP.x + 118, LSP.z],
+      fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102],
+      pur: [PUR.x, PUR.z + PUR.r + 18], unj: [UNJ.x, UNJ.z + UNJ.r + 14], main: [372, 12] };
+    const dest = dests[k] || NI_DEST[k] || dests.main;
+    player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
+    closeModals(); blip(520);
+    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
+      : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多'
+      : k === 'hp' ? '⚡ 呜——!霍格沃茨特快抵达霍格莫德站'
+      : k === 'mainstation' ? '🚂 呜——!列车抵达 9¾ 站台'
+      : k === 'mob' ? '🐳 南塔开特到了。海上有咸腥味,和一个关于白鲸的传说'
+      : k === 'sport' ? '⚽ 体育岛到了——听,梦剧场的声浪!'
+      : k === 'shj' ? '🐉 山海经·异兽之野——石阙之后,群兽候君'
+      : k === 'anh' ? '🪔 巴格达到了。今夜,又是一千零一夜的开始'
+      : k === 'nem' ? '🐚 锚地到了。那艘钢铁鲸鱼,就是鹦鹉螺号'
+      : k === 'b612' ? '🌹 B-612 到了。小心猴面包树,替玫瑰盖好罩子'
+      : k === 'jur' ? '🦖 侏罗纪公园到了——电网是通电的,别摸'
+      : k === 'hgs' ? '🐒 花果山福地到了!山顶有神针,瀑后有洞天'
+      : k === 'alc' ? '🎩 仙境到了。这里全是疯子——包括渡你来的船'
+      : k === 'cbi' ? '🔥 赤壁到了。江风微紧,战船相连'
+      : k === 'lrs' ? '🏮 兰若寺到了。白日无妨——夜里,自己小心'
+      : k === 'lsp' ? '⚔️ 梁山泊到了。好汉,可带了投名状?'
+      : k === 'fcy' ? '🌀 风车原野到了。那位骑士又在跟"巨人"较劲'
+      : k === 'yfb' ? '⛓️ 伊夫堡到了。有人在墙里敲了二十年'
+      : k === 'rbx' ? '🏝️ 绝望岛到了。沙滩上,好像有脚印'
+      : k === 'dgy' ? '🏮 大观园到了。今日诗社有题,潇湘馆竹影正好'
+      : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪'
+      : k === 'unj' ? '🏛️ 未竟之都到了。广播还在循环:"欢迎来到人类共同的首都。"——港口空无一人'
+      : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
+}
 function toggleBigMap() {
   if (!bigmapEl) return;
   const opening = bigmapEl.classList.contains('hidden');
@@ -5660,7 +5661,8 @@ function initGlobe() {
   globeScene = new THREE.Scene();
   const tex = new THREE.CanvasTexture(bigBase); tex.colorSpace = THREE.SRGBColorSpace;
   globeGrp = new THREE.Group();
-  globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshBasicMaterial({ map: tex })));
+  const gSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshBasicMaterial({ map: tex }));
+  globeGrp.add(gSphere); globeGrp.userData.sphere = gSphere;
   globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.002, 24, 16), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, wireframe: true, transparent: true, opacity: .06 })));   // 经纬网
   globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 32, 24), new THREE.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: .1, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));   // 大气辉光
   globeMk = new THREE.Mesh(new THREE.SphereGeometry(.02, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd76a }));
@@ -5679,6 +5681,18 @@ function initGlobe() {
   });
   for (const ev of ['pointerup', 'pointercancel']) globeCv.addEventListener(ev, () => { globeDrag = null; globeCv.style.cursor = 'grab'; });
   globeCv.addEventListener('wheel', e => { e.preventDefault(); globeDist = Math.max(2.2, Math.min(6, globeDist + e.deltaY * .002)); }, { passive: false });
+  let gDown = null;
+  globeCv.addEventListener('pointerdown', e => { gDown = [e.clientX, e.clientY]; });
+  globeCv.addEventListener('pointerup', e => {
+    if (!gDown || Math.hypot(e.clientX - gDown[0], e.clientY - gDown[1]) > 6) { gDown = null; return; }
+    gDown = null;
+    const r2 = globeCv.getBoundingClientRect();
+    const nd = new THREE.Vector2(((e.clientX - r2.left) / r2.width) * 2 - 1, -((e.clientY - r2.top) / r2.height) * 2 + 1);
+    const rc = new THREE.Raycaster(); rc.setFromCamera(nd, globeCam);
+    const hit = rc.intersectObject(globeGrp.userData.sphere)[0];
+    if (!hit || !hit.uv) return;
+    mapPick((hit.uv.x - .5) * 4000, (hit.uv.y - .5) * 4000);
+  });
 }
 function globeFrame() {
   if (!globeOn || bigmapEl.classList.contains('hidden')) return;
@@ -5704,6 +5718,59 @@ function setGlobe(on) {
   const b = document.getElementById('btnGlobe'); if (b) b.textContent = on ? '🗺️ 平面海图' : '🌐 地球仪';
 }
 document.getElementById('btnGlobe')?.addEventListener('click', () => setGlobe(!globeOn));
+/* --- ⛵ 海图点选直航:平面图反演坐标 / 球面 uv 拾取,金环高亮 + 确认条 --- */
+let FERRY_IDX = null, mapSel = null, goBar = null;
+function buildFerryIdx() {
+  FERRY_IDX = [
+    ['main', '收藏之岛', 0, -60], ['truman', '楚门的世界', TRU.x, TRU.z], ['lotr', '中土', MID.x, MID.z],
+    ['hp', '霍格沃茨', HOG.x, HOG.z], ['mob', '南塔开特', MOB.x, MOB.z], ['sport', '体育岛', SPT.x, SPT.z],
+    ['shj', '山海经', SHJ.x, SHJ.z], ['anh', '一千零一夜', ANH.x, ANH.z], ['nem', '鹦鹉螺锚地', NEM.x, NEM.z],
+    ['b612', 'B-612', B612.x, B612.z], ['jur', '侏罗纪公园', JUR.x, JUR.z], ['hgs', '花果山', HGS.x, HGS.z],
+    ['alc', '爱丽丝仙境', ALC.x, ALC.z], ['cbi', '赤壁', CBI.x, CBI.z], ['lrs', '兰若寺', LRS.x, LRS.z],
+    ['lsp', '梁山泊', LSP.x, LSP.z], ['fcy', '风车原野', FCY.x, FCY.z], ['yfb', '伊夫堡', YFB.x, YFB.z],
+    ['rbx', '绝望岛', RBX.x, RBX.z], ['dgy', '大观园', DGY.x, DGY.z], ['pur', '炼狱山', PUR.x, PUR.z],
+    ['unj', '未竟之都', UNJ.x, UNJ.z],
+    ...NISLES.map(s2 => [s2.key, NI_CONTENT[s2.key] ? NI_CONTENT[s2.key].name : s2.key, s2.x, s2.z]),
+  ];
+}
+function initGoBar() {
+  goBar = document.createElement('div');
+  goBar.style.cssText = 'display:none;position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:5;background:rgba(16,28,20,.92);border:1px solid rgba(255,215,106,.5);border-radius:999px;padding:8px 10px 8px 18px;color:#f0ead6;font-size:14px;white-space:nowrap;align-items:center;gap:10px';
+  goBar.innerHTML = '<span id="goBarTxt"></span> <button id="goBarGo" class="gBtn" style="margin-left:10px">⛵ 直航</button><button id="goBarNo" class="gBtn off" style="margin-left:6px">取消</button>';
+  bigCv.parentElement.style.position = 'relative';
+  bigCv.parentElement.appendChild(goBar);
+  goBar.querySelector('#goBarGo').addEventListener('click', () => {
+    if (!mapSel) return;
+    if (diving) { toast('🤿 潜水中不能叫船——先浮上去'); return; }
+    const k = mapSel[0]; goBar.style.display = 'none'; mapSel = null;
+    toggleBigMap(); ferryGo(k);
+  });
+  goBar.querySelector('#goBarNo').addEventListener('click', () => { goBar.style.display = 'none'; mapSel = null; renderBigMap(); });
+}
+function mapPick(wx, wz) {
+  if (!FERRY_IDX) buildFerryIdx();
+  if (!goBar) initGoBar();
+  let best = 1e9, hit = null;
+  for (const e of FERRY_IDX) { const d = Math.hypot(wx - e[2], wz - e[3]); if (d < best) { best = d; hit = e; } }
+  if (!hit || best > 170) { goBar.style.display = 'none'; mapSel = null; renderBigMap(); return; }
+  mapSel = hit;
+  goBar.querySelector('#goBarTxt').textContent = '直航去「' + hit[1] + '」?';
+  goBar.style.display = 'flex';
+  if (bigCv.style.display !== 'none') {   // 平面图:金环高亮
+    renderBigMap();
+    const W3 = bigCv.width, H3 = bigCv.height, SC2 = 4000;
+    const bx = (hit[2] / SC2 + .5) * W3, by = (.5 - hit[3] / (SC2 * H3 / W3)) * H3;
+    bigCtx.strokeStyle = '#ffd76a'; bigCtx.lineWidth = 3;
+    bigCtx.beginPath(); bigCtx.arc(bx, by, 16, 0, 7); bigCtx.stroke();
+  }
+  blip(600);
+}
+if (bigCv) bigCv.addEventListener('click', e => {
+  const r2 = bigCv.getBoundingClientRect();
+  const px = (e.clientX - r2.left) / r2.width * bigCv.width, py = (e.clientY - r2.top) / r2.height * bigCv.height;
+  const SC2 = 4000, W3 = bigCv.width, H3 = bigCv.height;
+  mapPick((px / W3 - .5) * SC2, (.5 - py / H3) * (SC2 * H3 / W3));
+});
 if (bigmapEl) {
   bigmapEl.addEventListener('click', e => { if (e.target === bigmapEl || e.target.dataset.close !== undefined) toggleBigMap(); });
   bigmapEl.querySelector('[data-close]')?.addEventListener('click', () => toggleBigMap());
