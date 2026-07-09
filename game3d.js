@@ -48,6 +48,7 @@ const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drin
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kaodone');   // 群岛考据线
+SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1772,6 +1773,7 @@ function titleList() {
     { id: 'unjlang', name: '🗣️ 通天塔修补匠', got: PSTORE.getItem('w1001.unjlang') === '1', note: '修复万国翻译系统' },
     { id: 'combo', name: '🧭 组合群岛勘察员', got: ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl'].every(k => PSTORE.getItem('w1001.nq_' + k) === '1'), note: '走完全部十六座组合岛的故事线' },
     { id: 'kao', name: '📚 群岛考据学家', got: PSTORE.getItem('w1001.kaodone') === '1', note: '装订《群岛互文考》' },
+    { id: 'passall', name: '🌍 环球旅行家', got: PSTORE.getItem('w1001.passall') === '1', note: '护照盖满全部岛屿' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1898,7 +1900,16 @@ function openJournal() {
   const chartHtml = `<div class="qBox"><div class="qTitle"><span>🌌 星图 · 认得的星座</span><span>${constSeen.size}/${constDirs.length}</span></div>
     <canvas id="starChart" width="320" height="320" style="width:100%;max-width:340px;display:block;margin:8px auto;border-radius:10px"></canvas>
     <div style="font-size:12px;color:#8a9a7c;text-align:center">夜里按 <b>K</b> 观星,把星座转到视野中央即可认得它</div></div>`;
-  list.innerHTML = mHtml + qHtml + titleHtml + chartHtml + logHtml + Object.keys(CATS).map(k => {
+  const passHtml = (() => {   // 🛂 环球护照页
+    const n = stamps.size, total = PASSPORT.length;
+    const mile = PSTORE.getItem('w1001.passall') === '1' ? '🌍 环球旅行家' : PSTORE.getItem('w1001.pass30') === '1' ? '下一站:全部盖满' : PSTORE.getItem('w1001.pass10') === '1' ? '下一枚里程碑:30 岛' : '首个里程碑:10 岛';
+    return `<div class="qBox"><div class="qTitle"><span>🛂 环球护照</span><span>${n}/${total} · ${mile}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px 6px;font-size:11px;padding:4px 2px;line-height:1.7">
+      ${PASSPORT.map(([nm2, ic2]) => { const got = stamps.has(nm2); const shortNm = nm2.split(' · ').pop();
+        return `<div style="${got ? '' : 'opacity:.32;filter:grayscale(1)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${nm2}">${ic2} ${shortNm}</div>`; }).join('')}
+      </div></div>`;
+  })();
+  list.innerHTML = mHtml + qHtml + titleHtml + chartHtml + passHtml + logHtml + Object.keys(CATS).map(k => {
     const cfg = CATS[k], n = seen[k].length, embed = D[k].length;
     const pct = Math.round(n / embed * 100);
     const badge = mileTier(k);
@@ -4958,6 +4969,24 @@ for (const s of NISLES) {
     el.innerHTML = h;
   }
 }
+/* ===== 🛂 环球护照:踏上一座岛,自动盖一枚章 ===== */
+const PASSPORT = [
+  ['收藏之岛', '🐋'], ['灯塔屿', '🗼'], ['楚门的世界', '📺'], ['中土', '💍'],
+  ['霍格沃茨', '⚡'], ['南塔开特', '🐳'], ['体育岛', '⚽'],
+  ...ISLES.map(z2 => [z2.name, z2.icon]),
+];
+const stamps = new Set((PSTORE.getItem('w1001.stamps') || '').split('|').filter(Boolean));
+function addStamp(nm) {
+  if (stamps.has(nm)) return;
+  stamps.add(nm);
+  PSTORE.setItem('w1001.stamps', [...stamps].join('|'));
+  const n = stamps.size, total = PASSPORT.length;
+  toast(`🛂 环球护照 · 新盖章「${nm}」(${n}/${total})`); blip(700);
+  if (n >= 10 && PSTORE.getItem('w1001.pass10') !== '1') { PSTORE.setItem('w1001.pass10', '1'); earnSB(20); setTimeout(() => toast('🛂 十岛达成 · ⚡+20——护照第一页,盖满了'), 1800); }
+  if (n >= 30 && PSTORE.getItem('w1001.pass30') !== '1') { PSTORE.setItem('w1001.pass30', '1'); earnSB(50); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🛂 三十岛达成 · ⚡+50 · ⭐+1——半个星球已在你脚下'), 1800); }
+  if (n >= total && PSTORE.getItem('w1001.passall') !== '1') { PSTORE.setItem('w1001.passall', '1'); earnSB(120); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🌍 全岛盖章!⚡+120 · ⭐+1 · 新称号「环球旅行家」——这颗星球,没有你没到过的岸'), 1800); }
+}
+let stampT = 0;
 /* 三仙岛蜃楼:蓬莱、方丈——远望可见,近之则隐(loop 里按距离渐隐) */
 const mirages = [];
 for (const [mx, mz, s] of [[1640, 1080, 1], [1240, 1240, .78]]) {
@@ -7393,6 +7422,15 @@ function loop() {
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
   $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
   $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  stampT -= dt;   // 🛂 护照盖章(1s 节流)
+  if (stampT <= 0) {
+    stampT = 1;
+    const nm5 = swimming ? null
+      : isl ? isl.name
+      : (onMid || onMordor) ? '中土' : onHog ? '霍格沃茨' : onMob ? '南塔开特' : onSpt ? '体育岛' : onTruman ? '楚门的世界' : onIsle2 ? '灯塔屿'
+      : (Math.hypot(player.position.x, player.position.z) < 500 && !diving) ? '收藏之岛' : null;
+    if (nm5) addStamp(nm5);
+  }
 
   /* 岛屿分桶显隐(0.5s 节流) */
   bucketT -= dt;
@@ -7459,4 +7497,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
-  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }) };
+  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT };
