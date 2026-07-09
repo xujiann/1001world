@@ -1764,6 +1764,7 @@ function titleList() {
     { id: 'unjer', name: '🏛️ 未竟之都的见证者', got: !!PSTORE.getItem('w1001.unjend'), note: '为人类之都做出抉择' },
     { id: 'unjnews', name: '🗞️ 迟到百年的头版', got: PSTORE.getItem('w1001.unjnews') === '1', note: '发出未竟之都的最后一篇报道' },
     { id: 'unjlang', name: '🗣️ 通天塔修补匠', got: PSTORE.getItem('w1001.unjlang') === '1', note: '修复万国翻译系统' },
+    { id: 'combo', name: '🧭 组合群岛勘察员', got: ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo'].every(k => PSTORE.getItem('w1001.nq_' + k) === '1'), note: '走完全部十座组合岛的故事线' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1873,6 +1874,7 @@ function openJournal() {
     ['🔥 幻影运动会(未竟之都)', PSTORE.getItem('w1001.unjgames') === '1' ? '✅ 圣火亮过一夜' : '⏳ 夜里帮守夜人点火炬'],
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
+    ['🧭 组合群岛(十座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 10 ? '✅ 勘察完毕' : `⏳ ${n}/10`; })()],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
   ];
@@ -4935,8 +4937,11 @@ for (const s of NISLES) {
     const row = (i, n, d) => `<div class="iRow"><span>${i}</span><b>${esc(n)}</b><i>${esc(d)}</i></div>`;
     let h = '<div class="iHd">🐋 收藏之岛(主岛九大馆)</div>';
     h += Object.values(CATS).map(c => row(c.icon, c.name, `${c.tot} ${c.unit}的完整收藏`)).join('');
+    const isCombo = w2 => (w2.desc || '').startsWith('组合岛');
     h += '<div class="iHd">⛵ 渡口通往的世界(文学与传奇之岛)</div>';
-    h += WORLDS.filter(w2 => w2.key !== 'xiyou').map(w2 => row(w2.icon, w2.name, w2.desc || w2.note || '')).join('');
+    h += WORLDS.filter(w2 => w2.key !== 'xiyou' && !isCombo(w2)).map(w2 => row(w2.icon, w2.name, w2.desc || w2.note || '')).join('');
+    h += '<div class="iHd">🧭 组合群岛(现实地貌 × 文学主题的原创融合)</div>';
+    h += WORLDS.filter(isCombo).map(w2 => row(w2.icon, w2.name, (w2.desc || '').replace('组合岛:', ''))).join('');
     h += '<div class="iHd">🌊 海上另有传奇</div>';
     h += [['🐺', '幽灵号', '海狼拉森的黑帆猎船(北海)'], ['🎣', '"我们在这儿"号', '《怒海余生》的纽芬兰渔船(东北渔场)'],
       ['🎩', '福克先生的邮轮', '八十天环游地球(东海)'], ['🍾', '格兰特船长的瓶中信', '37°11′——在南海漂着'],
