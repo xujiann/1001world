@@ -49,6 +49,7 @@ const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drin
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
+SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1776,6 +1777,9 @@ function titleList() {
     { id: 'combo', name: '🧭 组合群岛勘察员', got: ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl'].every(k => PSTORE.getItem('w1001.nq_' + k) === '1'), note: '走完全部十六座组合岛的故事线' },
     { id: 'kao', name: '📚 群岛考据学家', got: PSTORE.getItem('w1001.kaodone') === '1', note: '装订《群岛互文考》' },
     { id: 'passall', name: '🌍 环球旅行家', got: PSTORE.getItem('w1001.passall') === '1', note: '护照盖满全部岛屿' },
+    { id: 'honor1', name: '🥇 鲸背赞助人', got: PSTORE.getItem('w1001.honor1') === '1', note: '基金会荣誉(300 ⚡)' },
+    { id: 'honor2', name: '🎗️ 灯塔守护者', got: PSTORE.getItem('w1001.honor2') === '1', note: '基金会荣誉(800 ⚡)' },
+    { id: 'fundstone', name: '❤️ 群岛基石', got: PSTORE.getItem('w1001.fundstone') === '1', note: '累计捐赠 2000 ⚡' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -2565,7 +2569,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
+  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -5959,6 +5963,34 @@ const PC_REPLIES = [
   '下次别只寄照片——把讲这张照片的那顿茶也留下来。',
   '收到明信片的人有个特权:可以假装自己也去过了。',
 ];
+/* ===== ❤️ 群岛基金会:捐赠与荣誉(算力币的花处) ===== */
+function openFund() {
+  const total = parseInt(PSTORE.getItem('w1001.donated') || '0', 10) || 0;
+  const h1 = PSTORE.getItem('w1001.honor1') === '1', h2 = PSTORE.getItem('w1001.honor2') === '1';
+  cardBody.innerHTML = `<div class="cardHead" style="background:#5a2e3a">❤️ 群岛基金会 · The Archipelago Trust</div>
+    <div class="cardDesc" style="font-size:12.5px;line-height:1.7;padding:12px 20px 4px">"每一枚算力币,都会变成某座岛上的一块石阶、一盏灯、一笔修缮费。"——基金会成立于未竟之都熄灯那年,宗旨只有一条:让这些岛屿比诗活得久。<br>累计捐赠:<b style="color:#ffd76a">${total} ⚡</b>${total >= 500 ? ' · 🕊️ 你的名字已刻上和平港铜牌' : ''}${total >= 2000 ? ' · ❤️ 称号「群岛基石」已授予' : ''}</div>
+    <div style="padding:6px 16px 4px">${[50, 200, 500].map(n9 => `<button class="gBtn" data-donate="${n9}" style="margin:4px 6px 4px 0" ${sb < n9 ? 'disabled' : ''}>捐 ${n9} ⚡</button>`).join('')}</div>
+    <div style="padding:2px 16px 16px">
+      <div class="gRow"><div class="gi">🥇</div><div class="gInfo"><b>鲸背赞助人</b><div class="gDesc">佩戴式荣誉称号 · 永久</div></div>${h1 ? '<span style="color:#2c7a4b;font-size:12px">✅ 已授予</span>' : `<button class="gBtn" data-honor="1" ${sb < 300 ? 'disabled' : ''}>300 ⚡</button>`}</div>
+      <div class="gRow"><div class="gi">🎗️</div><div class="gInfo"><b>灯塔守护者</b><div class="gDesc">佩戴式荣誉称号 · 永久 · 附赠灯塔屿铜牌刻名</div></div>${h2 ? '<span style="color:#2c7a4b;font-size:12px">✅ 已授予</span>' : `<button class="gBtn" data-honor="2" ${sb < 800 ? 'disabled' : ''}>800 ⚡</button>`}</div>
+    </div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelectorAll('[data-donate]').forEach(b9 => b9.addEventListener('click', () => {
+    const n9 = +b9.dataset.donate; if (!spendSB(n9)) return;
+    const t9 = (parseInt(PSTORE.getItem('w1001.donated') || '0', 10) || 0) + n9;
+    PSTORE.setItem('w1001.donated', String(t9));
+    if (t9 >= 2000 && PSTORE.getItem('w1001.fundstone') !== '1') { PSTORE.setItem('w1001.fundstone', '1'); stars++; saveQuest(); updateQuestHUD(); toast('❤️ 累计 2000 ⚡!新称号「群岛基石」+⭐——基金会全体(一人)起立鼓掌'); }
+    else if (t9 >= 500 && t9 - n9 < 500) toast('🕊️ 累计 500 ⚡——你的名字已刻上和平港的铜牌(第 ' + (100 + t9 % 400) + ' 位)');
+    else toast('❤️ 谢谢。这笔钱会变成某座岛上的一盏灯(累计 ' + t9 + ' ⚡)');
+    blip(720); openFund();
+  }));
+  cardBody.querySelectorAll('[data-honor]').forEach(b9 => b9.addEventListener('click', () => {
+    const i9 = b9.dataset.honor, price9 = i9 === '1' ? 300 : 800;
+    if (PSTORE.getItem('w1001.honor' + i9) === '1' || !spendSB(price9)) return;
+    PSTORE.setItem('w1001.honor' + i9, '1');
+    toast(i9 === '1' ? '🥇 「鲸背赞助人」已授予——图鉴称号页可佩戴' : '🎗️ 「灯塔守护者」已授予——灯塔今晚为你多转三圈'); blip(760); openFund();
+  }));
+}
 function makePostcard() {
   try {
     const src = renderer.domElement;
@@ -6462,6 +6494,15 @@ const spray = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 9),
 spray.position.set(WHALE_BLOW.x, 3, WHALE_BLOW.z);
 scene.add(spray);
 
+/* --- ❤️ 群岛基金会亭(装备行隔壁) --- */
+{
+  const fx9 = 38, fz9 = 232, fh9 = height(fx9, fz9);
+  const cnt = box(3.6, 1, 2, lam(0x6a3a46)); cnt.position.set(fx9, fh9 + .9, fz9); scene.add(cnt); cirObs.push({ x: fx9, z: fz9, r: 2.2 });
+  for (const ox of [-1.5, 1.5]) { const pp = cyl(.1, .12, 3, M.woodDark, 5); pp.position.set(fx9 + ox, fh9 + 1.9, fz9); scene.add(pp); }
+  const rf9 = box(4.2, .24, 2.6, lam(0x8a4a5a)); rf9.position.set(fx9, fh9 + 3.4, fz9); scene.add(rf9);
+  const hs9 = makeSign('❤️ 群岛基金会', 5.5, '#4a2630', '#f0c8d0'); hs9.position.set(fx9 + 3.6, fh9 + 2.6, fz9 + 1); scene.add(hs9);
+  addSpot(fx9, fz9 + 2.5, 'fund', 'fund', { r: 6 });
+}
 /* --- 千岛装备行(去水族馆的路边) --- */
 {
   const sx = 26, szz = 218, sh = height(26, 218);
@@ -6874,6 +6915,7 @@ function tryInteract() {
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
   if (nearSpot && nearSpot.cat === 'air') { openAirCounter(nearSpot.airKey); return; }
+  if (nearSpot && nearSpot.cat === 'fund') { openFund(); return; }
   if (nearSpot && nearSpot.cat === 'dive') { enterDive(nearSpot.portal); return; }
   if (nearSpot) { openCard(nearSpot); return; }
   if (nearFspot) { startCast(nearFspot); return; }
@@ -6982,7 +7024,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门', bluehole: '🤿 潜入海底蓝洞', airport: '✈️ 航空柜台 · 购票飞行' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门', bluehole: '🤿 潜入海底蓝洞', airport: '✈️ 航空柜台 · 购票飞行', fund: '❤️ 群岛基金会 · 捐赠与荣誉' };
 for (const k in LORE) HINTS[k] = LORE[k].hint;
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
@@ -7759,4 +7801,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
