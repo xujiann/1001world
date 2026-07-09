@@ -1110,7 +1110,8 @@ export function makeNIContent(C) {
     spots: [[0, 4, 'sxying'], [-8, 30, 'sxwangtai'], [-14, 36, 'sxlou'], [14, -12, 'sxdan'], [-2, 26, 'sxhe'], [30, -22, 'sxfleet']],
     npcs: [
       { dx: -4, dz: 22, name: '守台老道', body: 0x6a7a8a, hat: 0x4a5a6a, opts: { tall: 1.04, cane: true },
-        lines: ['蓬莱方丈,望得见,追不上——追上的那座,都改叫瀛洲了。', '香火我看了六十年:求长生的少了,求平安的多了。这是进步。', '仙山不度人。海度。'] },
+        lines: ['蓬莱方丈,望得见,追不上——追上的那座,都改叫瀛洲了。', '香火我看了六十年:求长生的少了,求平安的多了。这是进步。', '仙山不度人。海度。'],
+        topics: [{ q: '蓬莱真的存在吗?', a: '你问错了。该问:凝望存在吗?两千年里每一双望向海平线的眼睛,都是它存在的证据。石头会碎,凝望不会。' }] },
       { dx: 10, dz: -8, name: '刻名的旅人', body: 0x8a7a5a, hat: 0x6a5c42,
         lines: ['我爷爷的名字在栏杆东数第三根,我爸的在第七根。我来补我的。', '我们家三代都没等到仙山靠岸——但三代都看过它。值了。', '你也刻一个?刻浅点,给后来的人留地方。'] },
     ],
@@ -1277,7 +1278,8 @@ export function makeNIContent(C) {
     spots: [[-12, 18, 'sggeyser'], [16, -8, 'sglava'], [-4, -2, 'sgrune'], [6, 14, 'sgskald'], [-6, -26, 'sgaurora']],
     npcs: [
       { dx: 10, dz: 16, name: '吟游诗人', body: 0x5a4a3a, hat: 0x42362a, opts: { tall: 1.04 },
-        lines: ['萨迦的第一句永远是名字——人没了,名字还得有人念。', '我唱过一百遍诸神黄昏。听众最安静的,永远是最后那句绿意盎然。', '坐。风这么大,正是讲故事的好天气。'] },
+        lines: ['萨迦的第一句永远是名字——人没了,名字还得有人念。', '我唱过一百遍诸神黄昏。听众最安静的,永远是最后那句绿意盎然。', '坐。风这么大,正是讲故事的好天气。'],
+        topics: [{ q: '为什么末日诗的结尾是希望?', a: '因为唱诗的人都活过冬天。真正挨过长夜的人不敢把结尾写死——他们知道,春天不是修辞,是经验。' }] },
       { dx: -14, dz: 14, name: '冰川向导', body: 0x4a6a7a, hat: 0x365060, opts: { wide: 1.08 },
         lines: ['冰川每年退一点。我的工作迟早会变成"指着照片讲从前"。', '间歇泉要等,极光要碰——这岛教人的第一课是:急不来。', '踩我踩过的地方。冰的脾气,我认得。'] },
     ],
@@ -1317,7 +1319,8 @@ export function makeNIContent(C) {
     spots: [[0, -4, 'atcliff'], [-14, 8, 'atplato'], [6, 30, 'atruin'], [18, 24, 'atbell'], [16, -14, 'atvine']],
     npcs: [
       { dx: 10, dz: -8, name: '老酿酒师', body: 0x6a4a5a, hat: 0x503846, opts: { wide: 1.1 },
-        lines: ['我的葡萄长在两千年前的火山灰里——年份?你说的是哪一层的年份?', '游客来找亚特兰蒂斯,住两晚,最后都在找我的酒窖。', '大海拿走了半座岛,还回来的是甜。这买卖,我们认了。'] },
+        lines: ['我的葡萄长在两千年前的火山灰里——年份?你说的是哪一层的年份?', '游客来找亚特兰蒂斯,住两晚,最后都在找我的酒窖。', '大海拿走了半座岛,还回来的是甜。这买卖,我们认了。'],
+        topics: [{ q: '你相信亚特兰蒂斯吗?', a: '我信我的葡萄。它们的根扎在两千年前的灰里,酿出的酒带着那场末日的烟味——你说,这算不算喝到了亚特兰蒂斯?' }] },
       { dx: -12, dz: 10, name: '寻找沉城的学者', body: 0x4a5a7a, hat: 0x384660, opts: { tall: 1.05 },
         lines: ['我找了四十年。同行都说我找错了地方——他们说得可能都对。', '柏拉图写的若不是实录,就是预言。两样我都接受。', '我不怕找不到。我怕的是找到以后,没有东西可找了。'] },
     ],
@@ -1337,6 +1340,79 @@ export function makeNIContent(C) {
         const vx2 = gx + 14 + (i % 3) * 3, vz2 = gz - 12 - Math.floor(i / 3) * 3; ring2.rotation.x = Math.PI / 2; ring2.position.set(vx2, height(vx2, vz2) + .3, vz2); scene.add(ring2); }
       const bell3 = cyl(.6, .8, 1, lam(0x6a5a30), 9); bell3.position.set(gx + 18, .2, gz + 26); scene.add(bell3);   // 沉钟(潮间带)
       const wl4 = new THREE.PointLight(0xffe2b0, 0, 90, 2); wl4.position.set(gx - 2, height(gx - 2, gz - 6) + 4.5, gz - 6); wl4.userData.pow = 18; nightLamps.push(wl4); scene.add(wl4);
+    },
+  },
+  aeol: {
+    name: '风袋岛', en: 'The Isle of Winds', icon: '💨', theme: 'aeol',
+    desc: '组合岛:埃奥利群岛的长明火山 × 奥德赛的风神皮袋',
+    ferryMsg: '💨 风袋岛到了。进港帆自己垂下——这里的风,归一位老人管',
+    lore: {
+      aeolbag: { icon: '💨', color: '#8fa8c8', title: '风神的皮袋', en: 'The Bag of Winds', hint: '装着全世界的逆风',
+        desc: '凉棚下拴着一只鼓胀的牛皮大袋,袋口九道银线。当年风神把逆风全数收进袋里送给奥德修斯,只留顺风送他回家——船员当是金子,在故乡的灯火已可望见时拆开了它。一袋逆风,把十年吹回了原点。' },
+      aeolstrom: { icon: '🌋', color: '#8c3a1a', title: '长明火山', en: 'The Lighthouse Volcano', hint: '两千年没熄过的灯',
+        desc: '岛心的火山每隔一炷香喷一小口红光,两千年来从不失约——水手们叫它"地中海的灯塔"。守灯渔妇说得更准:"灯塔要人点。它不用。它自己想着航海的人。"' },
+      aeolharbor: { icon: '⚓', color: '#4a6a8a', title: '无风港', en: 'The Windless Harbour', hint: '帆到这里自动垂下',
+        desc: '全世界只有这座港不需要收帆——船一过防波堤,风就停在堤外,帆布软软垂下,像被谁轻轻按了一下肩。风神的规矩:港里只留说话的风量。' },
+      aeolvane: { icon: '🗿', color: '#6a6a62', title: '风向石林', en: 'The Vane Stones', hint: '石头指着今天的风',
+        desc: '坡上立着一片天然石柱,每根顶端都磨出了斜面。岛民不看天气预报——清晨看哪根石柱的斜面挂了露水,就知道今天该往哪个方向出海。石头比云诚实。' },
+    },
+    spots: [[0, 6, 'aeolbag'], [4, -20, 'aeolstrom'], [-8, 34, 'aeolharbor'], [18, 12, 'aeolvane']],
+    npcs: [
+      { dx: -6, dz: 10, name: '风神', body: 0x8fa8c8, hat: 0x6a84a8, opts: { tall: 1.08, cane: true },
+        lines: ['袋子别碰。里面是全世界没吹完的逆风。', '奥德修斯?好孩子,就是带的船员不行。', '退休了。现在只管这一座岛的风——和偶尔,替谁把顺风多留一天。'] },
+      { dx: 10, dz: -4, name: '守灯渔妇', body: 0x8a5a46, hat: 0x6a4434, opts: { wide: 1.08 },
+        lines: ['火山两千年没迟到过。人做不到的守时,山替我们做了。', '我男人出海那些年,我夜夜看它喷一口红——像谁在替我数着他回家的日子。', '风袋岛的孩子第一课:对风要有礼貌。'] },
+    ],
+    build: (gx, gz) => {
+      const bx9 = gx, bz9 = gz + 6, bh9 = height(bx9, bz9);   // 风神皮袋:鼓胀牛皮+银口
+      const bag = new THREE.Mesh(new THREE.SphereGeometry(2, 12, 10), lam(0x8a6a42)); bag.scale.set(1, 1.25, .9); bag.position.set(bx9, bh9 + 2.2, bz9); scene.add(bag); cirObs.push({ x: bx9, z: bz9, r: 2.2 });
+      const tie = cyl(.5, .7, .8, lam(0xc8ccd4), 8); tie.position.set(bx9, bh9 + 4.3, bz9); scene.add(tie);
+      const vx9 = gx + 4, vz9 = gz - 20, vh9 = height(vx9, vz9);   // 长明火山口红光
+      const glow9 = new THREE.Mesh(new THREE.ConeGeometry(2.6, 3, 9), new THREE.MeshBasicMaterial({ color: 0xff6a2a, transparent: true, opacity: .5, fog: false })); glow9.position.set(vx9, vh9 + 9, vz9); scene.add(glow9);
+      const el9 = new THREE.PointLight(0xff5a1a, 0, 160, 2); el9.position.set(vx9, vh9 + 10, vz9); el9.userData.pow = 30; el9.userData.farVis = 500; nightLamps.push(el9); scene.add(el9);
+      for (let i = 0; i < 6; i++) { const st9 = cyl(.5, .7, 3 + (i % 3), lam(0x6e6a62), 6);   // 风向石林
+        st9.position.set(gx + 14 + (i % 3) * 4, height(gx + 14, gz + 10) + 1.6, gz + 8 + Math.floor(i / 3) * 4); st9.rotation.z = .12; scene.add(st9); }
+      const quay9 = box(20, 1, 5, M.stone); quay9.position.set(gx - 8, Math.max(height(gx - 8, gz + 36), .2) + .5, gz + 36); scene.add(quay9);   // 无风港石堤
+    },
+  },
+  tusi: {
+    name: '讲故事人之岛', en: 'Tusitala', icon: '🖋️', theme: 'tusi',
+    desc: '组合岛:萨摩亚的瓦伊利马 × 《金银岛》作者的归宿',
+    ferryMsg: '🖋️ 讲故事人之岛到了。萨摩亚人叫他图西塔拉——讲故事的人。他葬在山顶,面朝海',
+    lore: {
+      tusihouse: { icon: '🏡', color: '#8a6a4a', title: '瓦伊利马宅', en: 'Vailima', hint: '大凉台上的书房',
+        desc: '一栋带宽大凉台的木屋。他人生最后四年住在这里:写作、种地、给部族调解纠纷。酋长们送他一个名字——图西塔拉,讲故事的人。比起"作家",他更喜欢这个头衔。' },
+      tusipath: { icon: '👣', color: '#6a7a5a', title: '哀恸之路', en: 'The Road of Loving Hearts', hint: '部族亲手修的路',
+        desc: '通往山顶的路,是萨摩亚人自发为他修的——为感谢他为部族的仗义执言。修路那天酋长立了牌:"暴雨可以冲垮它,我们会一直修。要让图西塔拉上山的路,永远好走。"' },
+      tusigrave: { icon: '⛰️', color: '#5a5a52', title: '山顶之墓', en: 'The Grave on Vaea', hint: '海望得见,星压得低',
+        desc: '他四十四岁死在削土豆的黄昏,六十位酋长连夜挥刀开路,把他抬上了山顶。石棺上刻着他自己写好的墓志——去读读吧,顺着那条路。' },
+      tusistory: { icon: '🖋️', color: '#8a7452', title: '讲故事的凉台', en: 'The Storytelling Veranda', hint: '孩子们围坐过的地方',
+        desc: '每到傍晚,凉台阶前坐满部族的孩子。他讲海盗、讲藏宝图、讲独腿的西尔弗——孩子们不知道那本书叫《金银岛》,只知道图西塔拉的海里,什么都有。' },
+    },
+    spots: [[0, 4, 'tusihouse'], [-6, -14, 'tusipath'], [2, -26, 'tusigrave'], [8, 8, 'tusistory']],
+    npcs: [
+      { dx: -10, dz: 8, name: '老酋长', body: 0x6a4a32, hat: 0x4c3624, opts: { wide: 1.15 },
+        lines: ['他替我们坐过牢的朋友说话,我们替他修一条路。这买卖,萨摩亚不亏。', '白人管他叫作家。我们叫他图西塔拉——会讲故事的,才配埋在山顶。', '那条路每年雨季都冲坏。每年,我们都修。'] },
+      { dx: 12, dz: -2, name: '听故事长大的孩子', body: 0x8a6a4a, hat: 0x6a5238, opts: { tall: .8 },
+        lines: ['我爷爷小时候坐在凉台最前排。他说图西塔拉讲到海盗时,眼睛比火把亮。', '山顶风大。可他说过,他就想葬在听得见海的地方。', '你去过金银岛吗?真的?——他要是知道有人真的去了,该多高兴。'] },
+    ],
+    build: (gx, gz) => {
+      const hx9 = gx, hz9 = gz + 4, hh9 = height(hx9, hz9);   // 瓦伊利马:木屋+宽凉台
+      const hus = box(8, 4, 6, lam(0xa8845a)); hus.position.set(hx9, hh9 + 2, hz9); scene.add(hus); cirObs.push({ x: hx9, z: hz9, r: 5 });
+      const vera = box(12, .4, 9, lam(0x8a6a44)); vera.position.set(hx9, hh9 + .5, hz9); scene.add(vera);
+      for (const [ox, oz] of [[-5.4, -4], [5.4, -4], [-5.4, 4], [5.4, 4]]) { const pp9 = cyl(.14, .16, 3.4, M.woodDark, 5); pp9.position.set(hx9 + ox, hh9 + 2, hz9 + oz); scene.add(pp9); }
+      const rf99 = box(13, .5, 10, lam(0x6a4a32)); rf99.position.set(hx9, hh9 + 4.4, hz9); scene.add(rf99);
+      for (let i = 0; i < 8; i++) { const t9 = i / 8;   // 哀恸之路:上山石阶
+        const px9 = gx - 5 + Math.sin(t9 * 2) * 4, pz9 = gz - 8 - t9 * 16;
+        const stp = box(2.2, .4, 1.3, M.stone); stp.position.set(px9, height(px9, pz9) + .25, pz9); scene.add(stp); }
+      const gvx = gx + 2, gvz = gz - 26, gvh = height(gvx, gvz);   // 山顶石棺
+      const ped9 = box(3.6, .8, 2.4, M.stone); ped9.position.set(gvx, gvh + .5, gvz); scene.add(ped9);
+      const cof = box(2.8, .9, 1.6, lam(0xd8d4c8)); cof.position.set(gvx, gvh + 1.35, gvz); scene.add(cof); cirObs.push({ x: gvx, z: gvz, r: 2.2 });
+      for (let i = 0; i < 4; i++) { const fr9 = cyl(.2, .28, 2.6, lam(0x6a4a36), 6);   // 鸡蛋花树
+        const fx99 = gx + 10 + (i % 2) * 5, fz99 = gz + 12 + Math.floor(i / 2) * 5;
+        fr9.position.set(fx99, height(fx99, fz99) + 1.3, fz99); scene.add(fr9);
+        const bl9 = new THREE.Mesh(new THREE.SphereGeometry(1.3, 8, 6), lam(0xe8c8d0)); bl9.scale.y = .7; bl9.position.set(fx99, height(fx99, fz99) + 3, fz99); scene.add(bl9); }
+      const wl9 = new THREE.PointLight(0xffd8a0, 0, 90, 2); wl9.position.set(hx9, hh9 + 5.4, hz9); wl9.userData.pow = 18; nightLamps.push(wl9); scene.add(wl9);
     },
   },
 };
