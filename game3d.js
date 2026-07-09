@@ -6633,6 +6633,30 @@ function redistributeMist(cx, cz) {
     b[i * 3 + 1] = (h > 1.6 && h < 15) ? h + 1.8 : -999;   // 低洼草地才起雾
   }
 }
+/* ===== 💡 灯光治理:场景 110 盏点光是帧率头号杀手 ===== */
+const ALL_LIGHTS = [];
+scene.traverse(o => { if (o.isPointLight) ALL_LIGHTS.push(o); });
+if (typeof lightLamp !== 'undefined' && lightLamp) lightLamp.userData.farVis = 700;   // 灯塔照得远
+if (unjTowerLight) unjTowerLight.userData.farVis = 900;                               // 人类之灯全城可见
+if (typeof fireLight !== 'undefined' && fireLight) fireLight.userData.farVis = 400;
+for (const L9 of [diveLight, causticLight, abyssLight]) if (L9) L9.userData.noCull = true;   // 潜水灯组自有开关
+const _lw = new THREE.Vector3();
+function cullLights() {
+  const cand = [];
+  for (const L9 of ALL_LIGHTS) {
+    if (L9.userData.noCull) continue;
+    if (L9.intensity <= .03) { L9.visible = false; continue; }
+    L9.getWorldPosition(_lw);   // 灯可能嵌在 Group 里,必须取世界坐标
+    const fv = L9.userData.farVis || 250;
+    const d2 = (player.position.x - _lw.x) ** 2 + (player.position.z - _lw.z) ** 2;
+    if (d2 >= fv * fv) { L9.visible = false; continue; }
+    cand.push([d2, L9]);
+  }
+  cand.sort((a2, b2) => a2[0] - b2[0]);
+  const MAXL = MOBILE ? 8 : 16;   // 最近 N 盏硬上限,着色成本有界
+  for (let i = 0; i < cand.length; i++) cand[i][1].visible = i < MAXL;
+}
+cullLights();
 /* 恢复上次位置 */
 try {
   const sv = JSON.parse(PSTORE.getItem('w1001.pos3d') || 'null');
@@ -7539,6 +7563,7 @@ function loop() {
   if (bucketT <= 0) {
     bucketT = .5;
     for (const b of BUCKETS) b.g.visible = ((player.position.x - b.x) ** 2 + (player.position.z - b.z) ** 2) < 1210000;   // 1100²
+    cullLights();   // 💡 灯光同频剔除
   }
   /* 动态画质:帧率过低自动降像素比,恢复后升回 */
   fpsN++; fpsT += dt;
@@ -7599,4 +7624,5 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
-  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle };
+  maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
+  cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
