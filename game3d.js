@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=4';
+import { makeNIContent } from './w-isles.js?v=5';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -16,9 +16,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=11';
+import { THEMES, NI_QUESTS } from './w-config.js?v=12';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=6';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=7';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -140,6 +140,9 @@ const NISLES = [
   { key: 'mada', x: -1700, z: 1480, r: 100, mask: 2.0, h: 7, peak: { r: 44, hh: 12 }, dock: [-1626, 1416] }, // 方舟大陆岛(马达加斯加×诺亚方舟)
   { key: 'helena', x: 1720, z: 1720, r: 88, mask: 2.0, h: 8, peak: { r: 30, hh: 10 }, dock: [1658, 1658] },  // 风中庄园(圣赫勒拿×李尔王)
   { key: 'komodo', x: 1760, z: -1760, r: 92, mask: 2.0, h: 6, peak: { r: 40, hh: 12 }, dock: [1696, -1696] },// 龙蜥荒原(科莫多×贝奥武甫)
+  { key: 'sanxian', x: 980, z: -1310, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [927, -1240] }, // 三仙岛(蓬莱三山×海市蜃楼)
+  { key: 'shixia', x: -1450, z: -1400, r: 90, mask: 2.0, h: 9, peak: { r: 38, hh: 18 }, dock: [-1385, -1338] },// 石刻武学岛(侠客石窟)
+  { key: 'taozhen', x: 1120, z: 1560, r: 90, mask: 2.0, h: 7, dock: [1068, 1487] },                            // 桃阵岛(桃花八阵)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
@@ -4983,7 +4986,18 @@ for (const s of NISLES) {
     el.innerHTML = h;
   }
 }
-/* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
+/* 三仙岛蜃楼:蓬莱、方丈——远望可见,近之则隐(loop 里按距离渐隐) */
+const mirages = [];
+for (const [mx, mz, s] of [[1260, -1400, 1], [880, -1580, .78]]) {
+  const g = new THREE.Group(); const mats = [];
+  const mm2 = op => { const m2 = new THREE.MeshBasicMaterial({ color: 0xbfd8e8, transparent: true, opacity: op, fog: false, depthWrite: false }); m2.userData.base = op; mats.push(m2); return m2; };
+  const hill = new THREE.Mesh(new THREE.ConeGeometry(52 * s, 40 * s, 9), mm2(.32)); hill.position.y = 8; g.add(hill);
+  const pk2 = new THREE.Mesh(new THREE.ConeGeometry(20 * s, 26 * s, 7), mm2(.28)); pk2.position.set(16 * s, 26 * s, 8 * s); g.add(pk2);
+  for (let i = 0; i < 3; i++) { const pag = new THREE.Mesh(new THREE.BoxGeometry(6 * s, 4 * s, 6 * s), mm2(.3)); pag.position.set(-8 * s + i * 3, 22 * s + i * 5, -4 * s); g.add(pag);
+    const pr2 = new THREE.Mesh(new THREE.ConeGeometry(5 * s, 3 * s, 4), mm2(.3)); pr2.rotation.y = .78; pr2.position.set(-8 * s + i * 3, 25 * s + i * 5, -4 * s); g.add(pr2); }
+  g.position.set(mx, 0, mz); g.userData.mats = mats; scene.add(g); mirages.push(g);
+}
+/* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) *//* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
 const NIQ_BY_LORE = {}, NIQ_BY_FLAG = {};
 for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }, NI_QUESTS[k]); NIQ_BY_LORE[q.lore] = q; NIQ_BY_FLAG[q.flag] = q; }
 /* ===== 海底隧道迷宫 · 洞穴潜水(导绳=关键装备)===== */
@@ -6725,6 +6739,13 @@ function loop() {
     unjFlame.scale.y = 1 + Math.sin(t * 9) * .15; unjFlame.material.opacity = .85 * fade;
     unjGamesGrp.userData.light.intensity = 30 * fade;
     if (unjGamesT <= 0) { unjGamesGrp.visible = false; toast('…比赛结束了。跑道空了,火炬又冷了。守夜人朝你脱帽。'); }
+  }
+  for (let mi = 0; mi < mirages.length; mi++) {   // 蜃楼:近之则隐
+    const mg = mirages[mi];
+    const md = Math.hypot(player.position.x - mg.position.x, player.position.z - mg.position.z);
+    const mv = Math.min(1, Math.max(0, (md - 190) / 260)) * (curDA >= .3 ? 1 : .25);   // 夜里更淡
+    mg.visible = mv > .03;
+    if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
   }
   for (const f of seaFish) {
     const u = f.userData;

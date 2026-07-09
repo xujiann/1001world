@@ -1087,5 +1087,127 @@ export function makeNIContent(C) {
       const g3 = new THREE.PointLight(0xffd8a0, 0, 70, 2); g3.position.set(gx - 8, height(gx - 8, gz + 22) + 4, gz + 22); g3.userData.pow = 14; nightLamps.push(g3); scene.add(g3);
     },
   },
+
+  sanxian: {
+    name: '三仙岛', en: 'The Three Immortal Isles', icon: '🏮', theme: 'sanxian',
+    desc: '组合岛:蓬莱三山的传说 × 永远只能接近的蜃楼',
+    ferryMsg: '🏮 三仙岛到了——确切说,是瀛洲。蓬莱和方丈在海上,看得见,追不上',
+    lore: {
+      sxying: { icon: '⛰️', color: '#6a8a8a', title: '瀛洲', en: 'Yingzhou', hint: '留给人的那座仙山',
+        desc: '海上三仙山:蓬莱、方丈、瀛洲。你脚下这座是瀛洲——最小、最矮、最不出名的那个。守台老道说,仙人大约都去了另外两座;所以这一座,留给了人。人间烟火气,也算一种仙。' },
+      sxwangtai: { icon: '🕯️', color: '#8a6a4a', title: '望仙台', en: 'The Gazing Terrace', hint: '两千年的名单',
+        desc: '石台朝海,一炉香终年不断。栏杆上刻满历代求仙者的名字:始皇帝来过,汉武帝来过,更多的是没名字的渔夫和书生。最新的一个名字是用指甲刻的,只刻了一半——大概是船到了,人急着上船。' },
+      sxlou: { icon: '🌫️', color: '#8fb8d8', title: '蜃楼', en: 'The Mirage', hint: '近之则隐',
+        desc: '天气好的时候,海上看得见另外两座仙山:楼台historic重叠,仙鹤往来,近了——就没了。驾舟去追,它退;停桨,它也停。老道说这不是幻觉,是规矩:仙山对人只开放"望"这一种抵达。' },
+      sxdan: { icon: '⚱️', color: '#7a5a3a', title: '断药炉', en: 'The Cold Furnace', hint: '三千炉之后',
+        desc: '半山一尊裂了口的大药炉,据说炼了三千炉不死药,每一炉都差最后一味——"不老"本身。炉底的灰里埋着一张字条,像是最后那位炼丹人留的方子:少思,少欲,多看海。落款:药成。' },
+      sxhe: { icon: '🦩', color: '#c8ccc8', title: '鹤信', en: 'The Crane Post', hint: '仙人的回信',
+        desc: '两只白鹤栖在望仙台的檐角,腿上绑着小小的信筒——都是空的。老道解释:凡人的心愿由鹤带去仙山,仙人的回信从不写字。"空着回来,就是回答。你再琢磨琢磨。"' },
+    },
+    spots: [[0, 4, 'sxying'], [-8, 30, 'sxwangtai'], [-14, 36, 'sxlou'], [14, -12, 'sxdan'], [-2, 26, 'sxhe']],
+    npcs: [
+      { dx: -4, dz: 22, name: '守台老道', body: 0x6a7a8a, hat: 0x4a5a6a, opts: { tall: 1.04, cane: true },
+        lines: ['蓬莱方丈,望得见,追不上——追上的那座,都改叫瀛洲了。', '香火我看了六十年:求长生的少了,求平安的多了。这是进步。', '仙山不度人。海度。'] },
+      { dx: 10, dz: -8, name: '刻名的旅人', body: 0x8a7a5a, hat: 0x6a5c42,
+        lines: ['我爷爷的名字在栏杆东数第三根,我爸的在第七根。我来补我的。', '我们家三代都没等到仙山靠岸——但三代都看过它。值了。', '你也刻一个?刻浅点,给后来的人留地方。'] },
+    ],
+    build: (gx, gz) => {
+      const tx = gx - 8, tz = gz + 30, th = height(tx, tz);   // 望仙台:石台+香炉+刻名栏杆
+      const plat = box(12, 1.4, 8, M.stone); plat.position.set(tx, th + .7, tz); scene.add(plat);
+      const cens = cyl(.8, 1, 1.4, lam(0x5a5040), 9); cens.position.set(tx, th + 2.1, tz + 1); scene.add(cens); cirObs.push({ x: tx, z: tz + 1, r: 1.1 });
+      const smoke2 = cyl(.12, .04, 3.4, new THREE.MeshBasicMaterial({ color: 0xd8dce0, transparent: true, opacity: .3, depthWrite: false }), 6);
+      smoke2.position.set(tx, th + 4.4, tz + 1); scene.add(smoke2);
+      for (let i = 0; i < 8; i++) { const rail = cyl(.12, .14, 1.2, lam(0x8a7a62), 6); rail.position.set(tx - 5 + i * 1.45, th + 1.9, tz - 3.6); scene.add(rail); }
+      for (const [ox, oz] of [[-4.4, -3], [4.6, -2.6]]) {   // 檐角双鹤
+        const cb2 = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), lam(0xf0eee8)); cb2.scale.set(1.25, .9, .8); cb2.position.set(tx + ox, th + 2.6, tz + oz); scene.add(cb2);
+        const nk2 = cyl(.05, .06, .8, lam(0xf0eee8), 4); nk2.rotation.z = .5; nk2.position.set(tx + ox + .4, th + 3.1, tz + oz); scene.add(nk2); }
+      const dx3 = gx + 14, dz3 = gz - 12, dh4 = height(dx3, dz3);   // 断药炉:裂口大炉
+      const fur = cyl(2, 2.6, 3.6, lam(0x5a4a38), 10); fur.position.set(dx3, dh4 + 1.8, dz3); scene.add(fur); cirObs.push({ x: dx3, z: dz3, r: 2.8 });
+      const crack = box(.3, 2.6, .5, lam(0x2a2420)); crack.position.set(dx3 + 2.2, dh4 + 1.6, dz3 + .6); crack.rotation.z = .2; scene.add(crack);
+      const lid = cyl(2.2, 2.2, .4, lam(0x4a3e30), 10); lid.rotation.z = .5; lid.position.set(dx3 + 3.4, dh4 + .4, dz3 - 2); scene.add(lid);
+      const lant = new THREE.PointLight(0xff9a5a, 0, 100, 2); lant.position.set(tx, th + 3.6, tz); lant.userData.pow = 20; nightLamps.push(lant); scene.add(lant);   // 台上灯笼
+    },
+  },
+  shixia: {
+    name: '石刻武学岛', en: 'The Carved Cliff', icon: '⚔️', theme: 'shixia',
+    desc: '组合岛:侠客石窟的武学之谜 × 文本的读法',
+    ferryMsg: '⚔️ 石刻武学岛到了。上面的高人一人守一窟,一坐几十年——送饭僧除外',
+    lore: {
+      xkcave: { icon: '🕳️', color: '#5a5248', title: '二十四窟', en: 'The 24 Grottoes', hint: '一人认一窟',
+        desc: '崖壁上凿着二十四座石窟,壁上刻满蝌蚪样的古字和练功的人形图谱。数十年来,来岛的高手一人认一窟,面壁参详,一坐就是半生。窟外石地上,站桩的脚掌磨出了两个坑。' },
+      xkbei: { icon: '🪨', color: '#6a6a5e', title: '无名碑', en: 'The Nameless Stele', hint: '一行字,三种读法',
+        desc: '窟前立着一块无名碑,就一行字。白首剑客说那是剑诀,他练到第七十三式;老学究说分明是古经异文,剑客糟蹋斯文;送饭僧说他不识字,只觉得笔画像下山的路。三个人守着同一行字,谁也说服不了谁——都五十年了。' },
+      xkfan: { icon: '🍚', color: '#8a7a5a', title: '送饭的山路', en: "The Cook's Path", hint: '最自在的人',
+        desc: '一条被扁担压出来的小路,从灶房通向二十四窟。送饭僧每日两趟,风雨不误,从不进窟,也从不看碑。高人们越练越瘦,只有他红光满面——岛上活得最自在的,是唯一不参武学的人。' },
+      xkkeng: { icon: '👣', color: '#5e5a50', title: '站桩坑', en: 'The Standing Pits', hint: '三十年,两个坑',
+        desc: '每座窟前的青石地上都有两个脚形的凹坑,深的能没过脚踝——那是一个人站桩三十年站出来的。守窟人说,坑最深的那位至今没悟出碑文;但他扎马步的功夫,已经天下无双。修行常常修出的,是本来没打算修的东西。' },
+      xklast: { icon: '📖', color: '#4a4256', title: '最后一窟', en: 'The Last Grotto', hint: '谁都解不开的那窟',
+        desc: '第二十四窟,谁都解不开。壁上的蝌蚪文密得像游动的鱼群,历代高人在这窟里耗白了头。传说真正看懂它的人会突然大笑,当天离岛,再没回来过——没人知道他们看懂了什么,只知道他们走时都很轻快。' },
+    },
+    spots: [[0, 6, 'xkcave'], [-14, 12, 'xkbei'], [16, 18, 'xkfan'], [10, -4, 'xkkeng'], [-6, -16, 'xklast']],
+    npcs: [
+      { dx: -12, dz: 16, name: '白首剑客', body: 0x5a5a66, hat: 0x44444e, opts: { tall: 1.05 },
+        lines: ['碑上那行字是剑诀。我练到第七十三式了——还差最后一式收势。', '五十年前我上岛时,想的是十天半月参透就走。', '老学究懂什么!笔画的锋回转折,分明是腕上功夫!'] },
+      { dx: -8, dz: 20, name: '老学究', body: 0x6a5a48, hat: 0x504434, opts: { wide: 1.04 },
+        lines: ['那是上古经文异体,句读全在气口——剑客糟蹋斯文!', '我注了三十卷,越注越觉得,它像是在注我。', '文本自己不说话。说话的从来是读它的人——这一点,老朽最近才服气。'] },
+      { dx: 14, dz: 22, name: '送饭僧', body: 0x8a6a42, hat: 0x6a5230, opts: { wide: 1.14 },
+        lines: ['我不识字。我只负责饭熟、汤热、准时。', '他们参碑,我看他们——三十年了,就我还回家吃年夜饭。', '要我说啊,那壁上的字,像下山的路。可惜没人肯下山。'] },
+    ],
+    build: (gx, gz) => {
+      for (let i = 0; i < 8; i++) {   // 崖壁石窟一排(示意八窟)
+        const a = -.9 + i * .26, cx3 = gx + Math.cos(a) * 26, cz4 = gz - 4 + Math.sin(a) * 26, chh3 = height(cx3, cz4);
+        const mouth = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8, 0, 6.283, 0, Math.PI / 2.2), new THREE.MeshLambertMaterial({ color: 0x3a362e, side: THREE.DoubleSide }));
+        mouth.position.set(cx3, chh3, cz4); scene.add(mouth);
+        if (i % 3 === 0) { const pit = box(.4, .08, .7, lam(0x2e2a24)); pit.position.set(cx3, chh3 + .06, cz4 + 2.6); scene.add(pit); } }
+      const bei = box(1.8, 3, .6, lam(0x6a665c)); bei.position.set(gx - 14, height(gx - 14, gz + 11) + 1.5, gz + 11); scene.add(bei); cirObs.push({ x: gx - 14, z: gz + 11, r: 1.3 });   // 无名碑
+      for (let i = 0; i < 3; i++) { const gl3 = box(.9, .12, .08, lam(0x8a867a)); gl3.position.set(gx - 14, height(gx - 14, gz + 11) + 1 + i * .7, gz + 11.34); gl3.rotation.z = (i % 2) * .4 - .2; scene.add(gl3); }
+      const path2 = box(1.4, .1, 22, lam(0xb0a890)); path2.position.set(gx + 14, height(gx + 14, gz + 10) + .08, gz + 10); path2.rotation.y = .3; scene.add(path2);   // 送饭山路
+      const pot = cyl(.7, .9, .9, lam(0x3e3a34), 9); pot.position.set(gx + 17, height(gx + 17, gz + 19) + .5, gz + 19); scene.add(pot);   // 灶房大锅
+      const stove = box(3, 1.6, 2.4, M.stone); stove.position.set(gx + 18.5, height(gx + 18.5, gz + 20) + .8, gz + 20); scene.add(stove); cirObs.push({ x: gx + 18.5, z: gz + 20, r: 2 });
+      const g4 = new THREE.PointLight(0xffb46a, 0, 80, 2); g4.position.set(gx + 18, height(gx + 18, gz + 20) + 3, gz + 20); g4.userData.pow = 15; nightLamps.push(g4); scene.add(g4);
+    },
+  },
+  taozhen: {
+    name: '桃阵岛', en: 'The Peach Maze', icon: '🌸', theme: 'taozhen',
+    desc: '组合岛:桃花八阵的奇门 × 音律的钥匙',
+    ferryMsg: '🌸 桃阵岛到了。桃林按奇门排布——进去容易,出来要会听',
+    lore: {
+      tzlin: { icon: '🌸', color: '#d88a9a', title: '桃花八阵', en: 'The Peach Octagon', hint: '花瓣落地即阵图',
+        desc: '满岛桃树按奇门遁甲排布,生休伤杜、景死惊开,外人进得来,出不去。采药童子透露过一句:别看树,看地上——花瓣落下来不是乱落的,风替岛主扫出来的纹路,就是阵图。' },
+      tzbell: { icon: '🔔', color: '#a8863a', title: '五音石钟', en: 'The Five Tone Bells', hint: '宫商角徵羽',
+        desc: '阵眼处悬着五口石钟,分别应宫、商、角、徵、羽。依次敲对,桃枝会自己让路;敲错一声,方才的路就全换一遍。石钟内壁刻着一行小字:"急什么。音准了,路就直了。"' },
+      tzting: { icon: '🏯', color: '#8a5a4a', title: '半山亭', en: 'The Half-Hill Pavilion', hint: '琴声即号令',
+        desc: '岛主终日在亭中抚琴,极少见客。琴声就是全岛的号令:一曲《平沙》,潮退暗道开;一曲《广陵》,满林桃花同时落。有人问他为何不设门锁,他头也不抬:"阵不是用来困人的,是用来让人自己走回去的。"' },
+      tzdao: { icon: '🌊', color: '#5a7a8a', title: '潮汐暗道', en: 'The Tide Tunnel', hint: '退潮才露的门',
+        desc: '岛北的礁石间藏着一道石门,涨潮时没在水下,退潮才露出半张脸。门楣上刻着两个字:"来去"。据说这是全岛唯一不设阵的路——岛主留的:真心要走的人,不必会奇门,等一次退潮就够了。' },
+      tztao: { icon: '🍑', color: '#e89aaa', title: '千年桃', en: 'The Elder Peach', hint: '阵眼的老树',
+        desc: '阵眼正中一棵千年老桃,粗过三人合抱,花开时像半空炸开一朵粉云。传说吃过它果子的人不辨方向——不是中毒,是从此走到哪都像在家,便不想认路了。采药童子说岛主年年只摘两枚:自己一枚,留给"该来的人"一枚。' },
+    },
+    spots: [[0, 20, 'tzlin'], [2, 0, 'tzbell'], [-16, -12, 'tzting'], [8, -34, 'tzdao'], [-4, 6, 'tztao']],
+    npcs: [
+      { dx: -14, dz: -10, name: '岛主', body: 0x4a5a5a, hat: 0x36444a, opts: { tall: 1.06, cane: true },
+        lines: ['(琴声未停,他抬了抬下巴,算是见礼。)', '阵不是用来困人的,是用来让人自己走回去的。', '会听的,自然会走。不会听的——多住几日,岛上桃子管够。'] },
+      { dx: 8, dz: 6, name: '采药童子', body: 0x6a9a5a, hat: 0x4e7a40, opts: { tall: .8 },
+        lines: ['别看树!看地上的花瓣——风是替师父扫阵图的。', '五口钟我闭眼都敲得对。诀窍?饿的时候想着饭堂的方向。', '师父说今年那枚桃子还没送出去。你要不要试试运气?'] },
+    ],
+    build: (gx, gz) => {
+      const peach = (px3, pz3, s) => { const ph5 = height(px3, pz3);   // 桃树:褐干粉冠
+        const tr = cyl(.22 * s, .3 * s, 2.2 * s, lam(0x6a4a36), 6); tr.position.set(px3, ph5 + 1.1 * s, pz3); scene.add(tr);
+        const cn = new THREE.Mesh(new THREE.SphereGeometry(1.5 * s, 9, 7), lam(0xe8a8bc)); cn.scale.y = .8; cn.position.set(px3, ph5 + 2.6 * s, pz3); scene.add(cn); };
+      for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; peach(gx + Math.cos(a) * 18, gz + 4 + Math.sin(a) * 18, 1 + (i % 3) * .15); }   // 外八卦
+      for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .78; peach(gx + Math.cos(a) * 9, gz + 4 + Math.sin(a) * 9, .9); }             // 内四象
+      peach(gx - 4, gz + 6, 1.9);   // 千年桃(阵眼)
+      const fx3 = gx + 2, fz3 = gz, fh4 = height(fx3, fz3);   // 五音石钟:横梁悬钟
+      for (const [ox, oz] of [[-3.4, 0], [3.4, 0]]) { const po = cyl(.16, .2, 3.2, M.woodDark, 6); po.position.set(fx3 + ox, fh4 + 1.6, fz3); scene.add(po); }
+      const beam2 = box(7.4, .3, .3, M.woodDark); beam2.position.set(fx3, fh4 + 3.2, fz3); scene.add(beam2);
+      for (let i = 0; i < 5; i++) { const bell2 = cyl(.34, .46, .7, M.stone, 8); bell2.position.set(fx3 - 2.6 + i * 1.3, fh4 + 2.5, fz3); scene.add(bell2); }
+      const px4 = gx - 16, pz4 = gz - 12, ph6 = height(px4, pz4);   // 半山亭:四柱攒尖
+      for (const [ox, oz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) { const c4 = cyl(.2, .24, 3, lam(0x8a4a3a), 7); c4.position.set(px4 + ox, ph6 + 1.5, pz4 + oz); scene.add(c4); }
+      const proof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.8, 4), lam(0x6a3a30)); proof.rotation.y = .78; proof.position.set(px4, ph6 + 3.9, pz4); scene.add(proof); cirObs.push({ x: px4, z: pz4, r: 2.6 });
+      const gate2 = box(3.4, 3, .8, M.stone); gate2.position.set(gx + 8, Math.max(height(gx + 8, gz - 34), .2) + 1.2, gz - 34); scene.add(gate2);   // 潮汐暗道石门
+      const hole2 = box(1.6, 2, .9, lam(0x1e2226)); hole2.position.set(gx + 8, Math.max(height(gx + 8, gz - 34), .2) + .9, gz - 34); scene.add(hole2);
+      const g5 = new THREE.PointLight(0xff9aae, 0, 90, 2); g5.position.set(px4, ph6 + 4.5, pz4); g5.userData.pow = 18; nightLamps.push(g5); scene.add(g5);
+    },
+  },
 };
 }
