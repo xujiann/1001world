@@ -396,8 +396,8 @@ function gearRows(mode) {
       : `<span class="gBrand vac">广告位招商中 · 详询墨丘利</span>`;
     let btn;
     if (!owned) btn = mode === 'shop'
-      ? `<button class="gBtn" data-gbuy="${g.id}">买 ${g.price} SB</button>`
-      : `<button class="gBtn" disabled>装备行有售 · ${g.price} SB</button>`;
+      ? `<button class="gBtn" data-gbuy="${g.id}">买 ${gearPrice(g)}${EVENT === 'fair' ? '(九折)' : ''} SB</button>`
+      : `<button class="gBtn" disabled>装备行有售 · ${gearPrice(g)} SB</button>`;
     else btn = `<button class="gBtn${on ? '' : ' off'}" data-gtog="${g.id}">${on ? '已装备 ✓' : '装备'}</button>`;
     return `<div class="gRow"><div class="gi">${g.icon}</div>
       <div class="gInfo"><b>${esc(g.name)}</b> <span style="color:#8a7c62;font-size:12px">${g.en} · ${g.slot}</span>
@@ -412,7 +412,7 @@ function shopCard() {
 function bindGear(rerender) {
   cardBody.querySelectorAll('[data-gbuy]').forEach(b => b.addEventListener('click', () => {
     const g = GEAR.find(x => x.id === b.dataset.gbuy);
-    if (!g || !spendSB(g.price)) return;
+    if (!g || !spendSB(gearPrice(g))) return;
     gear.owned.push(g.id); gear.on.push(g.id); saveGear();
     toast(`🧰 入手「${g.name}」,已自动装备 · ⚡-${g.price}`); blip(740);
     rerender();
@@ -1850,7 +1850,8 @@ let journalTab = 'over';   // 图鉴当前标签页
 function openJournal() {
   const list = $('journalList');
   const mq = mainQuest();
-  const mHtml = `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
+  const evHtml = EVENT === 'none' ? '' : `<div class="qBox" style="border:1px dashed rgba(255,215,106,.5)"><div class="qTitle"><span>${EVENTS[EVENT].icon} 今日事件 · ${EVENTS[EVENT].name}</span><span>限今日</span></div><div style="font-size:12.5px;color:#d8ceb0;padding:2px 2px 4px">${EVENTS[EVENT].note}</div></div>`;
+  const mHtml = evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
     <div style="font-size:13.5px;color:#8fd0ff;font-weight:700;padding:2px 2px 5px">${mq.st}</div>
     <div style="font-size:12.5px;color:#c4d2c0;padding:0 2px 4px;line-height:1.6">👉 ${mq.tip}</div></div>`;
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -1967,6 +1968,7 @@ $('btnStart').addEventListener('click', () => {
     if (WEATHER === 'rain') toast('🌧️ 今日有雨——渔汛正旺!钓鱼上钩快、售价翻倍');
     else if (WEATHER === 'storm') toast('⛈️ 今日风暴!半数航班延误,帆船颠簸,蜃楼隐没——适合窝在酒馆听故事');
     else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
+    if (EVENT !== 'none') setTimeout(() => toast(EVENTS[EVENT].icon + ' 今日事件:' + EVENTS[EVENT].name + '——' + EVENTS[EVENT].note), 4200);
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
   }, 2600);
   // 节日彩蛋播报
@@ -2230,6 +2232,21 @@ const WEATHER = (() => {
   return r0 < .55 ? 'clear' : (r0 < .78 ? 'rain' : (r0 < .9 ? 'fog' : 'storm'));
 })();
 const RAINY = WEATHER === 'rain' || WEATHER === 'storm';
+/* ===== 🎪 今日世界事件(与天气同为"每日一签") ===== */
+const EVENTS = {
+  none:   { icon: '', name: '', note: '' },
+  fair:   { icon: '🎪', name: '集市日', note: '千岛装备行全场九折!' },
+  meteor: { icon: '🌠', name: '流星雨夜', note: '入夜后流星频落——按 K 开观星模式,找个暗处躺好' },
+  whales: { icon: '🐋', name: '鲸群洄游', note: '一支鲸群正路过主岛外海,海上留意喷泉水柱' },
+  kites:  { icon: '🎏', name: '风筝日', note: '孩子们把风筝放上了主岛的天空' },
+};
+const EVENT = (() => {
+  const hx = (location.hash.match(/event=(\w+)/) || [])[1];
+  if (EVENTS[hx]) return hx;
+  const r0 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a, c2) => (a * 41 + c2.charCodeAt(0)) | 0, 7))();
+  return r0 < .4 ? 'none' : r0 < .55 ? 'fair' : r0 < .7 ? 'meteor' : r0 < .85 ? 'whales' : 'kites';
+})();
+const gearPrice = g9 => EVENT === 'fair' ? Math.max(1, Math.round(g9.price * .9)) : g9.price;
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
 const FULLMOON = (() => {
   const days = (Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
@@ -5002,6 +5019,30 @@ function addStamp(nm) {
   if (n >= total && PSTORE.getItem('w1001.passall') !== '1') { PSTORE.setItem('w1001.passall', '1'); earnSB(120); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🌍 全岛盖章!⚡+120 · ⭐+1 · 新称号「环球旅行家」——这颗星球,没有你没到过的岸'), 1800); }
 }
 let stampT = 0;
+/* 🎪 事件景物 */
+let evMeteors = null, evWhales = null, evKites = null, evT = 0;
+if (EVENT === 'meteor') {
+  evMeteors = [];
+  for (let i = 0; i < 3; i++) {
+    const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(-26, -9, 0)]),
+      new THREE.LineBasicMaterial({ color: 0xeaf2ff, transparent: true, opacity: 0, fog: false }));
+    scene.add(ln); evMeteors.push(ln);
+  }
+}
+if (EVENT === 'whales') {
+  evWhales = new THREE.Group();
+  for (let i = 0; i < 3; i++) { const hump = new THREE.Mesh(new THREE.SphereGeometry(5 - i, 10, 8, 0, 6.283, 0, Math.PI / 2), lam(0x3e4a56));
+    hump.scale.y = .5; hump.userData.off = i * 26; evWhales.add(hump); }
+  scene.add(evWhales);
+}
+if (EVENT === 'kites') {
+  evKites = new THREE.Group();
+  const kc = [0xd94f6b, 0x2e86ab, 0xe8c12a, 0x2c7a4b];
+  for (let i = 0; i < 4; i++) { const kite = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6),
+      new THREE.MeshBasicMaterial({ color: kc[i], side: THREE.DoubleSide, fog: false }));
+    kite.rotation.z = Math.PI / 4; kite.userData.ph = i * 1.7; kite.position.set(-60 + i * 44, 0, -140 - (i % 2) * 60); evKites.add(kite); }
+  scene.add(evKites);
+}
 /* ===== ✈️ 鲸航 QJ:12 座机场(仅"现实上说得通"的岛设跑道) ===== */
 const AIRPORTS = [
   ['main', '收藏之岛 · 鲸背国际机场', 452, -48],
@@ -7150,6 +7191,21 @@ function loop() {
     if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
     if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
   }
+  evT += dt;   // 🎪 事件景物
+  if (evMeteors && curDA < .35) for (let i = 0; i < evMeteors.length; i++) {   // 流星:夜间每隔几秒划一道
+    const m9 = evMeteors[i], ph9 = (evT * .22 + i * .37) % 1;
+    if (ph9 < .12) { if (m9.material.opacity === 0) m9.position.set(player.position.x - 120 + ((evT * 7 + i * 131) % 240), 150 + i * 22, player.position.z - 180);
+      m9.material.opacity = Math.sin(ph9 / .12 * Math.PI) * .9; m9.position.x += dt * 60; m9.position.y -= dt * 20; }
+    else m9.material.opacity = 0;
+  }
+  if (evWhales) for (const h9 of evWhales.children) {   // 鲸群:主岛外海列队洄游
+    const a9 = evT * .05 + h9.userData.off * .04;
+    h9.position.set(Math.cos(a9) * 760, Math.sin(evT * .9 + h9.userData.off) * 2.4 - 2.2, Math.sin(a9) * 760);
+  }
+  if (evKites) for (const k9 of evKites.children) {   // 风筝:主岛上空摇曳
+    k9.position.y = 46 + Math.sin(evT * .7 + k9.userData.ph) * 5;
+    k9.rotation.y = Math.sin(evT * .5 + k9.userData.ph) * .5;
+  }
   for (const f of seaFish) {
     const u = f.userData;
     const a = t * u.sp + u.ph;
@@ -7640,4 +7696,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
