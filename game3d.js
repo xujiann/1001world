@@ -5643,9 +5643,67 @@ function renderBigMap() {
 function toggleBigMap() {
   if (!bigmapEl) return;
   const opening = bigmapEl.classList.contains('hidden');
-  if (opening) { renderBigMap(); bigmapEl.classList.remove('hidden'); modalOpen = true; }
-  else { bigmapEl.classList.add('hidden'); modalOpen = false; }
+  if (opening) { renderBigMap(); bigmapEl.classList.remove('hidden'); modalOpen = true; if (globeOn) startGlobe(); }
+  else { bigmapEl.classList.add('hidden'); modalOpen = false; cancelAnimationFrame(globeRAF); }
 }
+/* --- 🌐 地球仪视图:海图烘焙图贴球(A 方案)--- */
+let globeOn = false, globeInit = false, globeR = null, globeScene = null, globeCam = null, globeGrp = null, globeCv = null, globeMk = null, globeRAF = 0, globeDrag = null;
+const globeRot = { x: -.3, y: -Math.PI / 2 };
+let globeDist = 3.4;
+function initGlobe() {
+  globeCv = document.createElement('canvas');
+  globeCv.style.cssText = 'max-width:86vw;max-height:72vh;border-radius:10px;display:none;touch-action:none;cursor:grab;background:#050a14';
+  bigCv.parentElement.insertBefore(globeCv, bigCv.nextSibling);
+  globeR = new THREE.WebGLRenderer({ canvas: globeCv, antialias: true, alpha: true });
+  globeR.setSize(760, 700, false);
+  globeCam = new THREE.PerspectiveCamera(38, 760 / 700, .1, 60);
+  globeScene = new THREE.Scene();
+  const tex = new THREE.CanvasTexture(bigBase); tex.colorSpace = THREE.SRGBColorSpace;
+  globeGrp = new THREE.Group();
+  globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshBasicMaterial({ map: tex })));
+  globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.002, 24, 16), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, wireframe: true, transparent: true, opacity: .06 })));   // 经纬网
+  globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 32, 24), new THREE.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: .1, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));   // 大气辉光
+  globeMk = new THREE.Mesh(new THREE.SphereGeometry(.02, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd76a }));
+  globeGrp.add(globeMk);
+  globeScene.add(globeGrp);
+  { const pts = [];   // 星幕
+    for (let i = 0; i < 260; i++) { const a = Math.random() * 6.283, b = Math.acos(Math.random() * 2 - 1), rr = 20; pts.push(rr * Math.sin(b) * Math.cos(a), rr * Math.cos(b), rr * Math.sin(b) * Math.sin(a)); }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    globeScene.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xcfe0ff, size: .07, transparent: true, opacity: .8, fog: false }))); }
+  globeCv.addEventListener('pointerdown', e => { e.preventDefault(); globeDrag = { x: e.clientX, y: e.clientY }; globeCv.setPointerCapture(e.pointerId); globeCv.style.cursor = 'grabbing'; });
+  globeCv.addEventListener('pointermove', e => {
+    if (!globeDrag) return;
+    globeRot.y += (e.clientX - globeDrag.x) * .006;
+    globeRot.x = Math.max(-1.2, Math.min(1.2, globeRot.x + (e.clientY - globeDrag.y) * .006));
+    globeDrag = { x: e.clientX, y: e.clientY };
+  });
+  for (const ev of ['pointerup', 'pointercancel']) globeCv.addEventListener(ev, () => { globeDrag = null; globeCv.style.cursor = 'grab'; });
+  globeCv.addEventListener('wheel', e => { e.preventDefault(); globeDist = Math.max(2.2, Math.min(6, globeDist + e.deltaY * .002)); }, { passive: false });
+}
+function globeFrame() {
+  if (!globeOn || bigmapEl.classList.contains('hidden')) return;
+  if (!globeDrag) globeRot.y += .0016;   // 闲置缓转
+  globeGrp.rotation.set(globeRot.x, globeRot.y, 0);
+  globeCam.position.set(0, 0, globeDist);
+  globeR.render(globeScene, globeCam);
+  globeRAF = requestAnimationFrame(globeFrame);
+}
+function startGlobe() {
+  renderBigMap();   // 确保 bigBase 已烘焙(纹理源)
+  if (!globeInit) { globeInit = true; initGlobe(); }
+  const u = player.position.x / 4000 + .5, v = player.position.z / 4000 + .5;   // 玩家 → 球面(与 SphereGeometry UV 同式)
+  const th = (1 - v) * Math.PI, ph = u * Math.PI * 2;
+  globeMk.position.set(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).multiplyScalar(1.012);
+  bigCv.style.display = 'none'; globeCv.style.display = '';
+  cancelAnimationFrame(globeRAF); globeFrame();
+}
+function setGlobe(on) {
+  globeOn = on;
+  if (on) startGlobe();
+  else { cancelAnimationFrame(globeRAF); if (globeCv) globeCv.style.display = 'none'; bigCv.style.display = ''; }
+  const b = document.getElementById('btnGlobe'); if (b) b.textContent = on ? '🗺️ 平面海图' : '🌐 地球仪';
+}
+document.getElementById('btnGlobe')?.addEventListener('click', () => setGlobe(!globeOn));
 if (bigmapEl) {
   bigmapEl.addEventListener('click', e => { if (e.target === bigmapEl || e.target.dataset.close !== undefined) toggleBigMap(); });
   bigmapEl.querySelector('[data-close]')?.addEventListener('click', () => toggleBigMap());
