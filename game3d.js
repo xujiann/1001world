@@ -1925,7 +1925,7 @@ function openGuide() {
     <div class="cardDesc">
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
-    <b>3. 出海远行</b>——东滩渡口通往四十余座岛(中土、霍格沃茨走 9¾ 站台的火车;南海有但丁的炼狱山,外环是一整条「海洋文学带」:金银岛、神秘岛、无人生还岛……)。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮,按 <b>M</b> 看海图。<br><br>
+    <b>3. 出海远行</b>——东滩渡口通往四十余座岛(中土、霍格沃茨走 9¾ 站台的火车;南海有但丁的炼狱山,外环是一整条「海洋文学带」:金银岛、神秘岛、无人生还岛……)。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮,按 <b>M</b> 看海图、<b>N</b> 转地球仪。<br><br>
     <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
@@ -5504,7 +5504,7 @@ function buildMinimapBase() {
   c.putImageData(img, 0, 0);
 }
 function renderMinimap() {
-  if (!mctx) return;
+  if (!mctx || mm.style.display === 'none') return;   // 常驻小地图已撤(M/N 唤出大图)
   if (!mmBase) buildMinimapBase();
   mctx.drawImage(mmBase, 0, 0);
   const W2X = x => (x / 3950 + .5) * mm.width, W2Y = z => (.5 - z / 3850) * mm.height;   // 北朝上
@@ -5585,9 +5585,28 @@ function renderBigMap() {
       c.fillStyle = nm3.includes('⚠') ? '#ff9d8a' : '#f5efdc';
       c.fillText(nm3, BX(lx3), BY(lz3) - 8);
     }
+    c.strokeStyle = 'rgba(160,200,230,.06)'; c.lineWidth = 1;   // 经纬细网
+    for (let gx2 = 0; gx2 <= W3; gx2 += W3 / 8) { c.beginPath(); c.moveTo(gx2, 0); c.lineTo(gx2, H3); c.stroke(); }
+    for (let gy2 = 0; gy2 <= H3; gy2 += H3 / 8) { c.beginPath(); c.moveTo(0, gy2); c.lineTo(W3, gy2); c.stroke(); }
+    { c.save(); c.translate(64, H3 - 74); c.globalAlpha = .85;   // 罗盘玫瑰
+      c.strokeStyle = 'rgba(220,230,240,.5)'; c.lineWidth = 1.4;
+      c.beginPath(); c.arc(0, 0, 30, 0, 7); c.stroke();
+      c.beginPath(); c.arc(0, 0, 22, 0, 7); c.stroke();
+      for (let i = 0; i < 4; i++) { c.save(); c.rotate(i * Math.PI / 2);
+        c.fillStyle = i === 0 ? '#ffd76a' : 'rgba(240,240,230,.85)';
+        c.beginPath(); c.moveTo(0, -29); c.lineTo(5, -5); c.lineTo(-5, -5); c.closePath(); c.fill(); c.restore(); }
+      for (let i = 0; i < 4; i++) { c.save(); c.rotate(i * Math.PI / 2 + Math.PI / 4);
+        c.fillStyle = 'rgba(220,226,232,.45)';
+        c.beginPath(); c.moveTo(0, -19); c.lineTo(3.4, -4); c.lineTo(-3.4, -4); c.closePath(); c.fill(); c.restore(); }
+      c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
+      c.fillStyle = '#ffd76a'; c.fillText('N', 0, -38);
+      c.fillStyle = 'rgba(240,240,230,.7)'; c.fillText('S', 0, 48); c.fillText('E', 42, 4); c.fillText('W', -42, 4);
+      c.restore(); }
+    { const vg = c.createRadialGradient(W3 / 2, H3 / 2, H3 * .42, W3 / 2, H3 / 2, H3 * .8);   // 暗角
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(2,8,16,.42)');
+      c.fillStyle = vg; c.fillRect(0, 0, W3, H3); }
   }
   bigCtx.drawImage(bigBase, 0, 0);
-  bigCtx.fillStyle = '#f5efdc'; bigCtx.font = 'bold 15px sans-serif'; bigCtx.textAlign = 'center'; bigCtx.fillText('北', W3 - 26, 26); bigCtx.fillText('▲', W3 - 26, 42);
   if (PSTORE.getItem('w1001.skeleton') === '1') {   // 世界脐带:海底隧道网浮现为符号(自中心辐射 + 外环)
     const pts = MAZE_PORTALS.map(p => [BX(p.surf[0]), BY(p.surf[1])]);
     const cX = BX(0), cZ = BY(0);
@@ -5641,10 +5660,21 @@ function ferryGo(k) {
       : k === 'unj' ? '🏛️ 未竟之都到了。广播还在循环:"欢迎来到人类共同的首都。"——港口空无一人'
       : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
 }
+function mapKey(globe) {   // M=平面 N=地球仪:关→开对应视图;开→同视图关/异视图切
+  if (!bigmapEl) return;
+  const open = !bigmapEl.classList.contains('hidden');
+  if (!open) { if (globeOn !== globe) setGlobe(globe); syncMapTitle(); toggleBigMap(); return; }
+  if (globeOn === globe) toggleBigMap();
+  else { setGlobe(globe); syncMapTitle(); }
+}
+function syncMapTitle() {
+  const t2 = document.getElementById('mapTitle');
+  if (t2) t2.textContent = globeOn ? '🌐 幻想地球仪' : '🗺️ 多元宇宙海图';
+}
 function toggleBigMap() {
   if (!bigmapEl) return;
   const opening = bigmapEl.classList.contains('hidden');
-  if (opening) { renderBigMap(); bigmapEl.classList.remove('hidden'); modalOpen = true; if (globeOn) startGlobe(); }
+  if (opening) { renderBigMap(); bigmapEl.classList.remove('hidden'); modalOpen = true; syncMapTitle(); if (globeOn) startGlobe(); }
   else { bigmapEl.classList.add('hidden'); modalOpen = false; cancelAnimationFrame(globeRAF); }
 }
 /* --- 🌐 地球仪视图:海图烘焙图贴球(A 方案)--- */
@@ -5653,7 +5683,7 @@ const globeRot = { x: -.3, y: -Math.PI / 2 };
 let globeDist = 3.4;
 function initGlobe() {
   globeCv = document.createElement('canvas');
-  globeCv.style.cssText = 'max-width:86vw;max-height:72vh;border-radius:10px;display:none;touch-action:none;cursor:grab;background:#050a14';
+  globeCv.style.cssText = 'max-width:86vw;max-height:72vh;border-radius:10px;display:none;touch-action:none;cursor:grab;background:radial-gradient(ellipse at 42% 36%, #0c1a30 0%, #050b18 55%, #020509 100%)';
   bigCv.parentElement.insertBefore(globeCv, bigCv.nextSibling);
   globeR = new THREE.WebGLRenderer({ canvas: globeCv, antialias: true, alpha: true });
   globeR.setSize(760, 700, false);
@@ -5759,6 +5789,7 @@ function setGlobe(on) {
   if (on) startGlobe();
   else { cancelAnimationFrame(globeRAF); if (globeCv) globeCv.style.display = 'none'; bigCv.style.display = ''; }
   const b = document.getElementById('btnGlobe'); if (b) b.textContent = on ? '🗺️ 平面海图' : '🌐 地球仪';
+  syncMapTitle();
 }
 document.getElementById('btnGlobe')?.addEventListener('click', () => setGlobe(!globeOn));
 /* --- ⛵ 海图点选直航:平面图反演坐标 / 球面 uv 拾取,金环高亮 + 确认条 --- */
@@ -6566,7 +6597,8 @@ addEventListener('keydown', e => {
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
   if (k === 'p') { togglePhoto(); return; }
   if (k === 'f' && photoMode) { nextFilter(); return; }
-  if (k === 'm') { toggleBigMap(); return; }
+  if (k === 'm') { mapKey(false); return; }
+  if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
   if (k === 'v') { tryPhantom(); return; }   // 蓝图幻影(未竟之都)
   if (k === 'q' && diving) { fireSonar(); return; }   // 声呐探路
@@ -6629,8 +6661,8 @@ if (isTouch) {
   const tog = mk('⋯', '更多功能');
   const pane = document.createElement('div');
   Object.assign(pane.style, { display: 'none', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '246px', gap: '10px' });
-  const bMap = mk('🗺️', '海图'), bStar = mk('🔭', '观星'), bPhoto = mk('📷', '照片模式'), bFilm = mk('🎞️', '滤镜'), bPh = mk('📐', '蓝图幻影');
-  pane.append(bPh, bFilm, bPhoto, bStar, bMap);
+  const bMap = mk('🗺️', '海图'), bGlb = mk('🌐', '地球仪'), bStar = mk('🔭', '观星'), bPhoto = mk('📷', '照片模式'), bFilm = mk('🎞️', '滤镜'), bPh = mk('📐', '蓝图幻影');
+  pane.append(bPh, bFilm, bPhoto, bStar, bGlb, bMap);
   wrap.append(tog, pane); document.body.appendChild(wrap);
   const bSonar = mk('📡', '声呐探路');
   Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
@@ -6638,7 +6670,8 @@ if (isTouch) {
   mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar };
   bSonar.addEventListener('click', () => fireSonar());
   tog.addEventListener('click', () => { mobMenuOpen = !mobMenuOpen; syncMobMenu(); blip(640); });
-  bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleBigMap(); });
+  bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(false); });
+  bGlb.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(true); });
   bStar.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleStarGaze(); });
   bPhoto.addEventListener('click', togglePhoto);
   bFilm.addEventListener('click', nextFilter);

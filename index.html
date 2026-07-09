@@ -50,6 +50,9 @@
   .gBtn { border: none; border-radius: 999px; padding: 8px 14px; background: #2c7a4b; color: #fff; cursor: pointer; font-size: 13px; white-space: nowrap; }
   .gBtn.off { background: #98917e; }
   .gBtn[disabled] { background: #d8cdb4; color: #8a7c62; cursor: default; font-size: 12px; }
+  /* 海图弹层过场 */
+  #bigmap > div { animation: mapPop .22s ease-out; box-shadow: 0 14px 64px rgba(0,0,0,.65), inset 0 0 0 1px rgba(140,200,255,.12); }
+  @keyframes mapPop { from { transform: scale(.94); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -74,14 +77,14 @@
 
 <div id="hint" class="hidden"></div>
 <div id="toast" class="hidden"></div>
-<canvas id="minimap" width="192" height="144"></canvas>
+<canvas id="minimap" width="192" height="144" style="display:none"></canvas><!-- 常驻小地图已撤:M 海图 / N 地球仪 -->
 <canvas id="compass" width="440" height="44"></canvas>
 
 <!-- 世界地图 (M) -->
 <div id="bigmap" class="overlay hidden">
   <div style="position:relative;background:#16241c;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:14px">
     <button class="closeX" data-close style="color:#f0ead6">×</button>
-    <div style="color:#ffd76a;font-weight:700;letter-spacing:2px;padding:2px 4px 10px">🗺️ 多元宇宙海图 <span style="color:#93a07f;font-weight:400;font-size:12px">(M 关闭 · 桃花源不在任何海图上)</span> <button id="btnGlobe" style="float:right;border:none;border-radius:999px;padding:4px 12px;background:#2c7a4b;color:#fff;cursor:pointer;font-size:12px">🌐 地球仪</button></div>
+    <div style="color:#ffd76a;font-weight:700;letter-spacing:2px;padding:2px 4px 10px"><span id="mapTitle">🗺️ 多元宇宙海图</span> <span style="color:#93a07f;font-weight:400;font-size:12px">(M 海图 / N 地球仪 · 点岛可直航 · 桃花源不在图上)</span> <button id="btnGlobe" style="float:right;border:none;border-radius:999px;padding:4px 12px;background:#2c7a4b;color:#fff;cursor:pointer;font-size:12px">🌐 地球仪</button></div>
     <canvas id="bigmapCv" width="760" height="700" style="max-width:86vw;max-height:72vh;border-radius:10px"></canvas>
   </div>
 </div>
@@ -157,7 +160,7 @@
         <figcaption>📱 手机</figcaption>
       </figure>
     </div>
-    <div class="guide2"><kbd>E</kbd> 互动 · <kbd>J</kbd> 图鉴 · <kbd>M</kbd> 海图 · <kbd>B</kbd> 背包 · <kbd>K</kbd> 观星 · <kbd>P</kbd> 照片 · <kbd>Q</kbd> 声呐<small>(潜水)</small> · <kbd>V</kbd> 蓝图幻影<small>(未竟之都)</small> · <kbd>G</kbd> 画质</div>
+    <div class="guide2"><kbd>E</kbd> 互动 · <kbd>J</kbd> 图鉴 · <kbd>M</kbd> 海图 · <kbd>N</kbd> 地球仪 · <kbd>B</kbd> 背包 · <kbd>K</kbd> 观星 · <kbd>P</kbd> 照片 · <kbd>Q</kbd> 声呐<small>(潜水)</small> · <kbd>V</kbd> 蓝图幻影<small>(未竟之都)</small> · <kbd>G</kbd> 画质</div>
     <div class="guide2">📱 手机:右侧 <b>⋯</b> 展开 海图 / 观星 / 照片 / 蓝图幻影;潜水时出 <b>📡</b> 声呐钮</div>
 
     <details class="isles">
@@ -180,6 +183,6 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=115"></script>
+<script type="module" src="game3d.js?v=116"></script>
 </body>
 </html>
