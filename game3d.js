@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=5';
+import { makeNIContent } from './w-isles.js?v=6';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -4999,6 +4999,23 @@ for (const [mx, mz, s] of [[1260, -1400, 1], [880, -1580, .78]]) {
     const pr2 = new THREE.Mesh(new THREE.ConeGeometry(5 * s, 3 * s, 4), mm2(.3)); pr2.rotation.y = .78; pr2.position.set(-8 * s + i * 3, 25 * s + i * 5, -4 * s); g.add(pr2); }
   g.position.set(mx, 0, mz); g.userData.mats = mats; scene.add(g); mirages.push(g);
 }
+{   // 海市船队:两千年前出海求药的船队,还在海上——追之则散
+  const g = new THREE.Group(); const mats = [];
+  const mm3 = op => { const m3 = new THREE.MeshBasicMaterial({ color: 0xcfe0e8, transparent: true, opacity: op, fog: false, depthWrite: false }); m3.userData.base = op; mats.push(m3); return m3; };
+  for (let i = 0; i < 5; i++) {
+    const ship = new THREE.Group(); const s2 = .8 + (i % 3) * .25;
+    const hull2 = new THREE.Mesh(new THREE.BoxGeometry(11 * s2, 2.4 * s2, 3.4 * s2), mm3(.3)); hull2.position.y = 2; ship.add(hull2);
+    const deck2 = new THREE.Mesh(new THREE.BoxGeometry(5 * s2, 2.6 * s2, 2.6 * s2), mm3(.26)); deck2.position.set(-1.5 * s2, 4.4, 0); ship.add(deck2);
+    for (const mxo of [-3.4, .5, 3.6]) { const mast2 = new THREE.Mesh(new THREE.CylinderGeometry(.12, .16, 7.5 * s2, 5), mm3(.3)); mast2.position.set(mxo * s2, 6.4, 0); ship.add(mast2);
+      const sail2 = new THREE.Mesh(new THREE.PlaneGeometry(2.8 * s2, 4.4 * s2), mm3(.24)); sail2.position.set(mxo * s2, 7 * s2 > 5 ? 6.8 : 6.2, .1); ship.add(sail2); }
+    const a0 = i / 5 * Math.PI * 2, rr = 42 + (i % 2) * 22;
+    ship.position.set(Math.cos(a0) * rr, 0, Math.sin(a0) * rr);
+    ship.rotation.y = -a0 - Math.PI / 2;
+    g.add(ship);
+  }
+  g.position.set(1150, 0, -1150); g.userData.mats = mats; g.userData.orbit = .016;
+  scene.add(g); mirages.push(g);
+}
 /* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) *//* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
 const NIQ_BY_LORE = {}, NIQ_BY_FLAG = {};
 for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }, NI_QUESTS[k]); NIQ_BY_LORE[q.lore] = q; NIQ_BY_FLAG[q.flag] = q; }
@@ -6748,6 +6765,7 @@ function loop() {
     const mv = Math.min(1, Math.max(0, (md - 190) / 260)) * (curDA >= .3 ? 1 : .25);   // 夜里更淡
     mg.visible = mv > .03;
     if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
+    if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
   }
   for (const f of seaFish) {
     const u = f.userData;
