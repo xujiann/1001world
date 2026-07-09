@@ -563,7 +563,7 @@ function paperHTML() {
       <div><b>🌿 花讯</b><br>植物园「${esc(plant.zh)}」(${esc(plant.family)})正当时,解说牌照片已更新。</div>
       <div><b>⛰️ 户外专栏</b><br>雪峰营地本周主推:${esc(sport.name)}(难度 ${'●'.repeat(sport.diff)}${'○'.repeat(5 - sport.diff)})。</div>
     </div>
-    <div class="pFoot">天气:${WEATHER === 'rain' ? '全域有雨,渔汛正旺,出门带蓑衣' : WEATHER === 'fog' ? '大雾,能见度低,塞壬海域尤请谨慎' : '晴,傍晚有物理正确的晚霞'},夜间星空营业,灯塔照常旋转 ·
+    <div class="pFoot">天气:${WEATHER === 'rain' ? '全域有雨,渔汛正旺,出门带蓑衣' : WEATHER === 'storm' ? '风暴!鲸航半数航班延误,航海请三思' : WEATHER === 'fog' ? '大雾,能见度低,塞壬海域尤请谨慎' : '晴,傍晚有物理正确的晚霞'},夜间星空营业,灯塔照常旋转 ·
     寻物启事:全岛尚有 ${shardLeft} 枚星之碎片下落不明,拾获者奖 10 SB ·
     广告位招租(请洽报亭墨丘利)</div>
   </div>`;
@@ -1965,6 +1965,7 @@ $('btnStart').addEventListener('click', () => {
   // 今日天气播报(雨天提示渔汛)
   setTimeout(() => {
     if (WEATHER === 'rain') toast('🌧️ 今日有雨——渔汛正旺!钓鱼上钩快、售价翻倍');
+    else if (WEATHER === 'storm') toast('⛈️ 今日风暴!半数航班延误,帆船颠簸,蜃楼隐没——适合窝在酒馆听故事');
     else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
   }, 2600);
@@ -2038,10 +2039,10 @@ function initAudio() {
     src3.connect(lp3).connect(windGain).connect(actx.destination);
     src3.start();
     // 雨声(雨天恒鸣)
-    if (WEATHER === 'rain') {
+    if (RAINY) {
       const src4 = actx.createBufferSource(); src4.buffer = buf; src4.loop = true;
-      const hp3 = actx.createBiquadFilter(); hp3.type = 'highpass'; hp3.frequency.value = 1400;
-      const rg = actx.createGain(); rg.gain.value = .028;
+      const hp3 = actx.createBiquadFilter(); hp3.type = 'highpass'; hp3.frequency.value = WEATHER === 'storm' ? 900 : 1400;
+      const rg = actx.createGain(); rg.gain.value = WEATHER === 'storm' ? .055 : .028;
       src4.connect(hp3).connect(rg).connect(actx.destination);
       src4.start();
     }
@@ -2223,9 +2224,12 @@ function updateStarGaze() {
 }
 /* --- 天气(按日期随机:晴/雨/雾) --- */
 const WEATHER = (() => {
+  const hx = (location.hash.match(/weather=(\w+)/) || [])[1];   // #weather=storm 调试
+  if (['clear', 'rain', 'fog', 'storm'].includes(hx)) return hx;
   const r0 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a, c2) => (a * 37 + c2.charCodeAt(0)) | 0, 3))();
-  return r0 < .62 ? 'clear' : (r0 < .85 ? 'rain' : 'fog');
+  return r0 < .55 ? 'clear' : (r0 < .78 ? 'rain' : (r0 < .9 ? 'fog' : 'storm'));
 })();
+const RAINY = WEATHER === 'rain' || WEATHER === 'storm';
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
 const FULLMOON = (() => {
   const days = (Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
@@ -2260,8 +2264,8 @@ const FESTIVAL = (() => {
 })();
 const MOON_FULL = FULLMOON || (FESTIVAL && FESTIVAL.key === 'midautumn');   // 中秋强制满月
 let rainPts = null;
-if (WEATHER === 'rain') {
-  const N4 = 480, arr2 = new Float32Array(N4 * 3);
+if (RAINY) {
+  const N4 = WEATHER === 'storm' ? 900 : 480, arr2 = new Float32Array(N4 * 3);
   const rr2 = mulberry32(44);
   for (let i = 0; i < N4; i++) {
     arr2[i * 3] = (rr2() - .5) * 110;
@@ -2270,10 +2274,11 @@ if (WEATHER === 'rain') {
   }
   const g4 = new THREE.BufferGeometry();
   g4.setAttribute('position', new THREE.BufferAttribute(arr2, 3));
-  rainPts = new THREE.Points(g4, new THREE.PointsMaterial({ color: 0x9ab8d8, size: 1.5, transparent: true, opacity: .55, sizeAttenuation: false }));
+  rainPts = new THREE.Points(g4, new THREE.PointsMaterial({ color: 0x9ab8d8, size: WEATHER === 'storm' ? 1.9 : 1.5, transparent: true, opacity: WEATHER === 'storm' ? .75 : .55, sizeAttenuation: false }));
   scene.add(rainPts);
 }
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
+if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
 /* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
 let festPts = null;
 if (FESTIVAL) {
@@ -2319,10 +2324,11 @@ function updateDayNight(t) {
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
-  const wxMul = WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
+  const wxMul = WEATHER === 'storm' ? .38 : WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
   sun.intensity = (.06 + 2.7 * da) * wxMul;
   hemi.intensity = (.16 + .62 * da) * (WEATHER === 'clear' ? 1 : .85);
   if (WEATHER === 'rain') skyCol.lerp(new THREE.Color(0x6a7480), .4);
+  if (WEATHER === 'storm') skyCol.lerp(new THREE.Color(0x424a56), .62);
   const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
   const elev = Math.sin(sa) * da - .32 * (1 - da);   // 夜里太阳沉入地平线下
   sunDirN.set(Math.cos(sa), Math.max(elev, -0.4), .42).normalize();
@@ -5025,11 +5031,12 @@ function openAirCounter(fromKey) {
   const from = AIRPORTS.find(a => a[0] === fromKey); if (!from) return;
   const rows = AIRPORTS.filter(a => a[0] !== fromKey).map((a, i) => {
     const d = Math.round(Math.hypot(a[2] - from[2], a[3] - from[3]));
-    return { a, d, price: Math.max(5, Math.round(d / 80)), fno: 'QJ-' + (101 + i * 8) };
+    const delayed = WEATHER === 'storm' && (i + new Date().getDate()) % 2 === 0;   // ⛈️ 风暴天半数延误
+    return { a, d, price: Math.max(5, Math.round(d / 80)), fno: 'QJ-' + (101 + i * 8), delayed };
   }).sort((x, y) => x.d - y.d);
   cardBody.innerHTML = `<div class="cardHead" style="background:#24303e">✈️ ${esc(from[1])}</div>
-    <div class="cardDesc" style="font-size:12.5px;line-height:1.7;padding:12px 20px 4px">鲸航 QJ · 今日航班全部准点。航线仅覆盖设有机场的 ${AIRPORTS.length} 座岛——巫师们、麻瓜科技禁令、还有大多数古典海岛,都婉拒了跑道。买不到机票的地方,才是船和自行车的浪漫。</div>
-    <div style="padding:4px 16px 16px">${rows.map(r5 => `<div class="gRow"><div class="gi">✈️</div><div class="gInfo"><b>${esc(r5.a[1])}</b><div class="gDesc">${r5.fno} · 直线 ${r5.d} 米 · 飞行片刻</div></div><button class="gBtn" data-fly="${r5.a[0]}" data-price="${r5.price}" ${sb < r5.price ? 'disabled' : ''}>${r5.price} ⚡</button></div>`).join('')}</div>`;
+    <div class="cardDesc" style="font-size:12.5px;line-height:1.7;padding:12px 20px 4px">鲸航 QJ · ${WEATHER === 'storm' ? '⛈️ 风暴过境,半数航班延误,请改期或改乘帆船(勇者)。' : '今日航班全部准点。'}航线仅覆盖设有机场的 ${AIRPORTS.length} 座岛——巫师们、麻瓜科技禁令、还有大多数古典海岛,都婉拒了跑道。买不到机票的地方,才是船和自行车的浪漫。</div>
+    <div style="padding:4px 16px 16px">${rows.map(r5 => `<div class="gRow"><div class="gi">✈️</div><div class="gInfo"><b>${esc(r5.a[1])}</b><div class="gDesc">${r5.fno} · 直线 ${r5.d} 米 · 飞行片刻</div></div>${r5.delayed ? '<button class="gBtn" disabled>⛈️ 延误</button>' : `<button class="gBtn" data-fly="${r5.a[0]}" data-price="${r5.price}" ${sb < r5.price ? 'disabled' : ''}>${r5.price} ⚡</button>`}</div>`).join('')}</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelectorAll('[data-fly]').forEach(b2 => b2.addEventListener('click', () => {
     const dest = AIRPORTS.find(a => a[0] === b2.dataset.fly); if (!dest) return;
@@ -7060,7 +7067,8 @@ function loop() {
       swimming = false; vy = 0; grounded = true;
       player.position.y += ((tideY + .62) - player.position.y) * Math.min(1, dt * 8);
       player.rotation.x += (0 - player.rotation.x) * Math.min(1, dt * 8);
-      boatGrp.rotation.z = Math.sin(t * 1.7) * .04; boatGrp.rotation.x = Math.sin(t * 1.3 + 1) * .03;   // 轻摇
+      const rk9 = WEATHER === 'storm' ? 2.8 : 1;   // 风暴颠簸
+      boatGrp.rotation.z = Math.sin(t * (WEATHER === 'storm' ? 2.6 : 1.7)) * .04 * rk9; boatGrp.rotation.x = Math.sin(t * 1.3 + 1) * .03 * rk9;
       if (gh > .8) { vehicle = 0; boatGrp.visible = false; toast('⛵ 船底擦沙——搁浅收帆,上岸!'); blip(520); }
     } else {
     swimming = gh < -.6;
@@ -7137,7 +7145,7 @@ function loop() {
   for (let mi = 0; mi < mirages.length; mi++) {   // 蜃楼:近之则隐
     const mg = mirages[mi];
     const md = Math.hypot(player.position.x - mg.position.x, player.position.z - mg.position.z);
-    const mv = Math.min(1, Math.max(0, (md - 190) / 260)) * (curDA >= .3 ? 1 : .25);   // 夜里更淡
+    const mv = Math.min(1, Math.max(0, (md - 190) / 260)) * (curDA >= .3 ? 1 : .25) * (WEATHER === 'storm' ? .1 : RAINY ? .45 : 1);   // 夜里更淡,雨雾隐没
     mg.visible = mv > .03;
     if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
     if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
@@ -7350,7 +7358,7 @@ function loop() {
     fp3.needsUpdate = true;
   }
   if (windGain) {
-    const wTar = clamp((player.position.y - 14) / 34, 0, 1) * .05 + (WEATHER === 'rain' ? .012 : 0);
+    const wTar = clamp((player.position.y - 14) / 34, 0, 1) * .05 + (WEATHER === 'rain' ? .012 : 0) + (WEATHER === 'storm' ? .045 : 0);
     windGain.gain.value += (wTar - windGain.gain.value) * Math.min(1, dt * 3);
   }
   /* 蘑菇缩放恢复 */
@@ -7451,7 +7459,7 @@ function loop() {
     }
     fireflies.geometry.attributes.position.needsUpdate = true;
     fireflies.visible = nite > .12;
-    fireflies.material.opacity = nite * (.55 + Math.sin(t * 3) * .45);
+    fireflies.material.opacity = (RAINY ? 0 : nite) * (.55 + Math.sin(t * 3) * .45);   // 雨天休演
   }
   if (meteor) {
     if (meteorLife > 0) {
@@ -7632,4 +7640,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
