@@ -5,7 +5,7 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES, OSM_QQ, OSM_QQ_ROADS } from './w-osm.js?v=9';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES, OSM_QQ, OSM_QQ_ROADS, OSM_QQ_GREEN } from './w-osm.js?v=10';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
 export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 → 贴地带面(街道/运河),单网格
   const { THREE, height, scene } = C;
@@ -1439,6 +1439,21 @@ export function makeNIContent(C) {
     build: (gx, gz) => {
       osmCity(C, OSM_QQ, gx, gz, 0, [lam(0xcabfa8), lam(0xb8a890), lam(0xd0c0a0)]);   // 真实街区 © OSM
       osmRoads(C, OSM_QQ_ROADS, gx, gz, 0, new THREE.MeshLambertMaterial({ color: 0x6a665e, side: THREE.DoubleSide }), 1.7, .06);
+      const gm9 = new THREE.MeshLambertMaterial({ color: 0x4e7a42, side: THREE.DoubleSide });   // 真实公园绿地 © OSM
+      for (const [gcx, gcz, ga9, gp9] of OSM_QQ_GREEN) {
+        const sh9 = new THREE.Shape();
+        gp9.forEach(([px9, pz9], k9) => k9 ? sh9.lineTo(px9, -pz9) : sh9.moveTo(px9, -pz9));
+        const gg9 = new THREE.ShapeGeometry(sh9); gg9.rotateX(-Math.PI / 2);
+        gg9.translate(gx, Math.max(height(gx + gcx, gz + gcz), .35) + .16, gz);
+        scene.add(new THREE.Mesh(gg9, gm9));
+        if (ga9 > 60) {   // 大公园栽两棵树
+          for (const [ox9, oz9] of [[-2.2, 1.4], [2.4, -1.8]]) {
+            const tx0 = gx + gcx + ox9, tz0 = gz + gcz + oz9, th0 = height(tx0, tz0);
+            const tk9 = cyl(.16, .22, 2.2, M.wood, 5); tk9.position.set(tx0, th0 + 1.1, tz0); scene.add(tk9);
+            const cn9 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6), lam(0x3f6e35)); cn9.position.set(tx0, th0 + 2.9, tz0); scene.add(cn9);
+          }
+        }
+      }
       const ph9 = height(gx, gz);   // 圆枢广场 + 九尾狐雕像
       const disc = cyl(11, 11.6, .5, M.stone, 24); disc.position.set(gx, ph9 + .28, gz); scene.add(disc);
       const ped = cyl(1.6, 2, 1.6, M.stone, 8); ped.position.set(gx, ph9 + 1.3, gz); scene.add(ped); cirObs.push({ x: gx, z: gz, r: 2.2 });
