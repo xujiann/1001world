@@ -5,7 +5,7 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS } from './w-osm.js?v=5';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES } from './w-osm.js?v=7';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
 export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 → 贴地带面(街道/运河),单网格
   const { THREE, height, scene } = C;
@@ -1278,10 +1278,15 @@ export function makeNIContent(C) {
     build: (gx, gz) => {
       osmCity(C, OSM_VENEZIA, gx, gz, 0, [lam(0xc8907a), lam(0xd8b48a), lam(0xb0a08a)]);   // 圣马可区 110 栋真实街区(© OSM)
       osmRoads(C, OSM_VEN_CANAL, gx, gz, 0, new THREE.MeshPhongMaterial({ color: 0x2a5a6a, shininess: 90, transparent: true, opacity: .85, side: THREE.DoubleSide }), 4.2, .3);   // 圣马可真实水巷网 © OSM
-      for (let i = 0; i < 3; i++) {   // 三座小拱桥
-        const brx = gx - 9 + i * 9, brh = height(brx, gz + 8);
-        const arch2 = box(2.2, .3, 6.4, lam(0xb0a890)); arch2.position.set(brx, brh + 1.5, gz + 8); scene.add(arch2);
-        for (const so of [-2.6, 2.6]) { const ramp2 = box(2.2, .28, 1.8, lam(0xb0a890)); ramp2.position.set(brx, brh + 1, gz + 8 + so); ramp2.rotation.x = so > 0 ? .5 : -.5; scene.add(ramp2); } }
+      for (const [bx8, bz8, ang8] of OSM_VEN_BRIDGES) {   // 真实过河点架桥 © OSM
+        const bh8 = Math.max(height(gx + bx8, gz + bz8), .3);
+        const arch2 = box(2.2, .28, 5.8, lam(0xb0a890)); arch2.position.set(gx + bx8, bh8 + 1.35, gz + bz8); arch2.rotation.y = ang8; scene.add(arch2);
+        for (const so of [-2.4, 2.4]) {
+          const ramp2 = box(2.2, .26, 1.7, lam(0xb0a890));
+          ramp2.position.set(gx + bx8 + Math.sin(ang8) * so, bh8 + .9, gz + bz8 + Math.cos(ang8) * so);
+          ramp2.rotation.y = ang8; ramp2.rotation.x = so > 0 ? .5 : -.5; scene.add(ramp2);
+        }
+      }
       for (let i = 0; i < 3; i++) {   // 贡多拉:黑舟翘首
         const gnx = gx - 12 + i * 10, gnh = height(gnx, gz + 8);
         const gon = box(3.6, .5, .9, lam(0x1e2226)); gon.position.set(gnx + 2, gnh + .8, gz + 8); scene.add(gon);
