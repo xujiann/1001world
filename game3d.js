@@ -52,7 +52,7 @@ SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   /
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 SAVE_FIELDS.push('aff');   // NPC 好感度
-SAVE_FIELDS.push('eaten', 'home', 'wardrobe', 'homelv');   // 衣食住
+SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1842,6 +1842,7 @@ function titleList() {
     { id: 'honor2', name: '🎗️ 灯塔守护者', got: PSTORE.getItem('w1001.honor2') === '1', note: '基金会荣誉(800 ⚡)' },
     { id: 'fundstone', name: '❤️ 群岛基石', got: PSTORE.getItem('w1001.fundstone') === '1', note: '累计捐赠 2000 ⚡' },
     { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍九道地方味' },
+    { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1912,13 +1913,53 @@ function mainQuest() {
   if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,或按 M 在海图上点岛直航——五十八座岛任你逛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——那是海底迷宫的钥匙。' };
   return { st: '第一章 · 初来乍到', tip: '在收藏之岛四处走走:走近按 E 看藏品、和 NPC 说话、做支线,攒算力币 ⚡。' };
 }
+function worldCompletion() {   // 🌏 九维聚合完成度(wc100 称号自身不计入,避免循环)
+  const nqTotal = NISLES.length - 1;
+  const nqDone = NISLES.filter(s9 => s9.key !== 'trs' && PSTORE.getItem('w1001.nq_' + s9.key) === '1').length;
+  const tl = titleList().filter(t9 => t9.id !== 'wc100');
+  let cards9 = 0; try { cards9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]').length; } catch (e) {}
+  const parts = [
+    ['🛂 环球护照', stamps.size, PASSPORT.length, .2],
+    ['📜 岛屿故事线', nqDone, nqTotal, .2],
+    ['🎖️ 称号', tl.filter(t9 => t9.got).length, tl.length, .15],
+    ['🧭 主线', mainQuest().done ? 1 : 0, 1, .1],
+    ['✨ 星座', constSeen.size, Math.max(constDirs.length, 1), .1],
+    ['🏛️ 馆藏里程碑', mileGot.size, Object.keys(CATS).length * 3, .1],
+    ['🍜 食单', eaten.size, 9, .05],
+    ['💌 明信片', Math.min(cards9, 12), 12, .05],
+    ['🏠 宅邸', (PSTORE.getItem('w1001.home') === '1' ? 1 : 0) + (+(PSTORE.getItem('w1001.homelv') || 0) > 0 ? +(PSTORE.getItem('w1001.homelv') || 0) : 0), 3, .05],
+  ];
+  let p = 0; for (const [, a9, b9, w9] of parts) p += w9 * Math.min(a9 / b9, 1);
+  return { p: Math.min(p, 1), parts };
+}
+function fireworks() {   // 🎇 屏幕烟花(DOM,零 3D 风险)
+  for (let i = 0; i < 18; i++) {
+    const sp = document.createElement('div');
+    sp.textContent = ['🎆', '🎇', '✨'][i % 3];
+    const a9 = Math.random() * Math.PI * 2, r9 = 120 + Math.random() * 170;
+    sp.style.cssText = 'position:fixed;left:50%;top:45%;font-size:' + (18 + Math.random() * 18) + 'px;z-index:60;pointer-events:none;transition:all 1.6s cubic-bezier(.2,.7,.3,1);opacity:1';
+    document.body.appendChild(sp);
+    requestAnimationFrame(() => { sp.style.transform = 'translate(' + (Math.cos(a9) * r9) + 'px,' + (Math.sin(a9) * r9 - 60) + 'px)'; sp.style.opacity = '0'; });
+    setTimeout(() => sp.remove(), 1900);
+  }
+  blip(660); setTimeout(() => blip(880), 200); setTimeout(() => blip(990), 400);
+}
 let journalTab = 'over';   // 图鉴当前标签页
 function openJournal() {
   const list = $('journalList');
   const mq = mainQuest();
   const evHtml = EVENT === 'none' ? '' : `<div class="qBox" style="border:1px dashed rgba(255,215,106,.5)"><div class="qTitle"><span>${EVENTS[EVENT].icon} 今日事件 · ${EVENTS[EVENT].name}</span><span>限今日</span></div><div style="font-size:12.5px;color:#d8ceb0;padding:2px 2px 4px">${EVENTS[EVENT].note}</div></div>`;
   const dqHtml = (DQ && DQ.length) ? `<div class="qBox"><div class="qTitle"><span>🤝 今日居民委托</span><span>${DQ.filter(q => q.s === 2).length}/${DQ.length}</span></div>${DQ.map(q => `<div class="qRow${q.s === 2 ? ' ok' : ''}"><span>${q.s === 2 ? '✅' : '❗'} ${q.n}</span><span class="qn">${q.t === 'food' ? (q.s === 1 ? '🥡 已备货,去交付' : '想吃 ' + ((FOODS.find(f => f[0] === q.f) || [])[1] || '')) : (q.s === 2 ? '已收到' : '想收一张明信片')}</span></div>`).join('')}</div>` : '';
-  const mHtml = dqHtml + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
+  const wc9 = worldCompletion(); const pct9 = Math.floor(wc9.p * 100);
+  if (wc9.p >= 1 && PSTORE.getItem('w1001.wc100') !== '1') {
+    PSTORE.setItem('w1001.wc100', '1'); stars++; saveQuest(); updateQuestHUD(); fireworks();
+    setTimeout(() => toast('🎇 群岛完成度 100%!终极称号「1001 世界的居民」——这个世界,从此也是你的作品'), 900);
+  }
+  const wcHtml = `<div class="qBox" style="border:1px solid rgba(255,215,106,.45)"><div class="qTitle"><span>🌏 群岛完成度</span><span>${pct9}%</span></div>
+    <div style="height:10px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;margin:4px 0 8px"><div style="height:100%;width:${pct9}%;background:linear-gradient(90deg,#d9a62e,#ffd76a);border-radius:6px"></div></div>
+    ${pct9 >= 75 && pct9 < 100 ? '<div style="font-size:12px;color:#d8ceb0;margin-bottom:4px">距离圆满:' + wc9.parts.filter(x9 => x9[1] < x9[2]).map(x9 => x9[0] + ' ' + Math.min(x9[1], x9[2]) + '/' + x9[2]).join(' · ') + '</div>' : ''}
+    ${pct9 >= 100 ? '<div style="font-size:12.5px;color:#ffd76a">🎇 圆满。你是「1001 世界的居民」</div>' : ''}</div>`;
+  const mHtml = wcHtml + dqHtml + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
     <div style="font-size:13.5px;color:#8fd0ff;font-weight:700;padding:2px 2px 5px">${mq.st}</div>
     <div style="font-size:12.5px;color:#c4d2c0;padding:0 2px 4px;line-height:1.6">👉 ${mq.tip}</div></div>`;
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -2037,9 +2078,9 @@ function openGuide() {
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——六十座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
-    <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。<br><br>
+    <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
     <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
@@ -6106,6 +6147,7 @@ const FOODS = [
 ];
 const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686], ['menzi', 1782, 260]];
 const eaten = new Set((PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean));
+if (eaten.size >= 9 && PSTORE.getItem('w1001.foodie') !== '1') { PSTORE.setItem('w1001.foodie', '1'); stars++; saveQuest(); updateQuestHUD(); }   // 自愈:老档补发环球食客
 const BUFF = { run: 0, ride: 0 };
 const buffBar = document.createElement('div');
 buffBar.style.cssText = 'position:fixed;left:14px;top:118px;z-index:26;display:flex;flex-direction:column;gap:4px;align-items:flex-start;pointer-events:none;font:600 12px system-ui;color:#fff';
@@ -6190,7 +6232,7 @@ function openTailor() {
 }
 /* ===== 🏠 旅人小屋:置业 · 小憩 · 明信片墙 ===== */
 const HOME_POS = [468, -96];
-let homeBuilt = false, atticBuilt = false, gardenBuilt = false;
+let homeBuilt = false, atticBuilt = false, gardenBuilt = false, mailGlow = null;
 const homeLv = () => +(PSTORE.getItem('w1001.homelv') || 0);
 function buildAttic() {
   if (atticBuilt) return; atticBuilt = true;
@@ -6224,6 +6266,10 @@ function buildHome() {
   for (const ox of [-2.2, 2.2]) { const wn9 = box(1, 1, .12, lam(0xbfe3ee)); wn9.position.set(hx9 + ox, hh9 + 2.1, hz9 + 2.72); scene.add(wn9); }
   const ch9 = box(.8, 1.6, .8, lam(0x6a5a52)); ch9.position.set(hx9 + 2.2, hh9 + 5.4, hz9 - 1); scene.add(ch9);
   const hl9 = new THREE.PointLight(0xffd9a0, 0, 60, 2); hl9.position.set(hx9, hh9 + 3.2, hz9 + 3.4); hl9.userData.pow = 18; nightLamps.push(hl9); scene.add(hl9);
+  const mbP9 = cyl(.09, .11, 1.4, M.woodDark, 5); mbP9.position.set(hx9 + 4.6, hh9 + .7, hz9 + 3.2); scene.add(mbP9);   // 📮 信箱
+  const mbB9 = box(1, .8, .7, lam(0xc0492b)); mbB9.position.set(hx9 + 4.6, hh9 + 1.7, hz9 + 3.2); scene.add(mbB9);
+  const mbS9 = box(.7, .08, .1, lam(0x3a2a1a)); mbS9.position.set(hx9 + 4.6, hh9 + 1.78, hz9 + 3.56); scene.add(mbS9);
+  mailGlow = new THREE.Mesh(sphg(.14, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd76a })); mailGlow.position.set(hx9 + 4.6, hh9 + 2.28, hz9 + 3.2); mailGlow.visible = false; scene.add(mailGlow);
   const sg9 = makeSign('🏠 旅人小屋', 5, '#4a3626', '#f0e0c0'); sg9.position.set(hx9 + 5, hh9 + 2.6, hz9 + 2); scene.add(sg9);
 }
 function openHome() {
@@ -6247,8 +6293,9 @@ function openHome() {
     : lv9 < 2 ? `<button class="gBtn" data-upghome="2" ${sb < 800 ? 'disabled' : ''}>🌷 修个花园 · 800 ⚡(小憩 5→8 分钟)</button>`
     : '<span style="font-size:12px;color:#8a7c62">🏡 满级宅邸——阁楼、花园,一样不缺</span>';
   cardBody.innerHTML = `<div class="cardHead" style="background:#4a3626">🏠 旅人小屋 · Home</div>
-    <div class="cardDesc" style="font-size:12.5px;line-height:1.8;padding:12px 20px 6px">门牌:今日 ${WEATHER === 'storm' ? '⛈️ 风暴' : WEATHER === 'rain' ? '🌧️ 雨' : WEATHER === 'fog' ? '🌫️ 雾' : '☀️ 晴'}${EVENT !== 'none' ? ' · ' + EVENTS[EVENT].icon + EVENTS[EVENT].name : ''} · 护照 ${stamps.size}/${PASSPORT.length} 章<br>${wall9 ? '明信片墙:<br>' + wall9 : '明信片墙还空着——照片模式(P)按 C 拍一张。'}</div>
+    <div class="cardDesc" style="font-size:12.5px;line-height:1.8;padding:12px 20px 6px">门牌:${({ spring: '🌸', summer: '🎐', autumn: '🍁', winter: '❄️' })[SEASON]} 今日 ${WEATHER === 'storm' ? '⛈️ 风暴' : WEATHER === 'rain' ? '🌧️ 雨' : WEATHER === 'fog' ? '🌫️ 雾' : '☀️ 晴'}${EVENT !== 'none' ? ' · ' + EVENTS[EVENT].icon + EVENTS[EVENT].name : ''} · 护照 ${stamps.size}/${PASSPORT.length} 章<br>${wall9 ? '明信片墙:<br>' + wall9 : '明信片墙还空着——照片模式(P)按 C 拍一张。'}</div>
     <div style="text-align:center;padding:4px 0 6px"><button class="again" data-nap>🛏️ 小憩片刻(恢复全部食物功效)</button></div>
+    <div style="text-align:center;padding:0 0 6px"><button class="gBtn" data-mail>📮 信箱${unreadMail() ? '(未读 ' + unreadMail() + ')' : ''}</button></div>
     <div style="text-align:center;padding:0 0 16px">${upg9}</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-nap]')?.addEventListener('click', () => {
@@ -6256,6 +6303,7 @@ function openHome() {
     chowderT = nt9; BUFF.run = nt9; BUFF.ride = nt9; diveAir = gearOn('mask') ? 200 : 100;
     toast(`🛏️ 在自己的床上眯了一觉——浑身是劲(全功效 ${nt9 / 60} 分钟)`); blip(720); closeModals();
   });
+  cardBody.querySelector('[data-mail]')?.addEventListener('click', openMail);
   cardBody.querySelector('[data-upghome]')?.addEventListener('click', ev9 => {
     const lv0 = +ev9.currentTarget.dataset.upghome;
     if (!spendSB(lv0 === 1 ? 400 : 800)) return;
@@ -6267,6 +6315,87 @@ function openHome() {
 }
 if (PSTORE.getItem('w1001.home') === '1') { buildHome(); if (homeLv() >= 1) buildAttic(); if (homeLv() >= 2) buildGarden(); }
 else { const sg0 = makeSign('🏠 空地出售', 5, '#5a4a36', '#e8d8b0'); sg0.position.set(HOME_POS[0], height(HOME_POS[0], HOME_POS[1]) + 2.6, HOME_POS[1] + 3); scene.add(sg0); }
+/* ===== 📮 家书:好感 ≥6 的居民会往信箱寄信(每日至多两封) ===== */
+const MAIL_DATE = new Date().toLocaleDateString('zh-CN');
+const LETTER_TXT = {
+  '狐大夫': ['见字如面。医馆前的忍冬开了,想起你上回问尾巴的事——数目不重要,重要的是别信一眼就能数清的东西。得空来坐,药茶管够。—— 狐大夫'],
+  '末班轨车司机': ['轨车今日大修,铜铃擦得能照见人。你走后那位老乘客又来过一回,座位上照旧一撮白毛。等你回来,末班车给你留个靠窗的位置。—— 司机'],
+  '赶海阿婆': ['前日退大潮,捡了半桶海肠,想着你要在就分你一半。雾笛这几天哑了一声,修灯的说是海风咸的。早些回来赶海。—— 阿婆'],
+  '星期五': ['主人教我写字,这第一封信就写给你。岛上山羊又添两只,葡萄干晒了三筐。你说外面有六十座岛——星期五想听你讲完。—— 星期五'],
+  '守台老道': ['台上无事,星轨如常。前夜荧惑犯心,我记在册子上了,你来时给你看。棋盘摆着,茶温着。—— 守台老道'],
+  '老树医': ['桃阵新发的芽比去年壮。你上回踩歪的那株我扶正了,别放在心上——树和人一样,歪过才知道怎么直。—— 老树医'],
+  '老酋长': ['雨季把路又冲垮一段,部族三天修好,比去年快。凉台的孩子们问:那个去过金银岛的旅人,什么时候再来?—— 酋长'],
+  '退休捕鲸手': ['港里新泊了条白帆船,像极了我年轻时追过的那头白鲸的颜色。人老了,不追了,看看也好。街角咖啡续杯免费,来。—— 老捕鲸手'],
+};
+const LETTER_TPL = [
+  '{n}托轨车司机捎来一张字条:「近来可好?岛上一切如常,就是少个说话的人。」',
+  '{n}的信只有一句:「上次你说的那个地方,我托人打听了,是真的。回来细说。」',
+  '{n}寄来一片压平的叶子,信上写:「见叶如面。台风绕开了我们,你那边也要晴。」',
+  '{n}写道:「集市日买多了蜜枣,给你留了一包。再不来就要被孩子们分光了。」',
+];
+function letterFor(nm9, seed9) {
+  const c9 = LETTER_TXT[nm9];
+  if (c9) return c9[seed9 % c9.length];
+  return LETTER_TPL[(seed9 + nm9.length) % LETTER_TPL.length].split('{n}').join(nm9);
+}
+function unreadMail() { try { return JSON.parse(PSTORE.getItem('w1001.mail') || '[]').filter(m9 => !m9.r).length; } catch (e) { return 0; } }
+function syncMailGlow() { if (mailGlow) mailGlow.visible = unreadMail() > 0; }
+(function mailInit() {
+  let mail9 = []; try { mail9 = JSON.parse(PSTORE.getItem('w1001.mail') || '[]'); } catch (e) {}
+  if (PSTORE.getItem('w1001.maildate') !== MAIL_DATE) {
+    PSTORE.setItem('w1001.maildate', MAIL_DATE);
+    const friends = Object.keys(AFF).filter(k9 => (AFF[k9] || {}).n >= 6);
+    if (friends.length) {
+      const seed9 = Math.floor(Date.now() / 864e5);
+      const pick9 = new Set([friends[seed9 % friends.length]]);
+      if (friends.length > 1 && seed9 % 3 !== 0) pick9.add(friends[(seed9 * 13 + 7) % friends.length]);
+      for (const nm9 of pick9) mail9.push({ n: nm9, d: MAIL_DATE, t: letterFor(nm9, seed9), r: 0 });
+      while (mail9.length > 30) mail9.shift();
+      PSTORE.setItem('w1001.mail', JSON.stringify(mail9));
+    }
+  }
+  syncMailGlow();
+  if (PSTORE.getItem('w1001.home') === '1' && unreadMail()) setTimeout(() => toast('📮 家里的信箱有 ' + unreadMail() + ' 封未读来信'), 7000);
+})();
+function openMail() {
+  let mail9 = []; try { mail9 = JSON.parse(PSTORE.getItem('w1001.mail') || '[]'); } catch (e) {}
+  const rows9 = mail9.slice().reverse().map((m9, i9) => {
+    const idx9 = mail9.length - 1 - i9;
+    return `<div class="qRow" data-mailrow="${idx9}" style="cursor:pointer;flex-direction:column;align-items:flex-start"><span>${m9.r ? '📖' : '✉️'} <b>${esc(m9.n)}</b> <span style="color:#8a7c62;font-size:11px">${esc(m9.d)}</span></span>${m9.r ? `<span style="font-size:12.5px;color:#c4bda8;line-height:1.75;padding:4px 0 2px">${esc(m9.t)}</span>` : '<span style="font-size:11px;color:#8a7c62">(点开阅读)</span>'}</div>`;
+  }).join('');
+  cardBody.innerHTML = `<div class="cardHead" style="background:#4a3626">📮 旅人信箱</div>
+    <div style="padding:10px 16px 10px">${rows9 || '<div style="color:#8a7c62;font-size:12.5px;padding:8px 2px">还没有来信——和居民交情到 ❤❤(好感 6)后,他们会开始给你写信。</div>'}</div>
+    <div style="text-align:center;padding:0 0 14px"><button class="gBtn off" data-mailback>← 回小屋</button></div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelectorAll('[data-mailrow]').forEach(r9 => r9.addEventListener('click', () => {
+    const m9 = mail9[+r9.dataset.mailrow];
+    if (m9 && !m9.r) { m9.r = 1; PSTORE.setItem('w1001.mail', JSON.stringify(mail9)); syncMailGlow(); blip(600); }
+    openMail();
+  }));
+  cardBody.querySelector('[data-mailback]')?.addEventListener('click', openHome);
+}
+/* ===== 🍂 四季流转:按真实月份 ===== */
+const SEASON = (m9 => m9 >= 3 && m9 <= 5 ? 'spring' : m9 >= 6 && m9 <= 8 ? 'summer' : m9 >= 9 && m9 <= 11 ? 'autumn' : 'winter')(new Date().getMonth() + 1);
+let seasonPts = null;
+(function seasonInit() {
+  const CFG = { spring: [0xffb7c5, .5, 1.1], summer: [0xfff3d6, .32, -.5], autumn: [0xd98a3e, .5, 1.4], winter: [0xffffff, .42, 2.2] }[SEASON];
+  const N9 = 90, arr9 = new Float32Array(N9 * 3);
+  for (let i9 = 0; i9 < N9; i9++) { arr9[i9 * 3] = (Math.random() - .5) * 46; arr9[i9 * 3 + 1] = Math.random() * 22; arr9[i9 * 3 + 2] = (Math.random() - .5) * 46; }
+  const gg9 = new THREE.BufferGeometry(); gg9.setAttribute('position', new THREE.Float32BufferAttribute(arr9, 3));
+  seasonPts = new THREE.Points(gg9, new THREE.PointsMaterial({ color: CFG[0], size: CFG[1], transparent: true, opacity: .8, sizeAttenuation: true, depthWrite: false }));
+  seasonPts.userData.fall = CFG[2];
+  scene.add(seasonPts);
+})();
+function seasonTick(dt, t) {
+  if (!seasonPts) return;
+  const a9 = seasonPts.geometry.attributes.position.array, fall9 = seasonPts.userData.fall;
+  for (let i9 = 0; i9 < a9.length; i9 += 3) {
+    a9[i9 + 1] -= fall9 * dt; a9[i9] += Math.sin(t * .8 + i9) * dt * .7;
+    if (a9[i9 + 1] < 0 || a9[i9 + 1] > 24) { a9[i9 + 1] = fall9 > 0 ? 20 + Math.random() * 4 : Math.random() * 3; a9[i9] = (Math.random() - .5) * 46; a9[i9 + 2] = (Math.random() - .5) * 46; }
+  }
+  seasonPts.geometry.attributes.position.needsUpdate = true;
+  seasonPts.position.set(player.position.x, Math.max(player.position.y - 2, 0), player.position.z);
+}
 addSpot(HOME_POS[0], HOME_POS[1] + 4, 'home', 'home', { r: 7 });
 /* ===== ❤️ 群岛基金会:捐赠与荣誉(算力币的花处) ===== */
 function openFund() {
@@ -7182,7 +7311,7 @@ const TRAM_A = [1764.1, 251.3], TRAM_B = [1781.9, 300.1];
 const TRAM_LEN = Math.hypot(TRAM_B[0] - TRAM_A[0], TRAM_B[1] - TRAM_A[1]);
 let qqTram = null, tramPos = 0, tramDir = 1, tramWait = 4, tramRiding = false;
 function tramStep(dt) {
-  zoneAudioTick();
+  zoneAudioTick(dt);
   if (!qqTram) { qqTram = scene.getObjectByName('qqTram'); if (!qqTram) return; qqTram.rotation.y = Math.atan2(-(TRAM_B[1] - TRAM_A[1]), TRAM_B[0] - TRAM_A[0]); }
   if (tramWait > 0) tramWait -= dt;
   else {
@@ -7197,7 +7326,7 @@ function tramStep(dt) {
   if (tramRiding) { player.position.set(tx9, qqTram.position.y + 1.1, tz9); vy = 0; }
 }
 /* 🌫️ 雾笛:每次踏入青丘,低鸣一声(D) */
-let lastZone9 = '';
+let lastZone9 = '', zoneChk9 = 0;
 function foghorn() {
   try { if (!actx) return;
     const o9 = actx.createOscillator(), g9 = actx.createGain();
@@ -7208,7 +7337,8 @@ function foghorn() {
     o9.connect(g9).connect(actx.destination); o9.start(); o9.stop(actx.currentTime + 1.7);
   } catch (e) {}
 }
-function zoneAudioTick() {
+function zoneAudioTick(dt) {
+  zoneChk9 -= dt; if (zoneChk9 > 0) return; zoneChk9 = .5;
   const zn9 = $('zoneName').textContent;
   if (zn9 !== lastZone9) { if (zn9 === '青丘' && lastZone9) foghorn(); lastZone9 = zn9; }
 }
@@ -8191,6 +8321,7 @@ function loop() {
   if (BUFF.ride > 0) BUFF.ride -= dt;
   syncBuffs(dt);
   tramStep(dt);   // 🚋 轨车 + 雾笛
+  seasonTick(dt, t);   // 🍂 四季粒子
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
   if (stampT <= 0) {
     stampT = 1;
@@ -8269,4 +8400,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
