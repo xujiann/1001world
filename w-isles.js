@@ -4,6 +4,8 @@
    由 game3d.js 上下文注入(THREE/height/box/cyl/lam/M/scene/
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { OSM_GUNKAN } from './w-osm.js?v=1';
 export function makeNIContent(C) {
   const { THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat } = C;
   return {
@@ -850,22 +852,25 @@ export function makeNIContent(C) {
         lines: ['我拍的不是废墟,是刚刚离开的人。', '你看那窗台的碗、那把伞、那块黑板——他们没走远。', '混凝土会记事,比胶片久。'] },
     ],
     build: (gx, gz) => {
-      const hts = [14, 9, 12, 7, 15, 10, 8, 11];   // 混凝土楼群:高低错落
-      for (let i = 0; i < 8; i++) {
-        const bx2 = gx - 14 + (i % 4) * 10, bz2 = gz - 14 + Math.floor(i / 4) * 13, bh2 = height(bx2, bz2), H = hts[i];
-        const bld = box(7, H, 8, lam(i % 2 ? 0x6a7076 : 0x5e646c)); bld.position.set(bx2, bh2 + H / 2, bz2); scene.add(bld); cirObs.push({ x: bx2, z: bz2, r: 5 });
-        for (let w = 0; w < 3; w++) { const strip = box(5.6, .7, .15, lam(0x22262c)); strip.position.set(bx2, bh2 + 2.5 + w * (H / 3.6), bz2 + 4.06); scene.add(strip); } }
+      { const geos = [];   // 端岛 55 栋真实建筑轮廓(© OpenStreetMap contributors)挤出,合并=1 次绘制
+        for (const [bh9, bcx, bcz, brr, pts9] of OSM_GUNKAN) {
+          const sh9 = new THREE.Shape();
+          pts9.forEach(([px9, pz9], i9) => i9 ? sh9.lineTo(px9, -pz9) : sh9.moveTo(px9, -pz9));
+          const gg = new THREE.ExtrudeGeometry(sh9, { depth: bh9, bevelEnabled: false });
+          gg.rotateX(-Math.PI / 2);
+          const base9 = Math.max(height(gx + bcx, gz - 8 + bcz) - .3, .2);
+          gg.translate(gx, base9, gz - 8);
+          geos.push(gg);
+          cirObs.push({ x: gx + bcx, z: gz - 8 + bcz, r: Math.min(brr * .8, 8) });
+        }
+        scene.add(new THREE.Mesh(mergeGeometries(geos), lam(0x6d7278))); }
       for (let i = 0; i < 5; i++) { const a = -.5 + i * .25;   // 防波堤弧
         const sw = box(12, 2.6, 2.4, lam(0x757b82)); sw.position.set(gx - 4 + Math.cos(a) * 34, height(gx, gz + 34) + 1, gz + 20 + Math.sin(a) * 22); sw.rotation.y = -a; scene.add(sw); }
       const kx = gx - 16, kz = gz - 12, kh = height(kx, kz);   // 矿井架:四腿+天轮
       for (const [ox, oz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) { const lg = box(.3, 11, .3, lam(0x4a3e34)); lg.position.set(kx + ox * (1 - .04), kh + 5.5, kz + oz); lg.rotation.z = ox * .04; scene.add(lg); }
       const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.4, .2, 6, 14), lam(0x3a3e44)); wheel.position.set(kx, kh + 11.6, kz); scene.add(wheel); cirObs.push({ x: kx, z: kz, r: 2.6 });
       const cable = cyl(.05, .05, 10.6, lam(0x22262a), 4); cable.position.set(kx, kh + 6, kz); scene.add(cable);
-      const sx2 = gx + 14, sz2 = gz + 6, sh3 = height(sx2, sz2);   // 天台操场:矮楼+铁丝网杆+旗
-      const sch = box(9, 5, 8, lam(0x707880)); sch.position.set(sx2, sh3 + 2.5, sz2); scene.add(sch); cirObs.push({ x: sx2, z: sz2, r: 5.5 });
-      for (let i = 0; i < 6; i++) { const p2 = cyl(.06, .06, 1.6, lam(0x3a3e44), 4); p2.position.set(sx2 - 4 + (i % 3) * 4, sh3 + 5.8, sz2 + (i < 3 ? -3.8 : 3.8)); scene.add(p2); }
-      const fp = cyl(.08, .1, 4, M.woodDark, 5); fp.position.set(sx2 + 3.6, sh3 + 7, sz2); scene.add(fp);
-      const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshLambertMaterial({ color: 0xd8d4c8, side: THREE.DoubleSide })); fl.position.set(sx2 + 4.4, sh3 + 8.6, sz2); scene.add(fl);
+
       for (const [ox, oz] of [[-4, -6], [18, -20]]) { const wl = new THREE.PointLight(0xffe2a8, 0, 70, 2); wl.position.set(gx + ox, height(gx + ox, gz + oz) + 6, gz + oz); wl.userData.pow = 14; nightLamps.push(wl); scene.add(wl); }
     },
   },
