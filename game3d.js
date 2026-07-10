@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=13';
-import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS } from './w-osm.js?v=5';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB } from './w-osm.js?v=6';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -194,7 +194,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
-  for (const s of NISLES) { if (s.key === 'gunkan') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
+  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
       let inn = false, dmin = 1e9;
@@ -208,6 +208,21 @@ function islandMask(x, z) {
         if (d9 < dmin) dmin = d9;
       }
       m = Math.max(m, inn ? Math.min(1, (dmin + 8) / 26) * 2.2 : (1 - dmin / 12) * 1.2);
+    }
+  }
+  { const lx = x + 1500, lz = z - 1050;   // 🗾 Alcatraz:真实轮廓(© OSM),The Rock
+    if (Math.abs(lx) < 126 && Math.abs(lz) < 112) {
+      let inn = false, dmin = 1e9;
+      const PC = OSM_FOGJAIL_COAST;
+      for (let i = 0, jj = PC.length - 1; i < PC.length; jj = i++) {
+        const xi = PC[i][0], zi = PC[i][1], xj = PC[jj][0], zj = PC[jj][1];
+        if ((zi > lz) !== (zj > lz) && lx < (xj - xi) * (lz - zi) / (zj - zi) + xi) inn = !inn;
+        const ax = lx - xi, az = lz - zi, bx = xj - xi, bz = zj - zi;
+        const t9 = Math.max(0, Math.min(1, (ax * bx + az * bz) / (bx * bx + bz * bz || 1)));
+        const d9 = Math.hypot(ax - bx * t9, az - bz * t9);
+        if (d9 < dmin) dmin = d9;
+      }
+      m = Math.max(m, inn ? Math.min(1, (dmin + 8) / 24) * 2.4 : (1 - dmin / 12) * 1.2);
     }
   }
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
@@ -6836,6 +6851,32 @@ function redistributeMist(cx, cz) {
   osmCity(C9, OSM_SPTT, SPT.x + 64, SPT.z, -40, [lam(0xc03a3a), lam(0x8a8a92)]);    // 老特拉福德(梦剧场原型)
   osmRoads(C9, OSM_ROADS.TRUMAN, TRU.x + 30, TRU.z, 32, new THREE.MeshLambertMaterial({ color: 0xd8cfc0, side: THREE.DoubleSide }), 1.8, .12);   // Seaside 放射街网
   osmRoads(C9, OSM_ROADS.MOBT, MOB.x - 24, MOB.z, 34, new THREE.MeshLambertMaterial({ color: 0xa89878, side: THREE.DoubleSide }), 1.7, .12);   // 南塔开特鹅卵石街
+  { const pts9 = OSM_PIERS_MOB.flat ? OSM_PIERS_MOB : [];   // 南塔开特码头栈桥(伸进海里)
+    osmRoads(C9, OSM_PIERS_MOB, MOB.x - 24, MOB.z, 34, new THREE.MeshLambertMaterial({ color: 0x7a5a36, side: THREE.DoubleSide }), 2.4, .55); }
+  { const bx0 = -1685, bz0 = 940, intl = lam(0xc0492b);   // 🌉 金门大桥主跨(© OSM 中线,真实走向,装饰)
+    const DK = 21, pts9 = OSM_GGB;
+    const pos9 = [];
+    for (let i = 0; i < pts9.length - 1; i++) {
+      const [x1, z1] = pts9[i], [x2, z2] = pts9[i + 1];
+      const dx = x2 - x1, dz = z2 - z1, L = Math.hypot(dx, dz) || 1, nx = -dz / L * 3.2, nz = dx / L * 3.2;
+      pos9.push(bx0 + x1 + nx, DK, bz0 + z1 + nz, bx0 + x1 - nx, DK, bz0 + z1 - nz, bx0 + x2 + nx, DK, bz0 + z2 + nz,
+                bx0 + x1 - nx, DK, bz0 + z1 - nz, bx0 + x2 - nx, DK, bz0 + z2 - nz, bx0 + x2 + nx, DK, bz0 + z2 + nz);
+    }
+    const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(pos9, 3)); dg.computeVertexNormals();
+    scene.add(new THREE.Mesh(dg, new THREE.MeshLambertMaterial({ color: 0xc0492b, side: THREE.DoubleSide })));
+    const lerp9 = t9 => { const n9 = (pts9.length - 1) * t9, i9 = Math.min(pts9.length - 2, Math.floor(n9)), f9 = n9 - i9;
+      return [bx0 + pts9[i9][0] + (pts9[i9 + 1][0] - pts9[i9][0]) * f9, bz0 + pts9[i9][1] + (pts9[i9 + 1][1] - pts9[i9][1]) * f9]; };
+    const tw9 = [];
+    for (const tt of [.3, .7]) { const [tx9, tz9] = lerp9(tt); tw9.push([tx9, tz9]);
+      for (const sgn of [-1, 1]) { const py9 = cyl(1.1, 1.6, 74, intl, 8); py9.position.set(tx9 + sgn * 3.4, 37, tz9); scene.add(py9); }
+      const cross9 = box(9.4, 1.6, 1.6, intl); cross9.position.set(tx9, 66, tz9); scene.add(cross9); }
+    for (const sgn of [-1, 1]) { const cps = [];   // 主缆:锚-塔-塔-锚 悬垂
+      for (let i = 0; i <= 30; i++) { const t9 = i / 30; const [cx9, cz9] = lerp9(t9);
+        const dt9 = Math.min(Math.abs(t9 - .3), Math.abs(t9 - .7));
+        const cy9 = 70 - Math.min(dt9 / .3, 1) ** 2 * 46;
+        cps.push(new THREE.Vector3(cx9 + sgn * 3.4, cy9, cz9)); }
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cps), 40, .5, 5), intl)); }
+  }
 }
 /* ===== 💡 灯光治理:场景 110 盏点光是帧率头号杀手 ===== */
 const ALL_LIGHTS = [];
