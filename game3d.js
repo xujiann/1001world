@@ -7643,6 +7643,15 @@ let saveT = 0, whaleT = 20, coldT = 0, lastTint = 0x3b6ea5, chowderT = 0, lastSc
 let flight = null, roarT = 14, sirenT = 2;
 let bucketT = 0, npcFrame = 0, fpsN = 0, fpsT = 0, prScale = MOBILE ? 1.5 : 1.75;
 const PR_MAX = prScale;
+let farMode = false;   // 🔭 远景模式:拉远看全岛时自动降载
+const setPR = () => { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale * (farMode ? .8 : 1))); if (composer) composer.setSize(innerWidth, innerHeight); };
+function syncFarView() {
+  const far9 = camDist > 60;
+  if (far9 === farMode) return;
+  farMode = far9;
+  setPR();
+  if (gtaoPass) gtaoPass.enabled = !far9 && quality >= 2;
+}
 /* 鲸鸣:低频滑音 */
 function whaleCall() {
   const o = actx.createOscillator(), g = actx.createGain();
@@ -8339,6 +8348,7 @@ function loop() {
   syncBuffs(dt);
   tramStep(dt);   // 🚋 轨车 + 雾笛
   seasonTick(dt, t);   // 🍂 四季粒子
+  syncFarView();   // 🔭 远景降载
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
   if (stampT <= 0) {
     stampT = 1;
@@ -8363,12 +8373,10 @@ function loop() {
     if (fps < 20 && quality > 0 && prScale <= .85) { quality--; applyQuality(); toast('🖥️ 帧率偏低,已自动降到' + ['低画质', '中画质'][quality] + '(G 键可手动调)'); }   // 先降像素比,仍卡再降画质档
     if (fps < 27 && prScale > .85) {
       prScale = Math.max(.85, prScale - .25);
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale));
-      if (composer) composer.setSize(innerWidth, innerHeight);
+      setPR();
     } else if (fps > 55 && prScale < PR_MAX) {
       prScale = Math.min(PR_MAX, prScale + .25);
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, prScale));
-      if (composer) composer.setSize(innerWidth, innerHeight);
+      setPR();
     }
   }
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
