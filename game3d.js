@@ -693,7 +693,8 @@ function ferryCard() {
     <div class="cardTitle" style="padding-top:16px"><h3>要渡去哪个世界?</h3><div class="en">卡戎:"船票免费,记忆自理。"</div></div>
     <div style="padding:4px 20px 18px">
       <div class="gRow"><div class="gi">🐋</div><div class="gInfo"><b>收藏之岛(主世界)</b><div class="gDesc">鲸背上的一千零一收藏</div></div><button class="gBtn" data-goworld="main">返回</button></div>
-      ${WORLDS.map(w => `<div class="gRow"><div class="gi">${w.icon}</div>
+      <div style="font-size:11.5px;color:#8a7c62;padding:2px 2px 8px">✈️ 设有机场的岛已改乘「鲸航」——请移步就近机场购票;渡口只渡没有跑道的世界。</div>
+      ${WORLDS.filter(w => !AIR_KEYS.has(w.key)).map(w => `<div class="gRow"><div class="gi">${w.icon}</div>
         <div class="gInfo"><b>${w.name}</b> <span style="color:#8a7c62;font-size:12px">${w.en}</span><div class="gDesc">${w.desc}</div></div>
         ${w.open ? `<button class="gBtn" data-goworld="${w.key}">前往</button>` : `<button class="gBtn" disabled>${w.note || '在建'}</button>`}</div>`).join('')}
     </div>`;
@@ -1973,7 +1974,7 @@ function openGuide() {
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——五十九座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十二座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(中土和霍格沃茨婉拒了跑道);主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——59 章集满,便是「环球旅行家」。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——59 章集满,便是「环球旅行家」。<br><br>
     <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
@@ -5078,20 +5079,29 @@ if (EVENT === 'kites') {
   scene.add(evKites);
 }
 /* ===== ✈️ 鲸航 QJ:12 座机场(仅"现实上说得通"的岛设跑道) ===== */
-const AIRPORTS = [
+const AIRPORTS = [   // 按现实设台:原型真有机场才通航;端岛无机场已撤;楚门的机场是布景(fake)
   ['main', '收藏之岛 · 鲸背国际机场', 452, -48],
-  ['truman', '楚门的世界 · 摄影棚机场', 828, 516],
+  ['truman', '楚门的世界 · 海景旅行社机场', 828, 516, 1],
   ['sport', '体育岛 · 德比航站', -842, 168],
   ['jur', '侏罗纪公园 · InGen 简易跑道', 1082, 978],
   ['unj', '未竟之都 · 万国空港', 312, 702],
-  ['gala', '进化群岛 · 科研补给机场', -926, -86],
+  ['gala', '进化群岛 · 巴尔特拉机场', -926, -86],
   ['mada', '方舟大陆岛 · 猴面包树机场', 312, -566],
-  ['saga', '冰火萨迦岛 · 熔岩原机场', -646, 1514],
-  ['venezia', '看不见的水城 · 说书人机场', 384, 1058],
+  ['saga', '冰火萨迦岛 · 赫马岛机场', -646, 1514],
+  ['venezia', '看不见的水城 · 马可·波罗机场', 384, 1058],
   ['helena', '风中庄园 · 流放者机场', -106, -1098],
-  ['komodo', '龙蜥荒原 · 护林站机场', 1350, -142],
-  ['gunkan', '废矿海城 · 矿区直升机坪', 1574, 498],
+  ['komodo', '龙蜥荒原 · 纳闽巴霍机场', 1350, -142],
+  ['moai', '星历仙岛 · 马塔维里机场', -955, -488],
+  ['atl', '沉环之岛 · 圣托里尼机场', 588, 892],
+  ['tah', '画家岛 · 法阿国际机场', -1505, -388],
+  ['rain', '雨岛 · 帕果帕果机场', -1706, -204],
+  ['typ', '泰皮 · 努库希瓦机场', -1446, -74],
+  ['soco', '真名植物岛 · 索科特拉机场', 586, 302],
+  ['tusi', '讲故事人之岛 · 法莱奥洛机场', -1264, -1124],
+  ['mob', '南塔开特 · 纪念机场 ACK', 186, 858],
+  ['dol', '蓝色海豚岛 · 海军旧跑道', -1246, 796],
 ];
+const AIR_KEYS = new Set(AIRPORTS.filter(a => !a[4] && a[0] !== 'main').map(a => a[0]));   // 可通航的岛(渡口下架名单)
 for (const [k3, nm3, ax, az] of AIRPORTS) {
   const ah3 = Math.max(height(ax, az), .4);
   const run = box(5, .25, 34, lam(0x565c64)); run.position.set(ax, ah3 + .3, az); scene.add(run);
@@ -5104,14 +5114,15 @@ for (const [k3, nm3, ax, az] of AIRPORTS) {
 }
 function openAirCounter(fromKey) {
   const from = AIRPORTS.find(a => a[0] === fromKey); if (!from) return;
-  const rows = AIRPORTS.filter(a => a[0] !== fromKey).map((a, i) => {
+  const fake9 = !!from[4];
+  const rows = AIRPORTS.filter(a => a[0] !== fromKey && !a[4]).map((a, i) => {
     const d = Math.round(Math.hypot(a[2] - from[2], a[3] - from[3]));
-    const delayed = WEATHER === 'storm' && (i + new Date().getDate()) % 2 === 0;   // ⛈️ 风暴天半数延误
+    const delayed = fake9 || (WEATHER === 'storm' && (i + new Date().getDate()) % 2 === 0);   // ⛈️ 风暴天半数延误;楚门的航班永远起不飞
     return { a, d, price: Math.max(5, Math.round(d / 80)), fno: 'QJ-' + (101 + i * 8), delayed };
   }).sort((x, y) => x.d - y.d);
   cardBody.innerHTML = `<div class="cardHead" style="background:#24303e">✈️ ${esc(from[1])}</div>
-    <div class="cardDesc" style="font-size:12.5px;line-height:1.7;padding:12px 20px 4px">鲸航 QJ · ${WEATHER === 'storm' ? '⛈️ 风暴过境,半数航班延误,请改期或改乘帆船(勇者)。' : '今日航班全部准点。'}航线仅覆盖设有机场的 ${AIRPORTS.length} 座岛——巫师们、麻瓜科技禁令、还有大多数古典海岛,都婉拒了跑道。买不到机票的地方,才是船和自行车的浪漫。</div>
-    <div style="padding:4px 16px 16px">${rows.map(r5 => `<div class="gRow"><div class="gi">✈️</div><div class="gInfo"><b>${esc(r5.a[1])}</b><div class="gDesc">${r5.fno} · 直线 ${r5.d} 米 · 飞行片刻</div></div>${r5.delayed ? '<button class="gBtn" disabled>⛈️ 延误</button>' : `<button class="gBtn" data-fly="${r5.a[0]}" data-price="${r5.price}" ${sb < r5.price ? 'disabled' : ''}>${r5.price} ⚡</button>`}</div>`).join('')}</div>`;
+    <div class="cardDesc" style="font-size:12.5px;line-height:1.7;padding:12px 20px 4px">鲸航 QJ · ${fake9 ? '很抱歉,今天的航班全部取消了。明天也是。后天大概也是。(售票员冲你露出电视广告般的微笑)' : WEATHER === 'storm' ? '⛈️ 风暴过境,半数航班延误,请改期或改乘帆船(勇者)。' : '今日航班全部准点。'}航线仅覆盖设有机场的 ${AIRPORTS.length} 座岛——巫师们、麻瓜科技禁令、还有大多数古典海岛,都婉拒了跑道。买不到机票的地方,才是船和自行车的浪漫。</div>
+    <div style="padding:4px 16px 16px">${rows.map(r5 => `<div class="gRow"><div class="gi">✈️</div><div class="gInfo"><b>${esc(r5.a[1])}</b><div class="gDesc">${r5.fno} · 直线 ${r5.d} 米 · 飞行片刻</div></div>${r5.delayed ? (fake9 ? '<button class="gBtn" disabled>已取消</button>' : '<button class="gBtn" disabled>⛈️ 延误</button>') : `<button class="gBtn" data-fly="${r5.a[0]}" data-price="${r5.price}" ${sb < r5.price ? 'disabled' : ''}>${r5.price} ⚡</button>`}</div>`).join('')}</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelectorAll('[data-fly]').forEach(b2 => b2.addEventListener('click', () => {
     const dest = AIRPORTS.find(a => a[0] === b2.dataset.fly); if (!dest) return;
