@@ -5,7 +5,7 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES, OSM_QQ, OSM_QQ_ROADS, OSM_QQ_GREEN } from './w-osm.js?v=10';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES, OSM_QQ, OSM_QQ_ROADS, OSM_QQ_GREEN, OSM_WG_QUAY } from './w-osm.js?v=11';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
 export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 → 贴地带面(街道/运河),单网格
   const { THREE, height, scene } = C;
@@ -1411,6 +1411,66 @@ export function makeNIContent(C) {
       for (let i = 0; i < 6; i++) { const st9 = cyl(.5, .7, 3 + (i % 3), lam(0x6e6a62), 6);   // 风向石林
         st9.position.set(gx + 14 + (i % 3) * 4, height(gx + 14, gz + 10) + 1.6, gz + 8 + Math.floor(i / 3) * 4); st9.rotation.z = .12; scene.add(st9); }
       const quay9 = box(20, 1, 5, M.stone); quay9.position.set(gx - 8, Math.max(height(gx - 8, gz + 36), .2) + .5, gz + 36); scene.add(quay9);   // 无风港石堤
+    },
+  },
+  wg: {
+    name: '雾港', en: 'Fog Harbor', icon: '🌫️', theme: 'wg',
+    desc: '组合岛:真实港湾水岸 × 张岱《夜航船》',
+    ferryMsg: '🌫️ 雾港到了。雾比水多,灯比人多——夜航船泊在码头,船头灯还亮着',
+    lore: {
+      wgship: { icon: '🛶', color: '#3a4a5a', title: '夜航船', en: 'The Night Ferry', hint: '且待小僧伸伸脚',
+        desc: '明人张岱把一部包罗万象的百科命名为《夜航船》——夜船上高谈阔论,是读书人的露天考场。相传僧人与士子同舱,士子谈锋甚健,僧人蜷脚而眠;听到破绽,僧人睁眼:"这等说来,且待小僧伸伸脚。"这条船每夜出港,不载货,只载谈话。' },
+      wgquay: { icon: '⚓', color: '#4a5a6a', title: '灯影码头', en: 'The Lamplit Quay', hint: '水岸按真实海图铺设',
+        desc: '这道弯曲的水岸一寸不差——石沿、系缆桩、一盏接一盏的码头灯,雾里看去像一串省略号。船来了,省略号就有了下文。' },
+      wgdike: { icon: '🌫️', color: '#5a6a72', title: '雾堤', en: 'The Fog Dike', hint: '尽头的灯只闻其声',
+        desc: '石堤伸进雾里,尽头那盏灯看不见,只听得见——守堤人每晚去点它,回来时火把总会多一圈光晕。他说堤有多长,取决于雾信不信你。' },
+      wgtale: { icon: '📖', color: '#6a5a44', title: '船上百科', en: 'The Shipboard Encyclopedia', hint: '天下学问,夜航船中',
+        desc: '书场里供着一部手抄《夜航船》:天文、地理、考古、方术,无所不载。张岱自序说,天下学问,惟夜航船中最难对付——因为你永远不知道邻座会问什么。' },
+    },
+    spots: [[4, 12, 'wgship'], [32, -6, 'wgquay'], [-50, 30, 'wgdike'], [-10, -30, 'wgtale']],
+    npcs: [
+      { dx: 8, dz: 6, name: '蜷脚老僧', body: 0x8a7c62, hat: 0x6a5a44,
+        lines: ['小僧不睡,只是把脚收着——省得占了学问的地方。', '澹台灭明是一个人,尧舜是两个人。记住了,夜里用得上。', '雾大的晚上,船开得慢,谈话就长。这是雾港的好处。'] },
+      { dx: -4, dz: 8, name: '高谈士子', body: 0x4a5a7a, hat: 0x2e2e34,
+        lines: ['在下上知天文下知地理,中间还知一点八卦。', '那老僧看着好欺,昨夜一开口,我差点从船上下去走回来。', '夜航船的规矩:谁说错,谁缩脚。舱里地方就这么大。'] },
+      { dx: -44, dz: 26, name: '守堤灯人', body: 0x5a6a72, hat: 0x4a5a62, opts: { cane: true },
+        lines: ['堤尽头的灯我点了三十年,一次也没看见它——但它一直亮着。', '雾笛响一声是进港,两声是出港,三声——三声你就别数了,回屋。', '夜航船?每夜准时。你听,不是铜铃,那是青丘的轨车……听桨声。'] },
+    ],
+    build: (gx, gz) => {
+      const qm9 = new THREE.MeshLambertMaterial({ color: 0x7a7468, side: THREE.DoubleSide });
+      osmRoads(C, [OSM_WG_QUAY], gx, gz, 0, qm9, 2.4, .12);   // 真实水岸石沿 © OSM
+      for (let i9 = 0; i9 < OSM_WG_QUAY.length; i9 += 2) {   // 系缆桩;每隔两桩一盏码头灯
+        const [qx9, qz9] = OSM_WG_QUAY[i9];
+        const qh9 = Math.max(height(gx + qx9, gz + qz9), .3);
+        const bol = cyl(.22, .28, .9, M.stone, 6); bol.position.set(gx + qx9, qh9 + .55, gz + qz9); scene.add(bol);
+        if (i9 % 4 === 0) {
+          const po9 = cyl(.09, .11, 3.4, M.woodDark, 5); po9.position.set(gx + qx9, qh9 + 1.7, gz + qz9 - 1.4); scene.add(po9);
+          const la9 = new THREE.PointLight(0xffd9a0, 0, 22, 2); la9.position.set(gx + qx9, qh9 + 3.5, gz + qz9 - 1.4); la9.userData.pow = 8; nightLamps.push(la9); scene.add(la9);
+        }
+      }
+      const sh0 = new THREE.Group();   // 🛶 夜航船(泊于真实岸线之北的水面)
+      const hull = box(9, 1.6, 3.2, lam(0x3a332c)); hull.position.y = .8; sh0.add(hull);
+      const cab = box(5, 1.8, 2.4, lam(0x5a4a38)); cab.position.set(-.5, 2.3, 0); sh0.add(cab);
+      const cr9 = box(5.4, .3, 2.8, lam(0x2e2822)); cr9.position.set(-.5, 3.3, 0); sh0.add(cr9);
+      const mast = cyl(.09, .12, 4.6, M.woodDark, 5); mast.position.set(2.8, 3.4, 0); sh0.add(mast);
+      const sl9 = new THREE.PointLight(0xffb56a, 0, 26, 2); sl9.position.set(4.2, 2.2, 0); sl9.userData.pow = 12; nightLamps.push(sl9); sh0.add(sl9);
+      sh0.position.set(gx + 6, .55, gz + 26); sh0.rotation.y = .5; scene.add(sh0);
+      for (let i9 = 0; i9 < 9; i9++) {   // 🌫️ 雾堤:西北石臂伸进海里,尽头一盏冷灯
+        const dx9 = -56 - i9 * 4.6, dz9 = 36 + i9 * 3.2;
+        const st9 = box(4.4, 1.4, 3.6, M.stone); st9.position.set(gx + dx9, .8, gz + dz9); scene.add(st9);
+        if (i9 === 8) {
+          const dl9 = new THREE.PointLight(0x9fd8e8, 0, 30, 2); dl9.position.set(gx + dx9, 3.4, gz + dz9); dl9.userData.pow = 14; nightLamps.push(dl9); scene.add(dl9);
+          const dp9 = cyl(.1, .12, 3.2, M.woodDark, 5); dp9.position.set(gx + dx9, 2.2, gz + dz9); scene.add(dp9);
+        }
+      }
+      const bx9 = gx - 10, bz9 = gz - 30, bh9 = height(bx9, bz9);   // 📖 书场
+      const hall = box(7, 3.2, 5, lam(0x6a5a44)); hall.position.set(bx9, bh9 + 1.6, bz9); scene.add(hall); cirObs.push({ x: bx9, z: bz9, r: 4 });
+      const hrf = new THREE.Mesh(new THREE.ConeGeometry(5.4, 2, 4), lam(0x3f362c)); hrf.rotation.y = Math.PI / 4; hrf.position.set(bx9, bh9 + 4.2, bz9); scene.add(hrf);
+      for (const [wx9, wz9] of [[26, -34], [40, -20]]) {   // 仓库两座
+        const wh9 = box(6, 3, 4.4, lam(0x8a8074)); wh9.position.set(gx + wx9, height(gx + wx9, gz + wz9) + 1.5, gz + wz9); scene.add(wh9); cirObs.push({ x: gx + wx9, z: gz + wz9, r: 3.6 });
+        const wr9 = box(6.6, .3, 5, lam(0x5a544c)); wr9.position.set(gx + wx9, height(gx + wx9, gz + wz9) + 3.2, gz + wz9); scene.add(wr9);
+      }
+      makeBoat(0xd8d2c2, .8).userData = { anchor: [gx + 20, gz + 38] };   // 港湾小舢板(真实海湾水面)
     },
   },
   qq: {

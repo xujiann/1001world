@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=17';
-import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST } from './w-osm.js?v=10';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=18';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -17,7 +17,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=15';
+import { THEMES, NI_QUESTS } from './w-config.js?v=16';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=10';
 
@@ -154,6 +154,7 @@ const NISLES = [
   { key: 'aeol', x: 900, z: 1440, r: 88, mask: 2.0, h: 7, peak: { r: 32, hh: 15 }, dock: [854, 1367] },        // 风袋岛(埃奥利×奥德赛风神)
   { key: 'tusi', x: -1320, z: -1160, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [-1255, -1103] },  // 讲故事人之岛(萨摩亚×史蒂文森)
   { key: 'qq', x: 1760, z: 240, r: 96, mask: 2.0, h: 6, dock: [1690, 207] },   // 青丘(放射九街滨海古城×山海经九尾狐乡)
+  { key: 'wg', x: 1620, z: -60, r: 92, mask: 2.0, h: 6, dock: [1606, -142] },  // 雾港(真实港湾水岸×张岱夜航船)
 ];
 const COMBO_KEYS = NISLES.slice(NISLES.findIndex(s9 => s9.key === 'gala')).map(s9 => s9.key);   // 组合岛清单(gala 起自动派生,加岛零维护)
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
@@ -198,7 +199,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
-  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
+  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
       let inn = false, dmin = 1e9;
@@ -244,6 +245,21 @@ function islandMask(x, z) {
       m = Math.max(m, inn ? Math.min(1, (dmin + 7) / 20) * 2.3 : (1 - dmin / 10) * 1.1);
       const ex9 = (lx + 22) / 42, ez9 = (lz + 6) / 64;   // 破火山口潟湖:中央凹陷强制为海
       if (ex9 * ex9 + ez9 * ez9 < 1) m = Math.min(m, -.6);
+    }
+  }
+  { const lx = x - 1620, lz = z + 60;   // 🗾 雾港:真实港湾水岸(© OSM),北缘即真实岸线
+    if (Math.abs(lx) < 105 && Math.abs(lz) < 105) {
+      let inn = false, dmin = 1e9;
+      const PC = OSM_WG_COAST;
+      for (let i = 0, jj = PC.length - 1; i < PC.length; jj = i++) {
+        const xi = PC[i][0], zi = PC[i][1], xj = PC[jj][0], zj = PC[jj][1];
+        if ((zi > lz) !== (zj > lz) && lx < (xj - xi) * (lz - zi) / (zj - zi) + xi) inn = !inn;
+        const ax = lx - xi, az = lz - zi, bx = xj - xi, bz = zj - zi;
+        const t9 = Math.max(0, Math.min(1, (ax * bx + az * bz) / (bx * bx + bz * bz || 1)));
+        const d9 = Math.hypot(ax - bx * t9, az - bz * t9);
+        if (d9 < dmin) dmin = d9;
+      }
+      m = Math.max(m, inn ? Math.min(1, (dmin + 8) / 26) * 2.2 : (1 - dmin / 12) * 1.2);
     }
   }
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
@@ -351,6 +367,7 @@ function height(x, z) {
   q(UNJ.x, UNJ.z + UNJ.r + 18, 15, 2.2, .95);                                                // 未竟之都渡口浅滩
   for (const s of NISLES) {                                                                  // 海洋文学带地形
     if (s.key === 'atl') { q(594, 846, 62, 7); q(502, 928, 56, 7); q(548, 762, 42, 6); q(s.dock[0], s.dock[1], 13, 2.2, .95); continue; }   // 月牙:基座沿弧,不填潟湖
+    if (s.key === 'wg') { q(1615, -95, 62, 6); q(1568, -72, 46, 6); q(1672, -102, 46, 6); q(s.dock[0], s.dock[1], 13, 2.2, .95); continue; }   // 雾港:基座居陆侧,不填港湾
     q(s.x, s.z, s.r, s.h);
     if (s.peak) h += smooth01(clamp(1 - Math.hypot(x - s.x, z - s.z) / s.peak.r, 0, 1)) ** 2 * s.peak.hh;
     q(s.dock[0], s.dock[1], 13, 2.2, .95);
@@ -2077,7 +2094,7 @@ function openGuide() {
     <div class="cardDesc">
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
-    <b>3. 出海远行</b>——六十座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
+    <b>3. 出海远行</b>——六十一座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
     <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
@@ -6023,7 +6040,7 @@ function initGlobe() {
   globeGrp.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 32, 24), new THREE.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: .1, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));   // 大气辉光
   globeMk = new THREE.Mesh(new THREE.SphereGeometry(.02, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd76a }));
   globeGrp.add(globeMk);
-  const COMBO_COLS = { gala: 0x6ac08a, moai: 0x8fa8e8, fogjail: 0x8a929a, kilda: 0xb8c4d0, gunkan: 0x6a7684, soco: 0xc05a4a, skell: 0xd8d2c2, mada: 0x8ac06a, helena: 0xb0a8c8, komodo: 0xc8a04a, sanxian: 0x9fc8e8, shixia: 0xd8ccb0, taozhen: 0xf0b8c8, venezia: 0x6ab0c8, saga: 0xbfe8f0, atl: 0x9ab0c0, aeol: 0xd0e8a0, tusi: 0xc09a6a, qq: 0xf0a05a };
+  const COMBO_COLS = { gala: 0x6ac08a, moai: 0x8fa8e8, fogjail: 0x8a929a, kilda: 0xb8c4d0, gunkan: 0x6a7684, soco: 0xc05a4a, skell: 0xd8d2c2, mada: 0x8ac06a, helena: 0xb0a8c8, komodo: 0xc8a04a, sanxian: 0x9fc8e8, shixia: 0xd8ccb0, taozhen: 0xf0b8c8, venezia: 0x6ab0c8, saga: 0xbfe8f0, atl: 0x9ab0c0, aeol: 0xd0e8a0, tusi: 0xc09a6a, qq: 0xf0a05a, wg: 0x9fb8d8 };
   for (const s2 of NISLES) {   // 十六座组合岛:迷宫浮标同色的星点
     const c2 = COMBO_COLS[s2.key]; if (!c2) continue;
     const d2 = new THREE.Mesh(new THREE.SphereGeometry(.013, 8, 6), new THREE.MeshBasicMaterial({ color: c2 }));
@@ -7340,7 +7357,7 @@ function foghorn() {
 function zoneAudioTick(dt) {
   zoneChk9 -= dt; if (zoneChk9 > 0) return; zoneChk9 = .5;
   const zn9 = $('zoneName').textContent;
-  if (zn9 !== lastZone9) { if (zn9 === '青丘' && lastZone9) foghorn(); lastZone9 = zn9; }
+  if (zn9 !== lastZone9) { if ((zn9 === '青丘' || zn9 === '雾港') && lastZone9) foghorn(); lastZone9 = zn9; }
 }
 /* ===== 🤝 居民每日委托:每天两单,串起食单·明信片·好感(C) ===== */
 const DQ_FOODS = ['clam', 'bread', 'onigiri', 'squid', 'peach', 'dates', 'coco', 'tea', 'menzi'];
