@@ -1355,7 +1355,7 @@ export function makeNIContent(C) {
       atvine: { icon: '🍇', color: '#7a5a8a', title: '火山葡萄园', en: 'The Basket Vines', hint: '末日土壤上的甜',
         desc: '葡萄藤不搭架,盘成一圈圈贴地的篮子——挡风,也兜露水。火山灰的地里长出的葡萄小而极甜,酿的酒带一点烟味。酿酒师倒了一杯:"尝尝。末日和甜,可以出自同一片土。"' },
     },
-    spots: [[0, -4, 'atcliff'], [-14, 8, 'atplato'], [6, 30, 'atruin'], [18, 24, 'atbell'], [16, -14, 'atvine']],
+    spots: [[54, -4, 'atcliff'], [40, 8, 'atplato'], [60, 30, 'atruin'], [66, 14, 'atbell'], [70, -14, 'atvine']],
     npcs: [
       { dx: 10, dz: -8, name: '老酿酒师', body: 0x6a4a5a, hat: 0x503846, opts: { wide: 1.1 },
         lines: ['我的葡萄长在两千年前的火山灰里——年份?你说的是哪一层的年份?', '游客来找亚特兰蒂斯,住两晚,最后都在找我的酒窖。', '大海拿走了半座岛,还回来的是甜。这买卖,我们认了。'],
@@ -1364,6 +1364,7 @@ export function makeNIContent(C) {
         lines: ['我找了四十年。同行都说我找错了地方——他们说得可能都对。', '柏拉图写的若不是实录,就是预言。两样我都接受。', '我不怕找不到。我怕的是找到以后,没有东西可找了。'] },
     ],
     build: (gx, gz) => {
+      gx = gx + 54;   // 月牙轮廓后设施整体上东弧
       osmCity(C, OSM_ATL, gx, gz, -6, [lam(0xf2f0ea), lam(0xe8e6de)]);   // 费拉 61 栋真实白镇(© OSM)
       { const wmx = gx + 14, wmz = gz - 18, wmh = height(wmx, wmz);   // 风车
         const tower2 = cyl(1.2, 1.6, 5, lam(0xf2f0ea), 9); tower2.position.set(wmx, wmh + 2.5, wmz); scene.add(tower2); cirObs.push({ x: wmx, z: wmz, r: 1.6 });

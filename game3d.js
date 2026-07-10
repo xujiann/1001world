@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=14';
-import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER } from './w-osm.js?v=7';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST } from './w-osm.js?v=8';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -148,7 +148,7 @@ const NISLES = [
   { key: 'taozhen', x: 1650, z: 700, r: 90, mask: 2.0, h: 7, dock: [1569, 666] },                            // 桃阵岛(桃花八阵)
   { key: 'venezia', x: 330, z: 1020, r: 90, mask: 2.0, h: 5, dock: [303, 936] },                             // 看不见的水城(威尼斯×卡尔维诺)
   { key: 'saga', x: -700, z: 1560, r: 92, mask: 2.0, h: 8, peak: { r: 38, hh: 16 }, dock: [-663, 1478] },      // 冰火萨迦岛(冰岛×埃达)
-  { key: 'atl', x: 540, z: 850, r: 88, mask: 2.0, h: 7, peak: { r: 34, hh: 12 }, dock: [494, 777] },     // 沉环之岛(圣托里尼×柏拉图)
+  { key: 'atl', x: 540, z: 850, r: 88, mask: 2.0, h: 7, dock: [494, 777] },     // 沉环之岛(圣托里尼×柏拉图)
   { key: 'aeol', x: 900, z: 1440, r: 88, mask: 2.0, h: 7, peak: { r: 32, hh: 15 }, dock: [854, 1367] },        // 风袋岛(埃奥利×奥德赛风神)
   { key: 'tusi', x: -1320, z: -1160, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [-1255, -1103] },  // 讲故事人之岛(萨摩亚×史蒂文森)
 ];
@@ -194,7 +194,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
-  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
+  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
       let inn = false, dmin = 1e9;
@@ -223,6 +223,23 @@ function islandMask(x, z) {
         if (d9 < dmin) dmin = d9;
       }
       m = Math.max(m, inn ? Math.min(1, (dmin + 8) / 24) * 2.4 : (1 - dmin / 12) * 1.2);
+    }
+  }
+  { const lx = x - 540, lz = z - 850;   // 🗾 圣托里尼:Thera 月牙真轮廓(© OSM),中央即沉没的破火山口
+    if (Math.abs(lx) < 100 && Math.abs(lz) < 132) {
+      let inn = false, dmin = 1e9;
+      const PC = OSM_ATL_COAST;
+      for (let i = 0, jj = PC.length - 1; i < PC.length; jj = i++) {
+        const xi = PC[i][0], zi = PC[i][1], xj = PC[jj][0], zj = PC[jj][1];
+        if ((zi > lz) !== (zj > lz) && lx < (xj - xi) * (lz - zi) / (zj - zi) + xi) inn = !inn;
+        const ax = lx - xi, az = lz - zi, bx = xj - xi, bz = zj - zi;
+        const t9 = Math.max(0, Math.min(1, (ax * bx + az * bz) / (bx * bx + bz * bz || 1)));
+        const d9 = Math.hypot(ax - bx * t9, az - bz * t9);
+        if (d9 < dmin) dmin = d9;
+      }
+      m = Math.max(m, inn ? Math.min(1, (dmin + 7) / 20) * 2.3 : (1 - dmin / 10) * 1.1);
+      const ex9 = (lx + 22) / 42, ez9 = (lz + 6) / 64;   // 破火山口潟湖:中央凹陷强制为海
+      if (ex9 * ex9 + ez9 * ez9 < 1) m = Math.min(m, -.6);
     }
   }
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
@@ -329,6 +346,7 @@ function height(x, z) {
   q(UNJ.x, UNJ.z, UNJ.r * .96, 6, .97);                                                      // 未竟之都:整岛白石平台
   q(UNJ.x, UNJ.z + UNJ.r + 18, 15, 2.2, .95);                                                // 未竟之都渡口浅滩
   for (const s of NISLES) {                                                                  // 海洋文学带地形
+    if (s.key === 'atl') { q(594, 846, 62, 7); q(502, 928, 56, 7); q(548, 762, 42, 6); q(s.dock[0], s.dock[1], 13, 2.2, .95); continue; }   // 月牙:基座沿弧,不填潟湖
     q(s.x, s.z, s.r, s.h);
     if (s.peak) h += smooth01(clamp(1 - Math.hypot(x - s.x, z - s.z) / s.peak.r, 0, 1)) ** 2 * s.peak.hh;
     q(s.dock[0], s.dock[1], 13, 2.2, .95);
