@@ -5,7 +5,7 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL } from './w-osm.js?v=2';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL } from './w-osm.js?v=3';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
 function osmCity(C, data, gx, gz, zoff, mats) {
   const { THREE, height, scene, cirObs } = C;
@@ -687,6 +687,7 @@ export function makeNIContent(C) {
         lines: ['规矩只有一条:看,别碰。', '巨龟走得慢?它们赶的路,以万年计。', '西北海上有座岛,有人想当上帝。我们只想当读者。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_GALA, gx + 20, gz, 42, [lam(0xe8dcc0), lam(0xd0b890)]);   // 真实街区 © OSM
       const tort = (tx, tz, s) => { const th = height(tx, tz);   // 巨龟:壳半球+头
         const sh = new THREE.Mesh(new THREE.SphereGeometry(1.6 * s, 10, 8, 0, 6.283, 0, Math.PI / 2), lam(0x4a4636)); sh.position.set(tx, th + .3, tz); sh.scale.y = .62; scene.add(sh);
         const hd = cyl(.28 * s, .34 * s, 1 * s, lam(0x5a5644), 6); hd.rotation.z = 1.2; hd.position.set(tx + 1.5 * s, th + .55, tz); scene.add(hd); cirObs.push({ x: tx, z: tz, r: 1.7 * s }); };
@@ -1043,6 +1044,7 @@ export function makeNIContent(C) {
         lines: ['我给两位国王当过差:一位丢了国土,一位丢了整块大陆。', '笑话讲给谁听都一样苦——所以我讲给风听,风笑得最响。', '孩子,王冠这东西,戴上去要两个人,摘下来只要一阵风。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_HELENA, gx + 30, gz, 28, [lam(0xd8d0bc), lam(0xb8ac96)]);   // 真实街区 © OSM
       const wh2 = height(gx, gz);   // 长木庄园:长条平房+绿窗板
       const house = box(16, 4, 7, lam(0xcac2b0)); house.position.set(gx, wh2 + 2, gz); scene.add(house); cirObs.push({ x: gx, z: gz, r: 9 });
       const roof2 = box(17, 1, 8, lam(0x4a4a44)); roof2.position.set(gx, wh2 + 4.5, gz); scene.add(roof2);
@@ -1297,6 +1299,7 @@ export function makeNIContent(C) {
         lines: ['冰川每年退一点。我的工作迟早会变成"指着照片讲从前"。', '间歇泉要等,极光要碰——这岛教人的第一课是:急不来。', '踩我踩过的地方。冰的脾气,我认得。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_SAGA, gx + 30, gz, 30, [lam(0xe8e4da), lam(0xc85a4a), lam(0x8a9aa8)]);   // 真实街区 © OSM
       const gyx = gx - 12, gyz = gz + 18, gyh = height(gyx, gyz);   // 间歇泉:池+白水柱
       const pool2 = new THREE.Mesh(new THREE.CircleGeometry(2.6, 14), new THREE.MeshPhongMaterial({ color: 0x4a9ab0, shininess: 90 })); pool2.rotation.x = -Math.PI / 2; pool2.position.set(gyx, gyh + .15, gyz); scene.add(pool2);
       const jet = cyl(.5, 1.1, 12, new THREE.MeshBasicMaterial({ color: 0xeaf6fa, transparent: true, opacity: .55, depthWrite: false }), 8); jet.position.set(gyx, gyh + 6, gyz); scene.add(jet);
@@ -1374,6 +1377,7 @@ export function makeNIContent(C) {
         lines: ['火山两千年没迟到过。人做不到的守时,山替我们做了。', '我男人出海那些年,我夜夜看它喷一口红——像谁在替我数着他回家的日子。', '风袋岛的孩子第一课:对风要有礼貌。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_AEOL, gx - 28, gz, -16, [lam(0xf0ede4), lam(0xe0dcd0)]);   // 真实街区 © OSM
       const bx9 = gx, bz9 = gz + 6, bh9 = height(bx9, bz9);   // 风神皮袋:鼓胀牛皮+银口
       const bag = new THREE.Mesh(new THREE.SphereGeometry(2, 12, 10), lam(0x8a6a42)); bag.scale.set(1, 1.25, .9); bag.position.set(bx9, bh9 + 2.2, bz9); scene.add(bag); cirObs.push({ x: bx9, z: bz9, r: 2.2 });
       const tie = cyl(.5, .7, .8, lam(0xc8ccd4), 8); tie.position.set(bx9, bh9 + 4.3, bz9); scene.add(tie);
@@ -1407,6 +1411,7 @@ export function makeNIContent(C) {
         lines: ['我爷爷小时候坐在凉台最前排。他说图西塔拉讲到海盗时,眼睛比火把亮。', '山顶风大。可他说过,他就想葬在听得见海的地方。', '你去过金银岛吗?真的?——他要是知道有人真的去了,该多高兴。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_TUSI, gx - 28, gz, 20, [lam(0xd8c8a8)]);   // 真实街区 © OSM
       const hx9 = gx, hz9 = gz + 4, hh9 = height(hx9, hz9);   // 瓦伊利马:木屋+宽凉台
       const hus = box(8, 4, 6, lam(0xa8845a)); hus.position.set(hx9, hh9 + 2, hz9); scene.add(hus); cirObs.push({ x: hx9, z: hz9, r: 5 });
       const vera = box(12, .4, 9, lam(0x8a6a44)); vera.position.set(hx9, hh9 + .5, hz9); scene.add(vera);
