@@ -157,6 +157,21 @@ const NISLES = [
   { key: 'wg', x: 1620, z: -60, r: 92, mask: 2.0, h: 6, dock: [1606, -142] },  // 雾港(真实港湾水岸×张岱夜航船)
 ];
 const COMBO_KEYS = NISLES.slice(NISLES.findIndex(s9 => s9.key === 'gala')).map(s9 => s9.key);   // 组合岛清单(gala 起自动派生,加岛零维护)
+/* 🗂️ 岛屿空间索引:height/islandMask 只遍历附近 1-3 座(原 37 座全扫) */
+const NIDX_CELL = 100, NIDX_W = 42, NIDX = new Array(NIDX_W * NIDX_W).fill(null), NIDX_EMPTY = [];
+for (const s of NISLES) {
+  const reach = s.r + 130;   // 覆盖 dock 浅滩与 atl/wg 的偏移基座
+  const x0 = Math.max(0, ((s.x + 2100 - reach) / NIDX_CELL) | 0), x1 = Math.min(NIDX_W - 1, ((s.x + 2100 + reach) / NIDX_CELL) | 0);
+  const z0 = Math.max(0, ((s.z + 2100 - reach) / NIDX_CELL) | 0), z1 = Math.min(NIDX_W - 1, ((s.z + 2100 + reach) / NIDX_CELL) | 0);
+  for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+    const k = cz * NIDX_W + cx; (NIDX[k] || (NIDX[k] = [])).push(s);
+  }
+}
+function nislesNear(x, z) {
+  const cx = ((x + 2100) / NIDX_CELL) | 0, cz = ((z + 2100) / NIDX_CELL) | 0;
+  if (cx < 0 || cz < 0 || cx >= NIDX_W || cz >= NIDX_W) return NIDX_EMPTY;
+  return NIDX[cz * NIDX_W + cx] || NIDX_EMPTY;
+}
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
 function capMask(x, z, ax, az, bx, bz, r0, r1) {
@@ -166,15 +181,18 @@ function capMask(x, z, ax, az, bx, bz, r0, r1) {
   return (1 - d / (r0 + (r1 - r0) * t)) * 2.2;
 }
 function islandMask(x, z) {
-  let m = (1 - Math.sqrt(((x + 120) / 380) ** 2 + ((z + 20) / 400) ** 2)) * 2.2;          // 鲸头与前身
-  m = Math.max(m, (1 - Math.sqrt(((x - 190) / 280) ** 2 + ((z + 60) / 250) ** 2)) * 2.2); // 后身
-  m = Math.max(m, capMask(x, z, -80, 150, 170, 255, 175, 150));   // 腹部(南)
-  m = Math.max(m, capMask(x, z, 430, -70, 640, -15, 75, 42));     // 尾柄
-  m = Math.max(m, capMask(x, z, 640, -15, 765, -140, 45, 16));    // 尾鳍北叶
-  m = Math.max(m, capMask(x, z, 640, -15, 765, 105, 45, 16));     // 尾鳍南叶
-  m = Math.max(m, capMask(x, z, 260, -200, 345, -310, 90, 60));   // 背鳍雪山连脊
-  m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
-  m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
+  let m = -9;
+  if (x > -540 && x < 850 && z > -400 && z < 540) {   // 🐋 鲸形主岛包围盒(盒外 9 组 capMask 全免)
+    m = (1 - Math.sqrt(((x + 120) / 380) ** 2 + ((z + 20) / 400) ** 2)) * 2.2;          // 鲸头与前身
+    m = Math.max(m, (1 - Math.sqrt(((x - 190) / 280) ** 2 + ((z + 60) / 250) ** 2)) * 2.2); // 后身
+    m = Math.max(m, capMask(x, z, -80, 150, 170, 255, 175, 150));   // 腹部(南)
+    m = Math.max(m, capMask(x, z, 430, -70, 640, -15, 75, 42));     // 尾柄
+    m = Math.max(m, capMask(x, z, 640, -15, 765, -140, 45, 16));    // 尾鳍北叶
+    m = Math.max(m, capMask(x, z, 640, -15, 765, 105, 45, 16));     // 尾鳍南叶
+    m = Math.max(m, capMask(x, z, 260, -200, 345, -310, 90, 60));   // 背鳍雪山连脊
+    m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
+    m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
+  }
   m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
   m = Math.max(m, (1 - Math.hypot(x - TRU.x, z - TRU.z) / TRU.r) * 1.8);  // 楚门的世界·桃源岛
   m = Math.max(m, (1 - Math.hypot(x - MID.x, z - MID.z) / MID.r) * 1.8);  // 中土
@@ -199,7 +217,7 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
-  for (const s of NISLES) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
+  for (const s of nislesNear(x, z)) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带(空间索引)
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
       let inn = false, dmin = 1e9;
@@ -280,10 +298,10 @@ function mouthDist(x, z) {                          // 嘴线(头部南缘的弧
 function height(x, z) {
   const fall = smooth01(clamp(islandMask(x, z), 0, 1));
   // 域扭曲梯度噪声:内陆起伏更有机、有河谷走向(振幅与原值噪声一致,不改水位/海岸线)
-  let h = -9 + fall * (13 + warpFbm(x * .009, z * .009) * 14);
+  let h = fall > 0 ? -9 + fall * (13 + warpFbm(x * .009, z * .009) * 14) : -9;   // 开阔海面免算域扭曲噪声
   const md = Math.hypot(x - 340, z + 320);            // 东北雪山(背鳍)
   // 脊状多重分形:山坡刻出山脊线,峰高仍封顶 55,不影响营地整平
-  h += smooth01(clamp(1 - md / 200, 0, 1)) ** 2 * 55 * (.7 + .3 * ridged(x * .028, z * .028, 4));
+  if (md < 200) h += smooth01(clamp(1 - md / 200, 0, 1)) ** 2 * 55 * (.7 + .3 * ridged(x * .028, z * .028, 4));   // 雪山外免算脊状分形
   for (const zn of ZONES3D) {                          // 区域整平
     const zd = Math.hypot(x - zn.x, z - zn.z);
     const w = smooth01(clamp(1 - zd / (zn.r * 1.25), 0, 1));
@@ -365,7 +383,7 @@ function height(x, z) {
   q(PUR.x, PUR.z + PUR.r + 20, 15, 2.2, .95);                                                // 炼狱山渡口浅滩
   q(UNJ.x, UNJ.z, UNJ.r * .96, 6, .97);                                                      // 未竟之都:整岛白石平台
   q(UNJ.x, UNJ.z + UNJ.r + 18, 15, 2.2, .95);                                                // 未竟之都渡口浅滩
-  for (const s of NISLES) {                                                                  // 海洋文学带地形
+  for (const s of nislesNear(x, z)) {                                                        // 海洋文学带地形(空间索引)
     if (s.key === 'atl') { q(594, 846, 62, 7); q(502, 928, 56, 7); q(548, 762, 42, 6); q(s.dock[0], s.dock[1], 13, 2.2, .95); continue; }   // 月牙:基座沿弧,不填潟湖
     if (s.key === 'wg') { q(1615, -95, 62, 6); q(1568, -72, 46, 6); q(1672, -102, 46, 6); q(s.dock[0], s.dock[1], 13, 2.2, .95); continue; }   // 雾港:基座居陆侧,不填港湾
     q(s.x, s.z, s.r, s.h);
@@ -2536,7 +2554,7 @@ function updateDayNight(t) {
 }
 
 /* --- 地形网格 --- */
-const TER = 4000, SEG = MOBILE ? 190 : 300;
+const TER = 4000, SEG = MOBILE ? 240 : 400;   // 地表 2.0:A 提速后加密(间距 21→16.7 / 13.3→10)
 /* 视觉着地高度:按地形网格双线性采样,与渲染三角面贴合(防人物浮空/陷入) */
 function heightMesh(x, z) {
   const st = TER / SEG, hx = (x + TER / 2) / st, hz = (z + TER / 2) / st;
@@ -2567,6 +2585,9 @@ function heightMesh(x, z) {
     return Math.sqrt(best);
   }
   const cGrassDry = new THREE.Color(0x9caf5e);   // 高处/向阳的干草色
+  const SEASON9 = (m9 => m9 >= 3 && m9 <= 5 ? 'spring' : m9 >= 6 && m9 <= 8 ? 'summer' : m9 >= 9 && m9 <= 11 ? 'autumn' : 'winter')(new Date().getMonth() + 1);
+  if (SEASON9 === 'autumn') { cGrass1.offsetHSL(-.08, .04, -.01); cGrass2.offsetHSL(-.08, .04, -.01); cGrassDry.offsetHSL(-.05, .05, 0); }   // 秋:草色转琥珀
+  const cWet9 = new THREE.Color(0xbfa478), cFoam9 = new THREE.Color(0xf2efe6), cDeep9 = new THREE.Color(0x2e5f6e), cBloom9 = new THREE.Color(0xf2b8c6);
   // 第一遍:每顶点只算一次 height(),存高度;坡度/曲率下一遍从网格邻居取(零额外 height 调用)
   const W = SEG + 1, HT = new Float32Array(pos.count);
   for (let i = 0; i < pos.count; i++) { const h = height(pos.getX(i), pos.getZ(i)); pos.setY(i, h); HT[i] = h; }
@@ -2586,7 +2607,7 @@ function heightMesh(x, z) {
     } else if (Math.hypot(x - UNJ.x, z - UNJ.z) < 112 && h > 1) {   // 未竟之都:白石铺地
       c = fbm(x * .12, z * .12) > .5 ? new THREE.Color(0xd8d4c8) : new THREE.Color(0xc9c4b6);
     } else if (h < -2) {
-      c = cSea.clone();
+      c = cSea.clone().lerp(cDeep9, smooth01(clamp((-h - 2) / 15, 0, 1)));   // 浅滩→深海渐变
     } else {
       // —— splat 风:高度平滑混合 沙→草→岩→雪(边界带噪声抖动) ——
       const jit = (gj - .5) * 1.6;
@@ -2598,6 +2619,10 @@ function heightMesh(x, z) {
       // —— 侵蚀观感:曲率明暗 ——
       if (lap > .12) c.multiplyScalar(clamp(1 - lap * .22, .62, 1));      // 凹处汇水/背阴 → 压暗成沟
       else if (lap < -.12) c.lerp(cRock, clamp(-lap * .32, 0, .5));       // 凸处山脊/棱线 → 露岩
+      // 岸线水感:湿沙带 + 浪沫白线
+      if (h < 1.6) c.lerp(cWet9, (1 - clamp(h / 1.6, 0, 1)) * .55);
+      const fj9 = Math.abs(h - .22 + (gj - .5) * .3);
+      if (fj9 < .16) c.lerp(cFoam9, (1 - fj9 / .16) * (.35 + gj * .45));
       // 泥土小路
       const pd = pathDist(x, z);
       if (pd < 4.2) c = cPath.clone();
@@ -2605,6 +2630,18 @@ function heightMesh(x, z) {
       // 鲸嘴线 / 眼圈
       if (h > -1 && mouthDist(x, z) < 5) c.lerp(cMouth, .8);
       else if (h > 0 && Math.abs(Math.hypot(x - WHALE_EYE.x, z - WHALE_EYE.z) - WHALE_EYE.r) < 5) c.lerp(cMouth, .8);
+      // 🍂 地表换季:冬雪线 33→13 全岛披白;春撒樱色噪点
+      if (SEASON9 === 'winter') { c.lerp(cSnow, smooth01(clamp((h - 13 + jit * 2) / 7, 0, 1)) * .9); if (h > 1.2) c.offsetHSL(0, -.14, .03); }
+      else if (SEASON9 === 'spring' && h > 1.5 && h < 20 && fbm(x * .13 + 7, z * .13) > .8) c.lerp(cBloom9, .45);
+      // 🛤️ 每岛小径:码头 → 岛心(走空间索引,近岛才算)
+      if (h > .6) for (const s9 of nislesNear(x, z)) {
+        const abx9 = s9.x - s9.dock[0], abz9 = s9.z - s9.dock[1];
+        const t9 = clamp(((x - s9.dock[0]) * abx9 + (z - s9.dock[1]) * abz9) / (abx9 * abx9 + abz9 * abz9), 0, 1);
+        const pdx9 = x - (s9.dock[0] + abx9 * t9), pdz9 = z - (s9.dock[1] + abz9 * t9);
+        const pd9 = pdx9 * pdx9 + pdz9 * pdz9;
+        if (pd9 < 5.76) { c.lerp(cPath, .8); break; }
+        else if (pd9 < 25) { c.lerp(cPath, (5 - Math.sqrt(pd9)) / 2.6 * .45); break; }
+      }
     }
     colors.push(c.r, c.g, c.b);
   }
@@ -7078,7 +7115,7 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
 {
-  const GN = MOBILE ? 1000 : 2400, R = MOBILE ? 30 : 42;
+  const GN = MOBILE ? 1000 : 3400, R = MOBILE ? 30 : 48;   // F:近景草加密
   const bladeGeo = new THREE.ConeGeometry(.055, .62, 3);   // 细小草叶(更像草,不像圆锥)
   bladeGeo.translate(0, .31, 0);   // 基部落到 y=0,便于自底摇摆
   grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
@@ -7100,9 +7137,10 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   scene.add(grassBlades);
   grassBlades.userData = { GN, R, rnd: mulberry32(303) };
   const gc = [new THREE.Color(0x5aa048), new THREE.Color(0x6cb556), new THREE.Color(0x4c8c40), new THREE.Color(0x7fb85e)];
+  { const t9 = { spring: [.02, .06, .03], autumn: [-.09, .03, -.02], winter: [-.04, -.32, .1] }[SEASON]; if (t9) gc.forEach(c9 => c9.offsetHSL(t9[0], t9[1], t9[2])); }   // 草叶随季
   for (let i = 0; i < GN; i++) grassBlades.setColorAt(i, gc[i % 4]);
   // 野花:草丛间零星点缀(实例化,随草一起重铺)
-  const FN = MOBILE ? 140 : 320;
+  const FN = MOBILE ? 140 : 460;
   flowerInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.26, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), FN);
   flowerInst.frustumCulled = false;
   scene.add(flowerInst);
@@ -7110,7 +7148,7 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   const fc = [new THREE.Color(0xe8b4c8), new THREE.Color(0xffd76a), new THREE.Color(0xffffff), new THREE.Color(0xd94f6b), new THREE.Color(0x9a7fd6)];
   for (let i = 0; i < FN; i++) flowerInst.setColorAt(i, fc[i % 5]);
   // 碎石:地表零星石块(随草一起重铺)
-  const KN = MOBILE ? 70 : 150;
+  const KN = MOBILE ? 70 : 210;
   rockInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.55, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), KN);
   rockInst.frustumCulled = false;
   scene.add(rockInst);
