@@ -2553,20 +2553,25 @@ function updateDayNight(t) {
   return da;
 }
 
-/* --- 地形网格 --- */
-const TER = 4000, SEG = MOBILE ? 240 : 400;   // 地表 2.0:A 提速后加密(间距 21→16.7 / 13.3→10)
-/* 视觉着地高度:按地形网格双线性采样,与渲染三角面贴合(防人物浮空/陷入) */
+/* --- 地形网格(地表 3.0:8×8 分块视锥剔除 + 全局高度场缓存 + 解析法线无缝) --- */
+const TER = 4000, SEG = MOBILE ? 240 : 400, TCH = 8, TSEG = SEG / TCH;
+let HTG = null;   // 全局高度场晶格(建面时填充,供 heightMesh/植被 O(1) 采样)
+/* 视觉着地高度:直接查高度场晶格(原为每次 4 次 height() 解析计算) */
 function heightMesh(x, z) {
   const st = TER / SEG, hx = (x + TER / 2) / st, hz = (z + TER / 2) / st;
   const ix = Math.floor(hx), iz = Math.floor(hz), fx = hx - ix, fz = hz - iz;
-  const x0 = ix * st - TER / 2, z0 = iz * st - TER / 2;
-  const h00 = height(x0, z0), h10 = height(x0 + st, z0), h01 = height(x0, z0 + st), h11 = height(x0 + st, z0 + st);
+  if (!HTG || ix < 0 || iz < 0 || ix >= SEG || iz >= SEG) {
+    const x0 = ix * st - TER / 2, z0 = iz * st - TER / 2;
+    const h00 = height(x0, z0), h10 = height(x0 + st, z0), h01 = height(x0, z0 + st), h11 = height(x0 + st, z0 + st);
+    return h00 * (1 - fx) * (1 - fz) + h10 * fx * (1 - fz) + h01 * (1 - fx) * fz + h11 * fx * fz;
+  }
+  const W9 = SEG + 1, b9 = iz * W9 + ix;
+  const h00 = HTG[b9], h10 = HTG[b9 + 1], h01 = HTG[b9 + W9], h11 = HTG[b9 + W9 + 1];
   return h00 * (1 - fx) * (1 - fz) + h10 * fx * (1 - fz) + h01 * (1 - fx) * fz + h11 * fx * fz;
 }
 {
-  const g = new THREE.PlaneGeometry(TER, TER, SEG, SEG);
-  g.rotateX(-Math.PI / 2);
-  const pos = g.attributes.position, colors = [];
+  const ST9 = TER / SEG, W = SEG + 1, VN9 = W * W;
+  const colors = [];
   const cSand = new THREE.Color(0xe4d5a2), cGrass1 = new THREE.Color(0x74ad58), cGrass2 = new THREE.Color(0x639b4c),
         cRock = new THREE.Color(0x8d8577), cSnow = new THREE.Color(0xeef3f5), cSea = new THREE.Color(0xcdbf92),
         cPath = new THREE.Color(0xcdb98c), cMouth = new THREE.Color(0x54453a);
@@ -2588,11 +2593,12 @@ function heightMesh(x, z) {
   const SEASON9 = (m9 => m9 >= 3 && m9 <= 5 ? 'spring' : m9 >= 6 && m9 <= 8 ? 'summer' : m9 >= 9 && m9 <= 11 ? 'autumn' : 'winter')(new Date().getMonth() + 1);
   if (SEASON9 === 'autumn') { cGrass1.offsetHSL(-.08, .04, -.01); cGrass2.offsetHSL(-.08, .04, -.01); cGrassDry.offsetHSL(-.05, .05, 0); }   // 秋:草色转琥珀
   const cWet9 = new THREE.Color(0xbfa478), cFoam9 = new THREE.Color(0xf2efe6), cDeep9 = new THREE.Color(0x2e5f6e), cBloom9 = new THREE.Color(0xf2b8c6);
-  // 第一遍:每顶点只算一次 height(),存高度;坡度/曲率下一遍从网格邻居取(零额外 height 调用)
-  const W = SEG + 1, HT = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) { const h = height(pos.getX(i), pos.getZ(i)); pos.setY(i, h); HT[i] = h; }
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i), h = HT[i];
+  // 第一遍:每晶格点只算一次 height(),存全局高度场;坡度/曲率从邻居取
+  const HT = new Float32Array(VN9);
+  for (let i = 0; i < VN9; i++) HT[i] = height((i % W) * ST9 - TER / 2, ((i / W) | 0) * ST9 - TER / 2);
+  HTG = HT;
+  for (let i = 0; i < VN9; i++) {
+    const x = (i % W) * ST9 - TER / 2, z = ((i / W) | 0) * ST9 - TER / 2, h = HT[i];
     const gx = i % W, gz = (i / W) | 0;
     const hR = HT[gx < W - 1 ? i + 1 : i], hL = HT[gx > 0 ? i - 1 : i];
     const hF = HT[gz < W - 1 ? i + W : i], hB = HT[gz > 0 ? i - W : i];
@@ -2645,14 +2651,42 @@ function heightMesh(x, z) {
     }
     colors.push(c.r, c.g, c.b);
   }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  g.computeVertexNormals();
+  // 解析法线:全局中央差分(分块边界零接缝,免 computeVertexNormals)
+  const NRM = new Float32Array(VN9 * 3);
+  for (let i = 0; i < VN9; i++) {
+    const gx9 = i % W, gz9 = (i / W) | 0;
+    const hL = HT[gz9 * W + Math.max(gx9 - 1, 0)], hR = HT[gz9 * W + Math.min(gx9 + 1, W - 1)];
+    const hB = HT[Math.max(gz9 - 1, 0) * W + gx9], hF = HT[Math.min(gz9 + 1, W - 1) * W + gx9];
+    const nx9 = hL - hR, ny9 = 2 * ST9, nz9 = hB - hF, nl9 = Math.hypot(nx9, ny9, nz9);
+    NRM[i * 3] = nx9 / nl9; NRM[i * 3 + 1] = ny9 / nl9; NRM[i * 3 + 2] = nz9 / nl9;
+  }
   const terrainMat = MOBILE
     ? new THREE.MeshLambertMaterial({ vertexColors: true })
     : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .96, metalness: 0 });
-  const terrain = new THREE.Mesh(g, terrainMat);
-  terrain.receiveShadow = true; terrain.castShadow = !MOBILE;
-  scene.add(terrain);
+  const w2 = TSEG + 1;
+  for (let chz = 0; chz < TCH; chz++) for (let chx = 0; chx < TCH; chx++) {   // 8×8 分块:视锥外整块不进顶点管线
+    const cpos = new Float32Array(w2 * w2 * 3), ccol = new Float32Array(w2 * w2 * 3), cnrm = new Float32Array(w2 * w2 * 3);
+    for (let vz = 0; vz <= TSEG; vz++) for (let vx = 0; vx <= TSEG; vx++) {
+      const gi = (chz * TSEG + vz) * W + (chx * TSEG + vx), li = vz * w2 + vx;
+      cpos[li * 3] = (gi % W) * ST9 - TER / 2; cpos[li * 3 + 1] = HT[gi]; cpos[li * 3 + 2] = ((gi / W) | 0) * ST9 - TER / 2;
+      ccol[li * 3] = colors[gi * 3]; ccol[li * 3 + 1] = colors[gi * 3 + 1]; ccol[li * 3 + 2] = colors[gi * 3 + 2];
+      cnrm[li * 3] = NRM[gi * 3]; cnrm[li * 3 + 1] = NRM[gi * 3 + 1]; cnrm[li * 3 + 2] = NRM[gi * 3 + 2];
+    }
+    const cidx = [];
+    for (let vz = 0; vz < TSEG; vz++) for (let vx = 0; vx < TSEG; vx++) {
+      const a9 = vz * w2 + vx, b9 = a9 + 1, c9 = a9 + w2, d9 = c9 + 1;
+      cidx.push(a9, c9, b9, b9, c9, d9);
+    }
+    const cg = new THREE.BufferGeometry();
+    cg.setAttribute('position', new THREE.BufferAttribute(cpos, 3));
+    cg.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
+    cg.setAttribute('normal', new THREE.BufferAttribute(cnrm, 3));
+    cg.setIndex(cidx); cg.computeBoundingSphere();
+    const mch = new THREE.Mesh(cg, terrainMat);
+    mch.receiveShadow = true; mch.castShadow = !MOBILE;
+    mch.userData.ter9 = true;   // 免入岛屿分桶:远处地形轮廓常驻地平线
+    scene.add(mch);
+  }
 }
 /* --- 海洋:桌面用反射水面着色器,手机用轻量波浪 --- */
 let waterGeo = null, oceanWater = null, mobileWater = null;
@@ -5871,7 +5905,7 @@ function buildMinimapBase() {
   const img = c.createImageData(mm.width, mm.height);
   for (let py = 0; py < mm.height; py++) for (let px = 0; px < mm.width; px++) {
     const x = (px / mm.width - .5) * 3950, z = (py / mm.height - .5) * 3850;
-    const h = height(x, z);
+    const h = heightMesh(x, z);
     let r, g2, b;
     if (h < -.5) { r = 29; g2 = 77; b = 112; }
     else if (h < 1.8) { r = 216; g2 = 200; b = 150; }
@@ -5944,7 +5978,7 @@ function renderBigMap() {
     const img = c.createImageData(W3, H3);
     for (let py = 0; py < H3; py += 2) for (let px = 0; px < W3; px += 2) {
       const x = (px / W3 - .5) * SC2, z = (.5 - py / H3) * (SC2 * H3 / W3);
-      const h = height(x, z);
+      const h = heightMesh(x, z);
       let r2, g3, b2;
       if (h < -.5) { r2 = 24; g3 = 62; b2 = 92; }
       else if (h < 1.8) { r2 = 216; g3 = 200; b2 = 150; }
@@ -7172,7 +7206,7 @@ function redistributeGrass(cx, cz) {
   const u = grassBlades.userData, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
   for (let i = 0; i < u.GN; i++) {
     const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
-    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
     if (h > 2.6 && h < 19 && grassOK(x, z) && fbm(x * .045, z * .045) > .5) {   // 草地高度带 + 地理门控 + 噪声成簇(留出空地)
       e.set(0, u.rnd() * 6.2832, 0);
       q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .7 + u.rnd() * .5, .9 + u.rnd() * .5);
@@ -7189,7 +7223,7 @@ function redistributeGrass(cx, cz) {
     const fu = flowerInst.userData;
     for (let i = 0; i < fu.FN; i++) {
       const a = fu.rnd() * 6.2832, rr = Math.sqrt(fu.rnd()) * fu.R;
-      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
       if (h > 2.8 && h < 17 && grassOK(x, z)) { q.setFromEuler(e.set(0, fu.rnd() * 6.2832, 0)); s.set(1, 1, 1); m4.compose(p.set(x, h + .45, z), q, s); }
       else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
       flowerInst.setMatrixAt(i, m4);
@@ -7202,7 +7236,7 @@ function redistributeGrass(cx, cz) {
     const ku = rockInst.userData;
     for (let i = 0; i < ku.KN; i++) {
       const a = ku.rnd() * 6.2832, rr = Math.sqrt(ku.rnd()) * ku.R;
-      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
       if (h > 2 && h < 26) { q.setFromEuler(e.set(ku.rnd() * 3, ku.rnd() * 6.28, ku.rnd() * 3)); const sc = .5 + ku.rnd() * 1.4; s.set(sc, sc * .7, sc); m4.compose(p.set(x, h + .1, z), q, s); }
       else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
       rockInst.setMatrixAt(i, m4);
@@ -7235,7 +7269,7 @@ function redistributeFireflies(cx, cz) {
   const u = fireflies.userData, b = u.base;
   for (let i = 0; i < u.FF; i++) {
     const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
-    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
     b[i * 3] = x; b[i * 3 + 2] = z;
     b[i * 3 + 1] = (h > 2.2 && h < 20) ? h + 1.2 + u.rnd() * 2.5 : -999;
   }
@@ -7274,7 +7308,7 @@ function redistributeMist(cx, cz) {
   const u = mistPts.userData, b = u.base;
   for (let i = 0; i < u.MN; i++) {
     const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
-    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = height(x, z);
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
     b[i * 3] = x; b[i * 3 + 2] = z;
     b[i * 3 + 1] = (h > 1.6 && h < 15) ? h + 1.8 : -999;   // 低洼草地才起雾
   }
@@ -7361,6 +7395,23 @@ if (EVENT === 'kites') for (let i9 = 0; i9 < 2; i9++) addNpc({ x: -44 + i9 * 88,
     else if (hs9 % 10 === 5 && !(n.opts && n.opts.cane)) { const st9 = cyl(.045, .055, 1.9, M.woodDark, 5); st9.position.set(.56 * w9, .95, .12); st9.rotation.z = .1; n.g.add(st9); }
   }
 }
+/* ===== 🧱 障碍空间索引:玩家推离从全扫改查表(40m 网格,cirObs 数量变化自动重建) ===== */
+let OIDX = null, OIDX_N = -1;
+const OCELL = 40, OW = 106;
+function obstNear(x, z) {
+  if (!OIDX || OIDX_N !== cirObs.length) {
+    OIDX = new Array(OW * OW).fill(null); OIDX_N = cirObs.length;
+    for (const o of cirObs) {
+      const pad = o.r + 3;
+      const x0 = Math.max(0, ((o.x + 2120 - pad) / OCELL) | 0), x1 = Math.min(OW - 1, ((o.x + 2120 + pad) / OCELL) | 0);
+      const z0 = Math.max(0, ((o.z + 2120 - pad) / OCELL) | 0), z1 = Math.min(OW - 1, ((o.z + 2120 + pad) / OCELL) | 0);
+      for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) { const k = cz * OW + cx; (OIDX[k] || (OIDX[k] = [])).push(o); }
+    }
+  }
+  const cx = ((x + 2120) / OCELL) | 0, cz = ((z + 2120) / OCELL) | 0;
+  if (cx < 0 || cz < 0 || cx >= OW || cz >= OW) return NIDX_EMPTY;
+  return OIDX[cz * OW + cx] || NIDX_EMPTY;
+}
 /* ===== 🚋 青丘轨车:广场站 ⇄ 海岸站(70° 净空走廊,可搭乘) ===== */
 const TRAM_A = [1764.1, 251.3], TRAM_B = [1781.9, 300.1];
 const TRAM_LEN = Math.hypot(TRAM_B[0] - TRAM_A[0], TRAM_B[1] - TRAM_A[1]);
@@ -7377,7 +7428,7 @@ function tramStep(dt) {
     else if (tramPos <= 0) { tramPos = 0; tramDir = 1; tramWait = 6; bell9(); if (tramRiding) alight9('🚋 圆枢广场站到了'); }
   }
   const tx9 = TRAM_A[0] + (TRAM_B[0] - TRAM_A[0]) * tramPos, tz9 = TRAM_A[1] + (TRAM_B[1] - TRAM_A[1]) * tramPos;
-  qqTram.position.set(tx9, Math.max(height(tx9, tz9), .3) + .12, tz9);
+  qqTram.position.set(tx9, Math.max(heightMesh(tx9, tz9), .3) + .12, tz9);
   if (tramRiding) { player.position.set(tx9, qqTram.position.y + 1.1, tz9); vy = 0; }
 }
 /* 🌫️ 雾笛:每次踏入青丘,低鸣一声(D) */
@@ -7821,7 +7872,7 @@ function loop() {
     player.position.z = Math.max(-1960, Math.min(1960, player.position.z));
     // 障碍推离
     const pr = .9;
-    for (const o of cirObs) {
+    for (const o of obstNear(player.position.x, player.position.z)) {
       if (o.top && player.position.y > o.top) continue;   // 高处放行(如进步之塔断口平台)
       const dx = player.position.x - o.x, dz = player.position.z - o.z, d = Math.hypot(dx, dz), min = o.r + pr;
       if (d < min && d > .001) { player.position.x = o.x + dx / d * min; player.position.z = o.z + dz / d * min; }
@@ -8436,6 +8487,7 @@ const BUCKETS = [
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
+    if (o.userData && o.userData.ter9) continue;   // 地形块自带视锥剔除,不入分桶
     if (o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters && o.geometry.parameters.width >= 3000) continue;   // 海面
     if (o.material && o.material.uniforms && o.material.uniforms.waterColor) continue;   // 反射海面
     if (o.geometry && o.geometry.type === 'PlaneGeometry' && o.material && o.material.vertexColors) continue;   // 地形
