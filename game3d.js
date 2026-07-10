@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=14';
-import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST } from './w-osm.js?v=8';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=15';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST } from './w-osm.js?v=9';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -17,7 +17,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=14';
+import { THEMES, NI_QUESTS } from './w-config.js?v=15';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=10';
 
@@ -153,6 +153,7 @@ const NISLES = [
   { key: 'atl', x: 540, z: 850, r: 88, mask: 2.0, h: 7, dock: [494, 777] },     // 沉环之岛(圣托里尼×柏拉图)
   { key: 'aeol', x: 900, z: 1440, r: 88, mask: 2.0, h: 7, peak: { r: 32, hh: 15 }, dock: [854, 1367] },        // 风袋岛(埃奥利×奥德赛风神)
   { key: 'tusi', x: -1320, z: -1160, r: 88, mask: 2.0, h: 8, peak: { r: 34, hh: 16 }, dock: [-1255, -1103] },  // 讲故事人之岛(萨摩亚×史蒂文森)
+  { key: 'qq', x: 1760, z: 240, r: 96, mask: 2.0, h: 6, dock: [1690, 207] },   // 青丘(放射九街滨海古城×山海经九尾狐乡)
 ];
 const NI_DEST = {}, NI_MSG = {};   // 渡口坐标 / 到达播报(由 NI_CONTENT 框架填充)
 for (const s of NISLES) if (s.key !== 'trs') SAVE_FIELDS.push('nq_' + s.key);   // 各岛故事线存档位(金银岛用 treasure)
@@ -1839,7 +1840,7 @@ function titleList() {
     { id: 'honor1', name: '🥇 鲸背赞助人', got: PSTORE.getItem('w1001.honor1') === '1', note: '基金会荣誉(300 ⚡)' },
     { id: 'honor2', name: '🎗️ 灯塔守护者', got: PSTORE.getItem('w1001.honor2') === '1', note: '基金会荣誉(800 ⚡)' },
     { id: 'fundstone', name: '❤️ 群岛基石', got: PSTORE.getItem('w1001.fundstone') === '1', note: '累计捐赠 2000 ⚡' },
-    { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍八道地方味' },
+    { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍九道地方味' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1952,7 +1953,7 @@ function openJournal() {
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
     ['🧭 组合群岛(十八座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl', 'aeol', 'tusi'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 18 ? '✅ 勘察完毕' : `⏳ ${n}/18`; })()],
-    ['🍜 群岛食单(八道地方味)', PSTORE.getItem('w1001.foodie') === '1' ? '✅ 环球食客' : `⏳ ${(PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean).length}/8`],
+    ['🍜 群岛食单(九道地方味)', PSTORE.getItem('w1001.foodie') === '1' ? '✅ 环球食客' : `⏳ ${(PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean).length}/9`],
     ['🏠 旅人小屋(主岛东滩)', PSTORE.getItem('w1001.home') === '1' ? '✅ 已置业' : '⏳ 地契 200 ⚡'],
     ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4, 5, 6].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/6`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
@@ -2030,9 +2031,9 @@ function openGuide() {
     <div class="cardDesc">
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
-    <b>3. 出海远行</b>——五十九座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——59 章集满,便是「环球旅行家」。<br><br>
-    <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);八座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍八道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
+    <b>3. 出海远行</b>——六十座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
+    <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。<br><br>
     <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
@@ -6096,8 +6097,9 @@ const FOODS = [
   ['dates', '巴格达蜜枣', '🌴', 4, '一千零一夜里,讲故事的人靠它续命到天亮。', 'swim', '游泳提速 3 分钟'],
   ['coco', '图西塔拉椰子可可', '🥥', 5, '讲故事人的凉台特供,孩子们排队的味道。', 'run', '奔跑 +12% · 3 分钟'],
   ['tea', '大观园枫露茶', '🍵', 8, '三四次后才出色。宝玉为它摔过杯子。', 'ride', '骑行 +15% · 3 分钟'],
+  ['menzi', '青丘焖子', '🍢', 5, '地瓜粉煎出焦壳,淋上蒜汁麻酱。轨车站旁的老摊,狐大夫也排队。', 'run', '奔跑 +12% · 3 分钟'],
 ];
-const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686]];
+const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686], ['menzi', 1782, 260]];
 const eaten = new Set((PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean));
 const BUFF = { run: 0, ride: 0 };
 const buffBar = document.createElement('div');
@@ -6119,7 +6121,7 @@ function openFood(fid) {
   const had = eaten.has(fid);
   cardBody.innerHTML = `<div class="cardHead" style="background:#5a4a2e">${F[2]} 小吃摊 · ${esc(F[1])}</div>
     <div class="cardMedia"><div class="paperRoll">${F[2]}</div></div>
-    <div class="cardDesc">${esc(F[4])}<br><span style="color:#2c7a4b;font-size:12.5px">功效:${F[6]}</span>${had ? '<br><span style="color:#8a7c62;font-size:12px">✅ 已录入食单(' + eaten.size + '/8)</span>' : ''}</div>
+    <div class="cardDesc">${esc(F[4])}<br><span style="color:#2c7a4b;font-size:12.5px">功效:${F[6]}</span>${had ? '<br><span style="color:#8a7c62;font-size:12px">✅ 已录入食单(' + eaten.size + '/9)</span>' : ''}</div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-eat="${fid}" ${sb < F[3] ? 'disabled' : ''}>来一份 · ${F[3]} ⚡</button></div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-eat]')?.addEventListener('click', () => {
@@ -6127,8 +6129,8 @@ function openFood(fid) {
     if (F[5] === 'swim') chowderT = 180; else BUFF[F[5]] = 180;
     if (!eaten.has(fid)) {
       eaten.add(fid); PSTORE.setItem('w1001.eaten', [...eaten].join(','));
-      if (eaten.size >= 8 && PSTORE.getItem('w1001.foodie') !== '1') { PSTORE.setItem('w1001.foodie', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🍜 八道地方味集齐!新称号「环球食客」+⭐——胃比护照先环游了世界'), 1500); }
-      else toast(F[2] + ' 好吃!食单收录(' + eaten.size + '/8)· ' + F[6]);
+      if (eaten.size >= 9 && PSTORE.getItem('w1001.foodie') !== '1') { PSTORE.setItem('w1001.foodie', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🍜 九道地方味集齐!新称号「环球食客」+⭐——胃比护照先环游了世界'), 1500); }
+      else toast(F[2] + ' 好吃!食单收录(' + eaten.size + '/9)· ' + F[6]);
     } else toast(F[2] + ' 熟悉的味道 · ' + F[6]);
     blip(700); closeModals();
   });

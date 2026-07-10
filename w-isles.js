@@ -5,7 +5,7 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES } from './w-osm.js?v=7';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS, OSM_VEN_BRIDGES, OSM_QQ, OSM_QQ_ROADS } from './w-osm.js?v=9';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
 export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 → 贴地带面(街道/运河),单网格
   const { THREE, height, scene } = C;
@@ -1411,6 +1411,68 @@ export function makeNIContent(C) {
       for (let i = 0; i < 6; i++) { const st9 = cyl(.5, .7, 3 + (i % 3), lam(0x6e6a62), 6);   // 风向石林
         st9.position.set(gx + 14 + (i % 3) * 4, height(gx + 14, gz + 10) + 1.6, gz + 8 + Math.floor(i / 3) * 4); st9.rotation.z = .12; scene.add(st9); }
       const quay9 = box(20, 1, 5, M.stone); quay9.position.set(gx - 8, Math.max(height(gx - 8, gz + 36), .2) + .5, gz + 36); scene.add(quay9);   // 无风港石堤
+    },
+  },
+  qq: {
+    name: '青丘', en: 'Qingqiu', icon: '🦊', theme: 'qq',
+    desc: '组合岛:放射九街的滨海古城 × 《山海经》九尾狐乡',
+    ferryMsg: '🦊 青丘到了。九条街从圆广场散开,像九条尾巴——数数看,总有一条数不清',
+    lore: {
+      qqsquare: { icon: '⭕', color: '#8a5a3a', title: '九街圆枢', en: 'The Nine-Street Circle', hint: '广场即阵眼',
+        desc: '一座圆形广场,九条大街从这里放射出去,像车轮的辐条,也像某种兽的尾巴。周围一圈穹顶廊柱的百年老楼,还是旧时的样子。本地人说:白天数是九条街,暮色里再数,总会多出一条。' },
+      qqtram: { icon: '🚋', color: '#2e5a44', title: '百年轨车', en: 'The Century Tram', hint: '一百年只跑一条线',
+        desc: '墨绿色的老轨车停在街角:铜铃、木窗、漆皮剥落的号牌。它跑了一百年,只跑这一条线——从广场到海。司机说末班车偶尔会多一位乘客:上车不买票,下车不见人,座位上留一撮白毛。' },
+      qqfox: { icon: '🦊', color: '#b8742e', title: '狐大夫医馆', en: 'The Fox Doctor', hint: '食者不蛊',
+        desc: '《山海经·南山经》:青丘之山,有兽焉,其状如狐而九尾,其音如婴儿。医馆木匾写着「食者不蛊」——吃了它就不受妖邪蛊惑。可狐大夫从不开这味药,他只开一句:按时睡觉,少信谣言。' },
+      qqhai: { icon: '⚓', color: '#4a6a8a', title: '赶海雾港', en: 'The Foggy Harbor', hint: '退潮就是赶集',
+        desc: '退潮后的滩涂上全是弯腰的人影:蚬子、海肠、螃蟹。阿婆说赶海和讲故事一个道理——潮水退了,才知道海里藏着什么。雾笛一响,九条街的灯就次第亮起来。' },
+    },
+    spots: [[0, -6, 'qqsquare'], [20, -14, 'qqtram'], [-18, 12, 'qqfox'], [32, 32, 'qqhai']],
+    npcs: [
+      { dx: 22, dz: -8, name: '末班轨车司机', body: 0x2e5a44, hat: 0x2e2e34,
+        lines: ['这条线我跑了四十年,我师傅跑了三十年,他师傅——就是那位不买票的乘客。', '铜铃只在两种时候响:到站,和有故事要开始。', '暮色那趟别坐过站。过了站,街就不止九条了。'] },
+      { dx: -15, dz: 14, name: '狐大夫', body: 0xb8742e, hat: 0xd9a62e, opts: { cane: true },
+        lines: ['《山海经》说食我族者不蛊。可依我行医多年,治蛊最好的药是早睡。', '九条尾巴?谣传。我数过,家祖只有八条半——最后半条被雾港的门夹的。', '你要是暮色时在广场多数出一条街,别慌,顺着狐火走,那条街通海。'] },
+      { dx: 28, dz: 28, name: '赶海阿婆', body: 0x5a6a7a, hat: 0x8a7c62, opts: { wide: 1.1 },
+        lines: ['潮水退一丈,滩涂让三分——海肠这东西,腿快的才捡得着。', '雾笛响就该回头。滩涂上的雾和别处不一样,它认得路,你不认得。', '狐大夫?好人呐。我崴了脚,他给开的药是「三天别赶海」。神医!'] },
+    ],
+    build: (gx, gz) => {
+      osmCity(C, OSM_QQ, gx, gz, 0, [lam(0xcabfa8), lam(0xb8a890), lam(0xd0c0a0)]);   // 真实街区 © OSM
+      osmRoads(C, OSM_QQ_ROADS, gx, gz, 0, new THREE.MeshLambertMaterial({ color: 0x6a665e, side: THREE.DoubleSide }), 1.7, .06);
+      const ph9 = height(gx, gz);   // 圆枢广场 + 九尾狐雕像
+      const disc = cyl(11, 11.6, .5, M.stone, 24); disc.position.set(gx, ph9 + .28, gz); scene.add(disc);
+      const ped = cyl(1.6, 2, 1.6, M.stone, 8); ped.position.set(gx, ph9 + 1.3, gz); scene.add(ped); cirObs.push({ x: gx, z: gz, r: 2.2 });
+      const fxm = lam(0xc08a3e);
+      const bod = box(1.1, .9, 2, fxm); bod.position.set(gx, ph9 + 2.5, gz); scene.add(bod);
+      const hed = box(.7, .6, .7, fxm); hed.position.set(gx, ph9 + 3.05, gz + 1.1); scene.add(hed);
+      for (const s9 of [-1, 1]) { const ear = box(.16, .3, .1, fxm); ear.position.set(gx + s9 * .2, ph9 + 3.45, gz + 1.1); scene.add(ear); }
+      for (let i9 = 0; i9 < 9; i9++) {   // 九条尾巴呈扇形上扬
+        const a9 = (i9 - 4) * .32;
+        const tl = cyl(.09, .24, 1.9, fxm, 5);
+        tl.rotation.x = -2.2; tl.rotation.z = a9;
+        tl.position.set(gx + Math.sin(a9) * 1.1, ph9 + 3.1, gz - 1.5 - Math.cos(a9) * .3);
+        scene.add(tl);
+      }
+      const tx9 = gx + 20, tz9 = gz - 14, th9 = height(tx9, tz9);   // 百年轨车(墨绿)
+      const tram = box(6, 2.2, 2, lam(0x2e5a44)); tram.position.set(tx9, th9 + 1.6, tz9); scene.add(tram); cirObs.push({ x: tx9, z: tz9, r: 3.4 });
+      const trf = box(6.4, .25, 2.3, lam(0x24402f)); trf.position.set(tx9, th9 + 2.85, tz9); scene.add(trf);
+      for (const ox of [-2.2, -.8, .6, 2]) { const win = box(.9, .8, .1, lam(0xbfe3ee)); win.position.set(tx9 + ox, th9 + 1.9, tz9 + 1.02); scene.add(win); }
+      for (const [ox, oz] of [[-2, .95], [2, .95], [-2, -.95], [2, -.95]]) { const wh = cyl(.4, .4, .3, lam(0x222222), 8); wh.rotation.x = Math.PI / 2; wh.position.set(tx9 + ox, th9 + .4, tz9 + oz); scene.add(wh); }
+      const pant = cyl(.05, .05, 1.8, lam(0x333333), 4); pant.rotation.z = .5; pant.position.set(tx9, th9 + 3.7, tz9); scene.add(pant);
+      for (let i9 = 0; i9 < 9; i9++) {   // 狐火:环街九盏,入夜青绿
+        const a9 = i9 / 9 * Math.PI * 2;
+        const lx9 = gx + Math.cos(a9) * 26, lz9 = gz + Math.sin(a9) * 26;
+        const fl = new THREE.PointLight(0x7fe8c0, 0, 26, 2); fl.position.set(lx9, height(lx9, lz9) + 2.6, lz9); fl.userData.pow = 6; nightLamps.push(fl); scene.add(fl);
+        const po9 = cyl(.07, .09, 2.4, M.woodDark, 5); po9.position.set(lx9, height(lx9, lz9) + 1.2, lz9); scene.add(po9);
+      }
+      const mx9 = gx - 18, mz9 = gz + 12, mh9 = height(mx9, mz9);   // 狐大夫医馆
+      const med = box(5, 3, 4, lam(0x8a6a4a)); med.position.set(mx9, mh9 + 1.5, mz9); scene.add(med); cirObs.push({ x: mx9, z: mz9, r: 3.2 });
+      const mrf = new THREE.Mesh(new THREE.ConeGeometry(4, 1.8, 4), lam(0x5a4028)); mrf.rotation.y = Math.PI / 4; mrf.position.set(mx9, mh9 + 3.9, mz9); scene.add(mrf);
+      const mbd = box(2.4, .7, .12, lam(0x3a2a1a)); mbd.position.set(mx9, mh9 + 2.6, mz9 + 2.05); scene.add(mbd);
+      const hx9 = gx + 32, hz9 = gz + 32, hh9 = height(hx9, hz9);   // 雾港:栈桥 + 雾笛柱
+      const pier = box(3, .5, 14, M.woodDark); pier.position.set(hx9, Math.max(hh9, .4) + .3, hz9 + 6); scene.add(pier);
+      const horn = cyl(.5, .7, 3.6, M.stone, 8); horn.position.set(hx9 + 2.4, Math.max(hh9, .4) + 1.8, hz9); scene.add(horn);
+      makeBoat(0x9fb8c8, .9).userData = { anchor: [hx9 - 3, hz9 + 11] };   // 雾港泊船
     },
   },
   tusi: {
