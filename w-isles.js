@@ -5,7 +5,22 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN } from './w-osm.js?v=1';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL } from './w-osm.js?v=2';
+/* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
+function osmCity(C, data, gx, gz, zoff, mats) {
+  const { THREE, height, scene, cirObs } = C;
+  const buckets = mats.map(() => []);
+  data.forEach(([bh9, bcx, bcz, brr, pts9], i9) => {
+    const sh9 = new THREE.Shape();
+    pts9.forEach(([px9, pz9], k9) => k9 ? sh9.lineTo(px9, -pz9) : sh9.moveTo(px9, -pz9));
+    const gg = new THREE.ExtrudeGeometry(sh9, { depth: bh9, bevelEnabled: false });
+    gg.rotateX(-Math.PI / 2);
+    gg.translate(gx, Math.max(height(gx + bcx, gz + zoff + bcz) - .3, .2), gz + zoff);
+    buckets[i9 % mats.length].push(gg);
+    cirObs.push({ x: gx + bcx, z: gz + zoff + bcz, r: Math.min(brr * .8, 8) });
+  });
+  buckets.forEach((gs, i9) => { if (gs.length) scene.add(new THREE.Mesh(mergeGeometries(gs), mats[i9])); });
+}
 export function makeNIContent(C) {
   const { THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat } = C;
   return {
@@ -764,10 +779,7 @@ export function makeNIContent(C) {
         lines: ['灯我擦了三十年。你问哪盏?……你上去过?', '这岛上每个人都觉得别人才是囚犯。包括我。包括你。', '光扫过去的时候别回头——回头的人,档案里都多了一页。'] },
     ],
     build: (gx, gz) => {
-      const mx = gx - 4, mz = gz - 8, mh = height(mx, mz);   // 监狱主楼:混凝土+铁窗
-      const main = box(16, 8, 9, lam(0x707068)); main.position.set(mx, mh + 4, mz); scene.add(main); cirObs.push({ x: mx, z: mz, r: 9 });
-      const wing = box(8, 6, 7, lam(0x686860)); wing.position.set(mx - 11, mh + 3, mz + 2); scene.add(wing); cirObs.push({ x: mx - 11, z: mz + 2, r: 5 });
-      for (let i = 0; i < 6; i++) { const bar = box(.9, 1.3, .12, lam(0x22262c)); bar.position.set(mx - 6.5 + i * 2.6, mh + 5.4, mz + 4.56); scene.add(bar); }
+      osmCity(C, OSM_FOGJAIL, gx, gz, -4, [lam(0x777d84), lam(0x6a7076)]);   // 恶魔岛 19 栋真实布局(© OSM)
       const lx = gx + 24, lz = gz - 20, lh = height(lx, lz);   // 灯塔:白身红顶
       const lt = cyl(1.4, 2, 12, lam(0xe8e4da), 10); lt.position.set(lx, lh + 6, lz); scene.add(lt); cirObs.push({ x: lx, z: lz, r: 2.2 });
       const cap = cyl(1.7, 1.7, 1.6, lam(0xa03a2e), 10); cap.position.set(lx, lh + 12.8, lz); scene.add(cap);
@@ -1243,11 +1255,7 @@ export function makeNIContent(C) {
         lines: ['上船不要问去哪。水认得路。', '涨潮送你出门,退潮接你回家——这城的时刻表是月亮排的。', '桥底下别说愿望,回声会替你改词。'] },
     ],
     build: (gx, gz) => {
-      const cols = [0xc86a5a, 0xd8a05a, 0x8aa06a, 0x6a8ab0, 0xb07a8a, 0xd8c08a];
-      for (let i = 0; i < 8; i++) {   // 两排彩色窄楼夹一条水巷
-        const side = i < 4 ? -1 : 1, bx2 = gx - 10 + (i % 4) * 7, bz2 = gz + 8 + side * 5.5, H2 = 5 + (i % 3) * 1.5, bh2 = height(bx2, bz2);
-        const hs2 = box(5.4, H2, 4, lam(cols[i % 6])); hs2.position.set(bx2, bh2 + H2 / 2, bz2); scene.add(hs2); cirObs.push({ x: bx2, z: bz2, r: 3.2 });
-        for (let w2 = 0; w2 < 2; w2++) { const win2 = box(.8, 1.1, .12, lam(0x2e3440)); win2.position.set(bx2 - 1.2 + w2 * 2.4, bh2 + H2 - 1.6, bz2 - side * 2.06); scene.add(win2); } }
+      osmCity(C, OSM_VENEZIA, gx, gz, 0, [lam(0xc8907a), lam(0xd8b48a), lam(0xb0a08a)]);   // 圣马可区 110 栋真实街区(© OSM)
       const canal = box(30, .25, 4.6, new THREE.MeshPhongMaterial({ color: 0x2a5a6a, shininess: 80, transparent: true, opacity: .85 }));
       canal.position.set(gx, height(gx, gz + 8) + .32, gz + 8); scene.add(canal);   // 水巷
       for (let i = 0; i < 3; i++) {   // 三座小拱桥
@@ -1330,10 +1338,7 @@ export function makeNIContent(C) {
         lines: ['我找了四十年。同行都说我找错了地方——他们说得可能都对。', '柏拉图写的若不是实录,就是预言。两样我都接受。', '我不怕找不到。我怕的是找到以后,没有东西可找了。'] },
     ],
     build: (gx, gz) => {
-      for (let i = 0; i < 6; i++) {   // 崖顶白屋蓝顶
-        const wx2 = gx - 12 + i * 5, wz2 = gz - 4 - (i % 2) * 4, wh3 = height(wx2, wz2);
-        const cube = box(3.6, 3, 3.6, lam(0xf2f0ea)); cube.position.set(wx2, wh3 + 1.5, wz2); scene.add(cube); cirObs.push({ x: wx2, z: wz2, r: 2.4 });
-        if (i % 2) { const dome2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8, 0, 6.283, 0, Math.PI / 2), lam(0x2a6ab0)); dome2.position.set(wx2, wh3 + 3, wz2); scene.add(dome2); } }
+      osmCity(C, OSM_ATL, gx, gz, -6, [lam(0xf2f0ea), lam(0xe8e6de)]);   // 费拉 61 栋真实白镇(© OSM)
       { const wmx = gx + 14, wmz = gz - 18, wmh = height(wmx, wmz);   // 风车
         const tower2 = cyl(1.2, 1.6, 5, lam(0xf2f0ea), 9); tower2.position.set(wmx, wmh + 2.5, wmz); scene.add(tower2); cirObs.push({ x: wmx, z: wmz, r: 1.6 });
         for (let i = 0; i < 6; i++) { const bl = box(.24, 2.6, .06, lam(0xd8d4c8)); const a2 = i / 6 * 6.283; bl.position.set(wmx + Math.sin(a2) * 1.1, wmh + 5.4 + Math.cos(a2) * 1.1, wmz + 1.5); bl.rotation.z = -a2; scene.add(bl); } }
