@@ -7632,7 +7632,7 @@ const endPtr = e => {
   if (dragCam && e.pointerId === dragCam.id) dragCam = null;
 };
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
-addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
+addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 120); }, { passive: true });   // 最远 120:全岛鸟瞰
 
 /* ---------- 主循环 ---------- */
 const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门', bluehole: '🤿 潜入海底蓝洞', airport: '✈️ 航空柜台 · 购票飞行', fund: '❤️ 群岛基金会 · 捐赠与荣誉', food: '🍜 小吃摊 · 尝一口地方味', tailor: '👘 裁缝铺 · 披风与帽子', home: '🏠 旅人小屋' };
