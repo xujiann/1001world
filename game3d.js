@@ -52,6 +52,7 @@ SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   /
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 SAVE_FIELDS.push('aff');   // NPC 好感度
+SAVE_FIELDS.push('eaten', 'home', 'wardrobe');   // 衣食住
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -1835,6 +1836,7 @@ function titleList() {
     { id: 'honor1', name: '🥇 鲸背赞助人', got: PSTORE.getItem('w1001.honor1') === '1', note: '基金会荣誉(300 ⚡)' },
     { id: 'honor2', name: '🎗️ 灯塔守护者', got: PSTORE.getItem('w1001.honor2') === '1', note: '基金会荣誉(800 ⚡)' },
     { id: 'fundstone', name: '❤️ 群岛基石', got: PSTORE.getItem('w1001.fundstone') === '1', note: '累计捐赠 2000 ⚡' },
+    { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍八道地方味' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
     { id: 'crusoe', name: '🏝️ 荒岛求生者', got: f.flot,    note: '集齐五箱漂流物资' },
@@ -1947,6 +1949,8 @@ function openJournal() {
     ['🗞️ 最后一篇报道(未竟之都)', PSTORE.getItem('w1001.unjnews') === '1' ? '✅ 已发稿' : `⏳ 档案 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjn' + i) === '1').length}/3`],
     ['🗣️ 语言迷宫(未竟之都)', PSTORE.getItem('w1001.unjlang') === '1' ? '✅ 三百灯齐亮' : `⏳ 误译碑 ${[1, 2, 3].filter(i => PSTORE.getItem('w1001.unjw' + i) === '1').length}/3`],
     ['🧭 组合群岛(十八座融合岛)', (() => { const n = ['gala', 'moai', 'fogjail', 'kilda', 'gunkan', 'soco', 'skell', 'mada', 'helena', 'komodo', 'sanxian', 'shixia', 'taozhen', 'venezia', 'saga', 'atl', 'aeol', 'tusi'].filter(k => PSTORE.getItem('w1001.nq_' + k) === '1').length; return n >= 18 ? '✅ 勘察完毕' : `⏳ ${n}/18`; })()],
+    ['🍜 群岛食单(八道地方味)', PSTORE.getItem('w1001.foodie') === '1' ? '✅ 环球食客' : `⏳ ${(PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean).length}/8`],
+    ['🏠 旅人小屋(主岛东滩)', PSTORE.getItem('w1001.home') === '1' ? '✅ 已置业' : '⏳ 地契 200 ⚡'],
     ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4, 5, 6].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/6`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
@@ -2625,7 +2629,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
+  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || cat === 'food' || cat === 'tailor' || cat === 'home' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -6069,6 +6073,127 @@ const PC_REPLIES = [
   '下次别只寄照片——把讲这张照片的那顿茶也留下来。',
   '收到明信片的人有个特权:可以假装自己也去过了。',
 ];
+/* ===== 🍜 群岛食单:八道地方味,吃出一个称号 ===== */
+const FOODS = [
+  ['clam', '南塔开特蛤蜊浓汤', '🥣', 6, '奶白浓稠,贝壳当勺。梅尔维尔写过它整整一章。', 'swim', '游泳提速 3 分钟'],
+  ['bread', '冰岛黑面包', '🍞', 5, '在地热里焖了 24 小时,切开冒着火山的余温。', 'run', '奔跑 +12% · 3 分钟'],
+  ['onigiri', '鲸背渔夫饭团', '🍙', 4, '海苔包着刚捞的碎鱼,主岛渔家的传家手艺。', 'ride', '骑行 +15% · 3 分钟'],
+  ['squid', '水城墨鱼面', '🍝', 7, '面条黑得像运河的夜,鲜得像涨潮。', 'run', '奔跑 +12% · 3 分钟'],
+  ['peach', '桃阵岛鲜桃', '🍑', 5, '阵眼千年桃的旁枝所结。岛主说:吃旁枝的,不迷路。', 'ride', '骑行 +15% · 3 分钟'],
+  ['dates', '巴格达蜜枣', '🌴', 4, '一千零一夜里,讲故事的人靠它续命到天亮。', 'swim', '游泳提速 3 分钟'],
+  ['coco', '图西塔拉椰子可可', '🥥', 5, '讲故事人的凉台特供,孩子们排队的味道。', 'run', '奔跑 +12% · 3 分钟'],
+  ['tea', '大观园枫露茶', '🍵', 8, '三四次后才出色。宝玉为它摔过杯子。', 'ride', '骑行 +15% · 3 分钟'],
+];
+const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686]];
+const eaten = new Set((PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean));
+const BUFF = { run: 0, ride: 0 };
+function openFood(fid) {
+  const F = FOODS.find(f => f[0] === fid); if (!F) return;
+  const had = eaten.has(fid);
+  cardBody.innerHTML = `<div class="cardHead" style="background:#5a4a2e">${F[2]} 小吃摊 · ${esc(F[1])}</div>
+    <div class="cardMedia"><div class="paperRoll">${F[2]}</div></div>
+    <div class="cardDesc">${esc(F[4])}<br><span style="color:#2c7a4b;font-size:12.5px">功效:${F[6]}</span>${had ? '<br><span style="color:#8a7c62;font-size:12px">✅ 已录入食单(' + eaten.size + '/8)</span>' : ''}</div>
+    <div style="text-align:center;padding:0 0 16px"><button class="again" data-eat="${fid}" ${sb < F[3] ? 'disabled' : ''}>来一份 · ${F[3]} ⚡</button></div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelector('[data-eat]')?.addEventListener('click', () => {
+    if (!spendSB(F[3])) return;
+    if (F[5] === 'swim') chowderT = 180; else BUFF[F[5]] = 180;
+    if (!eaten.has(fid)) {
+      eaten.add(fid); PSTORE.setItem('w1001.eaten', [...eaten].join(','));
+      if (eaten.size >= 8 && PSTORE.getItem('w1001.foodie') !== '1') { PSTORE.setItem('w1001.foodie', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🍜 八道地方味集齐!新称号「环球食客」+⭐——胃比护照先环游了世界'), 1500); }
+      else toast(F[2] + ' 好吃!食单收录(' + eaten.size + '/8)· ' + F[6]);
+    } else toast(F[2] + ' 熟悉的味道 · ' + F[6]);
+    blip(700); closeModals();
+  });
+}
+for (const [fid, fx9, fz9] of FOOD_SPOTS) {
+  const fh9 = Math.max(height(fx9, fz9), .3);
+  const stl = box(2.6, .9, 1.8, lam(0x6a4a2e)); stl.position.set(fx9, fh9 + .8, fz9); scene.add(stl); cirObs.push({ x: fx9, z: fz9, r: 1.6 });
+  const aw = box(3, .16, 2.2, lam(0xc0492b)); aw.position.set(fx9, fh9 + 2.5, fz9); scene.add(aw);
+  for (const ox of [-1.3, 1.3]) { const pp = cyl(.07, .09, 2.2, M.woodDark, 5); pp.position.set(fx9 + ox, fh9 + 1.5, fz9); scene.add(pp); }
+  addSpot(fx9, fz9 + 2, 'food', 'food', { r: 6, fid });
+}
+/* ===== 👘 裁缝铺:披风 · 帽子 · 围巾(玩家换装) ===== */
+const CAPES = [['旅人红', 0xc0492b], ['海雾蓝', 0x3a6a9a], ['苔原绿', 0x2c7a4b], ['暮金', 0xd9a62e]];
+const HATS = [['草帽', 0xd9c27a, 'straw'], ['绅士帽', 0x2e2e34, 'top'], ['风帽', 0x5a4a6a, 'hood']];
+let WD = { capes: [], hats: [], scarf: 0, eq: { c: -1, h: -1, s: 0 } };
+try { const w0 = JSON.parse(PSTORE.getItem('w1001.wardrobe') || 'null'); if (w0 && w0.eq) WD = w0; } catch (e) {}
+const saveWD = () => PSTORE.setItem('w1001.wardrobe', JSON.stringify(WD));
+const fitGrp = new THREE.Group(); fitGrp.name = 'outfit';   // 玩家在下方才创建,届时挂载
+function applyOutfit() {
+  while (fitGrp.children.length) fitGrp.remove(fitGrp.children[0]);
+  if (WD.eq.c >= 0) { const cape = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.5), new THREE.MeshLambertMaterial({ color: CAPES[WD.eq.c][1], side: THREE.DoubleSide }));
+    cape.position.set(0, 1.55, -.42); cape.rotation.x = .12; fitGrp.add(cape); }
+  if (WD.eq.h >= 0) { const st = HATS[WD.eq.h][2];
+    if (st === 'straw') { const b1 = cyl(.62, .62, .07, lam(HATS[0][1]), 12); b1.position.y = 2.62; fitGrp.add(b1); const c1 = cyl(.3, .34, .22, lam(HATS[0][1]), 10); c1.position.y = 2.74; fitGrp.add(c1); }
+    else if (st === 'top') { const b2 = cyl(.44, .44, .06, lam(HATS[1][1]), 12); b2.position.y = 2.6; fitGrp.add(b2); const c2 = cyl(.3, .3, .42, lam(HATS[1][1]), 10); c2.position.y = 2.84; fitGrp.add(c2); }
+    else { const hd = new THREE.Mesh(new THREE.ConeGeometry(.42, .62, 8), lam(HATS[2][1])); hd.position.y = 2.78; hd.rotation.x = .16; fitGrp.add(hd); } }
+  if (WD.eq.s) { const sc = new THREE.Mesh(new THREE.TorusGeometry(.34, .1, 6, 12), lam(0xd9a62e)); sc.rotation.x = Math.PI / 2; sc.position.y = 2.18; fitGrp.add(sc); }
+}
+function openTailor() {
+  const row9 = (nm, price, owned, worn, act) => `<div class="gRow"><div class="gi">👘</div><div class="gInfo"><b>${nm}</b></div>${worn ? '<span style="color:#2c7a4b;font-size:12px">✅ 穿着</span>' : owned ? `<button class="gBtn" ${act}>穿上</button>` : `<button class="gBtn" ${act} ${sb < price ? 'disabled' : ''}>${price} ⚡</button>`}</div>`;
+  cardBody.innerHTML = `<div class="cardHead" style="background:#4a3a5a">👘 千帆裁缝铺 · The Sailmaker Tailor</div>
+    <div class="cardDesc" style="font-size:12.5px;padding:12px 20px 4px">"帆布做披风,最懂风。"——买过即入衣橱,随时免费换穿。<button class="gBtn off" data-naked style="float:right;padding:4px 10px;font-size:11px">全部脱下</button></div>
+    <div style="padding:4px 16px 16px">
+      ${CAPES.map((c9, i9) => row9('披风 · ' + c9[0], 30, WD.capes.includes(i9), WD.eq.c === i9, `data-cape="${i9}"`)).join('')}
+      ${HATS.map((h9, i9) => row9(h9[0], 25, WD.hats.includes(i9), WD.eq.h === i9, `data-hat="${i9}"`)).join('')}
+      ${row9('暮金围巾', 15, WD.scarf > 0, WD.eq.s === 1, 'data-scarf')}
+    </div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  const buyEq = (owned, price, doEq) => { if (!owned && !spendSB(price)) return false; doEq(); saveWD(); applyOutfit(); blip(700); openTailor(); return true; };
+  cardBody.querySelectorAll('[data-cape]').forEach(b9 => b9.addEventListener('click', () => { const i9 = +b9.dataset.cape; buyEq(WD.capes.includes(i9), 30, () => { if (!WD.capes.includes(i9)) WD.capes.push(i9); WD.eq.c = i9; }); }));
+  cardBody.querySelectorAll('[data-hat]').forEach(b9 => b9.addEventListener('click', () => { const i9 = +b9.dataset.hat; buyEq(WD.hats.includes(i9), 25, () => { if (!WD.hats.includes(i9)) WD.hats.push(i9); WD.eq.h = i9; }); }));
+  cardBody.querySelector('[data-naked]')?.addEventListener('click', () => { WD.eq = { c: -1, h: -1, s: 0 }; saveWD(); applyOutfit(); openTailor(); });
+  cardBody.querySelector('[data-scarf]')?.addEventListener('click', () => { buyEq(WD.scarf > 0, 15, () => { WD.scarf = 1; WD.eq.s = 1; }); });
+}
+{ const tx9 = 52, tz9 = 236, th9 = height(tx9, tz9);
+  const cnt9 = box(3.4, 1, 1.9, lam(0x4a3a5a)); cnt9.position.set(tx9, th9 + .9, tz9); scene.add(cnt9); cirObs.push({ x: tx9, z: tz9, r: 2 });
+  const rf9 = box(4, .22, 2.5, lam(0x6a5a7c)); rf9.position.set(tx9, th9 + 3.2, tz9); scene.add(rf9);
+  for (const ox of [-1.6, 1.6]) { const pp9 = cyl(.09, .11, 2.8, M.woodDark, 5); pp9.position.set(tx9 + ox, th9 + 1.8, tz9); scene.add(pp9); }
+  addSpot(tx9, tz9 + 2.2, 'tailor', 'tailor', { r: 6 });
+}
+/* ===== 🏠 旅人小屋:置业 · 小憩 · 明信片墙 ===== */
+const HOME_POS = [468, -96];
+let homeBuilt = false;
+function buildHome() {
+  if (homeBuilt) return; homeBuilt = true;
+  const [hx9, hz9] = HOME_POS, hh9 = height(hx9, hz9);
+  const hus9 = box(7, 3.6, 5.4, lam(0xa8845a)); hus9.position.set(hx9, hh9 + 1.8, hz9); scene.add(hus9); cirObs.push({ x: hx9, z: hz9, r: 4.4 });
+  const rf99 = new THREE.Mesh(new THREE.ConeGeometry(5.6, 2.6, 4), lam(0x8c3b2e)); rf99.rotation.y = Math.PI / 4; rf99.position.set(hx9, hh9 + 4.9, hz9); scene.add(rf99);
+  const dr9 = box(1.1, 2, .16, lam(0x5e4023)); dr9.position.set(hx9, hh9 + 1, hz9 + 2.75); scene.add(dr9);
+  for (const ox of [-2.2, 2.2]) { const wn9 = box(1, 1, .12, lam(0xbfe3ee)); wn9.position.set(hx9 + ox, hh9 + 2.1, hz9 + 2.72); scene.add(wn9); }
+  const ch9 = box(.8, 1.6, .8, lam(0x6a5a52)); ch9.position.set(hx9 + 2.2, hh9 + 5.4, hz9 - 1); scene.add(ch9);
+  const hl9 = new THREE.PointLight(0xffd9a0, 0, 60, 2); hl9.position.set(hx9, hh9 + 3.2, hz9 + 3.4); hl9.userData.pow = 18; nightLamps.push(hl9); scene.add(hl9);
+  const sg9 = makeSign('🏠 旅人小屋', 5, '#4a3626', '#f0e0c0'); sg9.position.set(hx9 + 5, hh9 + 2.6, hz9 + 2); scene.add(sg9);
+}
+function openHome() {
+  if (PSTORE.getItem('w1001.home') !== '1') {
+    cardBody.innerHTML = `<div class="cardHead" style="background:#4a3626">🏠 无主小屋 · For Sale</div>
+      <div class="cardMedia"><div class="paperRoll">🏠</div></div>
+      <div class="cardDesc">主岛东滩一块带地基的空地,面朝日出,背靠机场——渔夫说这里"风都拐着弯吹"。地契在镇公所压了十年,等一个想停下来的旅人。</div>
+      <div style="text-align:center;padding:0 0 16px"><button class="again" data-buyhome ${sb < 200 ? 'disabled' : ''}>购下地契 · 200 ⚡</button></div>`;
+    modal.classList.remove('hidden'); modalOpen = true;
+    cardBody.querySelector('[data-buyhome]')?.addEventListener('click', () => {
+      if (!spendSB(200)) return;
+      PSTORE.setItem('w1001.home', '1'); buildHome();
+      toast('🏠 地契到手,小屋落成!——群岛再大,现在有一盏灯专门为你亮'); blip(760); closeModals();
+    });
+    return;
+  }
+  let cards9 = []; try { cards9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
+  const wall9 = cards9.slice(-3).reverse().map(c9 => `<img src="${c9.d}" style="width:31%;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.3)">`).join(' ');
+  cardBody.innerHTML = `<div class="cardHead" style="background:#4a3626">🏠 旅人小屋 · Home</div>
+    <div class="cardDesc" style="font-size:12.5px;line-height:1.8;padding:12px 20px 6px">门牌:今日 ${WEATHER === 'storm' ? '⛈️ 风暴' : WEATHER === 'rain' ? '🌧️ 雨' : WEATHER === 'fog' ? '🌫️ 雾' : '☀️ 晴'}${EVENT !== 'none' ? ' · ' + EVENTS[EVENT].icon + EVENTS[EVENT].name : ''} · 护照 ${stamps.size}/${PASSPORT.length} 章<br>${wall9 ? '明信片墙:<br>' + wall9 : '明信片墙还空着——照片模式(P)按 C 拍一张。'}</div>
+    <div style="text-align:center;padding:4px 0 16px"><button class="again" data-nap>🛏️ 小憩片刻(恢复全部食物功效)</button></div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelector('[data-nap]')?.addEventListener('click', () => {
+    chowderT = 300; BUFF.run = 300; BUFF.ride = 300; diveAir = gearOn('mask') ? 200 : 100;
+    toast('🛏️ 在自己的床上眯了一觉——浑身是劲(全功效 5 分钟)'); blip(720); closeModals();
+  });
+}
+if (PSTORE.getItem('w1001.home') === '1') buildHome();
+else { const sg0 = makeSign('🏠 空地出售', 5, '#5a4a36', '#e8d8b0'); sg0.position.set(HOME_POS[0], height(HOME_POS[0], HOME_POS[1]) + 2.6, HOME_POS[1] + 3); scene.add(sg0); }
+addSpot(HOME_POS[0], HOME_POS[1] + 4, 'home', 'home', { r: 7 });
 /* ===== ❤️ 群岛基金会:捐赠与荣誉(算力币的花处) ===== */
 function openFund() {
   const total = parseInt(PSTORE.getItem('w1001.donated') || '0', 10) || 0;
@@ -6677,6 +6802,7 @@ function updateFishing(dt, t) {
 
 /* ---------- 玩家 ---------- */
 const player = new THREE.Group();
+player.add(fitGrp); applyOutfit();   // 👘 衣橱挂载
 {
   const body = cyl(.55, .68, 1.5, lam(0x3b6ea5)); body.position.y = 1.2; player.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 8), lam(0xf2c9a0)); head.position.y = 2.35; player.add(head);
@@ -7104,6 +7230,9 @@ function tryInteract() {
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
   if (nearSpot && nearSpot.cat === 'air') { openAirCounter(nearSpot.airKey); return; }
   if (nearSpot && nearSpot.cat === 'fund') { openFund(); return; }
+  if (nearSpot && nearSpot.cat === 'food') { openFood(nearSpot.fid); return; }
+  if (nearSpot && nearSpot.cat === 'tailor') { openTailor(); return; }
+  if (nearSpot && nearSpot.cat === 'home') { openHome(); return; }
   if (nearSpot && nearSpot.cat === 'dive') { enterDive(nearSpot.portal); return; }
   if (nearSpot) { openCard(nearSpot); return; }
   if (nearFspot) { startCast(nearFspot); return; }
@@ -7148,6 +7277,7 @@ function syncMobMenu() {
   mobBtns.pane.style.display = mobMenuOpen ? 'grid' : 'none';
   mobBtns.filter.style.display = photoMode ? '' : 'none';
   mobBtns.phantom.style.display = Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) < 175 ? '' : 'none';
+  if (mobBtns.home) mobBtns.home.style.display = PSTORE.getItem('w1001.home') === '1' ? '' : 'none';
   mobBtns.sonar.style.display = diving ? '' : 'none';
 }
 if (isTouch) {
@@ -7165,18 +7295,19 @@ if (isTouch) {
   const pane = document.createElement('div');
   pane.style.cssText = 'display:none;grid-template-columns:repeat(3,58px);gap:8px;padding:10px;background:rgba(8,20,32,.9);border:1px solid rgba(140,200,255,.2);border-radius:16px;backdrop-filter:blur(5px);box-shadow:0 10px 34px rgba(0,0,0,.5);transform-origin:bottom right;animation:mobPop .16s ease-out';
   { const st3 = document.createElement('style'); st3.textContent = '@keyframes mobPop{from{transform:scale(.9);opacity:0}}'; document.head.appendChild(st3); }
-  const bMap = mkItem('🗺️', '海图'), bGlb = mkItem('🌐', '地球仪'), bVeh = mkItem('🚲', '座驾'), bStar = mkItem('🔭', '观星'), bPhoto = mkItem('📷', '照片'), bFilm = mkItem('🎞️', '滤镜'), bPh = mkItem('📐', '幻影');
-  pane.append(bMap, bGlb, bVeh, bStar, bPhoto, bFilm, bPh);
+  const bMap = mkItem('🗺️', '海图'), bGlb = mkItem('🌐', '地球仪'), bVeh = mkItem('🚲', '座驾'), bStar = mkItem('🔭', '观星'), bPhoto = mkItem('📷', '照片'), bFilm = mkItem('🎞️', '滤镜'), bPh = mkItem('📐', '幻影'), bHome = mkItem('🏠', '回家');
+  pane.append(bMap, bGlb, bVeh, bHome, bStar, bPhoto, bFilm, bPh);
   wrap.append(tog, pane); document.body.appendChild(wrap);
   const bSonar = mk('📡', '声呐探路');
   Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bSonar);
-  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar };
+  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome };
   bSonar.addEventListener('click', () => fireSonar());
   tog.addEventListener('click', () => { mobMenuOpen = !mobMenuOpen; syncMobMenu(); blip(640); });
   bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(false); });
   bGlb.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(true); });
   bVeh.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleVehicle(); });
+  bHome.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); if (PSTORE.getItem('w1001.home') !== '1') { toast('🏠 先去主岛东滩把那块空地买下来(200 ⚡)'); return; } player.position.set(HOME_POS[0], height(HOME_POS[0], HOME_POS[1]) + 1, HOME_POS[1] + 6); vy = 0; toast('🏠 到家了'); blip(600); });
   bStar.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); toggleStarGaze(); });
   bPhoto.addEventListener('click', togglePhoto);
   bFilm.addEventListener('click', nextFilter);
@@ -7220,7 +7351,7 @@ addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr)
 addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 30); }, { passive: true });
 
 /* ---------- 主循环 ---------- */
-const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门', bluehole: '🤿 潜入海底蓝洞', airport: '✈️ 航空柜台 · 购票飞行', fund: '❤️ 群岛基金会 · 捐赠与荣誉' };
+const HINTS = { painting: '欣赏这幅画', shelf: '翻翻这架书', tree: '观察这只鸟', bed: '看看这株植物', bar: '来一杯!', keg: '看看这桶酒', table: '看看桌上的酒', tank: '看看水里', crate: '翻翻唱片', stand: '听听这份录音', tent: '参观营地', board: '查看路线', sign: '查看路牌', news: '报亭 · 今日两刊', shop: '逛逛装备行', ferry: '多元宇宙渡口', door: '推开天空之门', camera: '看看那是什么', lamp: '检查坠落物', ring: '看看基座上的东西', crater: '末日火山口', hole: '敲敲圆门', eye: '仰望黑塔(别看太久)', train: '霍格沃茨特快', castle: '城堡大门 · 分院帽', hoops: '魁地奇球场', hut: '拜访海格小屋', inn: '喷水鲸客栈', chowder: '来碗杂烩汤(4 SB)', doubloon: '桅杆上的金币', stadium: '梦剧场 · 德比日', pitch: '场边观战', scalper: '这位朋友鬼鬼祟祟', gate: '沉睡的星门', bluehole: '🤿 潜入海底蓝洞', airport: '✈️ 航空柜台 · 购票飞行', fund: '❤️ 群岛基金会 · 捐赠与荣誉', food: '🍜 小吃摊 · 尝一口地方味', tailor: '👘 裁缝铺 · 披风与帽子', home: '🏠 旅人小屋' };
 for (const k in LORE) HINTS[k] = LORE[k].hint;
 const clock = new THREE.Clock();
 const v3 = new THREE.Vector3();
@@ -7346,8 +7477,8 @@ function loop() {
       const rx = -fz, rz = fx;
       const sp = (vehicle === 2 ? (keys.shift ? 40 : 33)
         : swimming ? (gearOn('swim') ? 7.5 : (chowderT > 0 ? 5.5 : 3.2))
-        : vehicle === 1 ? (keys.shift ? 35 : 29)
-        : (keys.shift ? (gearOn('boots') ? 26 : 22) : 14)) * dt;
+        : vehicle === 1 ? (keys.shift ? 35 : 29) * (BUFF.ride > 0 ? 1.15 : 1)
+        : (keys.shift ? (gearOn('boots') ? 26 : 22) : 14) * (BUFF.run > 0 ? 1.12 : 1)) * dt;
       let dx = (fx * -mz + rx * mx) * sp, dz = (fz * -mz + rz * mx) * sp;
       player.position.x += dx; player.position.z += dz;
       faceYaw = Math.atan2(dx, dz);
@@ -7919,6 +8050,8 @@ function loop() {
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
   $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
   $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  if (BUFF.run > 0) BUFF.run -= dt;
+  if (BUFF.ride > 0) BUFF.ride -= dt;
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
   if (stampT <= 0) {
     stampT = 1;
@@ -7997,4 +8130,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
