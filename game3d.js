@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent, osmCity } from './w-isles.js?v=12';
-import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT } from './w-osm.js?v=4';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=13';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS } from './w-osm.js?v=5';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -137,7 +137,7 @@ const NISLES = [
   { key: 'moai', x: -1010, z: -520, r: 90, mask: 2.0, h: 7, peak: { r: 34, hh: 14 }, dock: [-932, -480] },  // 星历仙岛(复活节岛×蓬莱)
   { key: 'fogjail', x: -1500, z: 1050, r: 88, mask: 2.0, h: 8, dock: [-1430, 1001] },                          // 雾中牢岛(恶魔岛×禁闭岛)
   { key: 'kilda', x: -360, z: 1480, r: 90, mask: 2.0, h: 10, peak: { r: 32, hh: 16 }, dock: [-339, 1394] },// 风暴孤岛(圣基尔达×鲁滨逊)
-  { key: 'gunkan', x: 1520, z: 460, r: 88, mask: 2.0, h: 7, dock: [1438, 435] },                          // 废矿海城(军舰岛×海底两万里)
+  { key: 'gunkan', x: 1520, z: 460, r: 88, mask: 2.0, h: 7, dock: [1468, 446] },                          // 废矿海城(军舰岛×海底两万里)
   { key: 'soco', x: 640, z: 260, r: 90, mask: 2.0, h: 8, peak: { r: 36, hh: 10 }, dock: [558, 227] },   // 真名植物岛(索科特拉×地海)
   { key: 'skell', x: -160, z: 1660, r: 86, mask: 2.0, h: 9, peak: { r: 30, hh: 20 }, dock: [-152, 1576] },// 静默之岩(斯凯利格×瓦尔登湖)
   { key: 'mada', x: 360, z: -620, r: 100, mask: 2.0, h: 7, peak: { r: 44, hh: 12 }, dock: [311, -535] }, // 方舟大陆岛(马达加斯加×诺亚方舟)
@@ -194,7 +194,22 @@ function islandMask(x, z) {
   m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
   m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
   m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
-  for (const s of NISLES) m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8));  // 海洋文学带
+  for (const s of NISLES) { if (s.key === 'gunkan') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带
+  { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
+    if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
+      let inn = false, dmin = 1e9;
+      const PC = OSM_GUNKAN_COAST;
+      for (let i = 0, jj = PC.length - 1; i < PC.length; jj = i++) {
+        const xi = PC[i][0], zi = PC[i][1], xj = PC[jj][0], zj = PC[jj][1];
+        if ((zi > lz) !== (zj > lz) && lx < (xj - xi) * (lz - zi) / (zj - zi) + xi) inn = !inn;
+        const ax = lx - xi, az = lz - zi, bx = xj - xi, bz = zj - zi;
+        const t9 = Math.max(0, Math.min(1, (ax * bx + az * bz) / (bx * bx + bz * bz || 1)));
+        const d9 = Math.hypot(ax - bx * t9, az - bz * t9);
+        if (d9 < dmin) dmin = d9;
+      }
+      m = Math.max(m, inn ? Math.min(1, (dmin + 8) / 26) * 2.2 : (1 - dmin / 12) * 1.2);
+    }
+  }
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
     m = Math.max(m, (1 - Math.hypot(x - rx2, z - rz2) / 24) * 1.7);       // 塞壬礁
   return m;
@@ -6819,6 +6834,8 @@ function redistributeMist(cx, cz) {
   osmCity(C9, OSM_TRUMAN, TRU.x + 30, TRU.z, 32, [lam(0xf0e8da), lam(0xe6d8c4)]);   // Seaside(楚门的世界取景地)
   osmCity(C9, OSM_DGYT, DGY.x - 28, DGY.z, -32, [lam(0x9a5a4a), lam(0x8a8478)]);    // 北京大观园
   osmCity(C9, OSM_SPTT, SPT.x + 64, SPT.z, -40, [lam(0xc03a3a), lam(0x8a8a92)]);    // 老特拉福德(梦剧场原型)
+  osmRoads(C9, OSM_ROADS.TRUMAN, TRU.x + 30, TRU.z, 32, new THREE.MeshLambertMaterial({ color: 0xd8cfc0, side: THREE.DoubleSide }), 1.8, .12);   // Seaside 放射街网
+  osmRoads(C9, OSM_ROADS.MOBT, MOB.x - 24, MOB.z, 34, new THREE.MeshLambertMaterial({ color: 0xa89878, side: THREE.DoubleSide }), 1.7, .12);   // 南塔开特鹅卵石街
 }
 /* ===== 💡 灯光治理:场景 110 盏点光是帧率头号杀手 ===== */
 const ALL_LIGHTS = [];

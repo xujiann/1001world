@@ -5,8 +5,25 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV } from './w-osm.js?v=4';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV, OSM_VEN_CANAL, OSM_ROADS } from './w-osm.js?v=5';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
+export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 → 贴地带面(街道/运河),单网格
+  const { THREE, height, scene } = C;
+  const pos = [];
+  for (const ln of lines9) for (let i = 0; i < ln.length - 1; i++) {
+    const [x1, z1] = ln[i], [x2, z2] = ln[i + 1];
+    const dx = x2 - x1, dz = z2 - z1, L = Math.hypot(dx, dz) || 1;
+    const nx = -dz / L * wd / 2, nz = dx / L * wd / 2;
+    const y1 = Math.max(height(gx + x1, gz + zoff + z1), .05) + yLift;
+    const y2 = Math.max(height(gx + x2, gz + zoff + z2), .05) + yLift;
+    pos.push(gx + x1 + nx, y1, gz + zoff + z1 + nz, gx + x1 - nx, y1, gz + zoff + z1 - nz, gx + x2 + nx, y2, gz + zoff + z2 + nz,
+             gx + x1 - nx, y1, gz + zoff + z1 - nz, gx + x2 - nx, y2, gz + zoff + z2 - nz, gx + x2 + nx, y2, gz + zoff + z2 + nz);
+  }
+  const g9 = new THREE.BufferGeometry();
+  g9.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g9.computeVertexNormals();
+  scene.add(new THREE.Mesh(g9, mat));
+}
 export function osmCity(C, data, gx, gz, zoff, mats) {
   const { THREE, height, scene, cirObs } = C;
   const buckets = mats.map(() => []);
@@ -1045,6 +1062,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       osmCity(C, OSM_HELENA, gx + 30, gz, 28, [lam(0xd8d0bc), lam(0xb8ac96)]);   // 真实街区 © OSM
+      osmRoads(C, OSM_ROADS.HELENA, gx + 30, gz, 28, new THREE.MeshLambertMaterial({ color: 0xb0a488, side: THREE.DoubleSide }), 1.7, .12);   // 詹姆斯敦街道
       const wh2 = height(gx, gz);   // 长木庄园:长条平房+绿窗板
       const house = box(16, 4, 7, lam(0xcac2b0)); house.position.set(gx, wh2 + 2, gz); scene.add(house); cirObs.push({ x: gx, z: gz, r: 9 });
       const roof2 = box(17, 1, 8, lam(0x4a4a44)); roof2.position.set(gx, wh2 + 4.5, gz); scene.add(roof2);
@@ -1259,8 +1277,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       osmCity(C, OSM_VENEZIA, gx, gz, 0, [lam(0xc8907a), lam(0xd8b48a), lam(0xb0a08a)]);   // 圣马可区 110 栋真实街区(© OSM)
-      const canal = box(30, .25, 4.6, new THREE.MeshPhongMaterial({ color: 0x2a5a6a, shininess: 80, transparent: true, opacity: .85 }));
-      canal.position.set(gx, height(gx, gz + 8) + .32, gz + 8); scene.add(canal);   // 水巷
+      osmRoads(C, OSM_VEN_CANAL, gx, gz, 0, new THREE.MeshPhongMaterial({ color: 0x2a5a6a, shininess: 90, transparent: true, opacity: .85, side: THREE.DoubleSide }), 4.2, .3);   // 圣马可真实水巷网 © OSM
       for (let i = 0; i < 3; i++) {   // 三座小拱桥
         const brx = gx - 9 + i * 9, brh = height(brx, gz + 8);
         const arch2 = box(2.2, .3, 6.4, lam(0xb0a890)); arch2.position.set(brx, brh + 1.5, gz + 8); scene.add(arch2);
