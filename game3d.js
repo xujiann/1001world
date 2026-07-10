@@ -52,7 +52,7 @@ SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   /
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 SAVE_FIELDS.push('aff');   // NPC 好感度
-SAVE_FIELDS.push('eaten', 'home', 'wardrobe');   // 衣食住
+SAVE_FIELDS.push('eaten', 'home', 'wardrobe', 'homelv');   // 衣食住
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -521,6 +521,7 @@ function openAccount() {
     if (!confirm(`删除账号「${p ? p.name : id}」及其全部进度?此操作不可恢复。`)) return;
     saveProfiles(profileList().filter(x => x.id !== id));
     SAVE_FIELDS.forEach(f => { try { RAWLS.removeItem(`w1001.p_${id}.${f}`); } catch (e) {} });
+    try { RAWLS.removeItem(`w1001.p_${id}.cards`); RAWLS.removeItem(`w1001.p_${id}.aff`); } catch (e) {}
     toast('账号已删除');
     openAccount();
   }));
@@ -535,6 +536,7 @@ function openAccount() {
   cardBody.querySelector('[data-accexport]')?.addEventListener('click', () => {
     const data = {};
     SAVE_FIELDS.forEach(f => { const v = PSTORE.getItem('w1001.' + f); if (v != null) data[f] = v; });
+    try { const cd9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); if (cd9.length) data.cards = JSON.stringify(cd9.slice(-3)); } catch (e) {}
     document.getElementById('accCode').value = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
     toast('📤 存档码已生成,请复制保存');
   });
@@ -542,6 +544,7 @@ function openAccount() {
     try {
       const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('accCode').value.trim()))));
       SAVE_FIELDS.forEach(f => { if (data[f] != null) PSTORE.setItem('w1001.' + f, data[f]); });
+      if (data.cards) try { JSON.parse(data.cards); PSTORE.setItem('w1001.cards', data.cards); } catch (e) {}
       toast('📥 导入成功,正在重载…');
       setTimeout(() => location.reload(), 600);
     } catch (e) { toast('存档码无效,请检查后重试'); }
@@ -2029,7 +2032,9 @@ function openGuide() {
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——五十九座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
     <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——59 章集满,便是「环球旅行家」。<br><br>
-    <b>4. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
+    <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);八座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍八道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
+    <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。<br><br>
+    <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
@@ -2665,8 +2670,12 @@ if (!MOBILE) {
   M.woodDark.normalMap = woodNrm; M.woodDark.normalScale.set(.45, .45);
   M.stone.needsUpdate = M.wood.needsUpdate = M.woodDark.needsUpdate = true;
 }
-const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-const cyl = (rT, rB, h, mat, seg = 10) => new THREE.Mesh(new THREE.CylinderGeometry(rT, rB, h, seg), mat);
+const GEOC = new Map();   // 同尺寸几何体共享(禁止对 box/cyl 的 geometry 做原地变换)
+const geoc = (k, mk) => { let g = GEOC.get(k); if (!g) { g = mk(); GEOC.set(k, g); } return g; };
+const box = (w, h, d, mat) => new THREE.Mesh(geoc('b' + w + ',' + h + ',' + d, () => new THREE.BoxGeometry(w, h, d)), mat);
+const cyl = (rT, rB, h, mat, seg = 10) => new THREE.Mesh(geoc('c' + rT + ',' + rB + ',' + h + ',' + seg, () => new THREE.CylinderGeometry(rT, rB, h, seg)), mat);
+const sphg = (...a) => geoc('s' + a.join(','), () => new THREE.SphereGeometry(...a));
+const cong = (...a) => geoc('k' + a.join(','), () => new THREE.ConeGeometry(...a));
 
 /* --- 亭台建筑 --- */
 function pavilion(zn, opt) {
@@ -3223,14 +3232,14 @@ function makePerson(bodyCol, hatCol, opts = {}) {
   for (const s of [-1, 1]) {   // 臂:肩关节可摆
     const sh = new THREE.Group(); sh.position.set(.52 * wide * s, 1.78 * tall, 0);
     const arm = cyl(.12 * wide, .14 * wide, .82 * tall, lam(bodyCol)); arm.position.y = -.41 * tall; sh.add(arm);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(.13, 6, 5), lam(skin)); hand.position.y = -.82 * tall; sh.add(hand);
+    const hand = new THREE.Mesh(sphg(.13, 6, 5), lam(skin)); hand.position.y = -.82 * tall; sh.add(hand);
     g.add(sh); limbs[s < 0 ? 'armL' : 'armR'] = sh;
   }
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.48, 12, 9), lam(skin)); head.position.y = 2.28 * tall; g.add(head);
-  for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.075, 6, 5), lam(0x222222)); eye.position.set(.16 * s, 2.33 * tall, .42); g.add(eye); }
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), lam(0xe0b088)); nose.position.set(0, 2.24 * tall, .47); g.add(nose);
-  if (opts.hat === 'cone') { const h = new THREE.Mesh(new THREE.ConeGeometry(.55, .74, 8), lam(hatCol)); h.position.y = 2.92 * tall; g.add(h); }
-  else { const h = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.44 * tall; g.add(h); }
+  const head = new THREE.Mesh(sphg(.48, 12, 9), lam(skin)); head.position.y = 2.28 * tall; g.add(head);
+  for (const s of [-1, 1]) { const eye = new THREE.Mesh(sphg(.075, 6, 5), lam(0x222222)); eye.position.set(.16 * s, 2.33 * tall, .42); g.add(eye); }
+  const nose = new THREE.Mesh(sphg(.06, 5, 4), lam(0xe0b088)); nose.position.set(0, 2.24 * tall, .47); g.add(nose);
+  if (opts.hat === 'cone') { const h = new THREE.Mesh(cong(.55, .74, 8), lam(hatCol)); h.position.y = 2.92 * tall; g.add(h); }
+  else { const h = new THREE.Mesh(sphg(.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), lam(hatCol)); h.position.y = 2.44 * tall; g.add(h); }
   if (opts.cane) { const c1 = cyl(.05, .05, 1.9, M.woodDark); c1.position.set(.72, .95, .2); g.add(c1); }
   g.userData.limbs = limbs;
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });   // NPC 投影落地
@@ -5692,7 +5701,11 @@ function updateNpcs3(dt) {
     ni++;
     // 远端 NPC 降频:600 米外每 8 帧更新一次
     const farD2 = (player.position.x - n.g.position.x) ** 2 + (player.position.z - n.g.position.z) ** 2;
-    if (farD2 > 360000 && (npcFrame + ni) % 8 !== 0) continue;
+    if (farD2 > 78400) {   // 280 米外整体隐身(省 draw call),走近再现身
+      if (n.g.visible) { n.g.visible = false; n.bub.classList.add('hidden'); n.talk = false; }
+      continue;
+    }
+    if (!n.g.visible && !n.night && !n.day) n.g.visible = true;
     if (n.night || n.day) {   // 昼夜限定 NPC(兰若寺)
       const show = n.night ? curDA < .35 : curDA >= .35;
       n.g.visible = show;
@@ -6087,6 +6100,20 @@ const FOODS = [
 const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686]];
 const eaten = new Set((PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean));
 const BUFF = { run: 0, ride: 0 };
+const buffBar = document.createElement('div');
+buffBar.style.cssText = 'position:fixed;left:14px;top:118px;z-index:26;display:flex;flex-direction:column;gap:4px;align-items:flex-start;pointer-events:none;font:600 12px system-ui;color:#fff';
+document.body.appendChild(buffBar);
+let buffSyncT = 0, buffShown = '';
+function syncBuffs(dt) {
+  buffSyncT -= dt; if (buffSyncT > 0) return; buffSyncT = .5;
+  const rows = [];
+  if (chowderT > 0) rows.push('🏊 游泳提速 ' + Math.ceil(chowderT) + 's');
+  if (BUFF.run > 0) rows.push('🏃 奔跑 +12% ' + Math.ceil(BUFF.run) + 's');
+  if (BUFF.ride > 0) rows.push('🚲 骑行 +15% ' + Math.ceil(BUFF.ride) + 's');
+  const key = rows.join('|');
+  if (key === buffShown) return; buffShown = key;
+  buffBar.innerHTML = rows.map(r => '<span style="background:rgba(20,30,44,.58);padding:3px 11px;border-radius:20px">' + r + '</span>').join('');
+}
 function openFood(fid) {
   const F = FOODS.find(f => f[0] === fid); if (!F) return;
   const had = eaten.has(fid);
@@ -6154,7 +6181,31 @@ function openTailor() {
 }
 /* ===== 🏠 旅人小屋:置业 · 小憩 · 明信片墙 ===== */
 const HOME_POS = [468, -96];
-let homeBuilt = false;
+let homeBuilt = false, atticBuilt = false, gardenBuilt = false;
+const homeLv = () => +(PSTORE.getItem('w1001.homelv') || 0);
+function buildAttic() {
+  if (atticBuilt) return; atticBuilt = true;
+  const [hx9, hz9] = HOME_POS, hh9 = height(hx9, hz9);
+  const dm9 = box(2.4, 1.7, 2, lam(0xa8845a)); dm9.position.set(hx9 - 1.5, hh9 + 4.7, hz9 + 1.1); scene.add(dm9);
+  const dr9 = new THREE.Mesh(cong(1.9, 1.3, 4), lam(0x8c3b2e)); dr9.rotation.y = Math.PI / 4; dr9.position.set(hx9 - 1.5, hh9 + 6.1, hz9 + 1.1); scene.add(dr9);
+  const dw9 = box(.9, .9, .12, lam(0xffe9b0)); dw9.position.set(hx9 - 1.5, hh9 + 4.8, hz9 + 2.12); scene.add(dw9);
+}
+function buildGarden() {
+  if (gardenBuilt) return; gardenBuilt = true;
+  const [hx9, hz9] = HOME_POS, hh9 = height(hx9, hz9);
+  for (let i9 = 0; i9 < 9; i9++) {   // 门前栅栏
+    const px9 = hx9 - 6 + i9 * 1.5;
+    const pk9 = box(.16, 1, .1, lam(0xe8e0d0)); pk9.position.set(px9, height(px9, hz9 + 5.6) + .5, hz9 + 5.6); scene.add(pk9);
+  }
+  const rl9 = box(12.2, .12, .1, lam(0xe8e0d0)); rl9.position.set(hx9, hh9 + .78, hz9 + 5.6); scene.add(rl9);
+  const FL9 = [0xe86a6a, 0xf0c04a, 0xb07ae8, 0xff9ec6];
+  for (let i9 = 0; i9 < 8; i9++) {   // 花圃
+    const fx9 = hx9 - 5 + (i9 % 4) * 3.2, fz9 = hz9 + 4 - Math.floor(i9 / 4) * .9;
+    const st9 = cyl(.04, .04, .5, lam(0x3a6a2e), 5); st9.position.set(fx9, height(fx9, fz9) + .25, fz9); scene.add(st9);
+    const bl9 = new THREE.Mesh(sphg(.2, 6, 5), lam(FL9[i9 % 4])); bl9.position.set(fx9, height(fx9, fz9) + .56, fz9); scene.add(bl9);
+  }
+  const gl9 = new THREE.PointLight(0xffc9d0, 0, 40, 2); gl9.position.set(hx9 - 4, hh9 + 2.4, hz9 + 4.6); gl9.userData.pow = 12; nightLamps.push(gl9); scene.add(gl9);
+}
 function buildHome() {
   if (homeBuilt) return; homeBuilt = true;
   const [hx9, hz9] = HOME_POS, hh9 = height(hx9, hz9);
@@ -6181,17 +6232,31 @@ function openHome() {
     return;
   }
   let cards9 = []; try { cards9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
-  const wall9 = cards9.slice(-3).reverse().map(c9 => `<img src="${c9.d}" style="width:31%;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.3)">`).join(' ');
+  const lv9 = homeLv();
+  const wall9 = cards9.slice(-(lv9 >= 1 ? 6 : 3)).reverse().map(c9 => `<img src="${c9.d}" style="width:31%;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.3)">`).join(' ');
+  const upg9 = lv9 < 1 ? `<button class="gBtn" data-upghome="1" ${sb < 400 ? 'disabled' : ''}>🔨 扩建阁楼 · 400 ⚡(明信片墙 3→6 张)</button>`
+    : lv9 < 2 ? `<button class="gBtn" data-upghome="2" ${sb < 800 ? 'disabled' : ''}>🌷 修个花园 · 800 ⚡(小憩 5→8 分钟)</button>`
+    : '<span style="font-size:12px;color:#8a7c62">🏡 满级宅邸——阁楼、花园,一样不缺</span>';
   cardBody.innerHTML = `<div class="cardHead" style="background:#4a3626">🏠 旅人小屋 · Home</div>
     <div class="cardDesc" style="font-size:12.5px;line-height:1.8;padding:12px 20px 6px">门牌:今日 ${WEATHER === 'storm' ? '⛈️ 风暴' : WEATHER === 'rain' ? '🌧️ 雨' : WEATHER === 'fog' ? '🌫️ 雾' : '☀️ 晴'}${EVENT !== 'none' ? ' · ' + EVENTS[EVENT].icon + EVENTS[EVENT].name : ''} · 护照 ${stamps.size}/${PASSPORT.length} 章<br>${wall9 ? '明信片墙:<br>' + wall9 : '明信片墙还空着——照片模式(P)按 C 拍一张。'}</div>
-    <div style="text-align:center;padding:4px 0 16px"><button class="again" data-nap>🛏️ 小憩片刻(恢复全部食物功效)</button></div>`;
+    <div style="text-align:center;padding:4px 0 6px"><button class="again" data-nap>🛏️ 小憩片刻(恢复全部食物功效)</button></div>
+    <div style="text-align:center;padding:0 0 16px">${upg9}</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-nap]')?.addEventListener('click', () => {
-    chowderT = 300; BUFF.run = 300; BUFF.ride = 300; diveAir = gearOn('mask') ? 200 : 100;
-    toast('🛏️ 在自己的床上眯了一觉——浑身是劲(全功效 5 分钟)'); blip(720); closeModals();
+    const nt9 = homeLv() >= 2 ? 480 : 300;
+    chowderT = nt9; BUFF.run = nt9; BUFF.ride = nt9; diveAir = gearOn('mask') ? 200 : 100;
+    toast(`🛏️ 在自己的床上眯了一觉——浑身是劲(全功效 ${nt9 / 60} 分钟)`); blip(720); closeModals();
+  });
+  cardBody.querySelector('[data-upghome]')?.addEventListener('click', ev9 => {
+    const lv0 = +ev9.currentTarget.dataset.upghome;
+    if (!spendSB(lv0 === 1 ? 400 : 800)) return;
+    PSTORE.setItem('w1001.homelv', String(lv0));
+    if (lv0 === 1) { buildAttic(); toast('🔨 阁楼起好了!天窗朝着日出——明信片墙宽敞了一倍'); }
+    else { buildGarden(); toast('🌷 花园修好了!栅栏、花圃、一盏粉灯——夜里回家有花香'); }
+    blip(760); openHome();
   });
 }
-if (PSTORE.getItem('w1001.home') === '1') buildHome();
+if (PSTORE.getItem('w1001.home') === '1') { buildHome(); if (homeLv() >= 1) buildAttic(); if (homeLv() >= 2) buildGarden(); }
 else { const sg0 = makeSign('🏠 空地出售', 5, '#5a4a36', '#e8d8b0'); sg0.position.set(HOME_POS[0], height(HOME_POS[0], HOME_POS[1]) + 2.6, HOME_POS[1] + 3); scene.add(sg0); }
 addSpot(HOME_POS[0], HOME_POS[1] + 4, 'home', 'home', { r: 7 });
 /* ===== ❤️ 群岛基金会:捐赠与荣誉(算力币的花处) ===== */
@@ -8052,6 +8117,7 @@ function loop() {
   $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
+  syncBuffs(dt);
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
   if (stampT <= 0) {
     stampT = 1;
