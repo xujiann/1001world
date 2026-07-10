@@ -51,6 +51,7 @@ SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
+SAVE_FIELDS.push('aff');   // NPC 好感度
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
 const CATS = {
@@ -2006,6 +2007,7 @@ function openJournal() {
     if (!cs9[i9] || cs9[i9].sent) return;
     cs9[i9].sent = 1; PSTORE.setItem('w1001.cards', JSON.stringify(cs9));
     const who = nearNpc ? nearNpc.name : '海风';
+    if (nearNpc) affAdd(nearNpc.name, 2);
     toast('💌 已寄出。' + who + ' 回信:「' + PC_REPLIES[(i9 + cs9[i9].nm.length) % PC_REPLIES.length] + '」'); blip(700);
     openJournal();
   }));
@@ -3258,6 +3260,24 @@ function addNpc(cfg) {
   bub.className = 'npcBub hidden'; document.body.appendChild(bub);
   allNpcs.push(Object.assign({ g, bub, idx: -1, talk: false, phase: Math.random() * 6, pause: 1 + Math.random() * 4, wp: null, route: null, leg: 0 }, cfg));
 }
+/* ===== 👥 NPC 增强:作息 · 情境台词 · 好感度 ===== */
+const NIGHT_OWLS = ['守夜人', '灯塔管理员', '缄默修士', '守台老道', '不肯说名字的方士', '吟游诗人', '老看守', '守钟老人'];
+const npcSleeping = n => curDA < .32 && !NIGHT_OWLS.includes(n.name) && !n.night;
+function npcCtxLine() {
+  if (WEATHER === 'storm') return '⛈️ 这鬼天气,你居然还在外面跑。';
+  if (WEATHER === 'rain') return '🌧️ 好雨。听屋顶,多热闹。';
+  if (WEATHER === 'fog') return '🌫️ 雾这么大,走路当心。';
+  if (EVENT === 'fair') return '🎪 今天集市日,装备行全场九折——别说我没提醒你。';
+  if (EVENT === 'meteor' && curDA < .35) return '🌠 今晚有流星雨,记得抬头。';
+  if (EVENT === 'whales') return '🐋 外海有鲸群路过,看见水柱了吗?';
+  if (EVENT === 'kites') return '🎏 看见天上的风筝了吗?孩子们放了一早上。';
+  if (curDA < .35) return '🌙 这么晚还不歇着?';
+  return '';
+}
+let AFF = {};
+try { AFF = JSON.parse(PSTORE.getItem('w1001.aff') || '{}'); } catch (e) {}
+const affOf = nm => (AFF[nm] && AFF[nm].n) || 0;
+function affAdd(nm, k) { const a = AFF[nm] = AFF[nm] || { n: 0 }; a.n = Math.min(99, a.n + k); PSTORE.setItem('w1001.aff', JSON.stringify(AFF)); return a; }
 /* 驻场人物 */
 {
   const hBeers = ZONES3D.find(z => z.key === 'beers').h + .8;
@@ -5049,7 +5069,13 @@ for (const s of NISLES) {
   ISLES.push({ c: { x: gx, z: gz, r: s.r }, name: c.name, icon: c.icon, theme: c.theme });
   NI_DEST[s.key] = s.dock; NI_MSG[s.key] = c.ferryMsg;
   if (c.build) c.build(gx, gz);
-  for (const n of (c.npcs || [])) addNpc(Object.assign({}, n, { x: gx + n.dx, z: gz + n.dz }));
+  for (const n of (c.npcs || [])) addNpc(Object.assign({
+    topics: n.topics || [
+      { q: '跟我说说这座岛?', a: (c.desc || '').replace('组合岛:', '这儿嘛——') + '。你眼里看到的,和我们过出来的,凑一块才算全貌。' },
+      NI_QUESTS[s.key] ? { q: '这里有什么要紧事?', a: '要紧事只有一件——' + NI_QUESTS[s.key].btn.replace(/^\S+\s*/, '') + '。岛在等一个肯动手的人。' }
+        : { q: '住在这儿感觉如何?', a: '海风免费,故事管够,还要什么?' },
+    ],
+  }, n, { x: gx + n.dx, z: gz + n.dz }));
   for (const [dx, dz, tp] of (c.spots || [])) addSpot(gx + dx, gz + dz, 'lore', tp, { r: 6 });
   const dk = height(s.dock[0], s.dock[1]);
   const plk = box(5, .5, 9, M.wood); plk.position.set(s.dock[0], dk + .9, s.dock[1]); scene.add(plk);
@@ -5669,7 +5695,15 @@ function updateNpcs3(dt) {
       if (!show) { n.bub.classList.add('hidden'); n.talk = false; continue; }
     }
     const p = n.g.position;
-    if (n.wander) {
+    const zzz = npcSleeping(n);
+    if (!zzz && n.path) {   // 🚶 沿真实街道散步(OSM 路网)
+      const P9 = n.path, ln = P9.ln, tgt = ln[P9.i];
+      const tx = P9.ox + tgt[0], tz = P9.oz + tgt[1];
+      const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+      if (d < 1.3) { P9.i += P9.dir; if (P9.i >= ln.length || P9.i < 0) { P9.dir *= -1; P9.i += P9.dir * 2; if (P9.i < 0) P9.i = 0; if (P9.i >= ln.length) P9.i = ln.length - 1; } }
+      else { const sp9 = 4.2 * dt; p.x += dx / d * sp9; p.z += dz / d * sp9; n.g.rotation.y = Math.atan2(dx, dz); n.phase += dt * 8; }
+      p.y = Math.max(heightMesh(p.x, p.z), 0);
+    } else if (!zzz && n.wander) {
       if (n.pause > 0) { n.pause -= dt; }
       else {
         if (!n.wp) {
@@ -5689,8 +5723,9 @@ function updateNpcs3(dt) {
       }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
     } else { n.phase += dt * 2.2; }
-    n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (n.wander && n.wp ? .05 : .02);
-    animLimbs(n.g, n.phase, (n.wander && n.wp) ? .5 : .06);
+    const moving9 = !zzz && ((n.wander && n.wp) || n.path);
+    n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (moving9 ? .05 : (zzz ? .012 : .02));
+    animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06));
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
     if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
@@ -5701,7 +5736,7 @@ function updateNpcs3(dt) {
       }
       v3.set(p.x, p.y + 3.8, p.z).project(camera);
       if (v3.z < 1) {
-        n.bub.innerHTML = `<b>${n.name}</b>:${n.lines[n.idx]}`;
+        n.bub.innerHTML = `<b>${n.name}</b>:${zzz ? "💤 …(鼾声)" : n.lines[n.idx]}`;
         n.bub.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
         n.bub.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
         n.bub.classList.remove('hidden');
@@ -6903,6 +6938,45 @@ function redistributeMist(cx, cz) {
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cps), 40, .5, 5), intl)); }
   }
 }
+/* 🚶 ① 沿真实街道散步的居民(OSM 路网) */
+function addWalkers(lines9, ox, oz, defs) {
+  defs.forEach((d9, i9) => {
+    const ln = lines9[(i9 * 7 + 3) % lines9.length];
+    if (!ln || ln.length < 2) return;
+    addNpc({ x: ox + ln[0][0], z: oz + ln[0][1], name: d9[0], body: d9[1], hat: d9[2], wander: false, lines: d9[3] });
+    allNpcs[allNpcs.length - 1].path = { ln, ox, oz, i: 0, dir: 1 };
+  });
+}
+addWalkers(OSM_ROADS.TRUMAN, TRU.x + 30, TRU.z + 32, [
+  ['遛狗的邻居', 0xd88a5a, 0xf0e8da, ['以防没看见你:下午好、晚上好、晚安!', '这镇子完美得有点过分,你说呢?', '我家狗冲着 3 号路灯又叫了一早上。没什么,自言自语。']],
+  ['骑行俱乐部会长', 0x5a8ad0, 0xe8e0cc, ['Seaside 的街道是弧形的——绕一圈,烦恼就甩掉了。', '这里每条街都通向海。设计师是懂浪漫的。', '你也有折叠车?品味不错!']],
+  ['送报童', 0x8a6a3a, 0xd0c8b0, ['号外号外——今天没有号外。这里从来没有坏消息。', '每天同一时刻、同样的路线。有人管这叫完美。', '你是新搬来的?这里的人……都很守时。']],
+  ['浇花的太太', 0xc06a8a, 0xf0e8da, ['我的天竺葵开得比画还美。', '下午好!晚上也好!', '街上今天有点不一样……哦,是你呀。']],
+], );
+addWalkers(OSM_ROADS.MOBT, MOB.x - 24, MOB.z + 34, [
+  ['退休捕鲸手', 0x4a5a6a, 0x32404c, ['这条街我走了六十年:码头到教堂,九百步。', '现在的年轻人管鲸叫朋友。也好,也好。', '闻到没有?鹅卵石缝里还有鲸油灯的味道。']],
+  ['船具店老板娘', 0x8a5a46, 0x6a4434, ['缆绳、帆布、罗盘,外加听不腻的港口八卦。', '亚哈?嘘——别在这条街提这个名字。', '南塔开特的鹅卵石,硌脚,但踩着踏实。']],
+  ['灯塔学徒', 0x5a7a8a, 0x46606c, ['我在攒钱买我自己的灯。灯塔的那种灯。', '街尽头能看见三座浮标,我都给取了名字。', '师傅说:守灯先守心。我还在琢磨。']],
+]);
+{ const HLN = NISLES.find(s9 => s9.key === 'helena');
+  addWalkers(OSM_ROADS.HELENA, HLN.x + 30, HLN.z + 28, [
+    ['山谷邮差', 0x6a5a42, 0x4c3f2e, ['全岛的信,山脚到山顶,一天两趟。', '他在世那几年信最多——全欧洲都想看他一眼。', '詹姆斯敦就一条主街,谁也躲不开谁。']],
+    ['卖亚麻的姑娘', 0x8a7a9a, 0x6a5c7a, ['岛上的亚麻,是大西洋的风织的。', '游客都问:他真住过这里?真的。', '街这么窄,故事却这么长。']],
+    ['守钟老人', 0x5a6a5a, 0x42503f, ['教堂的钟慢五分钟。岛上时间,不必着急。', '涨潮时钟声传得远——你信吗?', '我给钟上了五十年发条,它比我守时。']],
+  ]); }
+/* 🎪 ⑦ 事件人群(每日事件限定) */
+if (EVENT === 'fair') for (let i9 = 0; i9 < 5; i9++) addNpc({ x: 18 + (i9 % 3) * 6, z: 208 + Math.floor(i9 / 3) * 7, name: '赶集的旅人' + '甲乙丙丁戊'[i9], body: [0xc06a5a, 0x5a8a6a, 0xd9a62e, 0x6a6ad0, 0x8a5a8a][i9], lines: ['九折!整个群岛就今天!', '我从隔壁岛坐了两小时船来赶集。', '导绳买了吗?潜迷宫全靠它。'] });
+if (EVENT === 'whales') for (let i9 = 0; i9 < 2; i9++) addNpc({ x: 446 + i9 * 9, z: -38, name: '观鲸客' + '甲乙'[i9], body: 0x4a7a9a, lines: ['嘘——看水柱!十点钟方向!', '我数到第七头了!它们朝北去。', '这辈子值了。'] });
+if (EVENT === 'kites') for (let i9 = 0; i9 < 2; i9++) addNpc({ x: -44 + i9 * 88, z: -152, name: '放风筝的孩子' + '大小'[i9], faceUp: true, body: 0xd97a4a, lines: ['线!线不够长了!', '我的是红色那只!比云还高!', '爸爸说:风筝上天,烦恼落地。'] });
+/* 👘 ⑥ 外观配饰:按名字哈希发围巾/背包/手杖(约四成) */
+{ const H9 = s9 => { let h9 = 0; for (const c9 of (s9 || '')) h9 = (h9 * 31 + c9.charCodeAt(0)) | 0; return Math.abs(h9); };
+  for (const n of allNpcs) {
+    const t9 = (n.opts && n.opts.tall) || 1, w9 = (n.opts && n.opts.wide) || 1, hs9 = H9(n.name);
+    if (hs9 % 10 < 3) { const sc9 = new THREE.Mesh(new THREE.TorusGeometry(.36 * w9, .09, 6, 12), lam([0xc0492b, 0x2c7a4b, 0xd9a62e, 0x4a6ab0][hs9 % 4])); sc9.rotation.x = Math.PI / 2; sc9.position.y = 2.02 * t9; n.g.add(sc9); }
+    else if (hs9 % 10 < 5) { const bp9 = box(.52 * w9, .64, .26, lam([0x6a5a3a, 0x4a5a6a, 0x7a4a4a][hs9 % 3])); bp9.position.set(0, 1.52 * t9, -.52 * w9); n.g.add(bp9); }
+    else if (hs9 % 10 === 5 && !(n.opts && n.opts.cane)) { const st9 = cyl(.045, .055, 1.9, M.woodDark, 5); st9.position.set(.56 * w9, .95, .12); st9.rotation.z = .1; n.g.add(st9); }
+  }
+}
 /* ===== 💡 灯光治理:场景 110 盏点光是帧率头号杀手 ===== */
 const ALL_LIGHTS = [];
 scene.traverse(o => { if (o.isPointLight) ALL_LIGHTS.push(o); });
@@ -7036,11 +7110,19 @@ function tryInteract() {
   if (nearNpc) talkTo(nearNpc);
 }
 /* --- NPC 文字对话:走近按 E,选话题、听应答 --- */
-function talkTo(npc) { talkNpc = npc; npc._t = 0; renderTalk(npc.lines[0] || '(……)'); blip(520); }
+function talkTo(npc) {
+  talkNpc = npc; npc._t = 0;
+  if (npcSleeping(npc)) { npc._asleep = true; npc._ctx = ''; renderTalk('……(平稳的鼾声。' + npc.name + '睡得正香,梦里像是在讨价还价。)'); return; }
+  npc._asleep = false; npc._ctx = npcCtxLine();
+  const a9 = affAdd(npc.name, 1);
+  if (a9.n >= 6 && !a9.g) { a9.g = 1; PSTORE.setItem('w1001.aff', JSON.stringify(AFF)); earnSB(6); setTimeout(() => toast('🎁 ' + npc.name + ' 塞给你一件小玩意 · ⚡+6——"拿着,老朋友的规矩。"'), 600); }
+  renderTalk(npc.lines[0] || '(……)'); blip(520);
+}
 function renderTalk(text) {
   const npc = talkNpc; if (!npc) return;
-  const topics = npc.topics || [];
-  cardBody.innerHTML = `<div class="cardHead" style="background:#3a4a6a">💬 与 ${esc(npc.name)} 交谈</div>
+  const topics = npc._asleep ? [] : (npc.topics || [{ q: '这一带有什么值得看的?', a: '把腿借给好奇心——往人多处走有故事,往没人处走有风景。两头都别空手回来。' }])
+    .concat(affOf(npc.name) >= 3 ? [{ q: '(闲聊几句)', a: '跟你说话很自在。这片海我看腻了——可每次你来,都像有船进港。' }] : []);
+  cardBody.innerHTML = `<div class="cardHead" style="background:#3a4a6a">💬 与 ${esc(npc.name)} 交谈 <span style="color:#ff9db0;font-size:13px">${"❤".repeat(Math.min(5, Math.ceil(affOf(npc.name) / 3)))}</span></div>${npc._ctx ? `<div style="font-size:12px;color:#8a94a8;padding:10px 20px 0;font-style:italic">“${esc(npc._ctx)}”</div>` : ""}
     <div class="cardMedia"><div class="paperRoll">${npc.face || '🧑'}</div></div>
     <div class="cardDesc" style="min-height:56px;font-size:15px;line-height:1.8">"${esc(text)}"</div>
     <div style="padding:0 20px 16px">
@@ -7915,4 +7997,4 @@ window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, c
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, openFund, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
