@@ -5,9 +5,9 @@
    cirObs/nightLamps/rnd/makeBoat)。新增岛屿只需在此加数据。
    ============================================================ */
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL } from './w-osm.js?v=3';
+import { OSM_GUNKAN, OSM_VENEZIA, OSM_FOGJAIL, OSM_ATL, OSM_HELENA, OSM_SAGA, OSM_GALA, OSM_TUSI, OSM_AEOL, OSM_KOMODOV } from './w-osm.js?v=4';
 /* OSM footprint → 合并挤出城区(材质分桶,少量 draw call) */
-function osmCity(C, data, gx, gz, zoff, mats) {
+export function osmCity(C, data, gx, gz, zoff, mats) {
   const { THREE, height, scene, cirObs } = C;
   const buckets = mats.map(() => []);
   data.forEach(([bh9, bcx, bcz, brr, pts9], i9) => {
@@ -1087,6 +1087,7 @@ export function makeNIContent(C) {
         lines: ['我来写一首屠龙诗。写到第三天,改成了一首晒太阳诗。', '史诗里漏了一句:龙的一生,大部分时候只是想暖和一点。', '英雄需要怪物,怪物不需要英雄——你看它睡得多好。'] },
     ],
     build: (gx, gz) => {
+      osmCity(C, OSM_KOMODOV, gx - 34, gz, 26, [lam(0x9a7a52), lam(0x8a6a44)]);   // 科莫多高脚村 © OSM
       const drag = (dx2, dz2, s, a) => { const dh3 = height(dx2, dz2);   // 巨蜥:低伏长身+尾+头
         const bd2 = box(2.6 * s, .55 * s, .9 * s, lam(0x6a6444)); bd2.position.set(dx2, dh3 + .35, dz2); bd2.rotation.y = a; scene.add(bd2);
         const tl2 = new THREE.Mesh(new THREE.ConeGeometry(.3 * s, 2.4 * s, 6), lam(0x605a3e)); tl2.rotation.z = Math.PI / 2; tl2.rotation.y = a; tl2.position.set(dx2 - Math.cos(a) * 2.4 * s, dh3 + .3, dz2 + Math.sin(a) * 2.4 * s); scene.add(tl2);

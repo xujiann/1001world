@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
-import { makeNIContent } from './w-isles.js?v=11';
+import { makeNIContent, osmCity } from './w-isles.js?v=12';
+import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT } from './w-osm.js?v=4';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -6799,6 +6800,14 @@ function redistributeMist(cx, cz) {
     b[i * 3] = x; b[i * 3 + 2] = z;
     b[i * 3 + 1] = (h > 1.6 && h < 15) ? h + 1.8 : -999;   // 低洼草地才起雾
   }
+}
+/* 🗾 OSM 真实街区 · 硬编码老岛四处 */
+{
+  const C9 = { THREE, height, scene, cirObs };
+  osmCity(C9, OSM_MOBT, MOB.x - 24, MOB.z, 34, [lam(0xb8a88c), lam(0x9a8a6e)]);     // 南塔开特镇(捕鲸港)
+  osmCity(C9, OSM_TRUMAN, TRU.x + 30, TRU.z, 32, [lam(0xf0e8da), lam(0xe6d8c4)]);   // Seaside(楚门的世界取景地)
+  osmCity(C9, OSM_DGYT, DGY.x - 28, DGY.z, -32, [lam(0x9a5a4a), lam(0x8a8478)]);    // 北京大观园
+  osmCity(C9, OSM_SPTT, SPT.x + 64, SPT.z, -40, [lam(0xc03a3a), lam(0x8a8a92)]);    // 老特拉福德(梦剧场原型)
 }
 /* ===== 💡 灯光治理:场景 110 盏点光是帧率头号杀手 ===== */
 const ALL_LIGHTS = [];
