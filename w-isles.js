@@ -1421,15 +1421,15 @@ export function makeNIContent(C) {
       qqsquare: { icon: '⭕', color: '#8a5a3a', title: '九街圆枢', en: 'The Nine-Street Circle', hint: '广场即阵眼',
         desc: '一座圆形广场,九条大街从这里放射出去,像车轮的辐条,也像某种兽的尾巴。周围一圈穹顶廊柱的百年老楼,还是旧时的样子。本地人说:白天数是九条街,暮色里再数,总会多出一条。' },
       qqtram: { icon: '🚋', color: '#2e5a44', title: '百年轨车', en: 'The Century Tram', hint: '一百年只跑一条线',
-        desc: '墨绿色的老轨车停在街角:铜铃、木窗、漆皮剥落的号牌。它跑了一百年,只跑这一条线——从广场到海。司机说末班车偶尔会多一位乘客:上车不买票,下车不见人,座位上留一撮白毛。' },
+        desc: '墨绿色的老轨车往返于广场站与海岸站:铜铃、木窗、漆皮剥落的号牌。它跑了一百年,只跑这一条线——从广场到海。到站时走近按 E,就能搭一程。司机说末班车偶尔会多一位乘客:上车不买票,下车不见人,座位上留一撮白毛。' },
       qqfox: { icon: '🦊', color: '#b8742e', title: '狐大夫医馆', en: 'The Fox Doctor', hint: '食者不蛊',
         desc: '《山海经·南山经》:青丘之山,有兽焉,其状如狐而九尾,其音如婴儿。医馆木匾写着「食者不蛊」——吃了它就不受妖邪蛊惑。可狐大夫从不开这味药,他只开一句:按时睡觉,少信谣言。' },
       qqhai: { icon: '⚓', color: '#4a6a8a', title: '赶海雾港', en: 'The Foggy Harbor', hint: '退潮就是赶集',
         desc: '退潮后的滩涂上全是弯腰的人影:蚬子、海肠、螃蟹。阿婆说赶海和讲故事一个道理——潮水退了,才知道海里藏着什么。雾笛一响,九条街的灯就次第亮起来。' },
     },
-    spots: [[0, -6, 'qqsquare'], [20, -14, 'qqtram'], [-18, 12, 'qqfox'], [32, 32, 'qqhai']],
+    spots: [[0, -6, 'qqsquare'], [-2, 10, 'qqtram'], [-18, 12, 'qqfox'], [32, 32, 'qqhai']],
     npcs: [
-      { dx: 22, dz: -8, name: '末班轨车司机', body: 0x2e5a44, hat: 0x2e2e34,
+      { dx: -1, dz: 6, name: '末班轨车司机', body: 0x2e5a44, hat: 0x2e2e34,
         lines: ['这条线我跑了四十年,我师傅跑了三十年,他师傅——就是那位不买票的乘客。', '铜铃只在两种时候响:到站,和有故事要开始。', '暮色那趟别坐过站。过了站,街就不止九条了。'] },
       { dx: -15, dz: 14, name: '狐大夫', body: 0xb8742e, hat: 0xd9a62e, opts: { cane: true },
         lines: ['《山海经》说食我族者不蛊。可依我行医多年,治蛊最好的药是早睡。', '九条尾巴?谣传。我数过,家祖只有八条半——最后半条被雾港的门夹的。', '你要是暮色时在广场多数出一条街,别慌,顺着狐火走,那条街通海。'] },
@@ -1453,12 +1453,22 @@ export function makeNIContent(C) {
         tl.position.set(gx + Math.sin(a9) * 1.1, ph9 + 3.1, gz - 1.5 - Math.cos(a9) * .3);
         scene.add(tl);
       }
-      const tx9 = gx + 20, tz9 = gz - 14, th9 = height(tx9, tz9);   // 百年轨车(墨绿)
-      const tram = box(6, 2.2, 2, lam(0x2e5a44)); tram.position.set(tx9, th9 + 1.6, tz9); scene.add(tram); cirObs.push({ x: tx9, z: tz9, r: 3.4 });
-      const trf = box(6.4, .25, 2.3, lam(0x24402f)); trf.position.set(tx9, th9 + 2.85, tz9); scene.add(trf);
-      for (const ox of [-2.2, -.8, .6, 2]) { const win = box(.9, .8, .1, lam(0xbfe3ee)); win.position.set(tx9 + ox, th9 + 1.9, tz9 + 1.02); scene.add(win); }
-      for (const [ox, oz] of [[-2, .95], [2, .95], [-2, -.95], [2, -.95]]) { const wh = cyl(.4, .4, .3, lam(0x222222), 8); wh.rotation.x = Math.PI / 2; wh.position.set(tx9 + ox, th9 + .4, tz9 + oz); scene.add(wh); }
-      const pant = cyl(.05, .05, 1.8, lam(0x333333), 4); pant.rotation.z = .5; pant.position.set(tx9, th9 + 3.7, tz9); scene.add(pant);
+      const trG = new THREE.Group(); trG.name = 'qqTram';   // 百年轨车(主文件驱动行驶:广场站⇄海岸站)
+      const tram = box(6, 2.2, 2, lam(0x2e5a44)); tram.position.y = 1.6; trG.add(tram);
+      const trf = box(6.4, .25, 2.3, lam(0x24402f)); trf.position.y = 2.85; trG.add(trf);
+      for (const ox of [-2.2, -.8, .6, 2]) { for (const sz9 of [1.02, -1.02]) { const win = box(.9, .8, .1, lam(0xbfe3ee)); win.position.set(ox, 1.9, sz9); trG.add(win); } }
+      for (const [ox, oz] of [[-2, .95], [2, .95], [-2, -.95], [2, -.95]]) { const wh = cyl(.4, .4, .3, lam(0x222222), 8); wh.rotation.x = Math.PI / 2; wh.position.set(ox, .4, oz); trG.add(wh); }
+      const pant = cyl(.05, .05, 1.8, lam(0x333333), 4); pant.rotation.z = .5; pant.position.y = 3.7; trG.add(pant);
+      const tlt = new THREE.PointLight(0x7fe8c0, 0, 22, 2); tlt.position.set(3.1, 1.7, 0); tlt.userData.pow = 10; nightLamps.push(tlt); trG.add(tlt);
+      trG.position.set(gx + 4.1, height(gx + 4.1, gz + 11.3) + .12, gz + 11.3); scene.add(trG);
+      const sly9 = Math.atan2(-48.8, 17.8) + Math.PI / 2;   // 枕木垂直于 70° 走廊
+      for (let i9 = 0; i9 <= 12; i9++) {
+        const t9 = i9 / 12, sx9 = gx + 4.1 + 17.8 * t9, sz9 = gz + 11.3 + 48.8 * t9;
+        const sl9 = box(2.6, .1, .5, M.woodDark); sl9.rotation.y = sly9; sl9.position.set(sx9, height(sx9, sz9) + .06, sz9); scene.add(sl9);
+      }
+      for (const [stx, stz] of [[gx + 1.5, gz + 8], [gx + 24.5, gz + 63]]) {   // 广场站/海岸站 石台
+        const pf9 = box(3.6, .4, 2.4, M.stone); pf9.position.set(stx, height(stx, stz) + .3, stz); scene.add(pf9);
+      }
       for (let i9 = 0; i9 < 9; i9++) {   // 狐火:环街九盏,入夜青绿
         const a9 = i9 / 9 * Math.PI * 2;
         const lx9 = gx + Math.cos(a9) * 26, lz9 = gz + Math.sin(a9) * 26;
