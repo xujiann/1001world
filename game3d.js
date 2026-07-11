@@ -2365,6 +2365,19 @@ skyUni.turbidity.value = 7;
 skyUni.rayleigh.value = 1.6;
 skyUni.mieCoefficient.value = .004;
 skyUni.mieDirectionalG.value = .8;
+/* 🌇 IBL:把物理天空烘成环境贴图喂给全部 Standard 材质(天光漫射+反射,昼夜随烘随变) */
+let pmrem9 = null, envRT9 = null, envScene9 = null, lastEnvDA9 = -9;
+function bakeEnv9() {
+  if (MOBILE) return;
+  if (!pmrem9) pmrem9 = new THREE.PMREMGenerator(renderer);
+  if (!envScene9) envScene9 = new THREE.Scene();
+  const old9 = envRT9;
+  envScene9.add(sky);                      // 借走天空烘一帧
+  envRT9 = pmrem9.fromScene(envScene9);
+  scene.add(sky);                          // 归还
+  scene.environment = envRT9.texture;
+  if (old9) old9.dispose();
+}
 /* --- 星空(夜晚可见:软圆星点 + 亮度/色温变化 + 银河带) --- */
 let starField;
 {
@@ -2669,6 +2682,7 @@ function updateDayNight(t) {
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
   starField.rotation.y = t * .006;                                        // 缓慢天旋
   if (constStars) { constStars.material.opacity = night * .95; constLines.material.opacity = night * .32; }   // 星座随夜显现
+  if (!MOBILE && Math.abs(da - lastEnvDA9) > .14) { lastEnvDA9 = da; bakeEnv9(); }   // 🌇 环境贴图随昼夜重烘
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
@@ -2922,10 +2936,10 @@ function addSpot(x, z, cat, type, extra) {
 const LAMC = new Map();   // 材质按色缓存:同色共享一份(状态切换/内存大降;严禁对 lam 材质做逐对象改动)
 const lam = c => {
   let m9 = LAMC.get(c);
-  if (!m9) { m9 = MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 }); LAMC.set(c, m9); }
+  if (!m9) { m9 = MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0, envMapIntensity: .25 }); LAMC.set(c, m9); }
   return m9;
 };
-const lamOwn = c => MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 });   // 独享材质:会被 updateVisual 改色的网格专用
+const lamOwn = c => MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0, envMapIntensity: .25 });   // 独享材质:会被 updateVisual 改色的网格专用
 const M = {
   wood: lam(0x8a6238),
   woodDark: lam(0x5e4023),
@@ -8936,10 +8950,12 @@ const BUCKETS = [
   }
   console.log('🧱 静态合并:', rm9, '个网格 →', ad9, '个合并体');
 }
-/* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外 */
+/* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外;顺路定 IBL 环境强度 */
 if (!MOBILE) {
+  const envSeen9 = new Set();
   scene.traverse(o => {
     if (o.isMesh && o.material && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; }
+    if (o.isMesh && o.material && o.material.isMeshStandardMaterial && !envSeen9.has(o.material)) { envSeen9.add(o.material); o.material.envMapIntensity = o.material.vertexColors ? .12 : .25; }   // 顶点色地表弱反射,道具建筑中等
   });
   sky.castShadow = sky.receiveShadow = false;
   if (oceanWater) { oceanWater.castShadow = false; oceanWater.receiveShadow = false; }
@@ -8949,6 +8965,6 @@ loop();
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
-  quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null,
+  quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
