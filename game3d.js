@@ -2334,6 +2334,15 @@ if (!MOBILE) {
     gtaoPass = new GTAOPass(scene, camera, innerWidth, innerHeight);
     gtaoPass.output = GTAOPass.OUTPUT.Default;
     if (gtaoPass.updateGtaoMaterial) gtaoPass.updateGtaoMaterial({ radius: 3.5, distanceExponent: 1, scale: 1, samples: 8, thickness: 1 });
+    /* 🐛 GTAO 的深度/法线预渲染把 Sprite/粒子当实心方块 → AO 把云乘成黑砖。
+       修法:AO 阶段临时隐藏 Sprite/Points/透明不写深度的网格(它们本不该参与遮蔽),美术合成不受影响。 */
+    const gtaoR9 = gtaoPass.render.bind(gtaoPass);
+    gtaoPass.render = function (...a9) {
+      const hid9 = [];
+      scene.traverse(o => { if (o.visible && (o.isSprite || o.isPoints || (o.isMesh && o.material && o.material.transparent && !o.material.depthWrite))) { o.visible = false; hid9.push(o); } });
+      gtaoR9(...a9);
+      for (const o of hid9) o.visible = true;
+    };
     composer.addPass(gtaoPass);
   } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
@@ -5859,6 +5868,22 @@ const portalBeacons = [];
       rm9 += list9.length;
     }
     console.log('🚇 隧道合并:', rm9, '个网格 →', byM9.size, '个分区体');
+  }
+  { // 🌅 蓝洞神光柱:每个出口竖井一束天光(潜水时的 god rays)
+    const sg9 = [];
+    for (const p9 of MAZE_PORTALS) {
+      const n9 = MAZE_NODES[p9.n];
+      const h9 = -n9[1] + 2;
+      const c9 = new THREE.CylinderGeometry(TUBE_R * .5, TUBE_R * .85, h9, 8, 1, true);
+      c9.translate(n9[0], n9[1] + h9 / 2, n9[2]);
+      sg9.push(c9.toNonIndexed());
+    }
+    let mg9 = null; try { mg9 = mergeGeometries(sg9, false); } catch (e) {}
+    if (mg9) {
+      const shaft9 = new THREE.Mesh(mg9, new THREE.MeshBasicMaterial({ color: 0x9adcff, transparent: true, opacity: .07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      shaft9.frustumCulled = false;
+      diveGroup.add(shaft9);
+    }
   }
   { // ⚓ 新发现道具:31 商队残箱(沉船墓地) / 39 鲸骨珍珠(鲸骨王朝)
     const n31 = MAZE_NODES[31];
