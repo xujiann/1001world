@@ -19,6 +19,7 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES, NI_QUESTS } from './w-config.js?v=16';
+import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=10';
 
@@ -2471,6 +2472,35 @@ if (RAINY) {
   rainPts.userData.fall = SNOWY9 ? 14 : 55;
   rainPts.userData.snow = SNOWY9;
   scene.add(rainPts);
+}
+let ambT9 = 6;   // 🔊 环境声调度
+function chirp9() {   // 鸟鸣:2-3 声上滑短哨
+  try {
+    const n9 = 2 + (Math.random() * 2 | 0), t0 = actx.currentTime;
+    for (let i = 0; i < n9; i++) {
+      const o9 = actx.createOscillator(), g9 = actx.createGain(), f0 = 2200 + Math.random() * 1400;
+      o9.type = 'sine';
+      o9.frequency.setValueAtTime(f0, t0 + i * .22);
+      o9.frequency.exponentialRampToValueAtTime(f0 * 1.5, t0 + i * .22 + .09);
+      g9.gain.setValueAtTime(.0001, t0 + i * .22);
+      g9.gain.exponentialRampToValueAtTime(.028, t0 + i * .22 + .02);
+      g9.gain.exponentialRampToValueAtTime(.001, t0 + i * .22 + .13);
+      o9.connect(g9).connect(actx.destination); o9.start(t0 + i * .22); o9.stop(t0 + i * .22 + .16);
+    }
+  } catch (e) {}
+}
+function cricket9() {   // 虫鸣:高频脉冲串
+  try {
+    const t0 = actx.currentTime, n9 = 4 + (Math.random() * 3 | 0);
+    for (let i = 0; i < n9; i++) {
+      const o9 = actx.createOscillator(), g9 = actx.createGain();
+      o9.type = 'square'; o9.frequency.value = 3600 + Math.random() * 500;
+      g9.gain.setValueAtTime(.0001, t0 + i * .07);
+      g9.gain.exponentialRampToValueAtTime(.009, t0 + i * .07 + .012);
+      g9.gain.exponentialRampToValueAtTime(.0005, t0 + i * .07 + .05);
+      o9.connect(g9).connect(actx.destination); o9.start(t0 + i * .07); o9.stop(t0 + i * .07 + .06);
+    }
+  } catch (e) {}
 }
 let boltT9 = 9, boltV9 = 0;   // ⛈️ 闪电计时/亮度
 function thunder9() {
@@ -5351,28 +5381,7 @@ if (EVENT === 'kites') {
   scene.add(evKites);
 }
 /* ===== ✈️ 鲸航 QJ:12 座机场(仅"现实上说得通"的岛设跑道) ===== */
-const AIRPORTS = [   // 按现实设台:原型真有机场才通航;端岛无机场已撤;楚门的机场是布景(fake)
-  ['main', '收藏之岛 · 鲸背国际机场', 452, -48],
-  ['truman', '楚门的世界 · 海景旅行社机场', 828, 516, 1],
-  ['sport', '体育岛 · 德比航站', -842, 168],
-  ['jur', '侏罗纪公园 · InGen 简易跑道', 1082, 978],
-  ['unj', '未竟之都 · 万国空港', 312, 702],
-  ['gala', '进化群岛 · 巴尔特拉机场', -926, -86],
-  ['mada', '方舟大陆岛 · 猴面包树机场', 312, -566],
-  ['saga', '冰火萨迦岛 · 赫马岛机场', -646, 1514],
-  ['venezia', '看不见的水城 · 马可·波罗机场', 384, 1058],
-  ['helena', '风中庄园 · 流放者机场', -106, -1098],
-  ['komodo', '龙蜥荒原 · 纳闽巴霍机场', 1350, -142],
-  ['moai', '星历仙岛 · 马塔维里机场', -955, -488],
-  ['atl', '沉环之岛 · 圣托里尼机场', 588, 892],
-  ['tah', '画家岛 · 法阿国际机场', -1505, -388],
-  ['rain', '雨岛 · 帕果帕果机场', -1706, -204],
-  ['typ', '泰皮 · 努库希瓦机场', -1446, -74],
-  ['soco', '真名植物岛 · 索科特拉机场', 586, 302],
-  ['tusi', '讲故事人之岛 · 法莱奥洛机场', -1264, -1124],
-  ['mob', '南塔开特 · 纪念机场 ACK', 186, 858],
-  ['dol', '蓝色海豚岛 · 海军旧跑道', -1246, 796],
-];
+
 const AIR_KEYS = new Set(AIRPORTS.filter(a => !a[4] && a[0] !== 'main').map(a => a[0]));   // 可通航的岛(渡口下架名单)
 for (const [k3, nm3, ax, az] of AIRPORTS) {
   const ah3 = Math.max(height(ax, az), .4);
@@ -6272,18 +6281,8 @@ const PC_REPLIES = [
   '收到明信片的人有个特权:可以假装自己也去过了。',
 ];
 /* ===== 🍜 群岛食单:八道地方味,吃出一个称号 ===== */
-const FOODS = [
-  ['clam', '南塔开特蛤蜊浓汤', '🥣', 6, '奶白浓稠,贝壳当勺。梅尔维尔写过它整整一章。', 'swim', '游泳提速 3 分钟'],
-  ['bread', '冰岛黑面包', '🍞', 5, '在地热里焖了 24 小时,切开冒着火山的余温。', 'run', '奔跑 +12% · 3 分钟'],
-  ['onigiri', '鲸背渔夫饭团', '🍙', 4, '海苔包着刚捞的碎鱼,主岛渔家的传家手艺。', 'ride', '骑行 +15% · 3 分钟'],
-  ['squid', '水城墨鱼面', '🍝', 7, '面条黑得像运河的夜,鲜得像涨潮。', 'run', '奔跑 +12% · 3 分钟'],
-  ['peach', '桃阵岛鲜桃', '🍑', 5, '阵眼千年桃的旁枝所结。岛主说:吃旁枝的,不迷路。', 'ride', '骑行 +15% · 3 分钟'],
-  ['dates', '巴格达蜜枣', '🌴', 4, '一千零一夜里,讲故事的人靠它续命到天亮。', 'swim', '游泳提速 3 分钟'],
-  ['coco', '图西塔拉椰子可可', '🥥', 5, '讲故事人的凉台特供,孩子们排队的味道。', 'run', '奔跑 +12% · 3 分钟'],
-  ['tea', '大观园枫露茶', '🍵', 8, '三四次后才出色。宝玉为它摔过杯子。', 'ride', '骑行 +15% · 3 分钟'],
-  ['menzi', '青丘焖子', '🍢', 5, '地瓜粉煎出焦壳,淋上蒜汁麻酱。轨车站旁的老摊,狐大夫也排队。', 'run', '奔跑 +12% · 3 分钟'],
-];
-const FOOD_SPOTS = [['onigiri', 320, -60], ['clam', 150, 760], ['bread', -700, 1520], ['squid', 356, 1004], ['peach', 1610, 690], ['dates', -1004, 610], ['coco', -1300, -1132], ['tea', 1216, -686], ['menzi', 1782, 260]];
+
+
 const eaten = new Set((PSTORE.getItem('w1001.eaten') || '').split(',').filter(Boolean));
 if (eaten.size >= 9 && PSTORE.getItem('w1001.foodie') !== '1') { PSTORE.setItem('w1001.foodie', '1'); stars++; saveQuest(); updateQuestHUD(); }   // 自愈:老档补发环球食客
 const BUFF = { run: 0, ride: 0 };
@@ -6330,8 +6329,8 @@ for (const [fid, fx9, fz9] of FOOD_SPOTS) {
   addSpot(fx9, fz9 + 2, 'food', 'food', { r: 6, fid });
 }
 /* ===== 👘 裁缝铺:披风 · 帽子 · 围巾(玩家换装) ===== */
-const CAPES = [['旅人红', 0xc0492b], ['海雾蓝', 0x3a6a9a], ['苔原绿', 0x2c7a4b], ['暮金', 0xd9a62e]];
-const HATS = [['草帽', 0xd9c27a, 'straw'], ['绅士帽', 0x2e2e34, 'top'], ['风帽', 0x5a4a6a, 'hood']];
+
+
 let WD = { capes: [], hats: [], scarf: 0, eq: { c: -1, h: -1, s: 0 } };
 try { const w0 = JSON.parse(PSTORE.getItem('w1001.wardrobe') || 'null'); if (w0 && w0.eq) WD = w0; } catch (e) {}
 const saveWD = () => PSTORE.setItem('w1001.wardrobe', JSON.stringify(WD));
@@ -6455,22 +6454,8 @@ if (PSTORE.getItem('w1001.home') === '1') { buildHome(); if (homeLv() >= 1) buil
 else { const sg0 = makeSign('🏠 空地出售', 5, '#5a4a36', '#e8d8b0'); sg0.position.set(HOME_POS[0], height(HOME_POS[0], HOME_POS[1]) + 2.6, HOME_POS[1] + 3); scene.add(sg0); }
 /* ===== 📮 家书:好感 ≥6 的居民会往信箱寄信(每日至多两封) ===== */
 const MAIL_DATE = new Date().toLocaleDateString('zh-CN');
-const LETTER_TXT = {
-  '狐大夫': ['见字如面。医馆前的忍冬开了,想起你上回问尾巴的事——数目不重要,重要的是别信一眼就能数清的东西。得空来坐,药茶管够。—— 狐大夫'],
-  '末班轨车司机': ['轨车今日大修,铜铃擦得能照见人。你走后那位老乘客又来过一回,座位上照旧一撮白毛。等你回来,末班车给你留个靠窗的位置。—— 司机'],
-  '赶海阿婆': ['前日退大潮,捡了半桶海肠,想着你要在就分你一半。雾笛这几天哑了一声,修灯的说是海风咸的。早些回来赶海。—— 阿婆'],
-  '星期五': ['主人教我写字,这第一封信就写给你。岛上山羊又添两只,葡萄干晒了三筐。你说外面有六十座岛——星期五想听你讲完。—— 星期五'],
-  '守台老道': ['台上无事,星轨如常。前夜荧惑犯心,我记在册子上了,你来时给你看。棋盘摆着,茶温着。—— 守台老道'],
-  '老树医': ['桃阵新发的芽比去年壮。你上回踩歪的那株我扶正了,别放在心上——树和人一样,歪过才知道怎么直。—— 老树医'],
-  '老酋长': ['雨季把路又冲垮一段,部族三天修好,比去年快。凉台的孩子们问:那个去过金银岛的旅人,什么时候再来?—— 酋长'],
-  '退休捕鲸手': ['港里新泊了条白帆船,像极了我年轻时追过的那头白鲸的颜色。人老了,不追了,看看也好。街角咖啡续杯免费,来。—— 老捕鲸手'],
-};
-const LETTER_TPL = [
-  '{n}托轨车司机捎来一张字条:「近来可好?岛上一切如常,就是少个说话的人。」',
-  '{n}的信只有一句:「上次你说的那个地方,我托人打听了,是真的。回来细说。」',
-  '{n}寄来一片压平的叶子,信上写:「见叶如面。台风绕开了我们,你那边也要晴。」',
-  '{n}写道:「集市日买多了蜜枣,给你留了一包。再不来就要被孩子们分光了。」',
-];
+
+
 function letterFor(nm9, seed9) {
   const c9 = LETTER_TXT[nm9];
   if (c9) return c9[seed9 % c9.length];
@@ -6512,6 +6497,28 @@ function openMail() {
   }));
   cardBody.querySelector('[data-mailback]')?.addEventListener('click', openHome);
 }
+/* ===== 🚪 登门回访:好感 ≥9 的老友,隔三差五等在你家门口 ===== */
+let visitGift9 = null;
+(function visitInit() {
+  try {
+    if (PSTORE.getItem('w1001.home') !== '1') return;
+    const today9 = new Date().toLocaleDateString('zh-CN');
+    if (PSTORE.getItem('w1001.visitdate') === today9) return;
+    const cand9 = Object.keys(AFF).filter(k9 => (AFF[k9] || {}).n >= 9);
+    if (!cand9.length) return;
+    const seed9 = Math.floor(Date.now() / 864e5);
+    if (seed9 % 3 === 0) return;   // 三天约两访
+    PSTORE.setItem('w1001.visitdate', today9);
+    const nm9 = cand9[seed9 % cand9.length];
+    visitGift9 = nm9;
+    addNpc({ x: HOME_POS[0] - 5, z: HOME_POS[1] + 6, name: nm9, body: 0x8a6a4a, hat: 0x6a5a44, lines: [
+      '路过,顺便来看看你——好房子!比信里写的还像样。',
+      '门口那个信箱是我见过最神气的。我的信,你都收到了吧?',
+      '不多留了。下回你到我那儿,我也站在门口等你。',
+    ] });
+    setTimeout(() => toast('🚪 ' + nm9 + ' 在你家门口等你——回家看看吧'), 9000);
+  } catch (e) {}
+})();
 /* ===== 🍂 四季流转:按真实月份 ===== */
 const SEASON = (m9 => m9 >= 3 && m9 <= 5 ? 'spring' : m9 >= 6 && m9 <= 8 ? 'summer' : m9 >= 9 && m9 <= 11 ? 'autumn' : 'winter')(new Date().getMonth() + 1);
 let seasonPts = null;
@@ -7501,7 +7508,7 @@ function zoneAudioTick(dt) {
   if (zn9 !== lastZone9) { if ((zn9 === '青丘' || zn9 === '雾港') && lastZone9) foghorn(); lastZone9 = zn9; }
 }
 /* ===== 🤝 居民每日委托:每天两单,串起食单·明信片·好感(C) ===== */
-const DQ_FOODS = ['clam', 'bread', 'onigiri', 'squid', 'peach', 'dates', 'coco', 'tea', 'menzi'];
+
 const DQ_DATE = new Date().toLocaleDateString('zh-CN');
 let DQ = null;
 try { const d0 = JSON.parse(PSTORE.getItem('w1001.dq') || 'null'); if (d0 && d0.d === DQ_DATE) DQ = d0.q; } catch (e) {}
@@ -7666,6 +7673,7 @@ function talkTo(npc) {
   talkNpc = npc; npc._t = 0;
   if (npcSleeping(npc)) { npc._asleep = true; npc._ctx = ''; renderTalk('……(平稳的鼾声。' + npc.name + '睡得正香,梦里像是在讨价还价。)'); return; }
   npc._asleep = false; npc._ctx = npcCtxLine();
+  if (visitGift9 === npc.name) { visitGift9 = null; earnSB(15); setTimeout(() => toast('🎁 ' + npc.name + ' 带了乔迁贺礼 · ⚡+15——"住得像样,就常回来。"'), 800); }
   const dq0 = dqFor(npc.name);
   if (dq0 && dq0.t === 'food' && dq0.s === 1) { dq0.s = 2; saveDQ(); earnSB(10); affAdd(npc.name, 2); setTimeout(() => toast('🤝 委托完成!' + npc.name + ' 接过还热乎的吃食 · ⚡+10 ❤+2'), 500); }
   const a9 = affAdd(npc.name, 1);
@@ -8296,8 +8304,16 @@ function loop() {
   }
   /* 海浪声强度 */
   if (waveGain) {
-    const target = clamp(1 - Math.abs(gh) / 7, 0, 1) * .05;
+    const target = clamp(1 - Math.abs(gh) / 7, 0, 1) * .05 * (swimming ? 1.8 : 1) + (WEATHER === 'storm' ? .018 : 0);
     waveGain.gain.value += (target - waveGain.gain.value) * Math.min(1, dt * 3);
+  }
+  ambT9 -= dt;   // 🔊 环境声分层:白日林间鸟鸣 / 夜晚草地虫鸣
+  if (ambT9 <= 0) {
+    ambT9 = 4 + Math.random() * 9;
+    if (actx && !RAINY && gh > 2 && gh < 24 && !swimming) {
+      if (curDA > .45) chirp9();
+      else if (curDA < .3) cricket9();
+    }
   }
   /* 位置存档(每 3 秒) */
   saveT += dt;
