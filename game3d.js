@@ -21,7 +21,7 @@ import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm
 import { THEMES, NI_QUESTS } from './w-config.js?v=16';
 import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
 import { CONSTELLATIONS } from './constellations.js?v=1';
-import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=10';
+import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=11';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -52,6 +52,7 @@ const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drin
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
+SAVE_FIELDS.push('wreck2', 'pearl9');   // 隧道新发现
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 SAVE_FIELDS.push('aff');   // NPC 好感度
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -3534,17 +3535,20 @@ function affAdd(nm, k) { const a = AFF[nm] = AFF[nm] || { n: 0 }; a.n = Math.min
     lines: ['要下海?先穿上泳衣,冷得很。', '这鱼竿,等得起戈多,更等得起鱼。', '装备上的广告位?去问墨丘利。'] });
 }
 /* 游荡的文豪(1001books 的作者们,说他们的话) */
-const AUTHORS = [
+const AUTHORS = [   // home = 迁居主题岛坐标(不设则留主岛作家角);首句为岛屿专属台词
   { name: '鲁迅', body: 0x2c3e50, lines: ['其实地上本没有路,走的人多了,也便成了路。', '愿中国青年都摆脱冷气,只是向上走。'] },
-  { name: '海明威', body: 0x784212, lines: ['人可以被毁灭,但不能被打败。', '这个世界如此美好,值得人们为它奋斗。'] },
-  { name: '加西亚·马尔克斯', body: 0xb03a2e, lines: ['过去都是假的,回忆是一条没有归途的路。', '生命中所有的灿烂,终要用寂寞偿还。'] },
-  { name: '卡夫卡', body: 0x1b2631, lines: ['一本书,必须是劈开我们内心冰海的斧头。', '在你与世界的斗争中,请站在世界这边。'] },
-  { name: '加缪', body: 0x21618c, lines: ['在隆冬,我终于知道,我身上有一个不可战胜的夏天。', '登上顶峰的斗争,本身足以充实人的心灵。'] },
-  { name: '圣埃克苏佩里', body: 0xca6f1e, lines: ['真正重要的东西,用眼睛是看不见的。', '所有的大人,都曾经是小孩。'] },
+  { name: '海明威', body: 0x784212, home: [162, 858], lines: ['我在这港口守到第八十四天,还没等到那条大鱼——但今天海况不错。', '人可以被毁灭,但不能被打败。', '这个世界如此美好,值得人们为它奋斗。'] },
+  { name: '加西亚·马尔克斯', body: 0xb03a2e, home: [1376, 956], lines: ['蜃楼散了不必可惜——马孔多也是一阵风就没了,可我们都记得它。', '过去都是假的,回忆是一条没有归途的路。', '生命中所有的灿烂,终要用寂寞偿还。'] },
+  { name: '卡夫卡', body: 0x1b2631, home: [318, 642], lines: ['一座永远造不完的城,比造好的城诚实——它至少不撒谎。', '一本书,必须是劈开我们内心冰海的斧头。', '在你与世界的斗争中,请站在世界这边。'] },
+  { name: '加缪', body: 0x21618c, home: [-698, -394], lines: ['守灯人把灯点亮,又任它熄灭,日复一日。我看见西西弗——他是幸福的。', '在隆冬,我终于知道,我身上有一个不可战胜的夏天。', '登上顶峰的斗争,本身足以充实人的心灵。'] },
+  { name: '圣埃克苏佩里', body: 0xca6f1e, home: [1110, 344], lines: ['我认得这颗小星球——上面住着一朵玫瑰和三座火山。我只是回来看看她。', '真正重要的东西,用眼睛是看不见的。', '所有的大人,都曾经是小孩。'] },
 ];
 {
   const wps = Object.entries(TRAVEL3D).filter(([k]) => k !== 'plaza').map(([, v]) => v);
-  AUTHORS.forEach((a, i) => addNpc({
+  AUTHORS.forEach((a, i) => addNpc(a.home ? {
+    x: a.home[0], z: a.home[1], name: a.name, body: a.body, hat: 0xf5efdc, opts: { hat: 'cone' },
+    lines: a.lines, wander: true, wps: [[a.home[0], a.home[1]], [a.home[0] + 9, a.home[1] + 5], [a.home[0] - 6, a.home[1] + 9]],
+  } : {
     x: NPC_HUB3[0] + (i % 3) * 5 - 5, z: NPC_HUB3[1] + Math.floor(i / 3) * 5,
     name: a.name, body: a.body, hat: 0xf5efdc, opts: { hat: 'cone' },
     lines: a.lines, wander: true, wps,
@@ -5453,7 +5457,7 @@ for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
 let causticLight = null, causticTex = null;
-let abyssLight = null, MAZE_FLOW = null, flowPts = null, nearEdge = 0;
+let abyssLight = null, MAZE_FLOW = null, MAZE_DIST = null, RAPIDS = new Set(), flowPts = null, nearEdge = 0;
 let babelBook = null, babelDust = null;
 const babelLamps = [];
 const jellies = [];
@@ -5629,21 +5633,87 @@ const portalBeacons = [];
     cable.position.set(n[0], n[1] - 17, n[2]); diveGroup.add(cable);
     for (let i = 0; i < 4; i++) { const vein = cyl(.16, .16, 30, new THREE.MeshBasicMaterial({ color: 0x3a7a9a, fog: false }), 5); vein.position.set(n[0] + Math.cos(i * 1.57) * 1.9, n[1] - 15, n[2] + Math.sin(i * 1.57) * 1.9); diveGroup.add(vein); }
     abyssLight = new THREE.PointLight(0x3a9ab8, 1.2, 50, 2); abyssLight.position.set(n[0], n[1] - 4, n[2]); diveGroup.add(abyssLight); }
+  { // 🚇 隧道静态合并:管体/洞窟按分区材质各并为一(潜水 draw call 大降)
+    const gset9 = new Set(gateMeshes);
+    const byM9 = new Map();
+    for (const o of [...diveGroup.children]) {
+      if (!o.isMesh || gset9.has(o) || o.name || o.children.length) continue;
+      if (!(o.geometry.type === 'CylinderGeometry' || o.geometry.type === 'SphereGeometry')) continue;
+      if (!zoneMats.includes(o.material)) continue;
+      let l9 = byM9.get(o.material); if (!l9) { l9 = []; byM9.set(o.material, l9); }
+      l9.push(o);
+    }
+    let rm9 = 0;
+    for (const [mt9, list9] of byM9) {
+      if (list9.length < 4) continue;
+      const geos9 = list9.map(o => { o.updateWorldMatrix(true, false); return o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); });
+      let mg9 = null; try { mg9 = mergeGeometries(geos9, false); } catch (e) {}
+      if (!mg9) continue;
+      mg9.computeBoundingSphere();
+      list9.forEach(o => diveGroup.remove(o));
+      diveGroup.add(new THREE.Mesh(mg9, mt9));
+      rm9 += list9.length;
+    }
+    console.log('🚇 隧道合并:', rm9, '个网格 →', byM9.size, '个分区体');
+  }
+  { // ⚓ 新发现道具:31 商队残箱(沉船墓地) / 39 鲸骨珍珠(鲸骨王朝)
+    const n31 = MAZE_NODES[31];
+    const crate9 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.3, 1.5), new THREE.MeshLambertMaterial({ color: 0x5e4a30 }));
+    crate9.rotation.y = .6; crate9.position.set(n31[0] + 3, n31[1] - TUBE_R + 1, n31[2] - 2); diveGroup.add(crate9);
+    for (let k9 = 0; k9 < 3; k9++) { const coin9 = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .06, 8), new THREE.MeshBasicMaterial({ color: 0xd9b64a, fog: false })); coin9.position.set(n31[0] + 1.6 + k9 * .8, n31[1] - TUBE_R + .5, n31[2] - .6 + k9 * .5); diveGroup.add(coin9); }
+    const n39 = MAZE_NODES[39];
+    const shell9 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x9a8f7c }));
+    shell9.position.set(n39[0] - 3, n39[1] - TUBE_R + .6, n39[2] + 2); diveGroup.add(shell9);
+    const pearl9 = new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 8), new THREE.MeshBasicMaterial({ color: 0xf2ecdc, fog: false }));
+    pearl9.position.set(n39[0] - 3, n39[1] - TUBE_R + 1.3, n39[2] + 2); diveGroup.add(pearl9);
+  }
   /* 海流:每条隧道的流向 = 指向"更接近出口"的一端(BFS 距最近蓝洞) */
   MAZE_FLOW = (() => {
     const adj = {}; MAZE_EDGES.forEach(([a, b]) => { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); });
     const dist = new Array(MAZE_NODES.length).fill(1e9), q = [];
     for (const p of MAZE_PORTALS) { dist[p.n] = 0; q.push(p.n); }
     while (q.length) { const n = q.shift(); for (const m of (adj[n] || [])) if (dist[m] > dist[n] + 1) { dist[m] = dist[n] + 1; q.push(m); } }
+    MAZE_DIST = dist;   // 各节点距最近出口的跳数(调试/后续玩法可用)
     return MAZE_EDGES.map(([a, b]) => dist[b] < dist[a] ? 1 : (dist[a] < dist[b] ? -1 : 0));
   })();
+  /* 🌊 急流管:最长的有向隧道(至多 6 条),水推增强、流光加密加速 */
+  RAPIDS = new Set(MAZE_EDGES
+    .map(([a, b], ei) => [ei, MAZE_FLOW[ei] ? Math.hypot(MAZE_NODES[b][0] - MAZE_NODES[a][0], MAZE_NODES[b][1] - MAZE_NODES[a][1], MAZE_NODES[b][2] - MAZE_NODES[a][2]) : 0])
+    .filter(p9 => p9[1] > 0)
+    .sort((p9, q9) => q9[1] - p9[1]).slice(0, 6).map(p9 => p9[0]));
+  /* 🧭 出口岛名牌:52 个蓝洞各自悬浮目的地名称(迷宫真正的痛点是认出口,不是找出口) */
+  {
+    const texCache9 = new Map();
+    const mkTex9 = txt9 => {
+      let m9 = texCache9.get(txt9);
+      if (m9) return m9;
+      const cv9 = document.createElement('canvas'); cv9.width = 256; cv9.height = 64;
+      const c9 = cv9.getContext('2d');
+      c9.fillStyle = 'rgba(6,20,26,.78)'; c9.fillRect(0, 0, 256, 64);
+      c9.strokeStyle = '#5ff0ff'; c9.lineWidth = 4; c9.strokeRect(3, 3, 250, 58);
+      c9.fillStyle = '#aef6ff'; c9.font = 'bold 26px sans-serif'; c9.textAlign = 'center';
+      c9.fillText('▲ ' + txt9, 128, 42);
+      const tex9 = new THREE.CanvasTexture(cv9); tex9.colorSpace = THREE.SRGBColorSpace;
+      m9 = new THREE.SpriteMaterial({ map: tex9, transparent: true, fog: false, depthWrite: false });
+      texCache9.set(txt9, m9);
+      return m9;
+    };
+    for (const p9 of MAZE_PORTALS) {
+      const n9 = MAZE_NODES[p9.n];
+      const sp9 = new THREE.Sprite(mkTex9(p9.isle));   // isle 字段即中文岛名
+      sp9.position.set(n9[0], n9[1] + TUBE_R + 4.5, n9[2]);
+      sp9.scale.set(12, 3, 1);
+      diveGroup.add(sp9);
+    }
+  }
   /* 海流粒子:顺流漂动的微光(第三重指引:跟着水流走=朝出口走) */
   { const FN2 = MOBILE ? 120 : 240;
     const fg2 = new THREE.BufferGeometry(); fg2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FN2 * 3), 3));
     flowPts = new THREE.Points(fg2, new THREE.PointsMaterial({ color: 0x9adcde, size: .55, transparent: true, opacity: .65, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
     flowPts.frustumCulled = false;
     const fe = new Uint16Array(FN2), ft = new Float32Array(FN2), fo = new Float32Array(FN2 * 2), r6 = mulberry32(777);
-    for (let i = 0; i < FN2; i++) { fe[i] = (r6() * MAZE_EDGES.length) | 0; ft[i] = r6(); fo[i * 2] = (r6() - .5) * 6; fo[i * 2 + 1] = (r6() - .5) * 6; }
+    const RAP9 = [...RAPIDS];
+    for (let i = 0; i < FN2; i++) { fe[i] = (i % 3 === 0 && RAP9.length) ? RAP9[(r6() * RAP9.length) | 0] : (r6() * MAZE_EDGES.length) | 0; ft[i] = r6(); fo[i * 2] = (r6() - .5) * 6; fo[i * 2 + 1] = (r6() - .5) * 6; }
     flowPts.userData = { FN2, fe, ft, fo };
     diveGroup.add(flowPts); }
   /* 深海生物:珊瑚回廊的水母 + 星象水道的浮游荧光 */
@@ -7850,7 +7920,7 @@ function loop() {
       for (let i = 0; i < u2.FN2; i++) {
         const ei2 = u2.fe[i], fl2 = MAZE_FLOW[ei2] || 1;
         const [a2, b2] = MAZE_EDGES[ei2], A2 = MAZE_NODES[a2], B2 = MAZE_NODES[b2];
-        u2.ft[i] += dt * .06 * fl2; if (u2.ft[i] > 1) u2.ft[i] = 0; else if (u2.ft[i] < 0) u2.ft[i] = 1;
+        u2.ft[i] += dt * (RAPIDS.has(ei2) ? .2 : .06) * fl2; if (u2.ft[i] > 1) u2.ft[i] = 0; else if (u2.ft[i] < 0) u2.ft[i] = 1;
         const tt3 = u2.ft[i];
         arr2[i * 3] = A2[0] + (B2[0] - A2[0]) * tt3 + Math.sin(t * .8 + i) * .8 + u2.fo[i * 2] * .4;
         arr2[i * 3 + 1] = A2[1] + (B2[1] - A2[1]) * tt3 + Math.cos(t * .7 + i) * .6;
@@ -7859,7 +7929,7 @@ function loop() {
       flowPts.geometry.attributes.position.needsUpdate = true;
       const fdir = MAZE_FLOW[nearEdge];
       if (fdir) { const [a3, b3] = MAZE_EDGES[nearEdge], A3 = MAZE_NODES[a3], B3 = MAZE_NODES[b3];
-        const dl = Math.hypot(B3[0] - A3[0], B3[1] - A3[1], B3[2] - A3[2]) || 1, pw = .45 * fdir * dt / dl;
+        const dl = Math.hypot(B3[0] - A3[0], B3[1] - A3[1], B3[2] - A3[2]) || 1, pw = (RAPIDS.has(nearEdge) ? 1.6 : .45) * fdir * dt / dl;
         player.position.x += (B3[0] - A3[0]) * pw; player.position.y += (B3[1] - A3[1]) * pw; player.position.z += (B3[2] - A3[2]) * pw; }
     }
     for (const jf of jellies) { jf.position.y = jf.userData.by + Math.sin(t * .9 + jf.userData.ph) * 1.4; const ps = 1 + Math.sin(t * 2.2 + jf.userData.ph) * .18; jf.children[0].scale.set(ps, 1, ps); }
