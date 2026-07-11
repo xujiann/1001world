@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=18';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -2460,8 +2461,29 @@ if (RAINY) {
   }
   const g4 = new THREE.BufferGeometry();
   g4.setAttribute('position', new THREE.BufferAttribute(arr2, 3));
-  rainPts = new THREE.Points(g4, new THREE.PointsMaterial({ color: 0x9ab8d8, size: WEATHER === 'storm' ? 1.9 : 1.5, transparent: true, opacity: WEATHER === 'storm' ? .75 : .55, sizeAttenuation: false }));
+  const SNOWY9 = (new Date().getMonth() + 1) % 12 < 3;   // 12/1/2 月:雨落成雪
+  rainPts = new THREE.Points(g4, new THREE.PointsMaterial({
+    color: SNOWY9 ? 0xf4f8fc : 0x9ab8d8,
+    size: SNOWY9 ? 2.2 : (WEATHER === 'storm' ? 1.9 : 1.5),
+    transparent: true,
+    opacity: SNOWY9 ? .9 : (WEATHER === 'storm' ? .75 : .55),
+    sizeAttenuation: false }));
+  rainPts.userData.fall = SNOWY9 ? 14 : 55;
+  rainPts.userData.snow = SNOWY9;
   scene.add(rainPts);
+}
+let boltT9 = 9, boltV9 = 0;   // ⛈️ 闪电计时/亮度
+function thunder9() {
+  try { if (!actx) return;
+    for (const [f0, d0, g0] of [[52, 1.6, .14], [38, 2.6, .11]]) {
+      const o9 = actx.createOscillator(), gn9 = actx.createGain();
+      o9.type = 'triangle'; o9.frequency.value = f0;
+      gn9.gain.setValueAtTime(.0001, actx.currentTime + .06);
+      gn9.gain.exponentialRampToValueAtTime(g0, actx.currentTime + .2);
+      gn9.gain.exponentialRampToValueAtTime(.001, actx.currentTime + d0);
+      o9.connect(gn9).connect(actx.destination); o9.start(actx.currentTime + .06); o9.stop(actx.currentTime + d0 + .1);
+    }
+  } catch (e) {}
 }
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
@@ -2774,9 +2796,12 @@ function addSpot(x, z, cat, type, extra) {
   spots.push(s); return s;
 }
 /* PBR:桌面用 Standard(粗糙度/金属度),手机用便宜的 Lambert */
-const lam = c => MOBILE
-  ? new THREE.MeshLambertMaterial({ color: c })
-  : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 });
+const LAMC = new Map();   // 材质按色缓存:同色共享一份(状态切换/内存大降;严禁对 lam 材质做逐对象改动)
+const lam = c => {
+  let m9 = LAMC.get(c);
+  if (!m9) { m9 = MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 }); LAMC.set(c, m9); }
+  return m9;
+};
 const M = {
   wood: lam(0x8a6238),
   woodDark: lam(0x5e4023),
@@ -7155,14 +7180,15 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
   grassMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 };
-    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+    sh.uniforms.uAmp = { value: WEATHER === 'storm' ? .38 : RAINY ? .24 : .16 };   // 风力:暴风草伏,雨天草劲
+    sh.vertexShader = 'uniform float uTime;\nuniform float uAmp;\n' + sh.vertexShader.replace('#include <begin_vertex>',
       `#include <begin_vertex>
        #ifdef USE_INSTANCING
          vec3 iP = instanceMatrix[3].xyz;
        #else
          vec3 iP = vec3(0.0);
        #endif
-       float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * .16 * transformed.y;
+       float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * uAmp * transformed.y;
        transformed.x += wv; transformed.z += wv * .55;`);
     grassMat.userData.shader = sh;
   };
@@ -8186,7 +8212,7 @@ function loop() {
   for (const f of flies) {
     const u = f.userData;
     const fx = u.cx + Math.sin(t * .5 + u.ph) * 9, fz = u.cz + Math.cos(t * .37 + u.ph) * 7;
-    f.position.set(fx, Math.max(height(fx, fz), 0) + 2.2 + Math.sin(t * 1.3 + u.ph) * .5, fz);
+    f.position.set(fx, Math.max(heightMesh(fx, fz), 0) + 2.2 + Math.sin(t * 1.3 + u.ph) * .5, fz);
     f.rotation.y = t * .5 + u.ph + Math.PI / 2;
     u.wl.rotation.y = Math.sin(t * 14 + u.ph) * .8;
     u.wr.rotation.y = -Math.sin(t * 14 + u.ph) * .8;
@@ -8207,13 +8233,19 @@ function loop() {
   /* 雨幕跟随玩家 + 高处风声 */
   if (rainPts) {
     rainPts.position.copy(player.position);
-    const rp3 = rainPts.geometry.attributes.position;
+    const rp3 = rainPts.geometry.attributes.position, ru9 = rainPts.userData;
     for (let i = 0; i < rp3.count; i++) {
-      let y3 = rp3.getY(i) - 55 * dt;
+      let y3 = rp3.getY(i) - ru9.fall * dt;
       if (y3 < -4) y3 = 55;
       rp3.setY(i, y3);
+      if (ru9.snow) rp3.setX(i, rp3.getX(i) + Math.sin(y3 * .4 + i) * 2.4 * dt);   // 雪花横飘
     }
     rp3.needsUpdate = true;
+  }
+  if (WEATHER === 'storm') {   // ⛈️ 闪电与远雷
+    boltT9 -= dt;
+    if (boltT9 <= 0) { boltT9 = 7 + Math.random() * 15; boltV9 = 1; thunder9(); }
+    if (boltV9 > .01) { hemi.intensity *= 1 + boltV9 * 2.4; sun.intensity *= 1 + boltV9 * 1.2; boltV9 *= Math.exp(-dt * 7); }
   }
   if (festPts) {
     festPts.position.copy(player.position);
@@ -8499,6 +8531,48 @@ const BUCKETS = [
     best.g.add(o);
   }
   BUCKETS.forEach(b => scene.add(b.g));
+}
+/* 🧱 建筑静态合并:每桶按材质合并 Box/Cyl/Cone/挤出 静态网格(draw call 大降) */
+{
+  const dynSet = new Set();
+  const addDyn = arr => { try { for (const o of arr || []) { if (o && o.traverse) o.traverse(x9 => dynSet.add(x9)); else if (o) dynSet.add(o); } } catch (e) {} };
+  addDyn(typeof boats !== 'undefined' ? boats : null);
+  addDyn(typeof mirages !== 'undefined' ? mirages : null);
+  try { addDyn(windmillBlades); } catch (e) {}
+  try { addDyn(cbFlags); } catch (e) {}
+  try { for (const s9 of shards) if (s9 && s9.m) dynSet.add(s9.m); } catch (e) {}
+  try { if (babelBook) babelBook.traverse(x9 => dynSet.add(x9)); } catch (e) {}
+  try { if (babelDust) dynSet.add(babelDust); } catch (e) {}
+  try { if (tidalHeart) tidalHeart.traverse(x9 => dynSet.add(x9)); } catch (e) {}
+  const OKGEO = new Set(['BoxGeometry', 'CylinderGeometry', 'ConeGeometry', 'ExtrudeGeometry', 'ShapeGeometry']);
+  let rm9 = 0, ad9 = 0;
+  for (const b of BUCKETS) {
+    const byMat = new Map();
+    for (const o of [...b.g.children]) {
+      if (!o.isMesh || o.name || o.children.length || dynSet.has(o)) continue;
+      if (!o.geometry || !OKGEO.has(o.geometry.type)) continue;
+      const mt = o.material;
+      if (!mt || Array.isArray(mt) || mt.transparent || !(mt.isMeshLambertMaterial || mt.isMeshStandardMaterial)) continue;
+      if (mt.userData && mt.userData.shader) continue;   // 风摆等注入着色器的材质不合并
+      if (o.userData && Object.keys(o.userData).length) continue;
+      let l9 = byMat.get(mt); if (!l9) { l9 = []; byMat.set(mt, l9); }
+      l9.push(o);
+    }
+    for (const [mt, list] of byMat) {
+      if (list.length < 4) continue;
+      const geos = list.map(o => { o.updateWorldMatrix(true, false); return o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); });
+      let merged = null;
+      try { merged = mergeGeometries(geos, false); } catch (e) {}
+      if (!merged) continue;
+      merged.computeBoundingSphere();
+      const mm = new THREE.Mesh(merged, mt);
+      mm.castShadow = !MOBILE; mm.receiveShadow = true;
+      list.forEach(o => b.g.remove(o));
+      b.g.add(mm);
+      rm9 += list.length; ad9++;
+    }
+  }
+  console.log('🧱 静态合并:', rm9, '个网格 →', ad9, '个合并体');
 }
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外 */
 if (!MOBILE) {
