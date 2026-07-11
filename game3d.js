@@ -48,7 +48,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
@@ -1060,6 +1060,10 @@ const LORE = {
     desc: '拴在船舷的这条马林鱼,从吻到尾比小船还长——银蓝的脊背,长剑似的上颌。圣地亚哥说他等了八十四天,又搏了三天三夜才制服它。如今归途未半,血腥味已招来成群的鲨鱼……你要帮他守住这条鱼吗?' },
   peng:    { icon: '🕊️', color: '#2c4a6a', title: '大鹏', en: 'The Peng', hint: '乘之扶摇直上',
     desc: '《逍遥游》:北冥有鱼,其名为鲲。鲲之大,不知其几千里也;化而为鸟,其名为鹏。鹏之背,不知其几千里也;怒而飞,其翼若垂天之云。——它低头看你,似在相邀:可要乘我扶摇直上,环游这一千零一个世界?' },
+  gardener: { icon: '🤖', color: '#5d6e5d', title: '苔藓园丁', en: 'The Moss Gardener', hint: '它在等谁',
+    desc: '一具比城还老的机器人,肩头长满青苔,一只白鸽在它锁骨的凹陷里筑了巢。城里的人走光之后,它守着这几块石碑,日复一日给花浇水。它不说话——制造它的语言早已失传——但它看见你时,眼睛里的灯亮了一格。' },
+  skytree: { icon: '🌳', color: '#4f7d46', title: '抱城巨树', en: 'The Great Tree', hint: '根须托着城',
+    desc: '没有人种过它。有一年它自己从磁石的裂缝里长出来,根须一寸寸抱住整座城的底盘——勒皮他人吵了三百年:是砍掉它,还是感谢它。后来他们发现,城的倾角比巨树出现之前更稳了。争论就此结束。' },
   chime1:  { icon: '🎐', color: '#4a8a6a', title: '春铃', en: 'Spring Chime', hint: '摇响它',
     desc: '铃舌是一枚桃木片。摇响时,风里有远处桃花源的消息。塔身刻着小字:四铃齐鸣,勒皮他人便肯放下手里的几何,听一支完整的曲子。' },
   chime2:  { icon: '🎐', color: '#4a7a9a', title: '夏铃', en: 'Summer Chime', hint: '摇响它',
@@ -1306,6 +1310,10 @@ function loreCard(k) {
     : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
   if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button> <button class="again" data-pengsky style="margin-top:8px">🏯 乘大鹏,直上天空之城</button>';
   if (k === 'skyback') btn = '<button class="again" data-skyback>🕊️ 呼唤大鹏,乘风归海</button>';
+  if (k === 'gardener') btn = PSTORE.getItem('w1001.skyflower') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">石碑前多了一朵花。园丁对你微微躬身,又转回它的花去。</span>'
+    : '<button class="again" data-flower>🌼 摘一朵花,放在石碑前</button>';
+  if (k === 'lodestone') btn = '<button class="again" data-spell>🗣️ 低声念出那个词……</button>';
   if (/^chime[1-4]$/.test(k)) {
     const ci = k[5], SEA9 = '春夏秋冬';
     btn = PSTORE.getItem('w1001.skyc' + ci) === '1'
@@ -1617,6 +1625,20 @@ function openCard(s) {
     closeModals();
     toast('🕊️ 纵身一跃——大鹏接住了你,乘风归海!');
     blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
+  });
+  cardBody.querySelector('[data-flower]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.skyflower') === '1') return;
+    PSTORE.setItem('w1001.skyflower', '1'); earnSB(15);
+    closeModals();
+    toast('🌼 机器人看着那朵花,看了很久。锈蚀的指节轻轻碰了碰你的袖口。⚡+15');
+    blip(392); setTimeout(() => blip(523), 180);
+  });
+  cardBody.querySelector('[data-spell]')?.addEventListener('click', () => {
+    spellT9 = 3;
+    if (PSTORE.getItem('w1001.skyspell') !== '1') { PSTORE.setItem('w1001.skyspell', '1'); earnSB(5); }
+    closeModals();
+    toast('🔮 你低声念出那个词——磁石骤然大亮,全城轻轻一颤,又稳稳浮住。它记得这个词,但它选择了原谅。');
+    blip(196); setTimeout(() => blip(147), 200); setTimeout(() => blip(98), 420);
   });
   cardBody.querySelector('[data-chime]')?.addEventListener('click', ev => {
     const ci = +ev.currentTarget.dataset.chime;
@@ -5319,7 +5341,7 @@ let pengBird = null, pengWings = null;
 }
 /* ===== 🏯 天空之城 · 勒皮他(飞岛,乘大鹏抵达)===== */
 const SKY = { x: -550, z: 200, r: 55, y: 210 };
-let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFallV = null, skyClouds = null;
+let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFallV = null, skyClouds = null, skyDoves = null, spellT9 = 0;
 {
   const g9 = new THREE.Group(); g9.position.set(SKY.x, SKY.y, SKY.z);
   // 基座:倒锥浮岩 + 草顶盘
@@ -5369,6 +5391,54 @@ let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFal
     skyClouds.add(cl9);
   }
   g9.add(skyClouds);
+  // 🌳 抱城巨树(西北角,根须抱住台缘)
+  const trk9 = cyl(1.2, 2.4, 24, lam(0x5a4632), 8); trk9.position.set(-18, 12, 12); d9.add(trk9);
+  for (let i = 0; i < 5; i++) {   // 根须
+    const a9 = i / 5 * Math.PI * 2 + .4, rt9 = cyl(.3, .55, 7, lam(0x4e3c2a), 6);
+    rt9.position.set(-18 + Math.cos(a9) * 2.6, 2.6, 12 + Math.sin(a9) * 2.6);
+    rt9.rotation.z = Math.cos(a9) * .5; rt9.rotation.x = -Math.sin(a9) * .5; d9.add(rt9);
+  }
+  for (const [cx9, cy9, cz9, cr9, cc9] of [[-18, 26, 12, 7.5, 0x4f7d46], [-13, 23, 15, 5, 0x6fae5c], [-22, 22.5, 8, 5.5, 0x5d9450], [-18, 30.5, 12, 4.5, 0x6fae5c]]) {
+    const cp9 = new THREE.Mesh(new THREE.SphereGeometry(cr9, 9, 7), lam(cc9)); cp9.position.set(cx9, cy9, cz9); cp9.scale.y = .8; d9.add(cp9);
+  }
+  // 🤖 苔藓园丁(墓园一角,吉卜力式守墓机器人)
+  const rob9 = new THREE.Group();
+  const rbB9 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.9, 3.6, 10), lam(0x7a8a7a)); rbB9.position.y = 2.6; rob9.add(rbB9);
+  const rbH9 = new THREE.Mesh(new THREE.SphereGeometry(1.05, 10, 8), lam(0x8a9a8a)); rbH9.position.y = 5.1; rob9.add(rbH9);
+  for (const s9 of [-1, 1]) {
+    const eye9 = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .1, 8), new THREE.MeshBasicMaterial({ color: 0xffd27a, fog: false }));
+    eye9.rotation.x = Math.PI / 2; eye9.position.set(s9 * .42, 5.15, .95); rob9.add(eye9);
+    const arm9 = cyl(.34, .42, 4.4, lam(0x74846f)); arm9.position.set(s9 * 1.9, 2.5, 0); arm9.rotation.z = s9 * .16; rob9.add(arm9);
+  }
+  const mg9 = lam(0x5d8a4e);
+  for (const [mx9, my9, mz9, mr9] of [[0, 4.4, .8, .4], [-1.1, 3.4, .6, .5], [.9, 1.5, .8, .42], [.2, 6, 0, .36]]) {
+    const mo9 = new THREE.Mesh(new THREE.SphereGeometry(mr9, 6, 5), mg9); mo9.position.set(mx9, my9, mz9); mo9.scale.y = .5; rob9.add(mo9);
+  }
+  const dvS9 = new THREE.Mesh(new THREE.SphereGeometry(.24, 6, 5), lam(0xf2efe6));   // 锁骨上的白鸽
+  dvS9.scale.set(1, .85, 1.4); dvS9.position.set(-.9, 4.6, .9); rob9.add(dvS9);
+  rob9.position.set(21, 0, -20); rob9.rotation.y = -.8; d9.add(rob9);
+  // 墓园:三块石碑 + 花
+  for (const [gx9, gz9, gr9] of [[25, -24, .2], [27.5, -21, -.15], [24, -27.5, .1]]) {
+    const st9 = box(1.1, 1.7, .38, lam(0x8a8578)); st9.position.set(gx9, .85, gz9); st9.rotation.z = gr9; d9.add(st9);
+    const fl9 = new THREE.Mesh(new THREE.ConeGeometry(.22, .5, 5), lam([0xc86a7a, 0xd8b04a, 0x7a8ac8][(gx9 | 0) % 3]));
+    fl9.position.set(gx9 + .5, .35, gz9 + .7); d9.add(fl9);
+  }
+  // 🕊️ 鸽群(绕巨树盘旋)
+  skyDoves = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const dv9 = new THREE.Group();
+    const db9 = new THREE.Mesh(new THREE.SphereGeometry(.3, 6, 5), lam(0xf2efe6)); db9.scale.set(1, .8, 1.5); dv9.add(db9);
+    const dw9 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, .45), new THREE.MeshLambertMaterial({ color: 0xe8e4d8, side: THREE.DoubleSide }));
+    dw9.position.y = .15; dv9.add(dw9);
+    const a9 = i / 5 * Math.PI * 2;
+    dv9.position.set(Math.cos(a9) * 10, (i % 2) * 1.8, Math.sin(a9) * 10); dv9.rotation.y = -a9;
+    skyDoves.add(dv9);
+  }
+  skyDoves.position.set(-18, 25, 12); d9.add(skyDoves);
+  cirObs.push({ x: SKY.x - 18, z: SKY.z + 12, r: 2.8, bot: 190 });   // 巨树干
+  cirObs.push({ x: SKY.x + 21, z: SKY.z - 20, r: 2.4, bot: 190 });   // 园丁
+  addSpot(SKY.x + 21, SKY.z - 23, 'lore', 'gardener', { r: 7, y: SKY.y });
+  addSpot(SKY.x - 18, SKY.z + 17, 'lore', 'skytree', { r: 7, y: SKY.y });
   // 边缘瀑布(东缘泻入云海)
   const FN9 = 130, fp9 = new Float32Array(FN9 * 3); skyFallV = new Float32Array(FN9);
   const rf6 = mulberry32(319);
@@ -5385,7 +5455,7 @@ let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFal
   addNpc({ x: SKY.x - 16, z: SKY.z + 14, y: SKY.y, name: '云端乐师', body: 0x3a6a8a, hat: 0xd8d2c4, opts: { hat: 'cone' },
     lines: ['嘘——听,球面的音乐。勒皮他人用琴弦丈量星星。', '四座风塔上挂着春夏秋冬四枚风铃——把它们都摇响,你就听懂勒皮他了。', '我们的乐器都按几何定音:琴是等边三角,鼓是正圆。', '下界的人说我们心不在焉——他们不懂,我们只是在听别的东西。'] });
   addNpc({ x: SKY.x + 14, z: SKY.z + 6, y: SKY.y, name: '飞岛几何学家', body: 0x6a5a8a, hat: 0x4a3a6a,
-    lines: ['这座岛靠一块巨大的磁石悬浮——格列佛先生当年也问过同样的问题。', '面包我们切成圆锥、圆柱、平行四边形——味道会更几何一些。', '别走到边缘去。掉下去的话,你会先算出落体时间,再后悔。'] });
+    lines: ['这座岛靠一块巨大的磁石悬浮——格列佛先生当年也问过同样的问题。', '那位园丁比这座城还老。它只记得两件事:照顾花,和等一个人回来。', '面包我们切成圆锥、圆柱、平行四边形——味道会更几何一些。', '别走到边缘去。掉下去的话,你会先算出落体时间,再后悔。'] });
   cirObs[cirObs.length - 1].bot = 190; cirObs[cirObs.length - 2].bot = 190;   // 两位 NPC 的障碍同样放行海面
 }
 const ISLES = [
@@ -8585,6 +8655,15 @@ function loop() {
       skyCrystal.rotation.y = t * .6; skyCrystal.position.y = -54 + Math.sin(t * .8) * 1.4;
       skyCrystal.material.opacity = .7 + Math.sin(t * 2.2) * .2;
       if (skyClouds) skyClouds.rotation.y = t * .018;
+      if (skyDoves) { skyDoves.rotation.y = t * .45; skyDoves.position.y = 25 + Math.sin(t * .9) * 1.3; }
+      if (spellT9 > 0) {   // 🗣️ 咒语:磁石大亮 + 全城轻颤
+        spellT9 = Math.max(0, spellT9 - dt);
+        const k9 = spellT9 / 3;
+        skyCrystal.scale.setScalar(1 + k9 * 1.2);
+        skyCrystal.material.opacity = Math.min(1, .7 + k9 * .3);
+        skyGroup.position.y = SKY.y + Math.sin(t * 40) * k9 * .8;
+        if (spellT9 === 0) { skyGroup.position.y = SKY.y; skyCrystal.scale.setScalar(1); }
+      }
     }
   }
   updateFishing(dt, t);
