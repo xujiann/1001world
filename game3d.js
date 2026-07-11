@@ -18,7 +18,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
-import { THEMES, NI_QUESTS } from './w-config.js?v=16';
+import { THEMES, NI_QUESTS } from './w-config.js?v=17';
 import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=11';
@@ -48,7 +48,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
@@ -1060,6 +1060,10 @@ const LORE = {
     desc: '拴在船舷的这条马林鱼,从吻到尾比小船还长——银蓝的脊背,长剑似的上颌。圣地亚哥说他等了八十四天,又搏了三天三夜才制服它。如今归途未半,血腥味已招来成群的鲨鱼……你要帮他守住这条鱼吗?' },
   peng:    { icon: '🕊️', color: '#2c4a6a', title: '大鹏', en: 'The Peng', hint: '乘之扶摇直上',
     desc: '《逍遥游》:北冥有鱼,其名为鲲。鲲之大,不知其几千里也;化而为鸟,其名为鹏。鹏之背,不知其几千里也;怒而飞,其翼若垂天之云。——它低头看你,似在相邀:可要乘我扶摇直上,环游这一千零一个世界?' },
+  skyback: { icon: '🕊️', color: '#2c4a6a', title: '云鹏哨站', en: 'Roc Roost', hint: '乘风归海',
+    desc: '哨站石台上刻着一行小字:"鹏程万里,想家时喊一声。"云海在脚下翻涌,大鹏总在你需要它的时候出现。' },
+  lodestone: { icon: '🔮', color: '#3a6a8a', title: '飞岛磁石', en: 'The Lodestone', hint: '勒皮他之心',
+    desc: '《格列佛游记》第三卷:飞岛勒皮他靠一块巨大的天然磁石悬浮与移动。岛上的人一只眼看内心,一只眼看星空,痴迷音乐与数学,连面包都切成几何形。此刻那块磁石就在你脚下发着光,托着整座城,像托着一个不肯落地的念头。' },
   eden:    { icon: '🌸', color: '#4a8a5a', title: '山巅 · 地上乐园', en: 'Earthly Paradise', hint: '登临绝顶',
     desc: '七层已尽,眼前豁然:一片神圣的森林,忘川(勒忒)与欢河(欧诺埃)在花间流淌。玛蒂尔达在对岸采花微笑。饮忘川之水,忘却罪的记忆;饮欢河之水,重拾行善的欢愉。贝雅特丽齐正乘光而来。(登顶奖励)' },
   // —— 老岛加厚:楚门 / 中土 / 霍格沃茨 / 大观园 / 南塔开特 / 爱丽丝 / 花果山 / 一千零一夜 ——
@@ -1292,7 +1296,8 @@ function loreCard(k) {
   if (k === 'marlin') btn = PSTORE.getItem('w1001.marlin') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">船边只剩一副雪白的巨大骨架。老人睡了,梦见狮子。</span>'
     : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
-  if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button>';
+  if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button> <button class="again" data-pengsky style="margin-top:8px">🏯 乘大鹏,直上天空之城</button>';
+  if (k === 'skyback') btn = '<button class="again" data-skyback>🕊️ 呼唤大鹏,乘风归海</button>';
   if (k === 'eden') btn = PSTORE.getItem('w1001.purg') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">你已饮过忘川之水,罪的记忆随流水而去,只余轻盈。</span>'
     : '<button class="again" data-eden>🌸 饮忘川之水,登临乐园</button>';
@@ -1582,6 +1587,22 @@ function openCard(s) {
     closeModals();
     toast('🕊️ 抟扶摇而上者九万里!且看这一千零一个世界……');
     blip(392); setTimeout(() => blip(523), 120); setTimeout(() => blip(659), 240); setTimeout(() => blip(784), 360);
+  });
+  cardBody.querySelector('[data-pengsky]')?.addEventListener('click', () => {
+    const first9 = PSTORE.getItem('w1001.skycity') !== '1';
+    if (first9) { PSTORE.setItem('w1001.skycity', '1'); earnSB(30); stars++; saveQuest(); updateQuestHUD(); }
+    flight = { sky: 1, t: 0, dur: 24, from: [player.position.x, player.position.z], to: [SKY.x, SKY.z + 40],
+      y0: player.position.y, y1: SKY.y, msg: '🏯 大鹏收翼,落在云鹏哨站——欢迎来到勒皮他。' };
+    closeModals();
+    toast('🏯 大鹏振翅,直上云端!' + (first9 ? '(首访 ⚡+30 · ⭐+1)' : ''));
+    blip(523); setTimeout(() => blip(659), 130); setTimeout(() => blip(880), 260);
+  });
+  cardBody.querySelector('[data-skyback]')?.addEventListener('click', () => {
+    flight = { sky: 1, t: 0, dur: 24, from: [player.position.x, player.position.z], to: [PENG_X + 6, PENG_Z + 6],
+      y0: player.position.y, y1: Math.max(height(PENG_X + 6, PENG_Z + 6), 0), msg: '🕊️ 大鹏俯冲而下,轻轻把你放回栖石旁。' };
+    closeModals();
+    toast('🕊️ 纵身一跃——大鹏接住了你,乘风归海!');
+    blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
   });
   cardBody.querySelector('[data-eden]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.purg') === '1') return;
@@ -2119,7 +2140,7 @@ function openGuide() {
     <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
-    <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上,环游诸岛。<br><br>
+    <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上环游诸岛,或直上<b>天空之城勒皮他</b>——云端有云端的配乐。<br><br>
     <div style="background:rgba(60,140,220,.12);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:10px 12px;margin:2px 0">🧭 <b style="color:#8fd0ff">一条主线</b>:这些岛看似散落海上,其实脚下的海底隧道把它们连成一张网。<b>追查这张网的真相</b>——从潜入海底迷宫开始,集齐三条线索,你会明白这颗星球到底是什么。<b>随时按 J</b> 看「主线」当前该去哪。</div>
     <span style="font-size:12px;color:#8a7c62">另:岛上散落 24 枚星之碎片;夜里有明月与潮汐;还有一处不在任何海图上的秘境。</span></div>
     <div style="text-align:center;padding:0 0 16px"><button class="again" data-close-guide>🧭 出发!</button></div>`;
@@ -5268,6 +5289,60 @@ let pengBird = null, pengWings = null;
   cirObs.push({ x: PENG_X, z: PENG_Z, r: 3.2 });
   addSpot(PENG_X, PENG_Z + 4.4, 'lore', 'peng', { r: 7 });
 }
+/* ===== 🏯 天空之城 · 勒皮他(飞岛,乘大鹏抵达)===== */
+const SKY = { x: -550, z: 200, r: 55, y: 210 };
+let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFallV = null;
+{
+  const g9 = new THREE.Group(); g9.position.set(SKY.x, SKY.y, SKY.z);
+  // 基座:倒锥浮岩 + 草顶盘
+  const rock9 = new THREE.Mesh(new THREE.CylinderGeometry(SKY.r, 6, 48, 12), lam(0x71604c)); rock9.position.y = -24.5; g9.add(rock9);
+  const turf9 = new THREE.Mesh(new THREE.CylinderGeometry(SKY.r, SKY.r - 2.5, 4, 24), lam(0x5d8a4e)); turf9.position.y = -2; g9.add(turf9);
+  // 悬浮磁石(勒皮他靠它飞行)
+  skyCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(5, 0), new THREE.MeshBasicMaterial({ color: 0x69e6ff, transparent: true, opacity: .85, fog: false }));
+  skyCrystal.position.y = -54; g9.add(skyCrystal);
+  // 细节层(远处隐藏)
+  const d9 = new THREE.Group(); skyDetail = d9; g9.add(d9);
+  const drum9 = cyl(9, 10, 7, lam(0xd8d2c4), 14); drum9.position.set(0, 3.5, -8); d9.add(drum9);
+  const dome9 = new THREE.Mesh(new THREE.SphereGeometry(9, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x4a7a9a)); dome9.position.set(0, 7, -8); d9.add(dome9);
+  for (let i = 0; i < 4; i++) {   // 四座风塔
+    const a9 = i * Math.PI / 2 + Math.PI / 4, tx9 = Math.cos(a9) * 34, tz9 = Math.sin(a9) * 34;
+    const tw9 = cyl(2.4, 3, 14, lam(0xcfc8b8), 8); tw9.position.set(tx9, 7, tz9); d9.add(tw9);
+    const rf9 = new THREE.Mesh(new THREE.ConeGeometry(3.4, 5, 8), lam(0x8a5a3a)); rf9.position.set(tx9, 16.5, tz9); d9.add(rf9);
+  }
+  for (let i = 0; i < 12; i++) {   // 环形矮墙
+    const a9 = i * Math.PI / 6, wl9 = box(12, 1.4, 1, lam(0xbfb8a8));
+    wl9.position.set(Math.cos(a9) * (SKY.r - 3.5), .7, Math.sin(a9) * (SKY.r - 3.5)); wl9.rotation.y = -a9 + Math.PI / 2; d9.add(wl9);
+  }
+  const rs9 = mulberry32(612);
+  for (let i = 0; i < 8; i++) {   // 云端果园
+    const a9 = rs9() * Math.PI * 2, rr9 = 14 + rs9() * 24, tx9 = Math.cos(a9) * rr9, tz9 = Math.sin(a9) * rr9;
+    if (Math.hypot(tx9, tz9 + 8) < 14 || Math.hypot(tx9, tz9 - 40) < 10) continue;   // 避开穹顶与鹏台
+    const tk9 = cyl(.5, .7, 3.4, lam(0x6a4a30)); tk9.position.set(tx9, 1.7, tz9); d9.add(tk9);
+    const cn9 = new THREE.Mesh(new THREE.ConeGeometry(2.6, 5.5, 7), lam(0x6fae5c)); cn9.position.set(tx9, 5.8, tz9); d9.add(cn9);
+  }
+  const pad9 = cyl(6, 7, 1.2, M.stone, 10); pad9.position.set(0, .6, 40); d9.add(pad9);   // 云鹏哨站着陆台
+  const pole9 = cyl(.18, .18, 7, lam(0x8a7a5c)); pole9.position.set(4.5, 3.5, 44); d9.add(pole9);
+  const flag9 = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.4), new THREE.MeshLambertMaterial({ color: 0x69c6e6, side: THREE.DoubleSide }));
+  flag9.position.set(5.9, 6, 44); d9.add(flag9);
+  // 边缘瀑布(东缘泻入云海)
+  const FN9 = 130, fp9 = new Float32Array(FN9 * 3); skyFallV = new Float32Array(FN9);
+  const rf6 = mulberry32(319);
+  for (let i = 0; i < FN9; i++) { const a9 = -.5 + rf6(); fp9[i * 3] = Math.cos(a9) * (SKY.r - 2); fp9[i * 3 + 1] = -rf6() * 85; fp9[i * 3 + 2] = Math.sin(a9) * (SKY.r - 2); skyFallV[i] = 12 + rf6() * 16; }
+  const fg9 = new THREE.BufferGeometry(); fg9.setAttribute('position', new THREE.BufferAttribute(fp9, 3));
+  skyFall = new THREE.Points(fg9, new THREE.PointsMaterial({ color: 0xbfe9ff, size: .9, transparent: true, opacity: .55, depthWrite: false }));
+  skyFall.frustumCulled = false; g9.add(skyFall);
+  scene.add(g9); skyGroup = g9;
+  // 碰撞(bot:低于 190 的泳者放行)
+  cirObs.push({ x: SKY.x, z: SKY.z - 8, r: 10.8, bot: 190 });
+  for (let i = 0; i < 4; i++) { const a9 = i * Math.PI / 2 + Math.PI / 4; cirObs.push({ x: SKY.x + Math.cos(a9) * 34, z: SKY.z + Math.sin(a9) * 34, r: 3.4, bot: 190 }); }
+  addSpot(SKY.x, SKY.z + 40, 'lore', 'skyback', { r: 8, y: SKY.y });
+  addSpot(SKY.x, SKY.z - 8, 'lore', 'lodestone', { r: 9, y: SKY.y });
+  addNpc({ x: SKY.x - 16, z: SKY.z + 14, y: SKY.y, name: '云端乐师', body: 0x3a6a8a, hat: 0xd8d2c4, opts: { hat: 'cone' },
+    lines: ['嘘——听,球面的音乐。勒皮他人用琴弦丈量星星。', '我们的乐器都按几何定音:琴是等边三角,鼓是正圆。', '下界的人说我们心不在焉——他们不懂,我们只是在听别的东西。'] });
+  addNpc({ x: SKY.x + 14, z: SKY.z + 6, y: SKY.y, name: '飞岛几何学家', body: 0x6a5a8a, hat: 0x4a3a6a,
+    lines: ['这座岛靠一块巨大的磁石悬浮——格列佛先生当年也问过同样的问题。', '面包我们切成圆锥、圆柱、平行四边形——味道会更几何一些。', '别走到边缘去。掉下去的话,你会先算出落体时间,再后悔。'] });
+  cirObs[cirObs.length - 1].bot = 190; cirObs[cirObs.length - 2].bot = 190;   // 两位 NPC 的障碍同样放行海面
+}
 const ISLES = [
   { c: SHJ, name: '山海经 · 异兽之野', icon: '🐉', theme: 'shanhai' },
   { c: THY, name: '桃花源', icon: '🌸', theme: 'taoyuan' },
@@ -5330,7 +5405,7 @@ for (const s of NISLES) {
     h += '<div class="iHd">🌊 海上另有传奇</div>';
     h += [['🐺', '幽灵号', '海狼拉森的黑帆猎船(北海)'], ['🎣', '"我们在这儿"号', '《怒海余生》的纽芬兰渔船(东北渔场)'],
       ['🎩', '福克先生的邮轮', '八十天环游地球(东海)'], ['🍾', '格兰特船长的瓶中信', '37°11′——在南海漂着'],
-      ['🕊️', '大鹏', '主岛栖石,乘之扶摇环游诸岛'], ['🤿', '海底隧道迷宫', '蓝洞潜入,串联 33 座岛的世界骨架']]
+      ['🕊️', '大鹏', '主岛栖石,乘之扶摇环游诸岛'], ['🤿', '海底隧道迷宫', '蓝洞潜入,串联 33 座岛的世界骨架'], ['🏯', '天空之城', '勒皮他飞岛,乘大鹏直上云端']]
       .map(([i, n, d]) => row(i, n, d)).join('');
     el.innerHTML = h;
   }
@@ -6859,6 +6934,10 @@ function unjTowerHeight(x, z) {
   const i = Math.min(33, Math.floor(a / (Math.PI * 1.78) * 34));     // 与坡道台阶同一公式
   return 6.5 + (i + .5) / 34 * 25.5 + .18;
 }
+/* 天空之城平台(悬空地面) */
+function skyHeight(x, z) {
+  return Math.hypot(x - SKY.x, z - SKY.z) < SKY.r - 2 ? SKY.y : null;
+}
 function bridgeHeight(x, z) {
   const t = ((x - BR_A[0]) * brDX + (z - BR_A[1]) * brDZ) / (brDX * brDX + brDZ * brDZ);
   if (t < 0 || t > 1) return null;
@@ -8004,6 +8083,7 @@ function loop() {
     const pr = .9;
     for (const o of obstNear(player.position.x, player.position.z)) {
       if (o.top && player.position.y > o.top) continue;   // 高处放行(如进步之塔断口平台)
+      if (o.bot && player.position.y < o.bot) continue;   // 低处放行(如天空之城下方海面)
       const dx = player.position.x - o.x, dz = player.position.z - o.z, d = Math.hypot(dx, dz), min = o.r + pr;
       if (d < min && d > .001) { player.position.x = o.x + dx / d * min; player.position.z = o.z + dz / d * min; }
     }
@@ -8047,6 +8127,8 @@ function loop() {
     if (sth != null && player.position.y > sth - 2.4) gh = Math.max(gh, sth);
     const uth = unjTowerHeight(player.position.x, player.position.z);
     if (uth != null && player.position.y > uth - 2.4) gh = Math.max(gh, uth);
+    const skh = skyHeight(player.position.x, player.position.z);
+    if (skh != null && player.position.y > skh - 2.4) gh = Math.max(gh, skh);
     if (vehicle === 2) {   // ⛵ 帆船:浮于水面,不入泳姿
       swimming = false; vy = 0; grounded = true;
       player.position.y += ((tideY + .62) - player.position.y) * Math.min(1, dt * 8);
@@ -8402,7 +8484,25 @@ function loop() {
     } else spray.material.opacity = 0;
   }
   /* 飞毯航线(巴格达 → 收藏之岛) */
-  if (flight && flight.orbit) {   // 大鹏环游:从栖石螺旋升空,环岛一周,再螺旋落回
+  if (flight && flight.sky) {   // 🏯 大鹏直航:侧向弧线爬升/俯冲(上天空之城/归海通用)
+    flight.t += dt;
+    const k2 = Math.min(1, flight.t / flight.dur), e2 = k2 * k2 * (3 - 2 * k2);
+    const fx2 = flight.from[0] + (flight.to[0] - flight.from[0]) * e2;
+    const fz2 = flight.from[1] + (flight.to[1] - flight.from[1]) * e2;
+    const ddx9 = flight.to[0] - flight.from[0], ddz9 = flight.to[1] - flight.from[1], dl9 = Math.hypot(ddx9, ddz9) || 1;
+    const sw9 = Math.sin(k2 * Math.PI) * dl9 * .18;
+    const px9 = fx2 - ddz9 / dl9 * sw9, pz9 = fz2 + ddx9 / dl9 * sw9;
+    const fy2 = flight.y0 + (flight.y1 - flight.y0) * e2 + Math.sin(k2 * Math.PI) * 26;
+    if (flight.lx != null) { const mvx = px9 - flight.lx, mvz = pz9 - flight.lz; if (mvx * mvx + mvz * mvz > 1e-6) faceYaw = Math.atan2(mvx, mvz); }
+    flight.lx = px9; flight.lz = pz9;
+    player.position.set(px9, fy2, pz9); vy = 0;
+    if (pengBird) { pengBird.visible = true; pengBird.position.set(px9, fy2 - 2.3, pz9); pengBird.rotation.y = faceYaw; }
+    if (k2 >= 1) {
+      player.position.set(flight.to[0], flight.y1 + .06, flight.to[1]);
+      toast(flight.msg); blip(659); flight = null;
+      if (pengBird) { pengBird.position.set(PENG_X, height(PENG_X, PENG_Z) + 2.4, PENG_Z); pengBird.rotation.y = 2.2; }
+    }
+  } else if (flight && flight.orbit) {   // 大鹏环游:从栖石螺旋升空,环岛一周,再螺旋落回
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur);
     let ramp = k2 < .16 ? k2 / .16 : k2 > .84 ? (1 - k2) / .16 : 1; ramp = ramp * ramp * (3 - 2 * ramp);
@@ -8426,8 +8526,19 @@ function loop() {
     if (k2 >= 1) { const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660); }
   }
   /* 大鹏振翅(骑乘时快扇,栖息时缓扇) */
-  if (pengWings) { const fl = (flight && flight.orbit) ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
+  if (pengWings) { const fl = (flight && (flight.orbit || flight.sky)) ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
     for (const { w: wg, s } of pengWings) wg.rotation.z = s * fl; }
+  if (skyFall) {   // 🏯 天空之城:瀑布循环 + 磁石呼吸 + 细节层距离开关
+    const pd9 = Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z);
+    skyDetail.visible = pd9 < 900; skyFall.visible = pd9 < 1100;
+    if (skyFall.visible) {
+      const fa9 = skyFall.geometry.attributes.position.array;
+      for (let i = 0; i < skyFallV.length; i++) { fa9[i * 3 + 1] -= skyFallV[i] * dt; if (fa9[i * 3 + 1] < -95) fa9[i * 3 + 1] = 0; }
+      skyFall.geometry.attributes.position.needsUpdate = true;
+      skyCrystal.rotation.y = t * .6; skyCrystal.position.y = -54 + Math.sin(t * .8) * 1.4;
+      skyCrystal.material.opacity = .7 + Math.sin(t * 2.2) * .2;
+    }
+  }
   updateFishing(dt, t);
   /* 泳衣:受寒提示 + 换装配色 */
   chowderT = Math.max(0, chowderT - dt);
@@ -8540,7 +8651,7 @@ function loop() {
     for (const n of allNpcs) {
       if (n.g.visible === false) continue;
       const d2 = (n.g.position.x - player.position.x) ** 2 + (n.g.position.z - player.position.z) ** 2;
-      if (d2 < nb) { nb = d2; nearNpc = n; }
+      if (d2 < nb && Math.abs(n.g.position.y - player.position.y) < 12) { nb = d2; nearNpc = n; }
     }
   }
   let hintTxt = null, hx = 0, hy = 0, hz = 0;
@@ -8571,12 +8682,13 @@ function loop() {
   const onMob = Math.hypot(player.position.x - MOB.x, player.position.z - MOB.z) < MOB.r + 20;
   const onSpt = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < SPT.r + 20;
   const isl = ISLES.find(z3 => Math.hypot(player.position.x - z3.c.x, player.position.z - z3.c.z) < z3.c.r + 20);
-  const mz2 = swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (isl ? isl.theme : (onTruman ? 'truman' : (hereKey || 'street'))))))));
+  const onSky9 = player.position.y > 140 && Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z) < SKY.r + 60;
+  const mz2 = onSky9 ? 'sky' : (swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (isl ? isl.theme : (onTruman ? 'truman' : (hereKey || 'street')))))))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
-  $('zoneName').textContent = swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
+  $('zoneName').textContent = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
   syncBuffs(dt);

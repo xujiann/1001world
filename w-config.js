@@ -2,6 +2,7 @@
    各区域/世界的生成式配乐参数。tempo=速度, wave=音色, scale=音阶(半音),
    base=基频Hz, dens=音符密度, bass/pad/arp/swing/chirp=编排开关, vol=音量。 */
 export const THEMES = {
+  sky:       { tempo: 56,  wave: 'sine', scale: [0, 4, 7, 11, 14, 18], base: 523, dens: .5, arp: true, vol: .7 },
   street:    { tempo: 96,  wave: 'triangle', scale: [0, 2, 4, 7, 9, 12],   base: 220, dens: .5, bass: true },
   art:       { tempo: 64,  wave: 'sine', scale: [0, 4, 7, 11, 12],   base: 330, dens: .38 },
   books:     { tempo: 70,  wave: 'sine', scale: [0, 2, 3, 7, 8, 12], base: 294, dens: .4 },
