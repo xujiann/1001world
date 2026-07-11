@@ -2578,6 +2578,7 @@ function updateDayNight(t) {
 /* --- 地形网格(地表 3.0:8×8 分块视锥剔除 + 全局高度场缓存 + 解析法线无缝) --- */
 const TER = 4000, SEG = MOBILE ? 240 : 400, TCH = 8, TSEG = SEG / TCH;
 let HTG = null;   // 全局高度场晶格(建面时填充,供 heightMesh/植被 O(1) 采样)
+const TCHUNKS = [];   // 地形块 LOD 档案(CDLOD 思想:远块换低细分索引,裙边防裂缝)
 /* 视觉着地高度:直接查高度场晶格(原为每次 4 次 height() 解析计算) */
 function heightMesh(x, z) {
   const st = TER / SEG, hx = (x + TER / 2) / st, hz = (z + TER / 2) / st;
@@ -2685,29 +2686,49 @@ function heightMesh(x, z) {
   const terrainMat = MOBILE
     ? new THREE.MeshLambertMaterial({ vertexColors: true })
     : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .96, metalness: 0 });
-  const w2 = TSEG + 1;
-  for (let chz = 0; chz < TCH; chz++) for (let chx = 0; chx < TCH; chx++) {   // 8×8 分块:视锥外整块不进顶点管线
-    const cpos = new Float32Array(w2 * w2 * 3), ccol = new Float32Array(w2 * w2 * 3), cnrm = new Float32Array(w2 * w2 * 3);
+  const w2 = TSEG + 1, GRIDN = w2 * w2;
+  for (let chz = 0; chz < TCH; chz++) for (let chx = 0; chx < TCH; chx++) {   // 8×8 分块 + 三档 LOD(1/2/5 细分步长)
+    // 顶点 = 网格 w2×w2 + 周边裙边(下压 3m,防 LOD 接缝裂缝)
+    const perim = [];
+    for (let vx = 0; vx <= TSEG; vx++) perim.push(0 * w2 + vx, TSEG * w2 + vx);
+    for (let vz = 1; vz < TSEG; vz++) perim.push(vz * w2, vz * w2 + TSEG);
+    const skirtOf = new Int32Array(GRIDN).fill(-1);
+    perim.forEach((gi9, k9) => { skirtOf[gi9] = GRIDN + k9; });
+    const TOT9 = GRIDN + perim.length;
+    const cpos = new Float32Array(TOT9 * 3), ccol = new Float32Array(TOT9 * 3), cnrm = new Float32Array(TOT9 * 3);
     for (let vz = 0; vz <= TSEG; vz++) for (let vx = 0; vx <= TSEG; vx++) {
       const gi = (chz * TSEG + vz) * W + (chx * TSEG + vx), li = vz * w2 + vx;
       cpos[li * 3] = (gi % W) * ST9 - TER / 2; cpos[li * 3 + 1] = HT[gi]; cpos[li * 3 + 2] = ((gi / W) | 0) * ST9 - TER / 2;
       ccol[li * 3] = colors[gi * 3]; ccol[li * 3 + 1] = colors[gi * 3 + 1]; ccol[li * 3 + 2] = colors[gi * 3 + 2];
       cnrm[li * 3] = NRM[gi * 3]; cnrm[li * 3 + 1] = NRM[gi * 3 + 1]; cnrm[li * 3 + 2] = NRM[gi * 3 + 2];
     }
-    const cidx = [];
-    for (let vz = 0; vz < TSEG; vz++) for (let vx = 0; vx < TSEG; vx++) {
-      const a9 = vz * w2 + vx, b9 = a9 + 1, c9 = a9 + w2, d9 = c9 + 1;
-      cidx.push(a9, c9, b9, b9, c9, d9);
-    }
-    const cg = new THREE.BufferGeometry();
-    cg.setAttribute('position', new THREE.BufferAttribute(cpos, 3));
-    cg.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
-    cg.setAttribute('normal', new THREE.BufferAttribute(cnrm, 3));
-    cg.setIndex(cidx); cg.computeBoundingSphere();
-    const mch = new THREE.Mesh(cg, terrainMat);
+    perim.forEach((gi9, k9) => {   // 裙边顶点:同位下压
+      const s3 = (GRIDN + k9) * 3, t3 = gi9 * 3;
+      cpos[s3] = cpos[t3]; cpos[s3 + 1] = cpos[t3 + 1] - 3; cpos[s3 + 2] = cpos[t3 + 2];
+      ccol[s3] = ccol[t3]; ccol[s3 + 1] = ccol[t3 + 1]; ccol[s3 + 2] = ccol[t3 + 2];
+      cnrm[s3] = 0; cnrm[s3 + 1] = 1; cnrm[s3 + 2] = 0;
+    });
+    const posA = new THREE.BufferAttribute(cpos, 3), colA = new THREE.BufferAttribute(ccol, 3), nrmA = new THREE.BufferAttribute(cnrm, 3);
+    const mkLOD = s9 => {
+      const idx = [];
+      for (let vz = 0; vz < TSEG; vz += s9) for (let vx = 0; vx < TSEG; vx += s9) {
+        const a9 = vz * w2 + vx, b9 = a9 + s9, c9 = a9 + s9 * w2, d9 = c9 + s9;
+        idx.push(a9, c9, b9, b9, c9, d9);
+      }
+      const edge9 = (ga, gb) => { const sa = skirtOf[ga], sb = skirtOf[gb]; idx.push(ga, sa, gb, gb, sa, sb, gb, sa, ga, sb, sa, gb); };   // 双面裙边
+      for (let vx = 0; vx < TSEG; vx += s9) { edge9(vx, vx + s9); edge9(TSEG * w2 + vx, TSEG * w2 + vx + s9); }
+      for (let vz = 0; vz < TSEG; vz += s9) { edge9(vz * w2, (vz + s9) * w2); edge9(vz * w2 + TSEG, (vz + s9) * w2 + TSEG); }
+      const gg9 = new THREE.BufferGeometry();
+      gg9.setAttribute('position', posA); gg9.setAttribute('color', colA); gg9.setAttribute('normal', nrmA);
+      gg9.setIndex(idx); gg9.computeBoundingSphere();
+      return gg9;
+    };
+    const lods = [mkLOD(1), mkLOD(2), mkLOD(5)];
+    const mch = new THREE.Mesh(lods[0], terrainMat);
     mch.receiveShadow = true; mch.castShadow = !MOBILE;
-    mch.userData.ter9 = true;   // 免入岛屿分桶:远处地形轮廓常驻地平线
-    scene.add(mch);
+    mch.userData.ter9 = true; mch.userData.lods = lods; mch.userData.lod = 0;
+    mch.userData.ccx = (chx + .5) * TSEG * ST9 - TER / 2; mch.userData.ccz = (chz + .5) * TSEG * ST9 - TER / 2;
+    scene.add(mch); TCHUNKS.push(mch);
   }
 }
 /* --- 海洋:桌面用反射水面着色器,手机用轻量波浪 --- */
@@ -3302,14 +3323,15 @@ const treeWindMats = [];
       const m = lam(0xffffff);
       m.onBeforeCompile = sh => {
         sh.uniforms.uTime = { value: 0 };
-        sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+        sh.uniforms.uGust = { value: 1 };
+        sh.vertexShader = 'uniform float uTime;\nuniform float uGust;\n' + sh.vertexShader.replace('#include <begin_vertex>',
           `#include <begin_vertex>
            #ifdef USE_INSTANCING
              vec3 iP = instanceMatrix[3].xyz;
            #else
              vec3 iP = vec3(0.0);
            #endif
-           float wv = sin(uTime * 1.15 + iP.x * .14 + iP.z * .1 + ${ph.toFixed(2)}) * .17;
+           float wv = sin(uTime * 1.15 + iP.x * .14 + iP.z * .1 + ${ph.toFixed(2)}) * .17 * uGust;
            transformed.x += wv; transformed.z += wv * .6;`);
         m.userData.shader = sh;
       };
@@ -7181,14 +7203,15 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   grassMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 };
     sh.uniforms.uAmp = { value: WEATHER === 'storm' ? .38 : RAINY ? .24 : .16 };   // 风力:暴风草伏,雨天草劲
-    sh.vertexShader = 'uniform float uTime;\nuniform float uAmp;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+    sh.uniforms.uGust = { value: 1 };   // 阵风包络(主循环逐帧驱动)
+    sh.vertexShader = 'uniform float uTime;\nuniform float uAmp;\nuniform float uGust;\n' + sh.vertexShader.replace('#include <begin_vertex>',
       `#include <begin_vertex>
        #ifdef USE_INSTANCING
          vec3 iP = instanceMatrix[3].xyz;
        #else
          vec3 iP = vec3(0.0);
        #endif
-       float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * uAmp * transformed.y;
+       float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * uAmp * uGust * transformed.y;
        transformed.x += wv; transformed.z += wv * .55;`);
     grassMat.userData.shader = sh;
   };
@@ -7978,8 +8001,9 @@ function loop() {
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
   if (grassBlades) {
     if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 49) redistributeGrass(player.position.x, player.position.z);
-    if (grassMat.userData.shader) grassMat.userData.shader.uniforms.uTime.value = t;
-    for (const m of treeWindMats) if (m.userData.shader) m.userData.shader.uniforms.uTime.value = t;   // 树冠风摆
+    const gust9 = Math.max(.3, .74 + .26 * Math.sin(t * .21) + .16 * Math.sin(t * 1.13 + 2) + (WEATHER === 'storm' ? .4 * Math.sin(t * 3.1) : 0));   // 🌬️ 分层阵风
+    if (grassMat.userData.shader) { grassMat.userData.shader.uniforms.uTime.value = t; grassMat.userData.shader.uniforms.uGust.value = gust9; }
+    for (const m of treeWindMats) if (m.userData.shader) { m.userData.shader.uniforms.uTime.value = t; m.userData.shader.uniforms.uGust.value = gust9; }   // 树冠风摆
   }
 
   /* 相机 */
@@ -8486,11 +8510,21 @@ function loop() {
     bucketT = .5;
     for (const b of BUCKETS) b.g.visible = ((player.position.x - b.x) ** 2 + (player.position.z - b.z) ** 2) < 1210000;   // 1100²
     cullLights();   // 💡 灯光同频剔除
+    for (const ch of TCHUNKS) {   // 🏔️ 地形 LOD 换档(近满档,中 1/4,远 1/25 三角形)
+      const d9 = Math.hypot(ch.userData.ccx - player.position.x, ch.userData.ccz - player.position.z);
+      const l9 = d9 < 480 ? 0 : d9 < 1050 ? 1 : 2;
+      if (ch.userData.lod !== l9) { ch.userData.lod = l9; ch.geometry = ch.userData.lods[l9]; }
+    }
   }
   /* 动态画质:帧率过低自动降像素比,恢复后升回 */
   fpsN++; fpsT += dt;
   if (fpsT >= 2.5) {
     const fps = fpsN / fpsT; fpsN = 0; fpsT = 0;
+    if (location.hash.includes('perf')) {   // 📊 #perf 性能 HUD(真机验收用)
+      if (!window.__perfEl9) { const pe = document.createElement('div'); pe.style.cssText = 'position:fixed;right:12px;top:64px;z-index:60;font:600 12px monospace;color:#9fe8b0;background:rgba(10,16,12,.68);padding:5px 10px;border-radius:8px;pointer-events:none'; document.body.appendChild(pe); window.__perfEl9 = pe; }
+      const ri9 = renderer.info.render;
+      window.__perfEl9.textContent = fps.toFixed(0) + ' fps · ' + ri9.calls + ' calls · ' + (ri9.triangles / 1000).toFixed(0) + 'k△ · LOD ' + TCHUNKS.filter(c9 => c9.userData.lod === 0).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 1).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 2).length;
+    }
     if (fps < 20 && quality > 0 && prScale <= .85) { quality--; applyQuality(); toast('🖥️ 帧率偏低,已自动降到' + ['低画质', '中画质'][quality] + '(G 键可手动调)'); }   // 先降像素比,仍卡再降画质档
     if (fps < 27 && prScale > .85) {
       prScale = Math.max(.85, prScale - .25);
