@@ -2823,6 +2823,7 @@ const lam = c => {
   if (!m9) { m9 = MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 }); LAMC.set(c, m9); }
   return m9;
 };
+const lamOwn = c => MOBILE ? new THREE.MeshLambertMaterial({ color: c }) : new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 });   // 独享材质:会被 updateVisual 改色的网格专用
 const M = {
   wood: lam(0x8a6238),
   woodDark: lam(0x5e4023),
@@ -2969,7 +2970,7 @@ function makeTree(x, z, scale, birdCol) {
   const grp = new THREE.Group(); grp.position.set(x, h, z);
   const tr = cyl(.42 * scale, .7 * scale, 5 * scale, M.wood); tr.position.y = 2.5 * scale; grp.add(tr);
   // 三团树冠 + 逐树色相微变(暖/冷绿)
-  const tv = (hash2(x, z) - .5) * .12;
+  const tv = Math.round((hash2(x, z) - .5) * 4) * .03;   // 色相量化 5 档:视觉无差,材质缓存收敛
   const g1 = new THREE.Color(0x4f9448).offsetHSL(tv, 0, tv * .3);
   const g2 = new THREE.Color(0x5fae52).offsetHSL(tv, 0, tv * .3);
   const g3 = new THREE.Color(0x3e7a3a).offsetHSL(tv, 0, tv * .3);
@@ -2979,8 +2980,9 @@ function makeTree(x, z, scale, birdCol) {
   let bird = null;
   if (birdCol) {
     bird = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), lam(birdCol)); bird.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 8, 6), lam(birdCol)); head.position.set(.5, .35, 0); bird.add(head);
+    const bm9 = lamOwn(birdCol);   // 换批会改色 → 独享材质
+    const body = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), bm9); bird.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 8, 6), bm9); head.position.set(.5, .35, 0); bird.add(head);
     const beak = new THREE.Mesh(new THREE.ConeGeometry(.14, .5, 6), lam(0xe8963c));
     beak.rotation.z = -Math.PI / 2; beak.position.set(.95, .35, 0); bird.add(beak);
     bird.position.y = 10.2 * scale; grp.add(bird);
@@ -3016,8 +3018,9 @@ function makeTree(x, z, scale, birdCol) {
     const mound = cyl(2.6, 3, .9, lam(0x6b4a2b)); mound.position.set(x, h + .45, z); scene.add(mound);
     const s = addSpot(x, z + 3.4, 'plants', 'bed');
     const flowers = [];
+    const fbm9 = lamOwn(hashCol(s.item.id));   // 换批会改色 → 独享材质
     for (let f = 0; f < 5; f++) {
-      const fm = new THREE.Mesh(new THREE.SphereGeometry(.42, 7, 5), lam(hashCol(s.item.id)));
+      const fm = new THREE.Mesh(new THREE.SphereGeometry(.42, 7, 5), fbm9);
       fm.position.set(x - 1.4 + f * .7, h + 1.5 + (f % 2) * .35, z + (f % 3) * .5 - .5);
       scene.add(fm); flowers.push(fm);
       const st = cyl(.06, .06, 1, lam(0x3e7a3a)); st.position.set(fm.position.x, h + .95, fm.position.z); scene.add(st);
@@ -3104,7 +3107,7 @@ function makeTree(x, z, scale, birdCol) {
     const s = addSpot(x, z, 'fish', 'tank', { r: 5 }); s.y = zn.h;
     const tank = box(2.6, 2.2, 1.8, new THREE.MeshPhongMaterial({ color: 0x2e86ab, transparent: true, opacity: .4 }));
     tank.position.set(x, zn.h + 2, z); scene.add(tank);
-    const fish = box(1, .5, .3, lam(FISH_COLOR[s.item.cat] || '#4a90d9'));
+    const fish = box(1, .5, .3, lamOwn(FISH_COLOR[s.item.cat] || '#4a90d9'));   // 换批会改色 → 独享材质(且免合并)
     fish.position.set(x, zn.h + 2, z); scene.add(fish);
     s.fishRef = fish;
     s.updateVisual = () => fish.material.color.set(FISH_COLOR[s.item.cat] || '#4a90d9');
