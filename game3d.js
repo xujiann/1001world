@@ -7292,26 +7292,45 @@ for (const [nx9, nz9, nc9, np9] of [[-4, 428, 0xff3a3a, 1.1], [4, 428, 0x3aff6a,
 const ANIMALS9 = [];
 function makeAnimal9(kind9, x9, z9) {
   const g9 = new THREE.Group();
-  const C9 = { sheep: [0xe8e4da, 0x3a3630], deer: [0x9a6a42, 0x6a4426], rabbit: [0xd8d0c4, 0xb0a898], beast: [0xc85a8a, 0x8a3a5a] }[kind9];
-  const S9 = { sheep: [1.6, 1.1, 2.4], deer: [1.1, 1.2, 2.2], rabbit: [.7, .6, 1.1], beast: [1.2, 1, 2] }[kind9];
-  const by9 = kind9 === 'rabbit' ? .75 : 1.35;
+  const C9 = { sheep: [0xe8e4da, 0x3a3630], deer: [0x9a6a42, 0x6a4426], rabbit: [0xd8d0c4, 0xb0a898], beast: [0xc85a8a, 0x8a3a5a], fox: [0xd4703a, 0xf2e8dc], dino: [0x5a9a5a, 0x3a7a44], hen: [0xf2ede2, 0xc03a2a] }[kind9];
+  const S9 = { sheep: [1.6, 1.1, 2.4], deer: [1.1, 1.2, 2.2], rabbit: [.7, .6, 1.1], beast: [1.2, 1, 2], fox: [.8, .7, 1.6], dino: [1.1, 1.3, 2.4], hen: [.55, .55, .8] }[kind9];
+  const by9 = kind9 === 'rabbit' ? .75 : (kind9 === 'hen' ? .5 : (kind9 === 'fox' ? .9 : 1.35));
   const bd9 = box(S9[0], S9[1], S9[2], lam(C9[0])); bd9.position.y = by9; g9.add(bd9);
   const hd9 = box(S9[0] * .6, S9[1] * .6, S9[1] * .55, lam(C9[0])); hd9.position.set(0, by9 + S9[1] * .45, S9[2] * .62); g9.add(hd9);
-  const lh9 = kind9 === 'rabbit' ? .5 : .9;
+  const lh9 = kind9 === 'rabbit' ? .5 : (kind9 === 'hen' ? .35 : (kind9 === 'fox' ? .55 : .9));
+  const lw9 = kind9 === 'hen' ? .1 : .22;
   for (const [sx9, sz9] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const lg9 = box(.22, lh9, .22, lam(C9[1])); lg9.position.set(sx9 * S9[0] * .35, lh9 / 2, sz9 * S9[2] * .32); g9.add(lg9);
+    const lg9 = box(lw9, lh9, lw9, lam(C9[1])); lg9.position.set(sx9 * S9[0] * .35, lh9 / 2, sz9 * S9[2] * .32); g9.add(lg9);
   }
   if (kind9 === 'deer') for (const s9 of [-1, 1]) { const an9 = box(.1, .8, .1, lam(0x5a4426)); an9.rotation.z = s9 * .5; an9.position.set(s9 * .3, by9 + 1.1, S9[2] * .62); g9.add(an9); }
   if (kind9 === 'rabbit') for (const s9 of [-1, 1]) { const er9 = box(.14, .6, .1, lam(C9[1])); er9.position.set(s9 * .18, 1.35, .45); g9.add(er9); }
   if (kind9 === 'sheep') { const wo9 = new THREE.Mesh(sphg(.9, 7, 6), lam(0xf2eee6)); wo9.scale.set(1.1, .8, 1.4); wo9.position.y = 1.8; g9.add(wo9); }
   if (kind9 === 'beast') { const tl9 = new THREE.Mesh(cong(.25, 1.4, 5), lam(C9[1])); tl9.rotation.x = Math.PI / 2.6; tl9.position.set(0, 1.5, -1.3); g9.add(tl9); }
+  if (kind9 === 'fox') {   // 🦊 大尾巴 + 立耳(青丘之狐,出《山海经》)
+    const tl9 = new THREE.Mesh(cong(.32, 1.7, 6), lam(C9[0])); tl9.rotation.x = Math.PI / 1.7; tl9.position.set(0, 1.15, -1.5); g9.add(tl9);
+    const tp9 = new THREE.Mesh(sphg(.22, 5, 4), lam(C9[1])); tp9.position.set(0, 1.5, -2.1); g9.add(tp9);
+    for (const s9 of [-1, 1]) { const er9 = new THREE.Mesh(cong(.14, .4, 4), lam(C9[0])); er9.position.set(s9 * .2, by9 + .75, .95); g9.add(er9); }
+  }
+  if (kind9 === 'dino') {   // 🦖 尾巴 + 背脊三棘
+    const tl9 = new THREE.Mesh(cong(.3, 2.2, 6), lam(C9[0])); tl9.rotation.x = Math.PI / 1.9; tl9.position.set(0, 1.35, -2); g9.add(tl9);
+    for (let r9 = 0; r9 < 3; r9++) { const rd9 = new THREE.Mesh(cong(.16, .4, 4), lam(C9[1])); rd9.position.set(0, by9 + S9[1] * .55, -.6 + r9 * .6); g9.add(rd9); }
+  }
+  if (kind9 === 'hen') {   // 🐔 冠 + 喙
+    const cb9 = box(.09, .22, .2, lam(C9[1])); cb9.position.set(0, by9 + S9[1] * .78, .38); g9.add(cb9);
+    const bk9 = new THREE.Mesh(cong(.08, .26, 4), lam(0xe8a03a)); bk9.rotation.x = Math.PI / 2; bk9.position.set(0, by9 + S9[1] * .42, .68); g9.add(bk9);
+  }
   g9.position.set(x9, Math.max(height(x9, z9), 0), z9);
-  g9.userData = { kind: kind9, hx: x9, hz: z9, tx: x9, tz: z9, pause: Math.random() * 4, sp: kind9 === 'rabbit' ? 2.2 : 1.1, ph: Math.random() * 6 };
+  g9.userData = { kind: kind9, hx: x9, hz: z9, tx: x9, tz: z9, pause: Math.random() * 4, sp: { rabbit: 2.2, fox: 1.7, hen: 1.5, dino: 1.3 }[kind9] || 1.1, ph: Math.random() * 6, run: 0 };
   scene.add(g9); ANIMALS9.push(g9);
 }
 [['sheep', -210, -752], ['sheep', -204, -744], ['sheep', -212, -736], ['sheep', -206, -728],
  ['deer', 100, -142], ['deer', 108, -134], ['rabbit', 100, -110], ['rabbit', 106, -104], ['rabbit', 96, -100],
- ['beast', -570, -1062], ['beast', -566, -1034]].forEach(a9 => makeAnimal9(a9[0], a9[1], a9[2]));
+ ['beast', -570, -1062], ['beast', -566, -1034],
+ ['fox', -570, -1054], ['fox', -566, -1018],
+ ['dino', 950, 860], ['dino', 958, 846],
+ ['hen', 70, 818], ['hen', 74, 830], ['hen', 66, 842]].forEach(a9 => makeAnimal9(a9[0], a9[1], a9[2]));
+const BEH9 = { rabbit: 'flee', deer: 'flee', hen: 'flee', sheep: 'stare', beast: 'curious', fox: 'curious', dino: 'curious' };
+let baaT9 = 4;
 /* --- 🕊️ 候鸟 V 字(高空掠过,出界换向重来) --- */
 let vFlock9 = null;
 {
@@ -8921,17 +8940,35 @@ function loop() {
   }
   for (const n9 of NAVL9) n9.m.material.opacity = (1 - curDA) * (Math.sin(t * Math.PI * 2 / n9.per + n9.ph) > .3 ? .95 : .06);
   /* 🐑🕊️🪼 生命系统:动物游走 / 候鸟 / 水母 */
+  baaT9 -= dt;
   for (const a9 of ANIMALS9) {
     const u9 = a9.userData;
-    if (u9.pause > 0) u9.pause -= dt;
+    if (curDA < .22) { a9.scale.y += (.78 - a9.scale.y) * Math.min(1, dt * 2); continue; }   // 🌙 夜眠伏卧
+    if (a9.scale.y < .99) a9.scale.y += (1 - a9.scale.y) * Math.min(1, dt * 2);
+    const pdx9 = player.position.x - a9.position.x, pdz9 = player.position.z - a9.position.z, pd9 = Math.hypot(pdx9, pdz9);
+    const beh9 = BEH9[u9.kind];
+    if (u9.run > 0) u9.run -= dt;
+    if (beh9 === 'flee' && pd9 < 7 && u9.run <= 0) {   // 🐇 惊逃
+      u9.run = 1.6; u9.pause = 0;
+      const fx9 = a9.position.x - pdx9 / pd9 * 10, fz9 = a9.position.z - pdz9 / pd9 * 10;
+      if (heightMesh(fx9, fz9) > .5) { u9.tx = fx9; u9.tz = fz9; }
+    } else if (beh9 === 'stare' && pd9 < 6) {   // 🐑 停步对视 + 咩
+      u9.pause = Math.max(u9.pause, .4);
+      a9.rotation.y = Math.atan2(pdx9, pdz9);
+      if (baaT9 <= 0) { baaT9 = 8 + Math.random() * 8; blip(233); setTimeout(() => blip(196), 110); }
+    } else if (beh9 === 'curious' && pd9 < 11 && pd9 > 3.2 && u9.pause <= 0 && u9.run <= 0) {   // 🦊 好奇靠近
+      const cx9 = player.position.x - pdx9 / pd9 * 2.6, cz9 = player.position.z - pdz9 / pd9 * 2.6;
+      if (heightMesh(cx9, cz9) > .5) { u9.tx = cx9; u9.tz = cz9; }
+    }
+    if (u9.pause > 0) { u9.pause -= dt; continue; }
+    const dx9 = u9.tx - a9.position.x, dz9 = u9.tz - a9.position.z, dd9 = Math.hypot(dx9, dz9);
+    if (dd9 < .4) { u9.pause = 2 + Math.random() * 5; const aa9 = Math.random() * Math.PI * 2, rr9 = 4 + Math.random() * 9; const nx9 = u9.hx + Math.cos(aa9) * rr9, nz9 = u9.hz + Math.sin(aa9) * rr9; if (heightMesh(nx9, nz9) > .5) { u9.tx = nx9; u9.tz = nz9; } }
     else {
-      const dx9 = u9.tx - a9.position.x, dz9 = u9.tz - a9.position.z, dd9 = Math.hypot(dx9, dz9);
-      if (dd9 < .4) { u9.pause = 2 + Math.random() * 5; const aa9 = Math.random() * Math.PI * 2, rr9 = 4 + Math.random() * 9; const nx9 = u9.hx + Math.cos(aa9) * rr9, nz9 = u9.hz + Math.sin(aa9) * rr9; if (heightMesh(nx9, nz9) > .5) { u9.tx = nx9; u9.tz = nz9; } }
-      else {
-        a9.position.x += dx9 / dd9 * u9.sp * dt; a9.position.z += dz9 / dd9 * u9.sp * dt;
-        a9.rotation.y = Math.atan2(dx9, dz9);
-        a9.position.y = Math.max(heightMesh(a9.position.x, a9.position.z), 0) + (u9.kind === 'rabbit' ? Math.abs(Math.sin(t * 9 + u9.ph)) * .35 : Math.abs(Math.sin(t * 5 + u9.ph)) * .05);
-      }
+      const spd9 = u9.sp * (u9.run > 0 ? 3 : 1);
+      a9.position.x += dx9 / dd9 * spd9 * dt; a9.position.z += dz9 / dd9 * spd9 * dt;
+      a9.rotation.y = Math.atan2(dx9, dz9);
+      const hop9 = u9.kind === 'rabbit' || (u9.kind === 'hen' && u9.run > 0);
+      a9.position.y = Math.max(heightMesh(a9.position.x, a9.position.z), 0) + (hop9 ? Math.abs(Math.sin(t * 9 + u9.ph)) * .35 : Math.abs(Math.sin(t * 5 + u9.ph)) * .05);
     }
   }
   if (vFlock9) {
