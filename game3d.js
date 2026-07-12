@@ -6421,8 +6421,28 @@ function unjMeeting() {
   addNpc({ x: 376, z: 20, name: '卡戎', body: 0x3a3a44, hat: 0x1c1c26,
     lines: ['渡一切想去别的世界的人。', '楚门的世界已通航;中土、霍格沃茨、花果山,在建。', '船票免费,回程也是——但记忆要自己带回来。'] });
 }
+let npcChatT9 = 14;   // 💬 NPC 相遇寒暄计时
 function updateNpcs3(dt) {
   npcFrame++;
+  npcChatT9 -= dt;
+  if (npcChatT9 <= 0) {
+    npcChatT9 = 26 + Math.random() * 18;
+    const near9 = allNpcs.filter(n9 => n9.g.visible && !n9.path && !(n9.chat9 > 0)
+      && (player.position.x - n9.g.position.x) ** 2 + (player.position.z - n9.g.position.z) ** 2 < 22500);
+    outer9: for (let i9 = 0; i9 < near9.length; i9++)
+      for (let j9 = i9 + 1; j9 < near9.length; j9++) {
+        const A9 = near9[i9], B9 = near9[j9];
+        const dd9 = Math.hypot(A9.g.position.x - B9.g.position.x, A9.g.position.z - B9.g.position.z);
+        if (dd9 > 2 && dd9 < 9) {
+          for (const [n9, m9] of [[A9, B9], [B9, A9]]) {
+            n9.chat9 = 5.5; n9.pause = 6.2; n9.wp = null;
+            n9.chatYaw9 = Math.atan2(m9.g.position.x - n9.g.position.x, m9.g.position.z - n9.g.position.z);
+            n9.talk = true; n9.idx = (n9.idx + 1) % n9.lines.length;
+          }
+          break outer9;
+        }
+      }
+  }
   let ni = 0;
   for (const n of allNpcs) {
     ni++;
@@ -6473,8 +6493,11 @@ function updateNpcs3(dt) {
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
     if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
+    if (n.chat9 > 0) { n.chat9 -= dt; n.talk = true; }   // 💬 寒暄中
     if (n.talk) {
-      if (!n.wander) {   // 驻场人物转身面向玩家
+      if (n.chat9 > 0) {   // 面向交谈的同伴
+        n.g.rotation.y += ((n.chatYaw9 - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
+      } else if (!moving9 && !zzz) {   // 闲着时转身面向玩家(致意)
         const want = Math.atan2(player.position.x - p.x, player.position.z - p.z);
         n.g.rotation.y += ((want - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
       }
@@ -9931,6 +9954,18 @@ if (!MOBILE) {
     scene.add(new THREE.Points(fg29, new THREE.PointsMaterial({ vertexColors: true, size: .38, transparent: true, opacity: .95 })));
   }
   console.log('🌴 植被细节:棕榈', np9, '/ 松', npn9, '/ 柳', nw9, '/ 苇丛', nr9, '/ 灌木', nb9, '/ 贝壳海星', nsh9);
+}
+/* ☔ 雨天全员打伞(RAINY 当日常量;伞挂进人组,随人走随人转) */
+if (RAINY) {
+  for (const n9 of allNpcs) {
+    const um9 = new THREE.Group();
+    const hd9 = cyl(.035, .035, 2, M.woodDark, 5); hd9.position.y = 1; um9.add(hd9);
+    const cp9 = new THREE.Mesh(cong(1.15, .55, 8), lamOwn(hashCol(n9.name + '伞')));
+    cp9.position.y = 2.1; um9.add(cp9);
+    um9.position.set(.55, 1.1, .15); um9.rotation.z = -.14;
+    n9.g.add(um9);
+  }
+  console.log('☔ 雨天全员打伞:', allNpcs.length, '把');
 }
 /* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
 if (!MOBILE) {
