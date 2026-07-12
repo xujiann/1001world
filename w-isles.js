@@ -27,16 +27,38 @@ export function osmRoads(C, lines9, gx, gz, zoff, mat, wd, yLift) {   // 折线 
 export function osmCity(C, data, gx, gz, zoff, mats) {
   const { THREE, height, scene, cirObs } = C;
   const buckets = mats.map(() => []);
+  const wins9 = [];   // 🪟 夜窗片
   data.forEach(([bh9, bcx, bcz, brr, pts9], i9) => {
     const sh9 = new THREE.Shape();
     pts9.forEach(([px9, pz9], k9) => k9 ? sh9.lineTo(px9, -pz9) : sh9.moveTo(px9, -pz9));
     const gg = new THREE.ExtrudeGeometry(sh9, { depth: bh9, bevelEnabled: false });
     gg.rotateX(-Math.PI / 2);
-    gg.translate(gx, Math.max(height(gx + bcx, gz + zoff + bcz) - .3, .2), gz + zoff);
+    const gy9 = Math.max(height(gx + bcx, gz + zoff + bcz) - .3, .2);
+    gg.translate(gx, gy9, gz + zoff);
     buckets[i9 % mats.length].push(gg);
     cirObs.push({ x: gx + bcx, z: gz + zoff + bcz, r: Math.min(brr * .8, 8) });
+    if (C.winMat9 && bh9 >= 3) {   // 🪟 沿墙线挂窗:隔两条边取一条,楼层向上堆
+      const fl9 = Math.min(3, Math.max(1, Math.floor(bh9 / 3.2)));
+      for (let e9 = 0; e9 < pts9.length; e9++) {
+        if ((e9 + i9) % 2) continue;
+        const p1 = pts9[e9], p2 = pts9[(e9 + 1) % pts9.length];
+        const ex9 = p2[0] - p1[0], ez9 = p2[1] - p1[1], el9 = Math.hypot(ex9, ez9);
+        if (el9 < 2.8) continue;
+        let nx9 = -ez9 / el9, nz9 = ex9 / el9;
+        const mx0 = (p1[0] + p2[0]) / 2, mz0 = (p1[1] + p2[1]) / 2;
+        if (nx9 * (mx0 - bcx) + nz9 * (mz0 - bcz) < 0) { nx9 = -nx9; nz9 = -nz9; }   // 法线朝外
+        const ang9 = Math.atan2(nx9, nz9);
+        for (let f9 = 0; f9 < fl9; f9++) {
+          const wq9 = new THREE.PlaneGeometry(1.1, 1.4);
+          wq9.rotateY(ang9);
+          wq9.translate(gx + mx0 + nx9 * .12, gy9 + 2.1 + f9 * 3.1, gz + zoff + mz0 + nz9 * .12);
+          wins9.push(wq9);
+        }
+      }
+    }
   });
   buckets.forEach((gs, i9) => { if (gs.length) scene.add(new THREE.Mesh(mergeGeometries(gs), mats[i9])); });
+  if (wins9.length && C.winMat9) scene.add(new THREE.Mesh((C.mergeGeometries || mergeGeometries)(wins9), C.winMat9()));
 }
 export function makeNIContent(C) {
   const { THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat } = C;

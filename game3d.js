@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=18';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=20';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -17,6 +17,7 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { clamp, esc, smooth01, mulberry32, shuffled, hash2, vnoise, fbm, warpFbm, ridged, PALETTE, hashCol, BEER_COLOR, FISH_COLOR, SPORT_ICON } from './w-util.js?v=2';
 import { THEMES, NI_QUESTS } from './w-config.js?v=17';
 import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
@@ -2312,6 +2313,17 @@ $('btnMusic').addEventListener('click', () => {
 const MOBILE = matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !MOBILE });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MOBILE ? 1.5 : 1.75));
+/* 🌫️ 高度雾:全局改雾着色器——低处浓、高处清(山顶与天空之城在雾线之上)。
+   用 position 而非 transformed:所有内置着色器(网格/点/水面)都有该属性,不炸自定义 shader。 */
+THREE.ShaderChunk.fog_pars_vertex = THREE.ShaderChunk.fog_pars_vertex.replace(
+  'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
+THREE.ShaderChunk.fog_vertex = THREE.ShaderChunk.fog_vertex.replace(
+  'vFogDepth = - mvPosition.z;', 'vFogDepth = - mvPosition.z;\n\tvFogY9 = ( modelMatrix * vec4( position, 1.0 ) ).y;');
+THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace(
+  'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
+THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace(
+  'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );',
+  'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );\n\tfogFactor = clamp( fogFactor * ( 0.42 + 0.78 * exp( - max( vFogY9, 0.0 ) * 0.016 ) ), 0.0, 1.0 );');
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .68;
 if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
@@ -2319,7 +2331,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null, gtaoPass = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -2347,6 +2359,23 @@ if (!MOBILE) {
   } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
+  gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
+    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.04 }, uVig: { value: .26 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig;',
+      'void main(){',
+      '  vec4 c = texture2D( tDiffuse, vUv );',
+      '  c.rgb *= uTint;',
+      '  float l = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
+      '  c.rgb = mix( vec3( l ), c.rgb, uSat );',
+      '  float d = distance( vUv, vec2( .5 ) );',
+      '  c.rgb *= 1.0 - uVig * smoothstep( .38, .74, d );',
+      '  gl_FragColor = c;',
+      '}',
+    ].join('\n'),
+  });
+  composer.addPass(gradePass9);
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
@@ -2696,6 +2725,13 @@ function updateDayNight(t) {
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
   for (const L2 of nightLamps) L2.intensity = (1 - da) * L2.userData.pow;   // 各岛夜灯
+  if (gradePass9) {   // 🎨 分级随时段:黄昏推橙金降蓝,夜里降饱和加暗角
+    gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02, 1 + dusk * .02, 1 - dusk * .08 + (1 - da) * .06);
+    gradePass9.uniforms.uSat.value = 1.04 + dusk * .08 - (1 - da) * .12;
+    gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
+  }
+  const wOp9 = clamp((1 - da) * 1.2, 0, 1) * .92;   // 🪟 夜窗灯
+  for (const m9 of WINMATS9) { m9.opacity = wOp9; m9.visible = wOp9 > .03; }
   if (beacon) { beacon.material.opacity = (1 - da) * .32; beacon.rotation.y = t * .9; }
   return da;
 }
@@ -2977,6 +3013,12 @@ if (!MOBILE) {
   M.woodDark.normalMap = woodNrm; M.woodDark.normalScale.set(.45, .45);
   M.stone.needsUpdate = M.wood.needsUpdate = M.woodDark.needsUpdate = true;
 }
+/* 🪟 夜窗灯:暖黄自发光窗片,夜里亮、白天灭(材质集中登记,昼夜统一调) */
+const WINMATS9 = [];
+const winMat9 = () => {
+  const m9 = new THREE.MeshBasicMaterial({ color: 0xffc46a, transparent: true, opacity: 0, side: THREE.DoubleSide });
+  m9.visible = false; WINMATS9.push(m9); return m9;
+};
 const GEOC = new Map();   // 同尺寸几何体共享(禁止对 box/cyl 的 geometry 做原地变换)
 const geoc = (k, mk) => { let g = GEOC.get(k); if (!g) { g = mk(); GEOC.set(k, g); } return g; };
 const box = (w, h, d, mat) => new THREE.Mesh(geoc('b' + w + ',' + h + ',' + d, () => new THREE.BoxGeometry(w, h, d)), mat);
@@ -2997,6 +3039,15 @@ function pavilion(zn, opt) {
   const cap = box(o.w * .55, .7, o.d * .55, lam(o.roof)); cap.position.y = 8.6; grp.add(cap);
   if (o.walls !== 'none') {
     const back = box(o.w, 6.6, .5, M.white); back.position.set(0, 3.7, -o.d / 2 + .3); grp.add(back);
+    { // 🪟 背墙外侧夜窗
+      const wgs9 = [], nW9 = Math.max(2, Math.round(o.w / 9));
+      for (let i9 = 0; i9 < nW9; i9++) {
+        const wq9 = new THREE.PlaneGeometry(1.3, 1.6);
+        wq9.translate(-o.w / 2 + (i9 + .5) * (o.w / nW9), 3.8, -o.d / 2 - .02);
+        wgs9.push(wq9);
+      }
+      grp.add(new THREE.Mesh(mergeGeometries(wgs9), winMat9()));
+    }
     boxObs.push({ x1: x - o.w / 2, z1: z - o.d / 2 - .1, x2: x + o.w / 2, z2: z - o.d / 2 + .7 });
     if (o.walls === 'three') {
       for (const sgn of [-1, 1]) {
@@ -5503,7 +5554,7 @@ const ISLES = [
   { c: UNJ, name: '未竟之都', icon: '🏛️', theme: 'capital' },
 ];
 /* ===== 海洋文学带:数据驱动内容(每岛一份 lore/npcs/build)===== */
-const NI_CONTENT = makeNIContent({ THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat });
+const NI_CONTENT = makeNIContent({ THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat, winMat9, mergeGeometries });
 /* 框架:把每岛内容接入世界(渡口/图鉴/海图/配乐/分桶经各自定义点补齐)*/
 for (const s of NISLES) {
   const c = NI_CONTENT[s.key]; if (!c) continue;
@@ -7679,7 +7730,7 @@ function redistributeMist(cx, cz) {
 }
 /* 🗾 OSM 真实街区 · 硬编码老岛四处 */
 {
-  const C9 = { THREE, height, scene, cirObs };
+  const C9 = { THREE, height, scene, cirObs, winMat9, mergeGeometries };
   osmCity(C9, OSM_MOBT, MOB.x - 24, MOB.z, 34, [lam(0xb8a88c), lam(0x9a8a6e)]);     // 南塔开特镇(捕鲸港)
   osmCity(C9, OSM_TRUMAN, TRU.x + 30, TRU.z, 32, [lam(0xf0e8da), lam(0xe6d8c4)]);   // Seaside(楚门的世界取景地)
   osmCity(C9, OSM_DGYT, DGY.x - 28, DGY.z, -32, [lam(0x9a5a4a), lam(0x8a8478)]);    // 北京大观园
