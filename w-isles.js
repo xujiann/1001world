@@ -169,7 +169,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const mx = gx, mz = gz - 8, mh = height(mx, mz);
-      const manor = box(16, 7, 11, lam(0xe6e2d8)); manor.position.set(mx, mh + 3.5, mz); scene.add(manor); cirObs.push({ x: mx, z: mz, r: 8 });
+      makeBldg({ x: mx, z: mz, w: 16, d: 11, floors: 2, style: 'whaler', wall: 0xe6e2d8 });   // 🏗️ 庄园主楼
       const roof = box(17, .6, 12, lam(0x4a4650)); roof.position.set(mx, mh + 7.3, mz); scene.add(roof);
       for (const ox of [-5, 0, 5]) { const win = box(1.6, 2, .2, new THREE.MeshBasicMaterial({ color: 0x2a2a34 })); win.position.set(mx + ox, mh + 3.4, mz + 5.6); scene.add(win); }
       const tx = gx, tz = gz + 3, th2 = height(tx, tz);
@@ -687,7 +687,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const wx = gx, wz = gz + 4, wh = height(wx, wz);
-      const ward = box(14, 6, 9, lam(0x6a6a72)); ward.position.set(wx, wh + 3, wz); scene.add(ward); cirObs.push({ x: wx, z: wz, r: 7.5 });
+      makeBldg({ x: wx, z: wz, w: 14, d: 9, floors: 2, style: 'stone', roof: 'flat', wall: 0x6a6a72 });   // 🏗️
       const rf = box(15, .6, 10, lam(0x3a3a42)); rf.position.set(wx, wh + 6.3, wz); scene.add(rf);
       for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, r = 20; const fp = cyl(.12, .14, 2.6, M.woodDark); const u = gx + Math.cos(a) * r, v = gz + Math.sin(a) * r; fp.position.set(u, height(u, v) + 1.3, v); scene.add(fp); }
       const lx = gx - 2, lz = gz - 10, lh = height(lx, lz);
@@ -734,7 +734,7 @@ export function makeNIContent(C) {
         const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4), lam(0x2e3236)); rk.position.set(ix, height(ix, iz) + .5, iz); rk.rotation.set(rnd() * 3, rnd() * 3, 0); scene.add(rk);
         const ig = box(1.1, .25, .3, lam(0x22262a)); ig.position.set(ix, height(ix, iz) + 1.3, iz); ig.rotation.y = rnd() * 6.28; scene.add(ig); }
       const sx = gx - 18, sz = gz - 8, sh2 = height(sx, sz);   // 观察站木屋+望远镜
-      const hut = box(6, 3.4, 5, lam(0x6a5a42)); hut.position.set(sx, sh2 + 1.7, sz); scene.add(hut); cirObs.push({ x: sx, z: sz, r: 3.6 });
+      makeBldg({ x: sx, z: sz, w: 6, d: 5, style: 'desert', wall: 0x6a5a42, roofC: 0x5a4a36 });   // 🏗️
       const tri = cyl(.1, .14, 2.6, M.woodDark, 5); tri.position.set(sx + 4.4, sh2 + 1.3, sz + 1); scene.add(tri);
       const scope = cyl(.16, .2, 1.6, lam(0xb08d4a), 8); scope.rotation.z = .7; scope.position.set(sx + 4.4, sh2 + 2.8, sz + 1); scene.add(scope);
       const bx2 = gx + 30, bz2 = gz + 8, bh2 = height(bx2, bz2);   // 废棚:塌了半边
@@ -1054,7 +1054,7 @@ export function makeNIContent(C) {
         const arm2 = cyl(.05, .05, .9, lam(0xe8e6de), 4); arm2.rotation.z = 2.6; arm2.position.set(sx3 + .3, sh4 + 1.6 + (i % 2) * .5, sz3); scene.add(arm2); }
       for (let i = 0; i < 5; i++) { const rib = box(.5, 4 + (i % 2), .6, lam(0x6a5236));   // 搁浅的龙骨
         rib.position.set(gx - 16 + i * 3, height(gx - 16 + i * 3, gz + 38) + 1.4, gz + 38); rib.rotation.z = .5 - (i % 3) * .18; scene.add(rib); }
-      const st = box(5, 3, 4, lam(0x5a6a4a)); st.position.set(gx + 17, height(gx + 17, gz + 20) + 1.5, gz + 20); scene.add(st); cirObs.push({ x: gx + 17, z: gz + 20, r: 3 });   // 保护站
+      makeBldg({ x: gx + 17, z: gz + 20, w: 5, d: 4, style: 'stone', roof: 'flat', wall: 0x5a6a4a });   // 🏗️ 保护站
       const g2 = new THREE.PointLight(0xffd89a, 0, 90, 2); g2.position.set(gx + 17, height(gx + 17, gz + 20) + 4, gz + 20); g2.userData.pow = 16; nightLamps.push(g2); scene.add(g2);
     },
   },
@@ -1085,7 +1085,7 @@ export function makeNIContent(C) {
       osmCity(C, OSM_HELENA, gx + 30, gz, 28, [lam(0xd8d0bc), lam(0xb8ac96)]);   // 真实街区 © OSM
       osmRoads(C, OSM_ROADS.HELENA, gx + 30, gz, 28, new THREE.MeshLambertMaterial({ color: 0xb0a488, side: THREE.DoubleSide }), 1.7, .12);   // 詹姆斯敦街道
       const wh2 = height(gx, gz);   // 长木庄园:长条平房+绿窗板
-      const house = box(16, 4, 7, lam(0xcac2b0)); house.position.set(gx, wh2 + 2, gz); scene.add(house); cirObs.push({ x: gx, z: gz, r: 9 });
+      makeBldg({ x: gx, z: gz, w: 16, d: 7, style: 'whaler', wall: 0xcac2b0 });   // 🏗️ 长屋
       const roof2 = box(17, 1, 8, lam(0x4a4a44)); roof2.position.set(gx, wh2 + 4.5, gz); scene.add(roof2);
       for (let i = 0; i < 5; i++) { const sh5 = box(1, 1.4, .15, lam(0x3a5e42)); sh5.position.set(gx - 6 + i * 3, wh2 + 2.2, gz + 3.6); scene.add(sh5); }
       const gx3 = gx + 12, gz3 = gz + 12, gh3 = height(gx3, gz3);   // 菜园:畦垄+矮墙
@@ -1139,7 +1139,7 @@ export function makeNIContent(C) {
       for (let i = 0; i < 6; i++) { const dt = cyl(.12, .18, 3 + (i % 3), lam(0x8a7a5a), 5);   // 旱季枯树
         const tx3 = gx + 10 + (i % 3) * 8, tz3 = gz - 14 - Math.floor(i / 3) * 8; dt.position.set(tx3, height(tx3, tz3) + 1.6, tz3); dt.rotation.z = (i % 2 ? .16 : -.12); scene.add(dt);
         const db = cyl(.05, .07, 1.6, lam(0x7a6a4c), 4); db.rotation.z = 1.1; db.position.set(tx3 + .6, height(tx3, tz3) + 2.8, tz3); scene.add(db); }
-      const hut2 = box(5, 3, 4, lam(0x4a6a5a)); hut2.position.set(gx - 8, height(gx - 8, gz + 22) + 1.5, gz + 22); scene.add(hut2); cirObs.push({ x: gx - 8, z: gz + 22, r: 3 });   // 护林站
+      makeBldg({ x: gx - 8, z: gz + 22, w: 5, d: 4, style: 'stone', roof: 'flat', wall: 0x4a6a5a });   // 🏗️ 护林站
       const sign2 = box(1.6, 1, .1, lam(0xd8d0b8)); sign2.position.set(gx - 5, height(gx - 5, gz + 24) + 1.2, gz + 24); scene.add(sign2);
       for (let i = 0; i < 8; i++) { const pk = new THREE.Mesh(new THREE.CircleGeometry(1.6 + rnd() * 1.4, 9), new THREE.MeshLambertMaterial({ color: 0xe8c0c8 }));   // 粉沙湾
         const px2 = gx + 6 + rnd() * 14, pz2 = gz + 30 + rnd() * 10; pk.rotation.x = -Math.PI / 2; pk.position.set(px2, Math.max(height(px2, pz2), .1) + .06, pz2); scene.add(pk); }
@@ -1485,10 +1485,10 @@ export function makeNIContent(C) {
         }
       }
       const bx9 = gx - 10, bz9 = gz - 30, bh9 = height(bx9, bz9);   // 📖 书场
-      const hall = box(7, 3.2, 5, lam(0x6a5a44)); hall.position.set(bx9, bh9 + 1.6, bz9); scene.add(hall); cirObs.push({ x: bx9, z: bz9, r: 4 });
+      makeBldg({ x: bx9, z: bz9, w: 7, d: 5, style: 'jiangnan', wall: 0x6a5a44 });   // 🏗️ 雾港会馆
       const hrf = new THREE.Mesh(new THREE.ConeGeometry(5.4, 2, 4), lam(0x3f362c)); hrf.rotation.y = Math.PI / 4; hrf.position.set(bx9, bh9 + 4.2, bz9); scene.add(hrf);
       for (const [wx9, wz9] of [[26, -34], [40, -20]]) {   // 仓库两座
-        const wh9 = box(6, 3, 4.4, lam(0x8a8074)); wh9.position.set(gx + wx9, height(gx + wx9, gz + wz9) + 1.5, gz + wz9); scene.add(wh9); cirObs.push({ x: gx + wx9, z: gz + wz9, r: 3.6 });
+        makeBldg({ x: gx + wx9, z: gz + wz9, w: 6, d: 4.4, style: 'stone', roof: 'flat', wall: 0x8a8074 });   // 🏗️ 码头仓房
         const wr9 = box(6.6, .3, 5, lam(0x5a544c)); wr9.position.set(gx + wx9, height(gx + wx9, gz + wz9) + 3.2, gz + wz9); scene.add(wr9);
       }
       makeBoat(0xd8d2c2, .8).userData = { anchor: [gx + 20, gz + 38] };   // 港湾小舢板(真实海湾水面)
@@ -1572,7 +1572,7 @@ export function makeNIContent(C) {
         const po9 = cyl(.07, .09, 2.4, M.woodDark, 5); po9.position.set(lx9, height(lx9, lz9) + 1.2, lz9); scene.add(po9);
       }
       const mx9 = gx - 18, mz9 = gz + 12, mh9 = height(mx9, mz9);   // 狐大夫医馆
-      const med = box(5, 3, 4, lam(0x8a6a4a)); med.position.set(mx9, mh9 + 1.5, mz9); scene.add(med); cirObs.push({ x: mx9, z: mz9, r: 3.2 });
+      makeBldg({ x: mx9, z: mz9, w: 5, d: 4, style: 'jiangnan', wall: 0x8a6a4a });   // 🏗️
       const mrf = new THREE.Mesh(new THREE.ConeGeometry(4, 1.8, 4), lam(0x5a4028)); mrf.rotation.y = Math.PI / 4; mrf.position.set(mx9, mh9 + 3.9, mz9); scene.add(mrf);
       const mbd = box(2.4, .7, .12, lam(0x3a2a1a)); mbd.position.set(mx9, mh9 + 2.6, mz9 + 2.05); scene.add(mbd);
       const hx9 = gx + 32, hz9 = gz + 32, hh9 = height(hx9, hz9);   // 雾港:栈桥 + 雾笛柱
