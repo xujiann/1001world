@@ -5827,10 +5827,10 @@ function openAirCounter(fromKey) {
     vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
     closeModals(); blip(660);
     toast('🛫 登机、滑跑、离地——舷窗外,群岛缩成了一张海图');
-    setTimeout(() => {
-      player.position.set(dest[2] + 2.5, Math.max(height(dest[2] + 2.5, dest[3] + 2), 0) + 1.2, dest[3] + 2); vy = 0;
-      toast('🛬 ' + dest[1] + ' 到了 · 感谢乘坐鲸航'); blip(720);
-    }, 1000);
+    const tx9 = dest[2] + 2.5, tz9 = dest[3] + 2;
+    const d9 = Math.hypot(tx9 - player.position.x, tz9 - player.position.z);
+    flight = { air: 1, t: 0, dur: clamp(d9 / 95, 8, 20), from: [player.position.x, player.position.z], to: [tx9, tz9], lift: 130,
+      msg: '🛬 ' + dest[1] + ' 到了 · 感谢乘坐鲸航' };
   }));
 }
 /* 三仙岛蜃楼:蓬莱、方丈——远望可见,近之则隐(loop 里按距离渐隐) */
@@ -6642,9 +6642,7 @@ function ferryGo(k) {
       fcy: [FCY.x, FCY.z - 112], yfb: [YFB.x, YFB.z - 88], rbx: [RBX.x, RBX.z - 96], dgy: [DGY.x, DGY.z + 102],
       pur: [PUR.x, PUR.z + PUR.r + 18], unj: [UNJ.x, UNJ.z + UNJ.r + 14], main: [372, 12] };
     const dest = dests[k] || NI_DEST[k] || dests.main;
-    player.position.set(dest[0], height(dest[0], dest[1]) + 1, dest[1]); vy = 0;
-    closeModals(); blip(520);
-    toast(k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
+    const msg9 = (k === 'truman' ? '📺 欢迎来到楚门的世界 · 第 10909 天'
       : k === 'lotr' ? '💍 欢迎来到中土 · 西有夏尔,东有魔多'
       : k === 'hp' ? '⚡ 呜——!霍格沃茨特快抵达霍格莫德站'
       : k === 'mainstation' ? '🚂 呜——!列车抵达 9¾ 站台'
@@ -6667,6 +6665,14 @@ function ferryGo(k) {
       : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪'
       : k === 'unj' ? '🏛️ 未竟之都到了。广播还在循环:"欢迎来到人类共同的首都。"——港口空无一人'
       : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
+    vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+    const dist9 = Math.hypot(dest[0] - player.position.x, dest[1] - player.position.z);
+    const mx9 = (player.position.x + dest[0]) / 2, mz9 = (player.position.z + dest[1]) / 2;
+    const mr9 = Math.hypot(mx9, mz9) || 1, push9 = Math.max(0, 720 - mr9);   // 航线中点外推出群岛核心,少穿岛
+    closeModals(); blip(520);
+    flight = { sea: 1, t: 0, dur: clamp(dist9 / 70, 7, 18), from: [player.position.x, player.position.z],
+      wp: [mx9 + mx9 / mr9 * push9, mz9 + mz9 / mr9 * push9], to: [dest[0], dest[1]], msg: msg9 };
+    toast('🛥️ 解缆离港——渡向另一个世界');
 }
 function mapKey(globe) {   // M=平面 N=地球仪:关→开对应视图;开→同视图关/异视图切
   if (!bigmapEl) return;
@@ -8100,6 +8106,40 @@ if (EVENT === 'kites') for (let i9 = 0; i9 < 2; i9++) addNpc({ x: -44 + i9 * 88,
 /* ===== 🧱 障碍空间索引:玩家推离从全扫改查表(40m 网格,cirObs 数量变化自动重建) ===== */
 let OIDX = null, OIDX_N = -1;
 const OCELL = 40, OW = 106;
+/* ===== ✈️🛥️🎈 交通载具:鲸航水上飞机 / 渡轮 / 环景交通 ===== */
+let planeGrp9 = null, prop9 = null, ferryBoat9 = null, ambPlane9 = null, ambFerry9 = null, balloon9 = null;
+function makePlane9(s9) {
+  const p9 = new THREE.Group();
+  const wht9 = lam(0xf0f4f8), blu9 = lam(0x3a5a7a);
+  const fus9 = cyl(.55 * s9, .72 * s9, 6 * s9, wht9, 8); fus9.rotation.x = Math.PI / 2; fus9.position.y = 1.4 * s9; p9.add(fus9);
+  const nose9 = new THREE.Mesh(cong(.56 * s9, 1.4 * s9, 8), blu9); nose9.rotation.x = Math.PI / 2; nose9.position.set(0, 1.4 * s9, 3.6 * s9); p9.add(nose9);
+  const wing9 = box(7.4 * s9, .16 * s9, 1.6 * s9, wht9); wing9.position.y = 2.1 * s9; p9.add(wing9);
+  const tw9 = box(2.8 * s9, .12 * s9, .9 * s9, wht9); tw9.position.set(0, 1.7 * s9, -2.9 * s9); p9.add(tw9);
+  const fin9 = box(.14 * s9, 1.3 * s9, 1 * s9, blu9); fin9.position.set(0, 2.2 * s9, -2.9 * s9); p9.add(fin9);
+  for (const sd9 of [-1, 1]) {
+    const fl9 = cyl(.22 * s9, .3 * s9, 4.2 * s9, blu9, 6); fl9.rotation.x = Math.PI / 2; fl9.position.set(sd9 * 1.1 * s9, .25 * s9, .3 * s9); p9.add(fl9);
+    const su9 = box(.1 * s9, 1 * s9, .1 * s9, blu9); su9.position.set(sd9 * 1.1 * s9, .8 * s9, .3 * s9); p9.add(su9);
+  }
+  const pr9 = new THREE.Group();
+  pr9.add(box(.14 * s9, 2.2 * s9, .06 * s9, blu9));
+  pr9.add(box(2.2 * s9, .14 * s9, .06 * s9, blu9));
+  pr9.position.set(0, 1.4 * s9, 4.35 * s9); p9.add(pr9);
+  p9.userData.prop = pr9;
+  return p9;
+}
+{
+  planeGrp9 = makePlane9(1.4); planeGrp9.visible = false; scene.add(planeGrp9);
+  prop9 = planeGrp9.userData.prop;
+  ferryBoat9 = makeBoat(0xd8b04a, 1.6); ferryBoat9.visible = false; ferryBoat9.userData.anchor = [0, -2600]; scene.add(ferryBoat9);   // anchor 满足 boats 循环,乘船时每帧覆盖
+  ambPlane9 = makePlane9(1.6); ambPlane9.position.set(-2100, 150, -300); ambPlane9.userData.dir = { dx: 1, dz: .2 }; scene.add(ambPlane9);
+  ambFerry9 = makeBoat(0x8ab0c8, 1.4); ambFerry9.userData.anchor = [400, 40]; scene.add(ambFerry9);
+  ambFerry9.userData.k = 0; ambFerry9.userData.dir = 1;
+  balloon9 = new THREE.Group();   // 🎈 主岛观光热气球(环景)
+  const env9 = new THREE.Mesh(sphg(6, 10, 8), lam(0xd85a4a)); env9.scale.y = 1.15; env9.position.y = 9; balloon9.add(env9);
+  const band9 = new THREE.Mesh(sphg(6.06, 10, 8, 0, Math.PI * 2, 1.1, .5), lam(0xf2e8d8)); band9.scale.y = 1.15; band9.position.y = 9; balloon9.add(band9);
+  const bas9 = box(2.2, 1.6, 2.2, M.woodDark); bas9.position.y = 1; balloon9.add(bas9);
+  scene.add(balloon9);
+}
 function obstNear(x, z) {
   if (!OIDX || OIDX_N !== cirObs.length) {
     OIDX = new Array(OW * OW).fill(null); OIDX_N = cirObs.length;
@@ -8929,6 +8969,35 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  /* ✈️🛥️🎈 环景交通:高空客机 / 巡航渡轮 / 观光气球 */
+  if (ambPlane9) {
+    const ad9 = ambPlane9.userData.dir;
+    ambPlane9.position.x += ad9.dx * 26 * dt; ambPlane9.position.z += ad9.dz * 26 * dt;
+    ambPlane9.rotation.y = Math.atan2(ad9.dx, ad9.dz);
+    ambPlane9.userData.prop.rotation.z += dt * 30;
+    if (Math.abs(ambPlane9.position.x) > 2300 || Math.abs(ambPlane9.position.z) > 2300) {
+      const na9 = Math.random() * Math.PI * 2;
+      ambPlane9.position.set(-Math.cos(na9) * 2200, 140 + Math.random() * 40, -Math.sin(na9) * 2200);
+      ad9.dx = Math.cos(na9); ad9.dz = Math.sin(na9);
+    }
+  }
+  if (ambFerry9) {   // 主岛⇄南塔开特 定期渡轮(纯环景)
+    const uf9 = ambFerry9.userData;
+    uf9.k += uf9.dir * dt / 60;
+    if (uf9.k > 1) { uf9.k = 1; uf9.dir = -1; } else if (uf9.k < 0) { uf9.k = 0; uf9.dir = 1; }
+    const ek9 = uf9.k, eu9 = 1 - ek9;
+    const bx9 = eu9 * eu9 * 400 + 2 * eu9 * ek9 * 560 + ek9 * ek9 * 170;
+    const bz9 = eu9 * eu9 * 40 + 2 * eu9 * ek9 * 380 + ek9 * ek9 * 700;
+    const pvx9 = bx9 - ambFerry9.position.x, pvz9 = bz9 - ambFerry9.position.z;
+    if (pvx9 * pvx9 + pvz9 * pvz9 > 1e-7) ambFerry9.rotation.y = Math.atan2(pvx9, pvz9);
+    ambFerry9.position.set(bx9, tideY + .1, bz9);
+    ambFerry9.rotation.z = Math.sin(t * 1.4) * .03;
+  }
+  if (balloon9) {   // 🎈 绕主岛缓飘
+    const ba9 = t * .022;
+    balloon9.position.set(Math.cos(ba9) * 190, 96 + Math.sin(t * .11) * 9, Math.sin(ba9) * 190);
+    balloon9.rotation.y = ba9;
+  }
   if (ventPts9) {   // ♨️ 热泉气泡上升
     const vp9 = ventPts9.geometry.attributes.position;
     for (let i9 = 0; i9 < vp9.count; i9++) {
@@ -9053,7 +9122,7 @@ function loop() {
       }
     }
     for (let i9 = steps9.length - 1; i9 >= 0; i9--) { const s9 = steps9[i9]; s9.life -= dt; if (s9.life < 0) { scene.remove(s9.m); steps9.splice(i9, 1); } else if (s9.life < 2) s9.m.scale.setScalar(Math.max(.01, s9.life / 2)); }
-    if (vehicle === 2 && pMoving) {   // ⛵ 船尾迹
+    if ((vehicle === 2 && pMoving) || (flight && flight.sea)) {   // ⛵ 船尾迹(帆船/渡轮)
       wakeT9 -= dt;
       if (wakeT9 <= 0) {
         wakeT9 = .22;
@@ -9189,6 +9258,26 @@ function loop() {
     if (pengBird) { pengBird.visible = true; pengBird.position.set(fx2, player.position.y - 2.3, fz2); pengBird.rotation.y = faceYaw; }
     if (k2 >= 1) { flight = null; toast('🕊️ 大鹏收翼,轻轻落回栖石。“鹏程万里,后会有期。”'); blip(659);
       if (pengBird) { pengBird.position.set(PENG_X, height(PENG_X, PENG_Z) + 2.4, PENG_Z); pengBird.rotation.y = 2.2; } }
+  } else if (flight && flight.sea) {   // 🛥️ 渡轮:二阶贝塞尔海上航线
+    flight.t += dt;
+    const k2 = Math.min(1, flight.t / flight.dur);
+    const e2 = k2 * k2 * (3 - 2 * k2), u2 = 1 - e2;
+    const fx2 = u2 * u2 * flight.from[0] + 2 * u2 * e2 * flight.wp[0] + e2 * e2 * flight.to[0];
+    const fz2 = u2 * u2 * flight.from[1] + 2 * u2 * e2 * flight.wp[1] + e2 * e2 * flight.to[1];
+    if (flight.lx != null) { const mvx = fx2 - flight.lx, mvz = fz2 - flight.lz; if (mvx * mvx + mvz * mvz > 1e-7) faceYaw = Math.atan2(mvx, mvz); }
+    flight.lx = fx2; flight.lz = fz2;
+    player.position.set(fx2, tideY + 1.15, fz2); vy = 0;
+    if (ferryBoat9) {
+      ferryBoat9.visible = true;
+      ferryBoat9.position.set(fx2, tideY + .1, fz2);
+      ferryBoat9.rotation.y = faceYaw;
+      ferryBoat9.rotation.z = Math.sin(t * 1.6) * .03;
+    }
+    if (k2 >= 1) {
+      if (ferryBoat9) ferryBoat9.visible = false;
+      player.position.set(flight.to[0], Math.max(height(flight.to[0], flight.to[1]), 0) + 1, flight.to[1]);
+      const msg2 = flight.msg; flight = null; toast(msg2); blip(660);
+    }
   } else if (flight) {
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur);
@@ -9198,7 +9287,18 @@ function loop() {
     const lift = Math.sin(Math.min(1, k2 * 1.04) * Math.PI) * (flight.lift ?? 120);
     player.position.set(fx2, Math.max(height(fx2, fz2), 0) + 2.2 + lift, fz2);
     vy = 0;
-    if (k2 >= 1) { const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660); }
+    if (flight.air && planeGrp9) {   // ✈️ 鲸航客机随行
+      if (flight.lx != null) { const mvx = fx2 - flight.lx, mvz = fz2 - flight.lz; if (mvx * mvx + mvz * mvz > 1e-7) faceYaw = Math.atan2(mvx, mvz); }
+      flight.lx = fx2; flight.lz = fz2;
+      planeGrp9.visible = true;
+      planeGrp9.position.set(fx2, player.position.y - 2.1, fz2);
+      planeGrp9.rotation.y = faceYaw;
+      prop9.rotation.z += dt * 40;
+    }
+    if (k2 >= 1) {
+      if (planeGrp9) planeGrp9.visible = false;
+      const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660);
+    }
   }
   /* 大鹏振翅(骑乘时快扇,栖息时缓扇) */
   if (pengWings) { const fl = (flight && (flight.orbit || flight.sky)) ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
