@@ -53,7 +53,7 @@ function curProfileName() {
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking', 'chain1', 'chain2', 'race1', 'racebest',
-  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo', 'wishes', 'rbgold', 'shellday', 'goods', 'tradeprofit', 'trader1',
+  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo', 'wishes', 'rbgold', 'shellday', 'goods', 'tradeprofit', 'trader1', 'myisle', 'visitisles', 'pioneer1',
   'seen_sheep', 'seen_deer', 'seen_rabbit', 'seen_beast', 'seen_fox', 'seen_dino', 'seen_hen'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
@@ -1012,6 +1012,98 @@ function stargateCard() {
     <div class="cardTitle" style="padding-top:16px"><h3>要去哪个世界?</h3><div class="en">即刻抵达 · 不收船费</div></div>
     <div class="travelGrid">${SG_LIST.map(([k2, nm4]) => `<button data-goworld="${k2}">${nm4}</button>`).join('')}</div>`;
 }
+/* ═══ 🏝️ 玩家自建岛(开拓海域 v1+v2) ═══
+   一座岛 = 一段 JSON(纯数据,渲染白名单,文本 esc,配额封顶)。
+   外环 60 格开拓海域,格号 = hash(账号)%60;岛屿码 = base64(JSON),可贴可入 URL(#visit=)。 */
+const USER_ISLES9 = [];   // { d, grp, npc, spotAdded }
+const UPRESETS9 = { fisher: '渔村', scholar: '书斋', keeper: '守望' };
+const cellPos9 = c9 => { const a9 = c9 / 60 * Math.PI * 2, r9 = 2450 + (c9 % 2) * 300; return [Math.cos(a9) * r9, Math.sin(a9) * r9]; };
+const uisleEnc9 = d9 => btoa(unescape(encodeURIComponent(JSON.stringify(d9))));
+const uisleDec9 = s9 => {
+  try {
+    const d9 = JSON.parse(decodeURIComponent(escape(atob(String(s9).trim()))));
+    if (!d9 || d9.v !== 1) return null;
+    d9.name = String(d9.name || '无名岛').slice(0, 16);
+    d9.motto = String(d9.motto || '').slice(0, 120);
+    d9.line = String(d9.line || '欢迎来我的岛。').slice(0, 60);
+    d9.owner = String(d9.owner || '旅人').slice(0, 12);
+    if (!BSTYLES[d9.theme]) d9.theme = 'whaler';
+    if (!UPRESETS9[d9.preset]) d9.preset = 'fisher';
+    d9.cell = Math.abs(d9.cell | 0) % 60;
+    return d9;
+  } catch (e) { return null; }
+};
+const myCell9 = () => Math.abs([...String(PROFILE_ID)].reduce((a9, c9) => (a9 * 31 + c9.charCodeAt(0)) | 0, 7)) % 60;
+function uisleHut9(grp9, dx9, dz9, w9, d9, st9) {   // 迷你屋(整体进 grp,可整组重建)
+  const S9 = BSTYLES[st9] || BSTYLES.whaler;
+  const bd9 = box(w9, 3.6, d9, lam(S9.wall)); bd9.position.set(dx9, 1.8, dz9); grp9.add(bd9);
+  const rf9 = new THREE.Mesh(gableGeo9(w9 + 1.2, d9 + 1.2, +(1.4 + w9 * .1).toFixed(1)), lam(S9.roofC)); rf9.position.set(dx9, 3.55, dz9); grp9.add(rf9);
+  const dr9 = new THREE.Mesh(geoc('pl1.4,2.2', () => new THREE.PlaneGeometry(1.4, 2.2)), lam(0x3a2e22)); dr9.position.set(dx9, 1.3, dz9 + d9 / 2 + .06); grp9.add(dr9);
+  for (const s9 of [-1, 1]) {
+    const wq9 = new THREE.Mesh(geoc('pl.95,1.2', () => new THREE.PlaneGeometry(.95, 1.2)), winMat9());
+    wq9.position.set(dx9 + s9 * w9 / 4, 2, dz9 + d9 / 2 + .06); grp9.add(wq9);
+  }
+}
+function buildUserIsle9(d9, mine9) {
+  let e9 = USER_ISLES9.find(u9 => u9.d.cell === d9.cell);
+  const [ix9, iz9] = cellPos9(d9.cell);
+  if (e9) { scene.remove(e9.grp); e9.d = d9; }
+  else { e9 = { d: d9, grp: null, npc: null, spotAdded: false }; USER_ISLES9.push(e9); }
+  const grp9 = new THREE.Group(); grp9.position.set(ix9, 0, iz9);
+  const base9 = cyl(55, 60, 3.4, lam(0xcab98a), 18); base9.position.y = .3; grp9.add(base9);
+  const turf9 = cyl(46, 50, 1, lam(0x6aa257), 18); turf9.position.y = 2; grp9.add(turf9);
+  for (let i9 = 0; i9 < 5; i9++) {   // 环岛椰棕
+    const a9 = i9 / 5 * Math.PI * 2 + .5;
+    const tk9 = cyl(.18, .3, 5.4, lam(0x8a6a44), 5); tk9.position.set(Math.cos(a9) * 40, 4.9, Math.sin(a9) * 40); tk9.rotation.z = .12; grp9.add(tk9);
+    for (let f9 = 0; f9 < 5; f9++) { const fr9 = new THREE.Mesh(cong(.5, 3, 4), lam(0x4f8a48)); fr9.scale.set(1, 1, .3); fr9.rotation.x = Math.PI / 2 + .55; fr9.rotation.y = f9 / 5 * Math.PI * 2; fr9.position.set(Math.cos(a9) * 40 + .6, 7.6, Math.sin(a9) * 40); grp9.add(fr9); }
+  }
+  if (d9.preset === 'fisher') { uisleHut9(grp9, -2, -8, 8, 6, d9.theme); uisleHut9(grp9, 12, 4, 6, 5, d9.theme);
+    for (let i9 = 0; i9 < 5; i9++) { const pk9 = box(2.4, .3, 1.4, M.wood); pk9.position.set(-2, 1.9, 14 + i9 * 1.5); grp9.add(pk9); } }
+  else if (d9.preset === 'scholar') { uisleHut9(grp9, 0, -4, 11, 8, d9.theme);
+    for (const [tx9, tz9] of [[-16, 8], [14, 12]]) { const tk9 = cyl(.4, .6, 4, M.wood); tk9.position.set(tx9, 4, tz9); grp9.add(tk9); const cn9 = new THREE.Mesh(sphg(3, 8, 6), lam(0x5d9450)); cn9.position.set(tx9, 7.2, tz9); grp9.add(cn9); } }
+  else { const tw9 = cyl(2.3, 2.9, 11, lam(0xe8e2d4), 10); tw9.position.set(-8, 7.5, -6); grp9.add(tw9);
+    const tc9 = new THREE.Mesh(cong(2.7, 2.2, 10), lam(0xc0392b)); tc9.position.set(-8, 14.1, -6); grp9.add(tc9); uisleHut9(grp9, 8, 6, 7, 5, d9.theme); }
+  const sg9 = makeSign(d9.name, 7); sg9.position.set(0, 4.6, 26); grp9.add(sg9);
+  scene.add(grp9); e9.grp = grp9;
+  if (e9.npc) { e9.npc.lines = [d9.line]; e9.npc.name = (mine9 ? '岛主·' : '') + d9.owner; }
+  else { addNpc({ x: ix9 + 6, z: iz9 + 8, y: 2.5, name: (mine9 ? '岛主·' : '') + d9.owner, body: 0x4a7a9a, lines: [d9.line], wander: true, wps: [[ix9 + 10, iz9 + 4], [ix9 - 6, iz9 + 12], [ix9 + 2, iz9 - 8]] }); e9.npc = allNpcs[allNpcs.length - 1]; }
+  if (!e9.spotAdded) { addSpot(ix9, iz9 + 24, 'uisle', 'uisle', { r: 8, y: 2.5, ui: d9.cell }); e9.spotAdded = true; }
+  return e9;
+}
+function uisleHeight9(x9, z9) {
+  for (const u9 of USER_ISLES9) {
+    const [ix9, iz9] = cellPos9(u9.d.cell);
+    if (Math.hypot(x9 - ix9, z9 - iz9) < 52) return 2.5;
+  }
+  return null;
+}
+function uisleCard9(cell9) {
+  const u9 = USER_ISLES9.find(e9 => e9.d.cell === cell9); if (!u9) return '<div class="cardHead">🏝️</div>';
+  const d9 = u9.d;
+  return `<div class="cardHead" style="background:#2a6a5a">🏝️ ${esc(d9.name)}</div>
+    <div class="cardTitle"><h3>${esc(d9.name)}</h3><div class="en">开拓海域 · ${esc(d9.owner)} 的岛(${UPRESETS9[d9.preset]}·${d9.theme})</div></div>
+    <div class="cardDesc">${esc(d9.motto) || '岛主还没有写下岛志。'}</div>
+    <div style="text-align:center;padding:0 0 14px"><button class="again" data-uback>⛵ 乘专船回主岛</button></div>`;
+}
+function pioneerCard9() {
+  const mine9 = PSTORE.getItem('w1001.myisle');
+  const d9 = mine9 ? uisleDec9(mine9) : null;
+  const opts9 = (o9, sel9) => Object.keys(o9).map(k9 => `<option value="${k9}" ${k9 === sel9 ? 'selected' : ''}>${o9[k9].n || UPRESETS9[k9] || k9}</option>`).join('');
+  const themeOpts9 = Object.keys(BSTYLES).map(k9 => `<option value="${k9}" ${d9 && d9.theme === k9 ? 'selected' : ''}>${k9}</option>`).join('');
+  return `<div class="cardHead" style="background:#2a6a5a">🏝️ 开拓者事务所 · Pioneer Office</div>
+    <div style="padding:10px 16px 4px;font-size:12px;color:#8a7c62;line-height:1.6">外环开拓海域为每位旅人留了一格。建一座自己的岛,导出「岛屿码」送给朋友——对方粘贴导入(或打开你分享的链接),你的岛就会出现在 TA 的世界里。</div>
+    <div style="padding:6px 16px 14px;font-size:13px">
+      <input id="pioName" maxlength="16" placeholder="岛名(≤16 字)" value="${d9 ? esc(d9.name) : ''}" style="width:100%;box-sizing:border-box;margin:4px 0;padding:7px;border:1px solid #d8ceb8;border-radius:8px">
+      <div style="display:flex;gap:6px;margin:4px 0"><select id="pioPreset" style="flex:1;padding:7px;border:1px solid #d8ceb8;border-radius:8px">${opts9(UPRESETS9, d9 ? d9.preset : 'fisher')}</select>
+      <select id="pioTheme" style="flex:1;padding:7px;border:1px solid #d8ceb8;border-radius:8px">${themeOpts9}</select></div>
+      <textarea id="pioMotto" maxlength="120" placeholder="岛志(写在访客卡上,≤120 字)" style="width:100%;box-sizing:border-box;height:52px;margin:4px 0;padding:7px;border:1px solid #d8ceb8;border-radius:8px">${d9 ? esc(d9.motto) : ''}</textarea>
+      <input id="pioLine" maxlength="60" placeholder="岛主 NPC 的一句台词" value="${d9 ? esc(d9.line) : ''}" style="width:100%;box-sizing:border-box;margin:4px 0;padding:7px;border:1px solid #d8ceb8;border-radius:8px">
+      <button class="again" data-ubuild style="display:block;width:100%;margin:8px 0 4px">${d9 ? '🔨 更新我的岛' : '🏝️ 建成我的岛(免费)'}</button>
+      <div style="display:flex;gap:6px">${d9 ? '<button class="again" data-uexport style="flex:1">📤 导出岛屿码</button><button class="again" data-ugo style="flex:1">⛵ 前往我的岛</button>' : ''}</div>
+      <textarea id="pioCode" placeholder="岛屿码出现在这里;或把朋友的岛屿码粘进来,点导入" style="width:100%;box-sizing:border-box;height:56px;margin:6px 0 4px;padding:7px;border:1px solid #d8ceb8;border-radius:8px;font-size:11px"></textarea>
+      <button class="again" data-uimport style="display:block;width:100%">📥 导入朋友的岛(已迎 ${(JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]')).length}/8 座)</button>
+    </div>`;
+}
 /* ═══ 🧺 生产与岛际贸易 ═══
    六岛特产:原产岛低价购入(日限 5)→ 运往他岛卖给收购商(行情日换 1.25-1.65×)。
    主岛蜂蜜/夏尔羊毛另有免费日产(采集)。货舱上限 12 件。 */
@@ -1061,6 +1153,8 @@ function buildCard(s) {
   if (cat === 'shop') return shopCard();
   if (cat === 'ferry') return ferryCard();
   if (cat === 'trader') return traderCard9(s.tr);
+  if (cat === 'uisle') return uisleCard9(s.ui);
+  if (cat === 'pioneer') return pioneerCard9();
   if (cat === 'truman') return trumanCard(s.type);
   if (cat === 'lotr') return lotrCard(s.type);
   if (cat === 'hp') return hpCard(s.type, s);
@@ -1299,6 +1393,43 @@ function openCard(s) {
     blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
   });
   cardBody.querySelector('[data-chainx]')?.addEventListener('click', ev => { chainStart9(ev.currentTarget.dataset.chainx); });
+  cardBody.querySelector('[data-ubuild]')?.addEventListener('click', () => {   // 🏝️ 建/更新我的岛
+    const d9 = { v: 1, cell: myCell9(), owner: (PROFILE_ID || '旅人').slice(0, 12),
+      name: ($('pioName').value || '无名岛').slice(0, 16), preset: $('pioPreset').value, theme: $('pioTheme').value,
+      motto: $('pioMotto').value.slice(0, 120), line: ($('pioLine').value || '欢迎来我的岛。').slice(0, 60) };
+    const ck9 = uisleDec9(uisleEnc9(d9)); if (!ck9) return;
+    PSTORE.setItem('w1001.myisle', uisleEnc9(ck9));
+    buildUserIsle9(ck9, true);
+    closeModals(); toast('🏝️ 「' + ck9.name + '」落成于开拓海域!导出岛屿码即可送给朋友'); blip(760);
+    if (PSTORE.getItem('w1001.pioneer1') !== '1') { PSTORE.setItem('w1001.pioneer1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「开拓者」 · ⭐+1'); }
+  });
+  cardBody.querySelector('[data-uexport]')?.addEventListener('click', () => {
+    $('pioCode').value = PSTORE.getItem('w1001.myisle') || '';
+    $('pioCode').select(); try { document.execCommand('copy'); toast('📤 岛屿码已复制——发给朋友吧(也可作 URL:#visit=码)'); } catch (e) { toast('📤 岛屿码已生成,手动复制即可'); }
+  });
+  cardBody.querySelector('[data-uimport]')?.addEventListener('click', () => {
+    const d9 = uisleDec9($('pioCode').value);
+    if (!d9) { toast('❌ 岛屿码无效'); return; }
+    let vl9 = []; try { vl9 = JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]'); } catch (e) {}
+    vl9 = vl9.filter(c9 => { const p9 = uisleDec9(c9); return p9 && p9.cell !== d9.cell; });
+    if (d9.cell === myCell9()) d9.cell = (d9.cell + 1) % 60;   // 与自家岛撞格顺延
+    vl9.push(uisleEnc9(d9)); while (vl9.length > 8) vl9.shift();
+    PSTORE.setItem('w1001.visitisles', JSON.stringify(vl9));
+    buildUserIsle9(d9, false);
+    closeModals(); toast('📥 「' + d9.name + '」已落成开拓海域——' + d9.owner + ' 的岛在等你拜访!'); blip(700);
+  });
+  cardBody.querySelector('[data-ugo]')?.addEventListener('click', () => {   // ⛵ 专船前往
+    const d9 = uisleDec9(PSTORE.getItem('w1001.myisle')); if (!d9) return;
+    const [ix9, iz9] = cellPos9(d9.cell);
+    vehicle = 0; bikeGrp.visible = boatGrp.visible = false; closeModals();
+    flight = { sea: 1, t: 0, dur: 16, from: [player.position.x, player.position.z], wp: [(player.position.x + ix9) / 2 * 1.15, (player.position.z + iz9) / 2 * 1.15], to: [ix9, iz9 + 20], msg: '🏝️ 到了——这是你的岛。' };
+    toast('⛵ 专船起航,前往你的岛');
+  });
+  cardBody.querySelector('[data-uback]')?.addEventListener('click', () => {   // ⛵ 回主岛
+    vehicle = 0; closeModals();
+    flight = { sea: 1, t: 0, dur: 16, from: [player.position.x, player.position.z], wp: [player.position.x / 2 * 1.15, player.position.z / 2 * 1.15], to: [372, 12], msg: '🐋 回到收藏之岛。' };
+    toast('⛵ 专船返航');
+  });
   cardBody.querySelectorAll('[data-ghv]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 免费采集
     const k9 = b9.dataset.ghv, isl9 = nearSpot && nearSpot.tr;
     if (!isl9) return;
@@ -1680,6 +1811,7 @@ function titleList() {
     { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
     { id: 'wisher', name: '🌠 许愿者', got: (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) >= 7, note: '向七颗流星许愿' },
     { id: 'trader1', name: '🧺 丝路行商', got: PSTORE.getItem('w1001.trader1') === '1', note: '岛际贸易累计利润 200⚡' },
+    { id: 'pioneer1', name: '🏝️ 开拓者', got: PSTORE.getItem('w1001.pioneer1') === '1', note: '在开拓海域建成自己的岛' },
     { id: 'chainer', name: '🧵 线索收束人', got: PSTORE.getItem('w1001.chain1') === '1' && PSTORE.getItem('w1001.chain2') === '1', note: '走完两条跨岛任务线' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
@@ -2276,7 +2408,7 @@ const EVENT = (() => {
   }
   return r0 < .4 ? 'none' : r0 < .55 ? 'fair' : r0 < .7 ? 'meteor' : r0 < .85 ? 'whales' : 'kites';
 })();
-Object.assign(HINTS, { trader: '🧺 行商摊 · 岛际买卖特产' });
+Object.assign(HINTS, { trader: '🧺 行商摊 · 岛际买卖特产', pioneer: '🏝️ 开拓者事务所 · 建一座自己的岛', uisle: '🏝️ 看看这座岛' });
 const { paperHTML, parsePantheon, pantheonHTML, pantheonFallback } = makeCards({ D, esc, todayStr, mulberry32, WEATHER, shards: () => shardsGot });   // getter:声明在后+会重赋值   // 📦 w-cards.js
 const gearPrice = g9 => EVENT === 'fair' ? Math.max(1, Math.round(g9.price * .9)) : g9.price;
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
@@ -2811,7 +2943,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || cat === 'food' || cat === 'tailor' || cat === 'home' || cat === 'trader' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
+  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || cat === 'food' || cat === 'tailor' || cat === 'home' || cat === 'trader' || cat === 'uisle' || cat === 'pioneer' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -7223,6 +7355,23 @@ function navCycle9() {
     }
   }
 }
+/* 🏝️ 开拓者事务所(主码头旁)+ 启动装载自建岛/来访岛 + URL 互访 */
+{
+  const px9 = 388, pz9 = 30, ph9 = Math.max(height(px9, pz9), .2);
+  const dk9 = box(3, 2.6, .3, lam(0x2a6a5a)); dk9.position.set(px9, ph9 + 1.3, pz9 - 1); scene.add(dk9);
+  const gl9 = new THREE.Mesh(sphg(.7, 8, 6), lam(0x6ac2a8)); gl9.position.set(px9, ph9 + 3.2, pz9 - 1); scene.add(gl9);
+  addSpot(px9, pz9 + 1, 'pioneer', 'pioneer', { r: 7 });
+  cirObs.push({ x: px9, z: pz9 - 1, r: 1.6 });
+  const mine9 = uisleDec9(PSTORE.getItem('w1001.myisle') || '');
+  if (mine9) buildUserIsle9(mine9, true);
+  try { JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]').forEach(c9 => { const d9 = uisleDec9(c9); if (d9) buildUserIsle9(d9, false); }); } catch (e) {}
+  const vh9 = (location.hash.match(/visit=([A-Za-z0-9+/=]+)/) || [])[1];
+  if (vh9) { const d9 = uisleDec9(vh9); if (d9) {
+    if (d9.cell === myCell9()) d9.cell = (d9.cell + 1) % 60;
+    buildUserIsle9(d9, false);
+    setTimeout(() => toast('🏝️ 有朋自远方来:「' + d9.name + '」(' + d9.owner + ' 的岛)已落成开拓海域!去事务所可乘船'), 5200);
+  } }
+}
 /* 🧺 行商摊位 ×6(帐布+条桌)+ 主岛蜂房生产点 */
 {
   TRADERS9.shj = [SHJ.x + 4, SHJ.z + 108, '异兽野驿站'];
@@ -8726,6 +8875,9 @@ function worldFx9(dt, t, pMoving, bh) {
       }
     }
   }
+  for (const u9 of USER_ISLES9) if (u9.grp) {   // 🏝️ 自建岛远距剔除
+    u9.grp.visible = Math.hypot(player.position.x - u9.grp.position.x, player.position.z - u9.grp.position.z) < 1400;
+  }
   /* ✨ 荧光海:夜泳拖出幽蓝轨迹 */
   if (swimming && !diving && curDA < .35 && pMoving && !MOBILE) {
     bioT9 -= dt;
@@ -9071,6 +9223,8 @@ function loop() {
     if (skh != null && player.position.y > skh - 2.4) gh = Math.max(gh, skh);
     const lhh = lighthouseHeight9(player.position.x, player.position.z);
     if (lhh != null && player.position.y > lhh - 2.4) gh = Math.max(gh, lhh);
+    const uih = uisleHeight9(player.position.x, player.position.z);
+    if (uih != null && player.position.y > uih - 2.4) gh = Math.max(gh, uih);
     if (vehicle === 2) {   // ⛵ 帆船:浮于水面,不入泳姿
       swimming = false; vy = 0; grounded = true;
       player.position.y += ((tideY + .62) - player.position.y) * Math.min(1, dt * 8);
