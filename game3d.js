@@ -53,7 +53,7 @@ function curProfileName() {
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking', 'chain1', 'chain2', 'race1', 'racebest',
-  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone',
+  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo',
   'seen_sheep', 'seen_deer', 'seen_rabbit', 'seen_beast', 'seen_fox', 'seen_dino', 'seen_hen'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
@@ -932,6 +932,7 @@ function loreCard(k) {
       return `<span style="display:block;padding:5px;color:#8a7c62;font-size:13px">${['🌱 刚播下,浇了头遍水', '🌿 发芽了,叶尖顶着露', '🌾 结蕾了,就等明早'][days9] || '🌾 结蕾了'}(${i9} 号 · 还需 ${Math.max(0, 3 - days9)} 天)</span>`;
     }).join('');
   }
+  if (k === 'lhtop' && PSTORE.getItem('w1001.lhtop') !== '1') { PSTORE.setItem('w1001.lhtop', '1'); earnSB(20); setTimeout(() => toast('🗼 首次登顶灯塔 ⚡+20'), 600); }
   if (k === 'chbottle') btn = PSTORE.getItem('w1001.chain1') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">三只瓶子都找到了。海上再没有没说完的话。</span>'
     : '<button class="again" data-chainx="bottle">🍾 追这条线索(流光引路)</button>';
@@ -1606,6 +1607,7 @@ function titleList() {
     { id: 'fishking', name: '👑 传奇渔夫', got: PSTORE.getItem('w1001.fishking') === '1', note: '钓起传说中的鱼王' },
     { id: 'racer', name: '⛵ 环岛帆手', got: PSTORE.getItem('w1001.race1') === '1', note: '完成帆船环岛计时赛' },
     { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
+    { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
     { id: 'chainer', name: '🧵 线索收束人', got: PSTORE.getItem('w1001.chain1') === '1' && PSTORE.getItem('w1001.chain2') === '1', note: '走完两条跨岛任务线' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
@@ -1866,6 +1868,8 @@ $('btnStart').addEventListener('click', () => {
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
   }, 2600);
   // 节日彩蛋播报
+  if (LOWTIDE9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
+  setTimeout(() => { toast('📸 今日摄影题:「' + PH_TODAY9.name + '」——照片模式拍到即得 ⚡15'); }, 12000);
   if (FESTIVAL) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 4800);
 });
 
@@ -2176,6 +2180,15 @@ const WEATHER = (() => {
   return r0 < .55 ? 'clear' : (r0 < .78 ? 'rain' : (r0 < .9 ? 'fog' : 'storm'));
 })();
 const RAINY = WEATHER === 'rain' || WEATHER === 'storm';
+const PHCH9 = [
+  { id: 'umb', name: '打伞的居民', ck: () => RAINY && allNpcs.some(n9 => n9.g.visible && Math.hypot(n9.g.position.x - player.position.x, n9.g.position.z - player.position.z) < 12) },
+  { id: 'dol', name: '跃水的海豚', ck: () => dolphins9.some(d9 => d9.visible && d9.position.y > -0.2 && Math.hypot(d9.position.x - player.position.x, d9.position.z - player.position.z) < 40) },
+  { id: 'peng', name: '大鹏航拍(乘鹏时拍照)', ck: () => !!(flight && (flight.orbit || flight.sky)) },
+  { id: 'camp', name: '篝火夜话', ck: () => curDA < .35 && FIRE_POS9 && Math.hypot(player.position.x - FIRE_POS9[0], player.position.z - FIRE_POS9[1]) < 16 },
+  { id: 'whale', name: '白鲸出水', ck: () => mobyWhale && mobyWhale.position.y > -2.5 && Math.hypot(mobyWhale.position.x - player.position.x, mobyWhale.position.z - player.position.z) < 220 },
+];
+const PH_TODAY9 = PHCH9[Math.floor(mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a9, c9) => (a9 * 67 + c9.charCodeAt(0)) | 0, 5))() * PHCH9.length)];
+const LOWTIDE9 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a9, c9) => (a9 * 61 + c9.charCodeAt(0)) | 0, 21))() < .18;   // 🌊 大退潮日
 /* ===== 🎪 今日世界事件(与天气同为"每日一签") ===== */
 /* 📦 EVENTS → w-data2.js */
 const EVENT = (() => {
@@ -2389,8 +2402,12 @@ const moonDirN = new THREE.Vector3(0, 1, 0);
   scene.add(moonLight, moonLight.target);
 }
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
-let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null;
+let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null, FIRE_POS9 = null;
 const rings9 = []; let ringT9 = 0;   // 🌧️ 雨落水面涟漪池
+const bio9 = []; let bioT9 = 0;      // ✨ 荧光海泳迹池
+const bioMat9 = new THREE.MeshBasicMaterial({ color: 0x5ae6ff, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+const bioGeo9 = new THREE.CircleGeometry(.42, 8);
+let prevDA9 = 1, greenFlashT9 = 0, moonRoadTold9 = false, lastHr9 = -1;   // 🟢 绿闪 / 🌕 月光海道 / 🔔 钟声
 const ringGeo9 = new THREE.RingGeometry(.35, .5, 12), ringMat9 = new THREE.MeshBasicMaterial({ color: 0xdfeef4, transparent: true, opacity: .4, depthWrite: false, side: THREE.DoubleSide });
 const dolphins9 = [];   // 🐬
 const DAY_LEN = 480, DAY_START = .12;
@@ -2428,7 +2445,7 @@ function updateDayNight(t) {
   moonLight.position.copy(player.position).addScaledVector(moonDirN, 300);
   moonLight.target.position.copy(player.position);
   /* 潮汐:月升潮涨 */
-  tideY = night * mElev * .9 * (MOON_FULL ? 1.7 : 1);   // 满月大潮:潮位更高
+  tideY = night * mElev * .9 * (MOON_FULL ? 1.7 : 1) - (LOWTIDE9 ? .85 : 0);   // 满月大潮 / 大退潮日滩涂尽显
   if (oceanWater) {
     oceanWater.position.y = .15 + tideY;
     oceanWater.material.uniforms.sunDirection.value.copy(night > .5 ? moonDirN : sunDirN);
@@ -2444,8 +2461,20 @@ function updateDayNight(t) {
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
   if (lightLamp) lightLamp.intensity = (1 - da) * 90;   // 灯塔
   for (const L2 of nightLamps) L2.intensity = (1 - da) * L2.userData.pow;   // 各岛夜灯
+  if (prevDA9 >= .32 && da < .32 && WEATHER === 'clear') {   // 🟢 绿闪:日沉入海的那一瞬(晴日限定)
+    greenFlashT9 = 1.8;
+    toast('🟢 绿闪!太阳沉入海面的一瞬,天边闪过一道绿光——传说看到它的人会得到好运');
+    if (PSTORE.getItem('w1001.gflash') !== '1') { PSTORE.setItem('w1001.gflash', '1'); earnSB(15); toast('🏆 新称号进度:「追光者」 ⚡+15'); }
+  }
+  prevDA9 = da;
+  if (MOON_FULL && night > .5 && mp > .08 && mp < .3) {   // 🌕 月光海道:满月初升,海面铺出一条银路
+    if (oceanWater) { oceanWater.material.uniforms.sunColor.value.setHex(0xeaf6ff); if (oceanWater.material.uniforms.distortionScale) oceanWater.material.uniforms.distortionScale.value = 2.1; }
+    if (!moonRoadTold9) { moonRoadTold9 = true; toast('🌕 月光海道——满月把一条银路铺到了你脚下'); }
+  } else if (da > .8) moonRoadTold9 = false;
   if (gradePass9) {   // 🎨 分级随时段:黄昏推橙金降蓝,夜里降饱和加暗角
-    gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02, 1 + dusk * .02, 1 - dusk * .08 + (1 - da) * .06);
+    let gfk9 = 0;
+    if (greenFlashT9 > 0) { greenFlashT9 = Math.max(0, greenFlashT9 - .016); gfk9 = Math.sin(Math.min(1, greenFlashT9 / 1.8) * Math.PI) * .22; }
+    gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
     gradePass9.uniforms.uSat.value = 1.04 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
   }
@@ -3188,6 +3217,7 @@ function makeTree(x, z, scale, birdCol) {
     sparks9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xffc46a, size: .5, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
     sparks9.userData = { fx, fz, fh }; sparks9.frustumCulled = false; scene.add(sparks9);
   }
+  FIRE_POS9 = [fx, fz];
   fireLight = new THREE.PointLight(0xff9a3c, 0, 70, 2);
   fireLight.position.set(fx, fh + 3, fz); scene.add(fireLight);
   for (let i = 0; i < 5; i++) {
@@ -6125,7 +6155,13 @@ function updateNpcs3(dt) {
     }
     const p = n.g.position;
     const zzz = npcSleeping(n);
-    if (!zzz && n.path) {   // 🚶 沿真实街道散步(OSM 路网)
+    if (n.camp9 && curDA < .35 && FIRE_POS9) {   // 🔥 夜里围火轻摇
+      const tx9 = FIRE_POS9[0] + Math.cos(n.camp9 * 2.09) * 3.4, tz9 = FIRE_POS9[1] + Math.sin(n.camp9 * 2.09) * 3.4;
+      const dx9 = tx9 - p.x, dz9 = tz9 - p.z, dd9 = Math.hypot(dx9, dz9);
+      if (dd9 > .6) { p.x += dx9 / dd9 * 2.4 * dt; p.z += dz9 / dd9 * 2.4 * dt; n.g.rotation.y = Math.atan2(dx9, dz9); n.phase += dt * 8; }
+      else { n.g.rotation.y = Math.atan2(FIRE_POS9[0] - p.x, FIRE_POS9[1] - p.z); n.g.rotation.z = Math.sin(n.phase += dt * 2) * .055; }
+      p.y = Math.max(heightMesh(p.x, p.z), 0);
+    } else if (!zzz && n.path) {   // 🚶 沿真实街道散步(OSM 路网)
       const P9 = n.path, ln = P9.ln, tgt = ln[P9.i];
       const tx = P9.ox + tgt[0], tz = P9.oz + tgt[1];
       const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
@@ -6161,6 +6197,7 @@ function updateNpcs3(dt) {
     else if (pd > 18) { n.talk = false; }
     if (n.chat9 > 0) { n.chat9 -= dt; n.talk = true; }   // 💬 寒暄中
     if (n.talk) {
+      if (n.g.rotation.z && !(n.camp9 && curDA < .35)) n.g.rotation.z *= .9;   // 离火回正
       if (n.chat9 > 0) {   // 面向交谈的同伴
         n.g.rotation.y += ((n.chatYaw9 - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
       } else if (!moving9 && !zzz) {   // 闲着时转身面向玩家(致意)
@@ -7103,6 +7140,17 @@ function navCycle9() {
     }
   }
 }
+/* 🔥 篝火晚会:三位营地旅人,夜里围火轻摇 */
+if (FIRE_POS9) {
+  NIGHT_OWLS.push('营地歌手', '背包客阿远', '烤棉花糖的小满');
+  [['营地歌手', 0x8a4a6a, 1, ['给你唱一段吧——跑调是篝火的一部分。', '白天赶路,夜里唱歌,这就是全部行李。']],
+   ['背包客阿远', 0x4a6a8a, 2, ['走了三十座岛,最想念的还是这堆火。', '明天去哪?火灭了再决定。']],
+   ['烤棉花糖的小满', 0xc2884a, 3, ['再烤三秒……好了!请你吃。', '棉花糖的精髓是外焦里空。']]].forEach(([nm9, cc9, slot9, ln9]) => {
+    addNpc({ x: FIRE_POS9[0] + Math.cos(slot9 * 2.09) * 5, z: FIRE_POS9[1] + Math.sin(slot9 * 2.09) * 5,
+      name: nm9, body: cc9, lines: ln9, wander: true,
+      wps: [[FIRE_POS9[0] + 6, FIRE_POS9[1]], [FIRE_POS9[0] - 4, FIRE_POS9[1] + 5], [FIRE_POS9[0], FIRE_POS9[1] - 6]], camp9: slot9 });
+  });
+}
 /* --- 🚨 航标灯(码头红绿闪烁,夜航指路) --- */
 const NAVL9 = [];
 for (const [nx9, nz9, nc9, np9] of [[-4, 428, 0xff3a3a, 1.1], [4, 428, 0x3aff6a, 1.5], [58, 890, 0xff3a3a, 1.3], [66, 884, 0x3aff6a, 1.7]]) {
@@ -7236,6 +7284,18 @@ function unjTowerHeight(x, z) {
   const i = Math.min(33, Math.floor(a / (Math.PI * 1.78) * 34));     // 与坡道台阶同一公式
   return 6.5 + (i + .5) / 34 * 25.5 + .18;
 }
+/* 🗼 灯塔螺旋梯与顶台(悬空地面) */
+function lighthouseHeight9(x, z) {
+  if (!LH_POS9) return null;
+  const dx = x - LH_POS9[0], dz = z - LH_POS9[1], d = Math.hypot(dx, dz);
+  if (d > 5) return null;
+  if (d <= 2.9) return LH_POS9[2] + 20.25;   // 顶层环台
+  if (d > 4.8) return null;
+  let a = Math.atan2(dz, dx); if (a < 0) a += Math.PI * 2;
+  if (a > Math.PI * 1.92) return null;   // 楼梯开口
+  const i = Math.min(29, Math.floor(a / (Math.PI * 1.92) * 30));
+  return LH_POS9[2] + 2 + (i + .5) / 30 * 17.6 + .12;
+}
 /* 天空之城平台(悬空地面) */
 function skyHeight(x, z) {
   return Math.hypot(x - SKY.x, z - SKY.z) < SKY.r - 2 ? SKY.y : null;
@@ -7286,7 +7346,7 @@ function bridgeHeight(x, z) {
   }
 }
 /* --- 灯塔屿 --- */
-let lightLamp = null, beacon = null, beamGrp9 = null;
+let lightLamp = null, beacon = null, beamGrp9 = null, LH_POS9 = null;
 {
   const bx = IS2.x, bz = IS2.z, bh0 = height(bx, bz);
   const base = cyl(6, 7.2, 3, M.stone); base.position.set(bx, bh0 + 1.2, bz); scene.add(base);
@@ -7297,6 +7357,17 @@ let lightLamp = null, beacon = null, beamGrp9 = null;
   const lampRoom = cyl(2.2, 2.4, 2.6, new THREE.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: .55 }));
   lampRoom.position.set(bx, bh0 + 22.6, bz); scene.add(lampRoom);
   const cap = new THREE.Mesh(new THREE.ConeGeometry(2.9, 2.4, 10), lam(0xc0392b)); cap.position.set(bx, bh0 + 25.1, bz); scene.add(cap);
+  LH_POS9 = [bx, bz, bh0];   // 🗼 登顶系统:外挂螺旋梯(30 级)+ 顶层环台
+  for (let i9 = 0; i9 < 30; i9++) {
+    const a9 = i9 / 30 * Math.PI * 1.92, sy9 = bh0 + 2 + (i9 + .5) / 30 * 17.6;
+    const stp9 = box(1.5, .22, 1, M.stone);
+    stp9.position.set(bx + Math.cos(a9) * 3.8, sy9, bz + Math.sin(a9) * 3.8);
+    stp9.rotation.y = -a9; scene.add(stp9);
+  }
+  const plat9 = cyl(2.9, 2.9, .3, M.stone, 14); plat9.position.set(bx, bh0 + 19.95, bz); scene.add(plat9);
+  const rail9 = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 1.1, 14, 1, true), lam(0x8a8578));
+  rail9.material.side = THREE.DoubleSide; rail9.position.set(bx, bh0 + 20.6, bz); scene.add(rail9);
+  addSpot(bx + 1.2, bz + 1.2, 'lore', 'lhtop', { r: 3.5, y: bh0 + 20.2 });
   lightLamp = new THREE.PointLight(0xfff2b0, 0, 180, 1.8); lightLamp.position.set(bx, bh0 + 22.6, bz); scene.add(lightLamp);
   beacon = new THREE.Mesh(new THREE.PlaneGeometry(80, 2.4), new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, side: THREE.DoubleSide }));
   beacon.position.set(bx, bh0 + 22.6, bz); scene.add(beacon);
@@ -7931,7 +8002,7 @@ if (EVENT === 'kites') for (let i9 = 0; i9 < 2; i9++) addNpc({ x: -44 + i9 * 88,
 let OIDX = null, OIDX_N = -1;
 const OCELL = 40, OW = 106;
 /* ===== ✈️🛥️🎈 交通载具:鲸航水上飞机 / 渡轮 / 环景交通 ===== */
-let planeGrp9 = null, prop9 = null, ferryBoat9 = null, ambPlane9 = null, ambFerry9 = null, balloon9 = null;
+let planeGrp9 = null, prop9 = null, ferryBoat9 = null, ambPlane9 = null, ambFerry9 = null, balloon9 = null, balloonRide9 = false, balloonHintT9 = 0;
 function makePlane9(s9) {
   const p9 = new THREE.Group();
   const wht9 = lam(0xf0f4f8), blu9 = lam(0x3a5a7a);
@@ -8150,7 +8221,13 @@ addEventListener('keydown', e => {
   if (k === 'r' && !modalOpen) { toggleVehicle(); return; }   // 🚲⛵ 座驾
   if (k === 'k') { toggleStarGaze(); return; }   // 观星模式:夜间显示星座名
   if (modalOpen) { if (k === 'e' || k === 'enter') closeModals(); return; }
-  if (k === 'e' || k === 'enter') { tryInteract(); return; }
+  if (k === 'e' || k === 'enter') {
+    if (balloonRide9) { balloonRide9 = false; toast('🎈 你跳出了吊篮!'); return; }
+    if (balloon9 && balloon9.position.y < 22 && !diving && Math.hypot(player.position.x - balloon9.position.x, player.position.z - balloon9.position.z) < 9) {
+      balloonRide9 = true; toast('🎈 上篮!环岛一圈,想下就按 E(小心落点)'); blip(700); return;
+    }
+    tryInteract(); return;
+  }
   if (k === ' ') { e.preventDefault(); keys[' '] = true; if (!diving && grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
   if (k === 'b') { modalOpen ? closeModals() : openBag(); return; }
   if (k === 'x' && !modalOpen) { navCycle9(); return; }   // 🧭 导航目标循环
@@ -8418,10 +8495,18 @@ function worldFx9(dt, t, pMoving, bh) {
     ambFerry9.position.set(bx9, tideY + .1, bz9);
     ambFerry9.rotation.z = Math.sin(t * 1.4) * .03;
   }
-  if (balloon9) {   // 🎈 绕主岛缓飘
+  if (balloon9) {   // 🎈 绕主岛缓飘;南岸经停坞低空开窗,可乘
     const ba9 = t * .022;
-    balloon9.position.set(Math.cos(ba9) * 190, 96 + Math.sin(t * .11) * 9, Math.sin(ba9) * 190);
+    const dip9 = Math.max(0, (Math.cos(ba9 - 4.712) - .955) / .045);
+    balloon9.position.set(Math.cos(ba9) * 190, (96 + Math.sin(t * .11) * 9) - dip9 * 82, Math.sin(ba9) * 190);
     balloon9.rotation.y = ba9;
+    if (balloonRide9) {
+      player.position.set(balloon9.position.x, balloon9.position.y + 2.2, balloon9.position.z);
+      vy = 0;
+    } else if (dip9 > .6 && !diving && Math.hypot(player.position.x - balloon9.position.x, player.position.z - balloon9.position.z) < 9 && balloonHintT9 <= 0) {
+      balloonHintT9 = 6; toast('🎈 观光气球经停——按 E 跳进吊篮!');
+    }
+    balloonHintT9 -= dt;
   }
   if (ventPts9) {   // ♨️ 热泉气泡上升
     const vp9 = ventPts9.geometry.attributes.position;
@@ -8483,6 +8568,24 @@ function worldFx9(dt, t, pMoving, bh) {
   }
   if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
   prevSwim9 = swimming;
+  /* ✨ 荧光海:夜泳拖出幽蓝轨迹 */
+  if (swimming && !diving && curDA < .35 && pMoving && !MOBILE) {
+    bioT9 -= dt;
+    if (bioT9 <= 0) {
+      bioT9 = .11;
+      const bg9 = new THREE.Mesh(bioGeo9, bioMat9);
+      bg9.rotation.x = -Math.PI / 2;
+      bg9.position.set(player.position.x + (Math.random() - .5) * 1.2, tideY + .12, player.position.z + (Math.random() - .5) * 1.2);
+      bg9.scale.setScalar(.5 + Math.random() * .7);
+      scene.add(bg9); bio9.push({ m: bg9, life: 2.4 });
+      if (bio9.length > 42) { const o9 = bio9.shift(); scene.remove(o9.m); }
+    }
+  }
+  for (let i9 = bio9.length - 1; i9 >= 0; i9--) { const b9 = bio9[i9]; b9.life -= dt; if (b9.life < 0) { scene.remove(b9.m); bio9.splice(i9, 1); } else b9.m.scale.setScalar(Math.max(.05, b9.life / 2.4) * 1.2); }
+  {   // 🔔 广场钟声:一日十二响(夜里不敲)
+    const pDay9 = (t / DAY_LEN + DAY_START) % 1, hr9 = Math.floor(pDay9 * 12);
+    if (hr9 !== lastHr9) { lastHr9 = hr9; if (curDA > .35) { blip(392); setTimeout(() => blip(311), 380); } }
+  }
   /* 🌧️ 雨落水面涟漪 */
   if (RAINY && !MOBILE && !diving) {
     ringT9 -= dt;
@@ -8807,6 +8910,8 @@ function loop() {
     if (uth != null && player.position.y > uth - 2.4) gh = Math.max(gh, uth);
     const skh = skyHeight(player.position.x, player.position.z);
     if (skh != null && player.position.y > skh - 2.4) gh = Math.max(gh, skh);
+    const lhh = lighthouseHeight9(player.position.x, player.position.z);
+    if (lhh != null && player.position.y > lhh - 2.4) gh = Math.max(gh, lhh);
     if (vehicle === 2) {   // ⛵ 帆船:浮于水面,不入泳姿
       swimming = false; vy = 0; grounded = true;
       player.position.y += ((tideY + .62) - player.position.y) * Math.min(1, dt * 8);
@@ -8944,9 +9049,29 @@ function loop() {
     const surfaced = cyc2 < 13;
     const targetY = surfaced ? -1 : -8;
     mobyWhale.position.x = wx3; mobyWhale.position.z = wz3;
-    mobyWhale.position.y += (targetY - mobyWhale.position.y) * Math.min(1, dt * 1.2);
+    const breach9 = (Math.floor(t / 42) % 3 === 1) && cyc2 >= 20 && cyc2 < 23.4;   // 🐋 鲸跃:每第三轮巡游一跃
+    if (breach9) {
+      const kb9 = (cyc2 - 20) / 3.4;
+      mobyWhale.position.y = -8 + Math.sin(kb9 * Math.PI) * 17;
+      mobyWhale.rotation.x = (kb9 - .5) * -1.5;
+      mobyWhale.rotation.z = Math.sin(kb9 * Math.PI * 2) * .5;
+      if (kb9 > .82 && !mobyWhale.userData.brSpl9) {   // 砸落:三圈大浪
+        mobyWhale.userData.brSpl9 = 1;
+        for (let r9 = 0; r9 < 3; r9++) {
+          const sp9 = new THREE.Mesh(wakeGeo9, wakeMat9);
+          sp9.rotation.x = -Math.PI / 2; sp9.scale.setScalar(4 + r9 * 3);
+          sp9.position.set(wx3, tideY + .25, wz3);
+          scene.add(sp9); wakes9.push({ m: sp9, life: 2.2 + r9 * .4 });
+        }
+        if (Math.hypot(player.position.x - wx3, player.position.z - wz3) < 420) { toast('🐋 鲸跃!白鲸整个跃出了海面!'); blip(220); setTimeout(() => blip(165), 200); }
+      }
+    } else {
+      mobyWhale.userData.brSpl9 = 0;
+      mobyWhale.position.y += (targetY - mobyWhale.position.y) * Math.min(1, dt * 1.2);
+      mobyWhale.rotation.x += (0 - mobyWhale.rotation.x) * Math.min(1, dt * 3);
+      mobyWhale.rotation.z = Math.sin(t * .8) * .04;
+    }
     mobyWhale.rotation.y = -wa - Math.PI;
-    mobyWhale.rotation.z = Math.sin(t * .8) * .04;
     if (surfaced && (cyc2 % 4.5) < 1.1 && mobyWhale.position.y > -2.5) {
       const k2 = (cyc2 % 4.5) / 1.1;
       mobySpout.material.opacity = Math.sin(k2 * Math.PI) * .8;
@@ -9467,7 +9592,14 @@ function loop() {
     }
   }
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
-  if (pcPending) { pcPending = false; makePostcard(); }
+  if (pcPending) {
+    pcPending = false; makePostcard();
+    if (PSTORE.getItem('w1001.photodo') !== todayStr() && PH_TODAY9.ck()) {   // 📸 今日摄影题判定
+      PSTORE.setItem('w1001.photodo', todayStr()); earnSB(15);
+      toast('📸 今日摄影题达成:「' + PH_TODAY9.name + '」 ⚡+15');
+      blip(760); setTimeout(() => blip(880), 120);
+    }
+  }
 }
 /* ---------- 岛屿分桶距离显隐(性能:远岛整组不渲染) ---------- */
 const BUCKETS = [

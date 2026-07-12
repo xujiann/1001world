@@ -145,6 +145,8 @@ export function makeLORE({ D, esc, todayStr, mulberry32 }) {
     desc: '黄金音乐厅门口立着一架谁都可以弹的竖琴,琴柱上刻着一行小字:"从最低的那根弦开始,依次拨到最高——琴会记得你。"' },
   garden9: { icon: '🌷', color: '#4a7a44', title: '小屋花园', en: 'Cottage Garden', hint: '播种·浇灌·等花开',
     desc: '三只花池挨着小屋的东墙。种下去的花不认游戏里的日月——它们按你世界里的日子生长:今天播种,明天发芽,后天结蕾,第三天清晨开花。开花那天回来收,它会把颜色留给你。' },
+  lhtop: { icon: '🗼', color: '#8a4a3a', title: '灯塔顶层', en: 'Top of the Lighthouse', hint: '光从身边扫过',
+    desc: '沿外挂的螺旋石阶盘上来,风比楼下大三倍。灯室的巨大透镜在你身边缓缓旋转,每一次扫过,光柱都掠过整片夜海。守灯人在栏杆上刻了一行字:"灯不是为看灯的人点的——可你既然上来了,就替我看一眼海平线吧。"' },
   chbottle: { icon: '🍾', color: '#3a6a7a', title: '栈桥下的漂流瓶', en: 'Message in a Bottle', hint: '一条三站的线索',
     desc: '瓶子里的字条被海水泡得发皱:"我把想说的话分成了三份,顺着洋流放出去。若你捡到第一份——替我把它们串起来。落款:一个没能出海的人。"' },
   chstar: { icon: '✨', color: '#4a4a7a', title: '星图人的托付', en: 'The Stargazer\'s Errand', hint: '一封送往云端的信',
