@@ -53,7 +53,7 @@ function curProfileName() {
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking', 'chain1', 'chain2', 'race1', 'racebest',
-  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo',
+  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo', 'wishes', 'rbgold', 'shellday',
   'seen_sheep', 'seen_deer', 'seen_rabbit', 'seen_beast', 'seen_fox', 'seen_dino', 'seen_hen'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
@@ -1608,6 +1608,7 @@ function titleList() {
     { id: 'racer', name: '⛵ 环岛帆手', got: PSTORE.getItem('w1001.race1') === '1', note: '完成帆船环岛计时赛' },
     { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
     { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
+    { id: 'wisher', name: '🌠 许愿者', got: (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) >= 7, note: '向七颗流星许愿' },
     { id: 'chainer', name: '🧵 线索收束人', got: PSTORE.getItem('w1001.chain1') === '1' && PSTORE.getItem('w1001.chain2') === '1', note: '走完两条跨岛任务线' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
@@ -2410,6 +2411,8 @@ const bioGeo9 = new THREE.CircleGeometry(.42, 8);
 let prevDA9 = 1, greenFlashT9 = 0, moonRoadTold9 = false, lastHr9 = -1;   // 🟢 绿闪 / 🌕 月光海道 / 🔔 钟声
 const ringGeo9 = new THREE.RingGeometry(.35, .5, 12), ringMat9 = new THREE.MeshBasicMaterial({ color: 0xdfeef4, transparent: true, opacity: .4, depthWrite: false, side: THREE.DoubleSide });
 const dolphins9 = [];   // 🐬
+const FLYF9 = []; let flyfT9 = 5;   // 🐟 船头飞鱼池
+let prevMV9 = false, shellT9 = 0;   // 🌠 流星许愿沿 / 🐚 拾贝节流
 const DAY_LEN = 480, DAY_START = .12;
 const cDaySky = new THREE.Color(0x9fd4ee), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
@@ -7029,6 +7032,14 @@ const gulls = [];
     scene.add(g); gulls.push(g);
   }
 }
+/* --- 🐟 飞鱼池(扬帆惊起,掠水而过) --- */
+for (let i9 = 0; i9 < 8; i9++) {
+  const f9 = new THREE.Group();
+  const fb9 = new THREE.Mesh(cong(.16, .8, 5), lam(0xb8d0e0)); fb9.rotation.x = Math.PI / 2; f9.add(fb9);
+  for (const s9 of [-1, 1]) { const fw9 = new THREE.Mesh(new THREE.PlaneGeometry(.7, .3), new THREE.MeshLambertMaterial({ color: 0xd8ecf4, side: THREE.DoubleSide, transparent: true, opacity: .85 })); fw9.position.set(s9 * .35, 0, 0); fw9.rotation.z = s9 * .4; f9.add(fw9); }
+  f9.visible = false; f9.userData = { k: 9 };
+  scene.add(f9); FLYF9.push(f9);
+}
 /* --- 🐬 双海豚(主码头湾内环游,鼠海豚式跃水) --- */
 for (let i9 = 0; i9 < 2; i9++) {
   const d9 = new THREE.Group();
@@ -8568,6 +8579,58 @@ function worldFx9(dt, t, pMoving, bh) {
   }
   if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
   prevSwim9 = swimming;
+  /* 🌠 流星许愿:观星模式里每见一颗流星即许一愿,七愿成真 */
+  {
+    const mv9 = meteor && meteor.material.opacity > .5;
+    if (mv9 && !prevMV9 && starGaze && curDA < .4) {
+      const w9 = (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) + 1;
+      PSTORE.setItem('w1001.wishes', String(w9));
+      if (w9 < 7) toast('🌠 流星划过——你许下第 ' + w9 + ' 个愿望(7 愿成真)');
+      else if (w9 === 7) { earnSB(50); stars++; saveQuest(); updateQuestHUD(); toast('🌠 第七颗流星!七愿已满——愿望正在路上 ⚡+50 · ⭐+1 · 称号「许愿者」'); }
+      blip(1180);
+    }
+    prevMV9 = mv9;
+  }
+  if (rainbow9 && rainbow9.visible) {   // 🌈 彩虹尽头的金币(每日一桶,虹脚在海上)
+    if (PSTORE.getItem('w1001.rbgold') !== todayStr()
+      && Math.hypot(player.position.x + 220, player.position.z + 880) < 26) {
+      PSTORE.setItem('w1001.rbgold', todayStr()); earnSB(25);
+      toast('🌈 彩虹尽头!浪里真的漂着一小桶金币——传说没有骗人。⚡+25'); blip(880); setTimeout(() => blip(1180), 130);
+    }
+  }
+  if (vehicle === 2 && pMoving && !MOBILE) {   // 🐟 扬帆惊起飞鱼
+    flyfT9 -= dt;
+    if (flyfT9 <= 0) {
+      flyfT9 = 6 + Math.random() * 9;
+      for (let i9 = 0; i9 < 4; i9++) {
+        const f9 = FLYF9[(i9 + Math.floor(t)) % FLYF9.length];
+        const sa9 = faceYaw + (Math.random() - .5) * 1.6;
+        f9.userData = { k: -i9 * .12, x0: player.position.x + Math.sin(faceYaw) * 3, z0: player.position.z + Math.cos(faceYaw) * 3, dx: Math.sin(sa9), dz: Math.cos(sa9) };
+        f9.rotation.y = sa9; f9.visible = true;
+      }
+    }
+  }
+  for (const f9 of FLYF9) {
+    if (!f9.visible) continue;
+    f9.userData.k += dt * .9;
+    const k9 = f9.userData.k;
+    if (k9 < 0) continue;
+    if (k9 > 1) { f9.visible = false; continue; }
+    f9.position.set(f9.userData.x0 + f9.userData.dx * k9 * 11, tideY + Math.sin(k9 * Math.PI) * 1.7, f9.userData.z0 + f9.userData.dz * k9 * 11);
+    f9.rotation.z = Math.sin(k9 * Math.PI * 4) * .3;
+  }
+  if (LOWTIDE9 && grounded && pMoving && !diving) {   // 🐚 退潮拾贝(日限五枚)
+    shellT9 -= dt;
+    const hSand9 = heightMesh(player.position.x, player.position.z);
+    if (shellT9 <= 0 && hSand9 > -.55 && hSand9 < .08) {
+      shellT9 = 16;
+      const key9 = 'w1001.shellday', cnt9 = PSTORE.getItem(key9) === todayStr() + ':' + 5 ? 5 : ((PSTORE.getItem(key9) || '').startsWith(todayStr()) ? parseInt(PSTORE.getItem(key9).split(':')[1], 10) : 0);
+      if (cnt9 < 5) {
+        PSTORE.setItem(key9, todayStr() + ':' + (cnt9 + 1)); earnSB(2);
+        toast('🐚 退潮的滩涂上捡到一枚' + ['虎斑贝', '樱花蛤', '夜光螺', '海豆芽', '缀壳螺'][cnt9] + '!⚡+2(今日 ' + (cnt9 + 1) + '/5)'); blip(620);
+      }
+    }
+  }
   /* ✨ 荧光海:夜泳拖出幽蓝轨迹 */
   if (swimming && !diving && curDA < .35 && pMoving && !MOBILE) {
     bioT9 -= dt;
