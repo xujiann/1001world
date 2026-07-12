@@ -9465,6 +9465,7 @@ if (!MOBILE && CHIM9.length) {
 if (!MOBILE) {
   const rv9 = mulberry32(77);
   const trunks9 = [], fronds9 = [], pineG9 = [], pineT9 = [], bam9 = [], shellA9 = [], shellB9 = [], starA9 = [], mushS9 = [], mushC9 = [];
+  const willow9 = [], reed9 = [], reedTip9 = [], shrub9 = [], appleL9 = [], fruit9 = [], cherry9 = [], cherry29 = [];
   let np9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && np9 < 110; gx9 += 15)   // 🌴 沙滩棕榈
     for (let gz9 = -1900; gz9 < 1900 && np9 < 110; gz9 += 15) {
@@ -9537,11 +9538,96 @@ if (!MOBILE) {
       const cp9 = new THREE.SphereGeometry(.26, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2); cp9.translate(ux9, uh9 + .48, uz9); mushC9.push(cp9);
     }
   }
+  let nw9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && nw9 < 22; gx9 += 27)   // 🌳 水边垂柳
+    for (let gz9 = -1900; gz9 < 1900 && nw9 < 22; gz9 += 27) {
+      const h9 = height(gx9, gz9);
+      if (h9 > .6 && h9 < 1.5 && rv9() < .25) {
+        nw9++;
+        const px9 = gx9 + rv9() * 6 - 3, pz9 = gz9 + rv9() * 6 - 3, ph9 = Math.max(height(px9, pz9), .3);
+        const tk9 = new THREE.CylinderGeometry(.28, .48, 4.4, 5); tk9.translate(px9, ph9 + 2.2, pz9); trunks9.push(tk9);
+        const cp9 = new THREE.SphereGeometry(2.6, 8, 6); cp9.scale(1, .55, 1); cp9.translate(px9, ph9 + 4.9, pz9); willow9.push(cp9);
+        for (let d9 = 0; d9 < 8; d9++) {
+          const da9 = d9 / 8 * Math.PI * 2, dr9 = 2.2 + rv9() * .5;
+          const hg9 = new THREE.ConeGeometry(.13, 2.4 + rv9(), 4);
+          hg9.rotateX(Math.PI);   // 尖朝下垂
+          hg9.translate(px9 + Math.cos(da9) * dr9, ph9 + 3.6, pz9 + Math.sin(da9) * dr9);
+          willow9.push(hg9);
+        }
+        cirObs.push({ x: px9, z: pz9, r: .6 });
+      }
+    }
+  let nr9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && nr9 < 70; gx9 += 13)   // 🌾 浅滩芦苇丛
+    for (let gz9 = -1900; gz9 < 1900 && nr9 < 70; gz9 += 13) {
+      const h9 = height(gx9, gz9);
+      if (h9 > -.35 && h9 < .3 && rv9() < .4) {
+        nr9++;
+        for (let c9 = 0; c9 < 5; c9++) {
+          const cx9 = gx9 + (rv9() - .5) * 2.4, cz9 = gz9 + (rv9() - .5) * 2.4, chh9 = 1.6 + rv9() * .9;
+          const cn9 = new THREE.CylinderGeometry(.045, .06, chh9, 4);
+          cn9.rotateZ((rv9() - .5) * .16); cn9.translate(cx9, .2 + chh9 / 2, cz9); reed9.push(cn9);
+          if (c9 % 2) { const tp9 = new THREE.ConeGeometry(.07, .38, 4); tp9.translate(cx9, .2 + chh9 + .16, cz9); reedTip9.push(tp9); }
+        }
+      }
+    }
+  let nb9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && nb9 < 130; gx9 += 21)   // 🌱 灌木层
+    for (let gz9 = -1900; gz9 < 1900 && nb9 < 130; gz9 += 21) {
+      const h9 = height(gx9, gz9);
+      if (h9 > 5 && h9 < 11 && rv9() < .35) {
+        nb9++;
+        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = height(px9, pz9);
+        if (ph9 < 4) continue;
+        const sb9 = new THREE.IcosahedronGeometry(.6 + rv9() * .5, 0);
+        sb9.scale(1, .6, 1); sb9.rotateY(rv9() * 6); sb9.translate(px9, ph9 + .35, pz9); shrub9.push(sb9);
+      }
+    }
+  for (const [ax9, az9] of [[124, 82], [134, 90], [142, 80], [128, 96], [138, 98]]) {   // 🍎 主岛苹果园
+    const ah9 = Math.max(height(ax9, az9), .3);
+    const tk9 = new THREE.CylinderGeometry(.24, .4, 2.8, 5); tk9.translate(ax9, ah9 + 1.4, az9); trunks9.push(tk9);
+    const cp9 = new THREE.SphereGeometry(2, 8, 6); cp9.translate(ax9, ah9 + 3.7, az9); appleL9.push(cp9);
+    for (let f9 = 0; f9 < 6; f9++) {
+      const fa9 = rv9() * Math.PI * 2, fb9 = rv9() * Math.PI;
+      const fr9 = new THREE.SphereGeometry(.17, 5, 4);
+      fr9.translate(ax9 + Math.sin(fb9) * Math.cos(fa9) * 1.9, ah9 + 3.7 + Math.cos(fb9) * 1.6, az9 + Math.sin(fb9) * Math.sin(fa9) * 1.9);
+      fruit9.push(fr9);
+    }
+    cirObs.push({ x: ax9, z: az9, r: .5 });
+  }
+  if ((new Date().getMonth() + 1) >= 3 && (new Date().getMonth() + 1) <= 5) {   // 🌸 春樱(桃花源 + 主岛东坡)
+    for (const [cx9, cz9] of [[1006, -138], [1014, -128], [998, -148], [1022, -140], [222, 66], [230, 58], [216, 58], [226, 74]]) {
+      const chh9 = Math.max(height(cx9, cz9), .3); if (chh9 < .5) continue;
+      const tk9 = new THREE.CylinderGeometry(.22, .38, 3, 5); tk9.translate(cx9, chh9 + 1.5, cz9); trunks9.push(tk9);
+      const c19 = new THREE.SphereGeometry(2.3, 8, 6); c19.scale(1.15, .8, 1.15); c19.translate(cx9, chh9 + 4, cz9); cherry9.push(c19);
+      const c29 = new THREE.SphereGeometry(1.4, 7, 5); c29.translate(cx9 + .8, chh9 + 4.9, cz9 - .5); cherry29.push(c29);
+      cirObs.push({ x: cx9, z: cz9, r: .5 });
+    }
+  }
   const put9 = (arr9, col9) => { if (arr9.length) { const mm9 = new THREE.Mesh(mergeGeometries(arr9, false), lam(col9)); mm9.castShadow = true; scene.add(mm9); } };
   put9(trunks9, 0x8a6a44); put9(fronds9, 0x4f8a48); put9(pineT9, 0x5a4632); put9(pineG9, 0x2e5a40);
   put9(bam9, 0x6a9a4a); put9(shellA9, 0xf2e8dc); put9(shellB9, 0xe8b8c8); put9(starA9, 0xe8925a);
   put9(mushS9, 0xe8e0d0); put9(mushC9, 0xc84a3a);
-  console.log('🌴 植被细节:棕榈', np9, '/ 松', npn9, '/ 贝壳海星', nsh9);
+  put9(willow9, 0x6a9a54); put9(reed9, 0x7aa85a); put9(reedTip9, 0x9a7a4a); put9(shrub9, 0x3f6a38);
+  put9(appleL9, 0x55904a); put9(fruit9, 0xc8402e); put9(cherry9, 0xf2c4d4); put9(cherry29, 0xf8dce6);
+  {   // 🌼 花田色块(三片草甸,单 Points 顶点色)
+    const FP9 = [[214, 74], [-14, 158], [-228, -732]], fpos9 = [], fcol9 = [];
+    const FCOL9 = [[0xe86a8a], [0xf2d24a], [0xffffff], [0x9a6ae6], [0xe89a5a]].map(c9 => new THREE.Color(c9[0]));
+    for (const [fx9, fz9] of FP9)
+      for (let i9 = 0; i9 < 240; i9++) {
+        const fa9 = rv9() * Math.PI * 2, fr9 = Math.sqrt(rv9()) * 14;
+        const px9 = fx9 + Math.cos(fa9) * fr9, pz9 = fz9 + Math.sin(fa9) * fr9, ph9 = height(px9, pz9);
+        if (ph9 < 1) continue;
+        fpos9.push(px9, ph9 + .28, pz9);
+        const cc9 = FCOL9[(rv9() * FCOL9.length) | 0];
+        fcol9.push(cc9.r, cc9.g, cc9.b);
+      }
+    const fg29 = new THREE.BufferGeometry();
+    fg29.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fpos9), 3));
+    fg29.setAttribute('color', new THREE.BufferAttribute(new Float32Array(fcol9), 3));
+    scene.add(new THREE.Points(fg29, new THREE.PointsMaterial({ vertexColors: true, size: .38, transparent: true, opacity: .95 })));
+  }
+  console.log('🌴 植被细节:棕榈', np9, '/ 松', npn9, '/ 柳', nw9, '/ 苇丛', nr9, '/ 灌木', nb9, '/ 贝壳海星', nsh9);
 }
 /* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
 if (!MOBILE) {
