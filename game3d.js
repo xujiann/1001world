@@ -2188,7 +2188,7 @@ function openGuide() {
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——六十一座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;游泳时按 <b>C</b> 自由下潜,开放水域的海底有海藻林、珊瑚园、热泉与一艘沉船;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;游泳时按 <b>C</b> 自由下潜,开放水域的海底有海藻林、珊瑚园、热泉与一艘沉船;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。按 <b>X</b> 开启导航:流光点一路铺到最近的机场/渡口/蓝洞。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
     <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上环游诸岛,或直上<b>天空之城勒皮他</b>——云端有云端的配乐。<br><br>
@@ -7296,6 +7296,62 @@ for (let i9 = 0; i9 < 2; i9++) {
   d9.userData = { ph: i9 * 2.4 };
   scene.add(d9); dolphins9.push(d9);
 }
+/* 🪧 多臂指路牌:广场 / 主码头 / 鲸背机场 */
+function fingerpost9(x9, z9, arms9) {
+  const h09 = Math.max(height(x9, z9), 0);
+  const po9 = cyl(.16, .22, 4.6, M.woodDark); po9.position.set(x9, h09 + 2.3, z9); scene.add(po9);
+  arms9.forEach(([txt9, tx9, tz9], i9) => {
+    const sg9 = makeSign(txt9, 5);
+    sg9.position.set(x9, h09 + 3.6 - i9 * .72, z9);
+    sg9.rotation.y = Math.atan2(tx9 - x9, tz9 - z9) + Math.PI / 2;   // 牌面顺臂指向目标
+    const off9 = 1.55, ay9 = sg9.rotation.y - Math.PI / 2;
+    sg9.position.x += Math.sin(ay9) * off9; sg9.position.z += Math.cos(ay9) * off9;
+    scene.add(sg9);
+  });
+  cirObs.push({ x: x9, z: z9, r: .5 });
+}
+{
+  const apM9 = AIRPORTS[0];
+  fingerpost9(14, -4, [['✈️ 鲸背机场', apM9[2], apM9[3]], ['⛴️ 渡口码头', 0, 410], ['🕊️ 大鹏栖石', PENG_X, PENG_Z]]);
+  fingerpost9(6, 402, [['🏛️ 圆枢广场', 0, 0], ['✈️ 鲸背机场', apM9[2], apM9[3]]]);
+  fingerpost9(apM9[2] - 10, apM9[3] + 8, [['🏛️ 圆枢广场', 0, 0], ['⛴️ 渡口码头', 0, 410]]);
+}
+/* ===== 🧭 导航系统:X 键循环「最近机场→渡口→蓝洞→关」,流光点引路 ===== */
+const NAV9 = { mode: 0, x: 0, z: 0, label: '' };
+let navPts9 = null, navBeacon9 = null;
+{
+  const cvN9 = document.createElement('canvas'); cvN9.width = cvN9.height = 32;
+  const cN9 = cvN9.getContext('2d'), grN9 = cN9.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grN9.addColorStop(0, 'rgba(140,240,255,1)'); grN9.addColorStop(.5, 'rgba(140,240,255,.5)'); grN9.addColorStop(1, 'rgba(140,240,255,0)');
+  cN9.fillStyle = grN9; cN9.fillRect(0, 0, 32, 32);
+  const NN9 = 26, na9 = new Float32Array(NN9 * 3).fill(-999);
+  const ng9 = new THREE.BufferGeometry(); ng9.setAttribute('position', new THREE.BufferAttribute(na9, 3));
+  navPts9 = new THREE.Points(ng9, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(cvN9), color: 0x9af0ff, size: 2.6, transparent: true, opacity: .85, depthWrite: false, blending: THREE.AdditiveBlending }));
+  navPts9.frustumCulled = false; navPts9.visible = false; scene.add(navPts9);
+  navBeacon9 = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.4, 64, 8, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x9af0ff, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  navBeacon9.visible = false; scene.add(navBeacon9);
+}
+function navCycle9() {
+  const px9 = player.position.x, pz9 = player.position.z;
+  const nearest9 = list9 => { let best9 = null, bd9 = 1e9; for (const e9 of list9) { const d9 = Math.hypot(e9[0] - px9, e9[1] - pz9); if (d9 < bd9) { bd9 = d9; best9 = e9; } } return best9 && { x: best9[0], z: best9[1], name: best9[2], d: bd9 | 0 }; };
+  for (let step9 = 0; step9 < 4; step9++) {
+    NAV9.mode = (NAV9.mode % 4) + 1;
+    if (NAV9.mode === 4) { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('🧭 导航关闭'); return; }
+    let tg9 = null, ic9 = '';
+    if (NAV9.mode === 1) { tg9 = nearest9(AIRPORTS.filter(a9 => !a9[4]).map(a9 => [a9[2], a9[3], a9[1]])); ic9 = '✈️'; }
+    else if (NAV9.mode === 2) { tg9 = nearest9(spots.filter(s9 => s9.type === 'ferry').map(s9 => [s9.x, s9.z, '多元宇宙渡口'])); ic9 = '⛴️'; }
+    else { tg9 = nearest9(MAZE_PORTALS.map(p9 => [p9.surf[0], p9.surf[1], p9.isle + ' 蓝洞'])); ic9 = '🤿'; }
+    if (tg9) {
+      NAV9.x = tg9.x; NAV9.z = tg9.z; NAV9.label = ic9 + ' ' + tg9.name;
+      navPts9.visible = navBeacon9.visible = true;
+      navBeacon9.position.set(tg9.x, Math.max(height(tg9.x, tg9.z), 0) + 30, tg9.z);
+      toast('🧭 导航:' + NAV9.label + ' · 直线 ' + tg9.d + ' 米(再按 X 换目标)');
+      blip(700);
+      return;
+    }
+  }
+}
 /* --- 🚨 航标灯(码头红绿闪烁,夜航指路) --- */
 const NAVL9 = [];
 for (const [nx9, nz9, nc9, np9] of [[-4, 428, 0xff3a3a, 1.1], [4, 428, 0x3aff6a, 1.5], [58, 890, 0xff3a3a, 1.3], [66, 884, 0x3aff6a, 1.7]]) {
@@ -8329,6 +8385,7 @@ addEventListener('keydown', e => {
   if (k === 'e' || k === 'enter') { tryInteract(); return; }
   if (k === ' ') { e.preventDefault(); keys[' '] = true; if (!diving && grounded && !swimming) vy = gearOn('boots') ? 13.4 : 11.5; return; }
   if (k === 'b') { modalOpen ? closeModals() : openBag(); return; }
+  if (k === 'x' && !modalOpen) { navCycle9(); return; }   // 🧭 导航目标循环
   keys[k] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -8969,6 +9026,25 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  /* 🧭 导航流光:朝目标流动的光点带(取前 100 米段,贴地) */
+  if (NAV9.mode && navPts9.visible) {
+    const ndx9 = NAV9.x - player.position.x, ndz9 = NAV9.z - player.position.z;
+    const nd9 = Math.hypot(ndx9, ndz9);
+    if (nd9 < 14) { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('📍 已到达 ' + NAV9.label); blip(880); }
+    else {
+      const ux9 = ndx9 / nd9, uz9 = ndz9 / nd9, seg9 = Math.min(nd9, 100);
+      const np9 = navPts9.geometry.attributes.position, mar9 = (t * 6) % 4;
+      for (let i9 = 0; i9 < np9.count; i9++) {
+        const dd9 = 4 + i9 * 4 + mar9;
+        if (dd9 > seg9) { np9.setY(i9, -999); continue; }
+        const qx9 = player.position.x + ux9 * dd9, qz9 = player.position.z + uz9 * dd9;
+        const qh9 = heightMesh(qx9, qz9);
+        np9.setXYZ(i9, qx9, (qh9 < -.4 ? tideY + .5 : qh9 + .6), qz9);
+      }
+      np9.needsUpdate = true;
+      navBeacon9.material.opacity = .12 + Math.sin(t * 2.4) * .06;
+    }
+  }
   /* ✈️🛥️🎈 环景交通:高空客机 / 巡航渡轮 / 观光气球 */
   if (ambPlane9) {
     const ad9 = ambPlane9.userData.dir;
