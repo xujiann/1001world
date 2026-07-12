@@ -53,7 +53,7 @@ function curProfileName() {
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
   'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking', 'chain1', 'chain2', 'race1', 'racebest',
-  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo', 'wishes', 'rbgold', 'shellday',
+  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone', 'gflash', 'lhtop', 'photodo', 'wishes', 'rbgold', 'shellday', 'goods', 'tradeprofit', 'trader1',
   'seen_sheep', 'seen_deer', 'seen_rabbit', 'seen_beast', 'seen_fox', 'seen_dino', 'seen_hen'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
@@ -1012,12 +1012,55 @@ function stargateCard() {
     <div class="cardTitle" style="padding-top:16px"><h3>要去哪个世界?</h3><div class="en">即刻抵达 · 不收船费</div></div>
     <div class="travelGrid">${SG_LIST.map(([k2, nm4]) => `<button data-goworld="${k2}">${nm4}</button>`).join('')}</div>`;
 }
+/* ═══ 🧺 生产与岛际贸易 ═══
+   六岛特产:原产岛低价购入(日限 5)→ 运往他岛卖给收购商(行情日换 1.25-1.65×)。
+   主岛蜂蜜/夏尔羊毛另有免费日产(采集)。货舱上限 12 件。 */
+const GOODS9 = {
+  honey:    { n: '鲸背蜂蜜',   i: '🍯', src: 'main', p: 8 },
+  wool:     { n: '夏尔羊毛',   i: '🧶', src: 'lotr', p: 9 },
+  oil:      { n: '捕鲸港鲸油', i: '🛢️', src: 'mob',  p: 12 },
+  foxpaper: { n: '异兽野狐纸', i: '📜', src: 'shj',  p: 11 },
+  silk:     { n: '大观园绸缎', i: '🎀', src: 'dgy',  p: 13 },
+  amber:    { n: '侏罗纪琥珀', i: '🟠', src: 'jur',  p: 14 },
+};
+const TRADERS9 = { main: [378, 20, '鲸背蜂农小站'], lotr: [-144, -552, '夏尔市集摊'], mob: [126, 708, '捕鲸港商栈'], shj: [0, 0, '异兽野驿站'], dgy: [0, 0, '大观园绣坊'], jur: [0, 0, '琥珀矿亭'] };
+const HARVEST9 = { main: 'honey', lotr: 'wool' };   // 免费日产(生产系统)
+const goods9 = () => { try { return JSON.parse(PSTORE.getItem('w1001.goods') || '{}'); } catch (e) { return {}; } };
+const goodsSet9 = o9 => PSTORE.setItem('w1001.goods', JSON.stringify(o9));
+const cargoN9 = () => Object.values(goods9()).reduce((a9, b9) => a9 + b9, 0);
+const sellMult9 = (isl9, k9) => 1.25 + mulberry32([...(todayStr() + isl9 + k9)].reduce((a9, c9) => (a9 * 71 + c9.charCodeAt(0)) | 0, 3))() * .4;
+const dayCnt9 = key9 => (PSTORE.getItem(key9) || '').startsWith(todayStr()) ? (parseInt(PSTORE.getItem(key9).split(':')[1], 10) || 0) : 0;
+const dayCntSet9 = (key9, v9) => PSTORE.setItem(key9, todayStr() + ':' + v9);
+function traderCard9(isl9) {
+  const T9 = TRADERS9[isl9], gg9 = goods9();
+  let rows9 = '';
+  const hk9 = HARVEST9[isl9];
+  if (hk9) {
+    const hv9 = dayCnt9('w1001.thv.' + isl9);
+    rows9 += `<div class="gRow"><div class="gi">${GOODS9[hk9].i}</div><div class="gInfo"><b>采集:${GOODS9[hk9].n}</b><div class="gDesc">本地日产,免费采集 ${hv9}/3 · 货舱 ${gg9[hk9] || 0}</div></div><button class="gBtn" data-ghv="${hk9}" ${hv9 >= 3 || cargoN9() >= 12 ? 'disabled' : ''}>采集</button></div>`;
+  }
+  for (const k9 in GOODS9) {
+    const G9 = GOODS9[k9];
+    if (G9.src === isl9) {
+      const bought9 = dayCnt9('w1001.tbuy.' + isl9);
+      rows9 += `<div class="gRow"><div class="gi">${G9.i}</div><div class="gInfo"><b>${G9.n}</b><div class="gDesc">本地特产 · 进价 ${G9.p}⚡ · 今日已购 ${bought9}/5 · 货舱 ${gg9[k9] || 0}</div></div><button class="gBtn" data-gbuy="${k9}" ${bought9 >= 5 || cargoN9() >= 12 || sb < G9.p ? 'disabled' : ''}>购入 ${G9.p}⚡</button></div>`;
+    } else {
+      const sp9 = Math.round(G9.p * sellMult9(isl9, k9));
+      rows9 += `<div class="gRow"><div class="gi">${G9.i}</div><div class="gInfo"><b>${G9.n}</b><div class="gDesc">外埠收购 <b>${sp9}⚡</b>/件(产地价 ${G9.p})· 货舱 ${gg9[k9] || 0}</div></div><button class="gBtn" data-gsell="${k9}" data-sp="${sp9}" ${(gg9[k9] || 0) ? '' : 'disabled'}>卖出</button></div>`;
+    }
+  }
+  const pf9 = parseInt(PSTORE.getItem('w1001.tradeprofit') || '0', 10) || 0;
+  return `<div class="cardHead" style="background:#4a3a22">🧺 ${esc(T9[2])} · 岛际行商</div>
+    <div style="padding:10px 16px 2px;font-size:12px;color:#8a7c62;line-height:1.6">低买高卖:原产岛购入,运往他岛出手,行情每日一换。货舱 ${cargoN9()}/12 · 累计利润 ${pf9}⚡${pf9 >= 200 ? ' · 🏆 丝路行商' : '(满 200 得称号)'}</div>
+    <div style="padding:6px 16px 14px">${rows9}</div>`;
+}
 function buildCard(s) {
   const cat = s.cat;
   if (cat === 'gate') return stargateCard();
   if (cat === 'news') return newsCard();
   if (cat === 'shop') return shopCard();
   if (cat === 'ferry') return ferryCard();
+  if (cat === 'trader') return traderCard9(s.tr);
   if (cat === 'truman') return trumanCard(s.type);
   if (cat === 'lotr') return lotrCard(s.type);
   if (cat === 'hp') return hpCard(s.type, s);
@@ -1256,6 +1299,33 @@ function openCard(s) {
     blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
   });
   cardBody.querySelector('[data-chainx]')?.addEventListener('click', ev => { chainStart9(ev.currentTarget.dataset.chainx); });
+  cardBody.querySelectorAll('[data-ghv]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 免费采集
+    const k9 = b9.dataset.ghv, isl9 = nearSpot && nearSpot.tr;
+    if (!isl9) return;
+    const hv9 = dayCnt9('w1001.thv.' + isl9); if (hv9 >= 3 || cargoN9() >= 12) return;
+    dayCntSet9('w1001.thv.' + isl9, hv9 + 1);
+    const gg9 = goods9(); gg9[k9] = (gg9[k9] || 0) + 1; goodsSet9(gg9);
+    toast(GOODS9[k9].i + ' 采到一份' + GOODS9[k9].n + '!(货舱 ' + cargoN9() + '/12)'); blip(660);
+    openCard(nearSpot);
+  }));
+  cardBody.querySelectorAll('[data-gbuy]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 产地购入
+    const k9 = b9.dataset.gbuy, isl9 = nearSpot && nearSpot.tr;
+    if (!isl9 || !spendSB(GOODS9[k9].p)) return;
+    dayCntSet9('w1001.tbuy.' + isl9, dayCnt9('w1001.tbuy.' + isl9) + 1);
+    const gg9 = goods9(); gg9[k9] = (gg9[k9] || 0) + 1; goodsSet9(gg9);
+    toast(GOODS9[k9].i + ' 购入 ' + GOODS9[k9].n + '——去别的岛卖个好价!'); blip(620);
+    openCard(nearSpot);
+  }));
+  cardBody.querySelectorAll('[data-gsell]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 外埠卖出
+    const k9 = b9.dataset.gsell, isl9 = nearSpot && nearSpot.tr, sp9 = +b9.dataset.sp;
+    const gg9 = goods9(); if (!isl9 || !(gg9[k9] > 0)) return;
+    gg9[k9]--; goodsSet9(gg9); earnSB(sp9);
+    const pf9 = (parseInt(PSTORE.getItem('w1001.tradeprofit') || '0', 10) || 0) + Math.max(0, sp9 - GOODS9[k9].p);
+    PSTORE.setItem('w1001.tradeprofit', String(pf9));
+    toast('💰 卖出 ' + GOODS9[k9].n + ' +' + sp9 + '⚡(利润累计 ' + pf9 + '⚡)'); blip(760);
+    if (pf9 >= 200 && PSTORE.getItem('w1001.trader1') !== '1') { PSTORE.setItem('w1001.trader1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「丝路行商」——累计利润 200⚡ · ⭐+1'); }
+    openCard(nearSpot);
+  }));
   cardBody.querySelectorAll('[data-note]').forEach(b9 => b9.addEventListener('click', () => {
     const i9 = +b9.dataset.note;
     blip([262, 294, 330, 349, 392, 440, 494][i9] * 2);
@@ -1609,6 +1679,7 @@ function titleList() {
     { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
     { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
     { id: 'wisher', name: '🌠 许愿者', got: (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) >= 7, note: '向七颗流星许愿' },
+    { id: 'trader1', name: '🧺 丝路行商', got: PSTORE.getItem('w1001.trader1') === '1', note: '岛际贸易累计利润 200⚡' },
     { id: 'chainer', name: '🧵 线索收束人', got: PSTORE.getItem('w1001.chain1') === '1' && PSTORE.getItem('w1001.chain2') === '1', note: '走完两条跨岛任务线' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
@@ -2205,6 +2276,7 @@ const EVENT = (() => {
   }
   return r0 < .4 ? 'none' : r0 < .55 ? 'fair' : r0 < .7 ? 'meteor' : r0 < .85 ? 'whales' : 'kites';
 })();
+Object.assign(HINTS, { trader: '🧺 行商摊 · 岛际买卖特产' });
 const { paperHTML, parsePantheon, pantheonHTML, pantheonFallback } = makeCards({ D, esc, todayStr, mulberry32, WEATHER, shards: () => shardsGot });   // getter:声明在后+会重赋值   // 📦 w-cards.js
 const gearPrice = g9 => EVENT === 'fair' ? Math.max(1, Math.round(g9.price * .9)) : g9.price;
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
@@ -2739,7 +2811,7 @@ const pickers = {};
 for (const k of ['art', 'books', 'birds', 'plants', 'beers', 'fish', 'jazz', 'classical', 'outdoor'])
   pickers[k] = (arr => { let i = 0; return () => arr[i++ % arr.length]; })(shuffled(D[k], rnd));
 function addSpot(x, z, cat, type, extra) {
-  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || cat === 'food' || cat === 'tailor' || cat === 'home' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
+  const item = (cat === 'lore' || cat === 'gate' || cat === 'dive' || cat === 'air' || cat === 'fund' || cat === 'food' || cat === 'tailor' || cat === 'home' || cat === 'trader' || ['bar', 'sign', 'news', 'shop', 'ferry', 'door', 'camera', 'lamp', 'ring', 'crater', 'hole', 'eye', 'train', 'castle', 'hoops', 'hut', 'inn', 'chowder', 'doubloon', 'stadium', 'pitch', 'scalper'].includes(type)) ? null : pickers[cat]();
   const s = Object.assign({ x, z, y: height(x, z), r: 6.5, cat, type, item }, extra || {});
   spots.push(s); return s;
 }
@@ -7149,6 +7221,27 @@ function navCycle9() {
       blip(700);
       return;
     }
+  }
+}
+/* 🧺 行商摊位 ×6(帐布+条桌)+ 主岛蜂房生产点 */
+{
+  TRADERS9.shj = [SHJ.x + 4, SHJ.z + 108, '异兽野驿站'];
+  TRADERS9.dgy = [DGY.x + 4, DGY.z + 98, '大观园绣坊'];
+  TRADERS9.jur = [JUR.x + 4, JUR.z - 116, '琥珀矿亭'];
+  const AWN9 = { main: 0xd9a13a, lotr: 0x5d8a4e, mob: 0x4a6a8a, shj: 0xc85a8a, dgy: 0xc03a3a, jur: 0xe8862a };
+  for (const isl9 in TRADERS9) {
+    const [tx9, tz9] = TRADERS9[isl9], th9 = Math.max(height(tx9, tz9), .2);
+    const tb9 = box(2.6, .9, 1.2, M.wood); tb9.position.set(tx9, th9 + .45, tz9); scene.add(tb9);
+    for (const s9 of [-1, 1]) { const pl9 = cyl(.09, .11, 2.6, M.woodDark); pl9.position.set(tx9 + s9 * 1.2, th9 + 1.3, tz9 - .5); scene.add(pl9); }
+    const aw9 = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.6), new THREE.MeshLambertMaterial({ color: AWN9[isl9], side: THREE.DoubleSide }));
+    aw9.rotation.x = -.5; aw9.position.set(tx9, th9 + 2.7, tz9 - .8); scene.add(aw9);
+    addSpot(tx9, tz9 + 2, 'trader', 'trader', { r: 6.5, tr: isl9 });
+    cirObs.push({ x: tx9, z: tz9, r: 1.6 });
+  }
+  for (let i9 = 0; i9 < 3; i9++) {   // 🍯 果园蜂房(生产的样子)
+    const hx9 = 146 + i9 * 3, hz9 = 92, hh9 = Math.max(height(hx9, hz9), .2);
+    const hv9 = box(1, 1.1, 1, lam(0xd9c48a)); hv9.position.set(hx9, hh9 + .55, hz9); scene.add(hv9);
+    const hr9 = box(1.2, .18, 1.2, lam(0x8a6a3a)); hr9.position.set(hx9, hh9 + 1.2, hz9); scene.add(hr9);
   }
 }
 /* 🔥 篝火晚会:三位营地旅人,夜里围火轻摇 */
