@@ -25,6 +25,7 @@ import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=11';
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
+import { makeCards } from './w-cards.js?v=1';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -623,84 +624,10 @@ function cardHTML(cat, inner) {
 /* --- 万神殿日报 --- */
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const paperBought = () => { try { return PSTORE.getItem('w1001.paper') === todayStr(); } catch (e) { return false; } };
-function paperHTML() {
-  const ds = todayStr();
-  const r = mulberry32([...ds].reduce((a, c) => (a * 33 + c.charCodeAt(0)) | 0, 5));
-  const pick = arr => arr[Math.floor(r() * arr.length)];
-  const art = pick(D.art), beer = pick(D.beers), bird = pick(D.birds), book = pick(D.books),
-        alb = pick(D.jazz), plant = pick(D.plants), sport = pick(D.outdoor);
-  const issue = Math.floor((Date.now() - new Date('2026-01-01').getTime()) / 86400000);
-  const shardLeft = 24 - shardsGot.length;
-  return `<div class="paper">
-    <div class="pMast">1001日报</div>
-    <div class="pSub">THE 1001 DAILY · ${ds} · 第 ${issue} 期 · 收藏之岛第一小报 · 售价 2 SB</div>
-    <div class="pHead">《${esc(art.title)}》真迹今日在一〇〇一美术馆展出</div>
-    <div class="pBody">${esc(art.artist)}(${esc(art.artist_en)})作于${esc(art.year)},馆藏来自${esc(art.loc)}。策展人称:"错过要再等一千零一夜。"</div>
-    <div class="pCols">
-      <div><b>🍺 酒馆快讯</b><br>等待戈多酒馆新到「${esc(beer.name)}」(${esc(beer.style)} · ${esc(beer.abv)})。天哥已代表大家试过:"戈多没来,酒很好。"</div>
-      <div><b>🐦 自然观察</b><br>百鸟林目击「${esc(bird.zh)}」(<i>${esc(bird.sci)}</i>)。观鸟协会提醒:请勿投喂,它比你懂吃。</div>
-      <div><b>🎷 今夜乐评</b><br>蓝调俱乐部放送《${esc(alb.title)}》(${esc(alb.artist)},${alb.year})。剑敏大师短评:"留白极佳。"</div>
-      <div><b>📚 一日一书</b><br>博尔赫斯荐《${esc(book.zh)}》(${esc(book.author)}):"${esc(String(book.desc)).slice(0, 38)}…"</div>
-      <div><b>🌿 花讯</b><br>植物园「${esc(plant.zh)}」(${esc(plant.family)})正当时,解说牌照片已更新。</div>
-      <div><b>⛰️ 户外专栏</b><br>雪峰营地本周主推:${esc(sport.name)}(难度 ${'●'.repeat(sport.diff)}${'○'.repeat(5 - sport.diff)})。</div>
-    </div>
-    <div class="pFoot">天气:${WEATHER === 'rain' ? '全域有雨,渔汛正旺,出门带蓑衣' : WEATHER === 'storm' ? '风暴!鲸航半数航班延误,航海请三思' : WEATHER === 'fog' ? '大雾,能见度低,塞壬海域尤请谨慎' : '晴,傍晚有物理正确的晚霞'},夜间星空营业,灯塔照常旋转 ·
-    寻物启事:全岛尚有 ${shardLeft} 枚星之碎片下落不明,拾获者奖 10 SB ·
-    广告位招租(请洽报亭墨丘利)</div>
-  </div>`;
-}
-/* 万神殿日报(真实日报,联网直供 https://news-dev.goood.space) */
+/* 📦 paperHTML → 模块 *//* 万神殿日报(真实日报,联网直供 https://news-dev.goood.space) */
 const NEWS_BASE = 'https://news-dev.goood.space';
 const paper2Bought = () => { try { return PSTORE.getItem('w1001.paper2') === todayStr(); } catch (e) { return false; } };
-function parsePantheon(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const date = (doc.querySelector('.masthead-v2__meta span') || { textContent: '' }).textContent.trim();
-  const tabs = [...doc.querySelectorAll('.tab-nav-v2__btn')].map(b => ({ key: b.dataset.tab, name: b.textContent.trim() }));
-  const grab = (el, sel) => { const n = el.querySelector(sel); return n ? n.textContent.trim() : ''; };
-  const heroes = [...doc.querySelectorAll('.hero-section')].map(h => ({
-    tab: h.dataset.tab,
-    title: grab(h, '.hero-title span') || grab(h, '.hero-title'),
-    lede: grab(h, '.hero-lede'),
-    href: (h.querySelector('a') || { getAttribute: () => '' }).getAttribute('href') || '',
-  })).filter(x => x.title);
-  const items = [...doc.querySelectorAll('.section-items-v2__item')].map(a => ({
-    tab: a.dataset.homeTab,
-    title: grab(a, 'h3 span') || grab(a, 'h3'),
-    lede: grab(a, '.item-v2__lede') || grab(a, '.section-lead-v2__lede'),
-    href: (a.querySelector('a') || { getAttribute: () => '' }).getAttribute('href') || '',
-  })).filter(x => x.title);
-  return { date, tabs, heroes, items };
-}
-function pantheonHTML(d) {
-  const link = h => h ? `${NEWS_BASE}${h}` : NEWS_BASE;
-  const secs = d.tabs.map(tb => {
-    const hero = d.heroes.find(h => h.tab === tb.key);
-    const its = d.items.filter(i => i.tab === tb.key).slice(0, 4);
-    if (!hero && !its.length) return '';
-    return `<div class="pHead" style="font-size:15px;border-bottom:1px solid #b9ae98;padding-bottom:4px">◈ ${esc(tb.name)}</div>
-      ${hero ? `<div class="pBody" style="border-bottom:none"><a href="${esc(link(hero.href))}" target="_blank" rel="noopener" style="color:#26211a;font-weight:800;text-decoration:none">${esc(hero.title)}</a><br><span style="font-size:12px">${esc(hero.lede).slice(0, 90)}…</span></div>` : ''}
-      <div class="pCols" style="padding-top:4px">${its.map(i =>
-        `<div><a href="${esc(link(i.href))}" target="_blank" rel="noopener" style="color:#26211a;font-weight:700;text-decoration:none">${esc(i.title)}</a><br>${esc(i.lede).slice(0, 56)}…</div>`).join('')}</div>`;
-  }).join('');
-  return `<div class="paper">
-    <div class="pMast">万神殿日报</div>
-    <div class="pSub">PANTHEON DAILY · ${esc(d.date)} · 联网直供 · 点标题读全文</div>
-    ${secs}
-    <div class="pFoot">内容由 news-dev.goood.space 提供 · 本报在报亭售价 3 SB,当日免费重读</div>
-  </div>
-  <div style="text-align:center;padding:10px"><button class="gBtn off" data-backstand>↩ 返回报亭</button></div>`;
-}
-function pantheonFallback() {
-  return `<div class="cardHead" style="background:#26211a">🏛️ 万神殿日报 · Pantheon Daily</div>
-    <div class="cardMedia"><div class="paperRoll">🏛️</div></div>
-    <div class="cardTitle"><h3>万神殿日报</h3><div class="en">PANTHEON DAILY · 真实世界日报</div></div>
-    <div class="cardDesc">墨丘利:"这份大报由报社直供,得去亭外看——我给你把门打开。"<br><br>
-    <span style="font-size:12px;color:#8a7c62">(在新窗口阅读,需登录报社账号;待报社开通跨域直供后,即可在游戏里直接翻阅)</span></div>
-    <div style="text-align:center;padding:0 0 16px">
-      <button class="again" data-openp2>🌐 打开万神殿日报</button>
-      <button class="gBtn off" data-backstand style="margin-left:8px">↩ 返回报亭</button></div>`;
-}
-async function openPantheon(s) {
+/* 📦 parsePantheon → 模块 *//* 📦 pantheonHTML → 模块 *//* 📦 pantheonFallback → 模块 */async function openPantheon(s) {
   cardBody.innerHTML = `<div class="cardHead" style="background:#26211a">🏛️ 万神殿日报</div><div class="cardDesc" style="padding:26px 22px">🕊️ 墨丘利取报中……</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   let ok = false;
@@ -2264,6 +2191,7 @@ const EVENT = (() => {
   }
   return r0 < .4 ? 'none' : r0 < .55 ? 'fair' : r0 < .7 ? 'meteor' : r0 < .85 ? 'whales' : 'kites';
 })();
+const { paperHTML, parsePantheon, pantheonHTML, pantheonFallback } = makeCards({ D, esc, todayStr, mulberry32, WEATHER, shards: () => shardsGot });   // getter:声明在后+会重赋值   // 📦 w-cards.js
 const gearPrice = g9 => EVENT === 'fair' ? Math.max(1, Math.round(g9.price * .9)) : g9.price;
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
 const FULLMOON = (() => {
@@ -8403,6 +8331,313 @@ function whaleCall() {
   o.start(t0); o.stop(t0 + 3.5);
 }
 let introT9 = 6.5;   // 🎬 开场运镜:高空缓降绕入(动一下即快进)
+/* 🌍 每帧世界特效与系统节拍:幽灵船/竞速/导航/环景交通/热泉/生命系统/光效/微痕迹/引导 */
+function worldFx9(dt, t, pMoving, bh) {
+  if (ghostShip9) {   // 👻 幽灵船夜航
+    const ga9 = t * .012;
+    ghostShip9.position.set(Math.cos(ga9) * 1480, tideY, Math.sin(ga9) * 1480);
+    ghostShip9.rotation.y = -ga9 - Math.PI / 2;
+    const gd9 = Math.hypot(player.position.x - ghostShip9.position.x, player.position.z - ghostShip9.position.z);
+    ghostShip9.userData.mat.opacity = (1 - curDA) * .3 * clamp((gd9 - 60) / 120, 0, 1) * (.8 + Math.sin(t * 1.3) * .2);   // 近之则隐
+  }
+  /* ⛵ 环岛计时赛 */
+  if (vehicle === 2 || RACE9.on) {
+    const rp9 = RACE9.pts[RACE9.on ? RACE9.next : 0];
+    const rd9 = Math.hypot(player.position.x - rp9[0], player.position.z - rp9[1]);
+    if (!RACE9.on && vehicle === 2 && rd9 < 16) {
+      RACE9.on = true; RACE9.next = 1; RACE9.t0 = t;
+      toast('🏁 环岛计时赛开始!顺时针绕过三只橙浮标,回到绿浮标'); blip(880);
+    } else if (RACE9.on && rd9 < 16) {
+      if (RACE9.next === 0) {   // 冲线
+        RACE9.on = false;
+        const tt9 = Math.round(t - RACE9.t0);
+        const best9 = parseInt(PSTORE.getItem('w1001.racebest') || '0', 10) || 0;
+        earnSB(30);
+        if (!best9 || tt9 < best9) { PSTORE.setItem('w1001.racebest', String(tt9)); toast('🏆 冲线!' + tt9 + ' 秒——新纪录!⚡+30'); }
+        else toast('🏁 冲线!' + tt9 + ' 秒(最佳 ' + best9 + ' 秒)⚡+30');
+        if (PSTORE.getItem('w1001.race1') !== '1') { PSTORE.setItem('w1001.race1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('⛵ 新称号「环岛帆手」 · ⭐+1'); }
+        blip(660); setTimeout(() => blip(880), 130);
+      } else {
+        toast('⛵ 检查点 ' + RACE9.next + '/3 · ' + Math.round(t - RACE9.t0) + ' 秒'); blip(700);
+        RACE9.next = (RACE9.next + 1) % 4;
+      }
+    }
+    if (RACE9.on && vehicle !== 2) { RACE9.on = false; toast('🏳️ 离船——计时赛中止'); }
+  }
+  /* 🧭 导航流光:朝目标流动的光点带(取前 100 米段,贴地) */
+  if (NAV9.mode && navPts9.visible) {
+    const ndx9 = NAV9.x - player.position.x, ndz9 = NAV9.z - player.position.z;
+    const nd9 = Math.hypot(ndx9, ndz9);
+    if (nd9 < 14) {
+      if (NAV9.mode === 9 && chainAct9) {   // 🧵 任务链推进
+        const C9 = CHAINS9[chainAct9];
+        toast(C9.steps[chainStep9].msg); blip(760);
+        chainStep9++;
+        if (chainStep9 >= C9.steps.length) {
+          PSTORE.setItem('w1001.' + C9.done, '1'); earnSB(60); stars++; saveQuest(); updateQuestHUD();
+          setTimeout(() => toast('🏁 任务线完成:' + C9.title + ' · ⚡+60 · ⭐+1'), 2400);
+          chainAct9 = null; NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false;
+        } else chainNav9();
+      } else { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('📍 已到达 ' + NAV9.label); blip(880); }
+    }
+    else {
+      const ux9 = ndx9 / nd9, uz9 = ndz9 / nd9, seg9 = Math.min(nd9, 100);
+      const np9 = navPts9.geometry.attributes.position, mar9 = (t * 6) % 4;
+      for (let i9 = 0; i9 < np9.count; i9++) {
+        const dd9 = 4 + i9 * 4 + mar9;
+        if (dd9 > seg9) { np9.setY(i9, -999); continue; }
+        const qx9 = player.position.x + ux9 * dd9, qz9 = player.position.z + uz9 * dd9;
+        const qh9 = heightMesh(qx9, qz9);
+        np9.setXYZ(i9, qx9, (qh9 < -.4 ? tideY + .5 : qh9 + .6), qz9);
+      }
+      np9.needsUpdate = true;
+      navBeacon9.material.opacity = .12 + Math.sin(t * 2.4) * .06;
+    }
+  }
+  /* ✈️🛥️🎈 环景交通:高空客机 / 巡航渡轮 / 观光气球 */
+  if (ambPlane9) {
+    const ad9 = ambPlane9.userData.dir;
+    ambPlane9.position.x += ad9.dx * 26 * dt; ambPlane9.position.z += ad9.dz * 26 * dt;
+    ambPlane9.rotation.y = Math.atan2(ad9.dx, ad9.dz);
+    ambPlane9.userData.prop.rotation.z += dt * 30;
+    if (Math.abs(ambPlane9.position.x) > 2300 || Math.abs(ambPlane9.position.z) > 2300) {
+      const na9 = Math.random() * Math.PI * 2;
+      ambPlane9.position.set(-Math.cos(na9) * 2200, 140 + Math.random() * 40, -Math.sin(na9) * 2200);
+      ad9.dx = Math.cos(na9); ad9.dz = Math.sin(na9);
+    }
+  }
+  if (ambFerry9) {   // 主岛⇄南塔开特 定期渡轮(纯环景)
+    const uf9 = ambFerry9.userData;
+    uf9.k += uf9.dir * dt / 60;
+    if (uf9.k > 1) { uf9.k = 1; uf9.dir = -1; } else if (uf9.k < 0) { uf9.k = 0; uf9.dir = 1; }
+    const ek9 = uf9.k, eu9 = 1 - ek9;
+    const bx9 = eu9 * eu9 * 400 + 2 * eu9 * ek9 * 560 + ek9 * ek9 * 170;
+    const bz9 = eu9 * eu9 * 40 + 2 * eu9 * ek9 * 380 + ek9 * ek9 * 700;
+    const pvx9 = bx9 - ambFerry9.position.x, pvz9 = bz9 - ambFerry9.position.z;
+    if (pvx9 * pvx9 + pvz9 * pvz9 > 1e-7) ambFerry9.rotation.y = Math.atan2(pvx9, pvz9);
+    ambFerry9.position.set(bx9, tideY + .1, bz9);
+    ambFerry9.rotation.z = Math.sin(t * 1.4) * .03;
+  }
+  if (balloon9) {   // 🎈 绕主岛缓飘
+    const ba9 = t * .022;
+    balloon9.position.set(Math.cos(ba9) * 190, 96 + Math.sin(t * .11) * 9, Math.sin(ba9) * 190);
+    balloon9.rotation.y = ba9;
+  }
+  if (ventPts9) {   // ♨️ 热泉气泡上升
+    const vp9 = ventPts9.geometry.attributes.position;
+    for (let i9 = 0; i9 < vp9.count; i9++) {
+      const v9 = VENTS9[i9 % VENTS9.length];
+      let y9 = vp9.getY(i9) + dt * (1.8 + (i9 % 3) * .7);
+      if (y9 > v9[2] + 11) y9 = v9[2] + .3;
+      vp9.setY(i9, y9);
+      vp9.setX(i9, v9[0] + Math.sin(y9 * 1.3 + i9) * .4);
+    }
+    vp9.needsUpdate = true;
+  }
+  if (freeDive9 && wreck9 && PSTORE.getItem('w1001.owreck') !== '1'
+      && Math.hypot(player.position.x - wreck9.x, player.position.y - wreck9.y, player.position.z - wreck9.z) < 9) {
+    PSTORE.setItem('w1001.owreck', '1'); earnSB(30);
+    toast('⚓ 你发现了外海沉船!货舱里一枚金锭还闪着光。⚡+30'); blip(760);
+  }
+  if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 脚步声(随材质)
+    sndStepT9 -= dt;
+    if (sndStepT9 <= 0) {
+      sndStepT9 = keys.shift ? .27 : .38;
+      const hp9 = player.position.y;
+      const onWood9 = (bh != null && Math.abs(hp9 - bh) < 2) || pierHeight(player.position.x, player.position.z) != null;
+      stepSnd9(onWood9 ? 'wood' : (hp9 < 2 ? 'sand' : 'grass'));
+    }
+  }
+  if (skyLant9) {   // 🏮 秋灯节:孔明灯夜升
+    skyLant9.mat.opacity = (1 - curDA) * .95;
+    if (curDA < .5) for (const l9 of skyLant9) {
+      l9.position.y += l9.userData.sp * dt;
+      l9.position.x += Math.sin(t * .4 + l9.userData.ph) * .12 * dt * 8;
+      if (l9.position.y > 130) { l9.position.set((Math.random() - .5) * 60, 4, (Math.random() - .5) * 60); }
+    }
+  }
+  if (EVENT === 'fireshow' && curDA < .3) {   // 🎆 夏夜烟花大会
+    fireShowT9.t -= dt;
+    if (fireShowT9.t <= 0) { fireShowT9.t = 34 + Math.random() * 22; fireworks(); }
+  }
+  guideT9 -= dt;   // 🧭 新手引导:交谈→钓鱼→渡海
+  if (guideT9 <= 0) {
+    guideT9 = 7;
+    if (PSTORE.getItem('w1001.gdone') !== '1') {
+      const fc9 = parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0;
+      const talked9 = Object.keys(AFF).length > 0;
+      if (stamps && stamps.size > 3) PSTORE.setItem('w1001.gdone', '1');   // 老玩家跳过
+      else if (!talked9 && PSTORE.getItem('w1001.g1') !== 'told') { PSTORE.setItem('w1001.g1', 'told'); toast('🧭 新手指引 1/3:走近任何居民,按 E 和 TA 聊聊'); }
+      else if (talked9 && !fc9 && PSTORE.getItem('w1001.g2') !== 'told') { PSTORE.setItem('w1001.g2', 'told'); toast('🧭 新手指引 2/3:去栈桥尽头,按 E 抛竿钓一条鱼'); }
+      else if (talked9 && fc9 && PSTORE.getItem('w1001.g3') !== 'told') { PSTORE.setItem('w1001.g3', 'told'); toast('🧭 新手指引 3/3:栈桥渡口按 E,渡向另一个世界!'); }
+      else if (talked9 && fc9 && stamps && stamps.size > 1) { PSTORE.setItem('w1001.gdone', '1'); earnSB(20); toast('🎓 新手指引完成——群岛任你闯荡了!⚡+20'); }
+    }
+  }
+  aniSndT9 -= dt;   // 🐔🦖 动物叫声(就近触发)
+  if (aniSndT9 <= 0) {
+    aniSndT9 = 7 + Math.random() * 8;
+    for (const a9 of ANIMALS9) {
+      const k9 = a9.userData.kind;
+      if ((k9 === 'hen' || k9 === 'dino') && Math.hypot(player.position.x - a9.position.x, player.position.z - a9.position.z) < 10) { aniSnd9(k9); break; }
+    }
+  }
+  if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
+  prevSwim9 = swimming;
+  /* 🌧️ 雨落水面涟漪 */
+  if (RAINY && !MOBILE && !diving) {
+    ringT9 -= dt;
+    if (ringT9 <= 0) {
+      ringT9 = .09;
+      const rx9 = player.position.x + (Math.random() - .5) * 70, rz9 = player.position.z + (Math.random() - .5) * 70;
+      if (heightMesh(rx9, rz9) < -.4) {
+        const rg9 = new THREE.Mesh(ringGeo9, ringMat9);
+        rg9.rotation.x = -Math.PI / 2; rg9.position.set(rx9, tideY + .2, rz9);
+        scene.add(rg9); rings9.push({ m: rg9, life: .9 });
+        if (rings9.length > 26) { const o9 = rings9.shift(); scene.remove(o9.m); }
+      }
+    }
+  }
+  for (let i9 = rings9.length - 1; i9 >= 0; i9--) { const r9 = rings9[i9]; r9.life -= dt; if (r9.life < 0) { scene.remove(r9.m); rings9.splice(i9, 1); } else r9.m.scale.setScalar(1 + (0.9 - r9.life) * 4.5); }
+  for (const d9 of dolphins9) {   // 🐬 鼠海豚式跃水
+    const ph9 = d9.userData.ph, aa9 = t * .32 + ph9;
+    const cx9 = 30 + Math.cos(aa9) * 26, cz9 = 474 + Math.sin(aa9) * 26;
+    const jp9 = aa9 * 3.1;
+    d9.position.set(cx9, Math.sin(jp9) * 2.1 - 1.1 + tideY, cz9);
+    d9.rotation.y = Math.atan2(-Math.sin(aa9), Math.cos(aa9));
+    d9.rotation.x = -Math.cos(jp9) * .55;
+    d9.visible = d9.position.y > -2.4;
+  }
+  /* 🔥🚨 光效:火焰跳动 / 火星 / 航标闪烁 */
+  for (const f9 of flames9) { const k9 = .75 + Math.sin(t * 11 + f9.userData.ph9) * .28; f9.scale.set(k9, .8 + Math.sin(t * 13 + f9.userData.ph9 * 2) * .35, k9); f9.material.opacity = (.5 + (1 - curDA) * .4) * (.7 + Math.sin(t * 9 + f9.userData.ph9) * .3); }
+  if (sparks9) {
+    const su9 = sparks9.userData, sp29 = sparks9.geometry.attributes.position;
+    for (let i9 = 0; i9 < sp29.count; i9++) {
+      let y9 = sp29.getY(i9) + dt * (1.6 + (i9 % 3) * .8);
+      if (y9 > su9.fh + 5.5) { y9 = su9.fh + 1; sp29.setX(i9, su9.fx + (Math.random() - .5)); sp29.setZ(i9, su9.fz + (Math.random() - .5)); }
+      sp29.setY(i9, y9);
+      sp29.setX(i9, sp29.getX(i9) + Math.sin(y9 * 2 + i9) * .3 * dt);
+    }
+    sp29.needsUpdate = true;
+    sparks9.material.opacity = .3 + (1 - curDA) * .6;
+  }
+  for (const n9 of NAVL9) n9.m.material.opacity = (1 - curDA) * (Math.sin(t * Math.PI * 2 / n9.per + n9.ph) > .3 ? .95 : .06);
+  /* 🐑🕊️🪼 生命系统:动物游走 / 候鸟 / 水母 */
+  baaT9 -= dt;
+  for (const a9 of ANIMALS9) {
+    const u9 = a9.userData;
+    if (curDA < .22) { a9.scale.y += (.78 - a9.scale.y) * Math.min(1, dt * 2); continue; }   // 🌙 夜眠伏卧
+    if (a9.scale.y < .99) a9.scale.y += (1 - a9.scale.y) * Math.min(1, dt * 2);
+    const pdx9 = player.position.x - a9.position.x, pdz9 = player.position.z - a9.position.z, pd9 = Math.hypot(pdx9, pdz9);
+    if (pd9 < 6 && PSTORE.getItem('w1001.seen_' + u9.kind) !== '1') {   // 🐾 图鉴首见
+      PSTORE.setItem('w1001.seen_' + u9.kind, '1'); earnSB(3);
+      const NM9 = { sheep: '夏尔绵羊', deer: '鲸背斑鹿', rabbit: '草甸兔', beast: '山海异兽崽', fox: '青丘之狐', dino: '侏罗纪幼龙', hen: '南塔开特母鸡' };
+      toast('🐾 动物图鉴新收录:' + (NM9[u9.kind] || u9.kind) + ' ⚡+3');
+      if (['sheep', 'deer', 'rabbit', 'beast', 'fox', 'dino', 'hen'].every(k9 => PSTORE.getItem('w1001.seen_' + k9) === '1')) {
+        if (PSTORE.getItem('w1001.natural9') !== '1') { PSTORE.setItem('w1001.natural9', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「自然观察家」——七种动物全部收录 · ⭐+1'); }
+      }
+    }
+    const beh9 = BEH9[u9.kind];
+    if (u9.run > 0) u9.run -= dt;
+    if (beh9 === 'flee' && pd9 < 7 && u9.run <= 0) {   // 🐇 惊逃
+      u9.run = 1.6; u9.pause = 0;
+      const fx9 = a9.position.x - pdx9 / pd9 * 10, fz9 = a9.position.z - pdz9 / pd9 * 10;
+      if (heightMesh(fx9, fz9) > .5) { u9.tx = fx9; u9.tz = fz9; }
+    } else if (beh9 === 'stare' && pd9 < 6) {   // 🐑 停步对视 + 咩
+      u9.pause = Math.max(u9.pause, .4);
+      a9.rotation.y = Math.atan2(pdx9, pdz9);
+      if (baaT9 <= 0) { baaT9 = 8 + Math.random() * 8; blip(233); setTimeout(() => blip(196), 110); }
+    } else if (beh9 === 'curious' && pd9 < 11 && pd9 > 3.2 && u9.pause <= 0 && u9.run <= 0) {   // 🦊 好奇靠近
+      const cx9 = player.position.x - pdx9 / pd9 * 2.6, cz9 = player.position.z - pdz9 / pd9 * 2.6;
+      if (heightMesh(cx9, cz9) > .5) { u9.tx = cx9; u9.tz = cz9; }
+    }
+    if (u9.pause > 0) { u9.pause -= dt; continue; }
+    const dx9 = u9.tx - a9.position.x, dz9 = u9.tz - a9.position.z, dd9 = Math.hypot(dx9, dz9);
+    if (dd9 < .4) { u9.pause = 2 + Math.random() * 5; const aa9 = Math.random() * Math.PI * 2, rr9 = 4 + Math.random() * 9; const nx9 = u9.hx + Math.cos(aa9) * rr9, nz9 = u9.hz + Math.sin(aa9) * rr9; if (heightMesh(nx9, nz9) > .5) { u9.tx = nx9; u9.tz = nz9; } }
+    else {
+      const spd9 = u9.sp * (u9.run > 0 ? 3 : 1);
+      a9.position.x += dx9 / dd9 * spd9 * dt; a9.position.z += dz9 / dd9 * spd9 * dt;
+      a9.rotation.y = Math.atan2(dx9, dz9);
+      const hop9 = u9.kind === 'rabbit' || (u9.kind === 'hen' && u9.run > 0);
+      a9.position.y = Math.max(heightMesh(a9.position.x, a9.position.z), 0) + (hop9 ? Math.abs(Math.sin(t * 9 + u9.ph)) * .35 : Math.abs(Math.sin(t * 5 + u9.ph)) * .05);
+    }
+  }
+  if (vFlock9) {
+    const uv9 = vFlock9.userData;
+    vFlock9.position.x += uv9.dx * 13 * dt; vFlock9.position.z += uv9.dz * 13 * dt;
+    vFlock9.rotation.y = Math.atan2(uv9.dx, uv9.dz);
+    if (Math.abs(vFlock9.position.x) > 2300 || Math.abs(vFlock9.position.z) > 2300) {
+      const na9 = Math.random() * Math.PI * 2;
+      vFlock9.position.set(-Math.cos(na9) * 2100, 170 + Math.random() * 60, -Math.sin(na9) * 2100);
+      uv9.dx = Math.cos(na9); uv9.dz = Math.sin(na9);
+    }
+    for (const b9 of vFlock9.children) { const f9 = Math.sin(t * 7 + b9.userData.ph) * .5; b9.userData.wl.rotation.z = f9; b9.userData.wr.rotation.z = -f9; }
+  }
+  for (const j9 of jellies9) {
+    const uj9 = j9.userData;
+    j9.position.y = uj9.y0 + Math.sin(t * .7 + uj9.ph) * .6;
+    const pu9 = 1 + Math.sin(t * 2.2 + uj9.ph) * .18;
+    j9.scale.set(pu9, 2 - pu9, pu9);
+    j9.material.emissiveIntensity = .12 + (1 - curDA) * .9;
+    j9.material.opacity = .4 + (1 - curDA) * .25;
+  }
+  /* 👣⛵🫧🌊 微痕迹与泡沫 */
+  if (!MOBILE) {
+    if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
+    CLOUDU9.t.value = t;
+    if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
+      stepT9 -= dt;
+      const hh9 = player.position.y;
+      if (stepT9 <= 0 && hh9 > .2 && hh9 < 1.9) {
+        stepT9 = .34; stepSide9 = -stepSide9;
+        const fp9 = new THREE.Mesh(stepGeo9, stepMat9);
+        fp9.rotation.x = -Math.PI / 2; fp9.scale.set(.8, 1.3, 1); fp9.rotation.z = -faceYaw;
+        fp9.position.set(player.position.x - Math.sin(faceYaw) * .2 + Math.cos(faceYaw) * .28 * stepSide9, Math.max(heightMesh(player.position.x, player.position.z), 0) + .05, player.position.z - Math.cos(faceYaw) * .2 - Math.sin(faceYaw) * .28 * stepSide9);
+        scene.add(fp9); steps9.push({ m: fp9, life: 7 });
+        if (steps9.length > 22) { const o9 = steps9.shift(); scene.remove(o9.m); }
+      }
+    }
+    for (let i9 = steps9.length - 1; i9 >= 0; i9--) { const s9 = steps9[i9]; s9.life -= dt; if (s9.life < 0) { scene.remove(s9.m); steps9.splice(i9, 1); } else if (s9.life < 2) s9.m.scale.setScalar(Math.max(.01, s9.life / 2)); }
+    if ((vehicle === 2 && pMoving) || (flight && flight.sea)) {   // ⛵ 船尾迹(帆船/渡轮)
+      wakeT9 -= dt;
+      if (wakeT9 <= 0) {
+        wakeT9 = .22;
+        const wk9 = new THREE.Mesh(wakeGeo9, wakeMat9);
+        wk9.rotation.x = -Math.PI / 2;
+        wk9.position.set(player.position.x - Math.sin(faceYaw) * 2.6, tideY + .22, player.position.z - Math.cos(faceYaw) * 2.6);
+        scene.add(wk9); wakes9.push({ m: wk9, life: 2.6 });
+        const bw9 = new THREE.Mesh(wakeGeo9, wakeMat9);   // ⛵ 船头破浪
+        bw9.rotation.x = -Math.PI / 2; bw9.scale.setScalar(.5);
+        bw9.position.set(player.position.x + Math.sin(faceYaw) * 2.5, tideY + .24, player.position.z + Math.cos(faceYaw) * 2.5);
+        scene.add(bw9); wakes9.push({ m: bw9, life: 1.2 });
+        if (wakes9.length > 22) { const o9 = wakes9.shift(); scene.remove(o9.m); }
+      }
+    }
+    for (let i9 = wakes9.length - 1; i9 >= 0; i9--) { const w9 = wakes9[i9]; w9.life -= dt; if (w9.life < 0) { scene.remove(w9.m); wakes9.splice(i9, 1); } else { w9.m.scale.setScalar(1 + (2.6 - w9.life) * 1.4); } }
+    if (smokePts9) {   // 🏭 炊烟:缓升回卷,晨昏夜更浓
+      const sp9 = smokePts9.geometry.attributes.position;
+      for (let i9 = 0; i9 < sp9.count; i9++) {
+        const c9 = CHIM9[i9 % CHIM9.length];
+        let y9 = sp9.getY(i9) + dt * (.7 + (i9 % 3) * .25);
+        if (y9 > c9[1] + 5) y9 = c9[1];
+        sp9.setY(i9, y9);
+        sp9.setX(i9, c9[0] + Math.sin(y9 * .8 + smokeSeed9[i9]) * .5);
+      }
+      sp9.needsUpdate = true;
+      smokePts9.material.opacity = .1 + (1 - curDA) * .22;
+    }
+    bubPts9.visible = diving;
+    if (diving) {   // 🫧 潜水气泡
+      const bp9 = bubPts9.geometry.attributes.position;
+      if (pMoving && Math.random() < dt * 9) {
+        bubI9 = (bubI9 + 1) % bp9.count;
+        bp9.setXYZ(bubI9, player.position.x + (Math.random() - .5) * .8, player.position.y + .6, player.position.z + (Math.random() - .5) * .8);
+        bubY09[bubI9] = player.position.y + .6;
+      }
+      for (let i9 = 0; i9 < bp9.count; i9++) { const y9 = bp9.getY(i9); if (y9 > -900) { bp9.setY(i9, y9 + 3 * dt); if (y9 - bubY09[i9] > 7) bp9.setY(i9, -999); } }
+      bp9.needsUpdate = true;
+    }
+  }
+}
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
@@ -8872,311 +9107,8 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
-  if (ghostShip9) {   // 👻 幽灵船夜航
-    const ga9 = t * .012;
-    ghostShip9.position.set(Math.cos(ga9) * 1480, tideY, Math.sin(ga9) * 1480);
-    ghostShip9.rotation.y = -ga9 - Math.PI / 2;
-    const gd9 = Math.hypot(player.position.x - ghostShip9.position.x, player.position.z - ghostShip9.position.z);
-    ghostShip9.userData.mat.opacity = (1 - curDA) * .3 * clamp((gd9 - 60) / 120, 0, 1) * (.8 + Math.sin(t * 1.3) * .2);   // 近之则隐
-  }
-  /* ⛵ 环岛计时赛 */
-  if (vehicle === 2 || RACE9.on) {
-    const rp9 = RACE9.pts[RACE9.on ? RACE9.next : 0];
-    const rd9 = Math.hypot(player.position.x - rp9[0], player.position.z - rp9[1]);
-    if (!RACE9.on && vehicle === 2 && rd9 < 16) {
-      RACE9.on = true; RACE9.next = 1; RACE9.t0 = t;
-      toast('🏁 环岛计时赛开始!顺时针绕过三只橙浮标,回到绿浮标'); blip(880);
-    } else if (RACE9.on && rd9 < 16) {
-      if (RACE9.next === 0) {   // 冲线
-        RACE9.on = false;
-        const tt9 = Math.round(t - RACE9.t0);
-        const best9 = parseInt(PSTORE.getItem('w1001.racebest') || '0', 10) || 0;
-        earnSB(30);
-        if (!best9 || tt9 < best9) { PSTORE.setItem('w1001.racebest', String(tt9)); toast('🏆 冲线!' + tt9 + ' 秒——新纪录!⚡+30'); }
-        else toast('🏁 冲线!' + tt9 + ' 秒(最佳 ' + best9 + ' 秒)⚡+30');
-        if (PSTORE.getItem('w1001.race1') !== '1') { PSTORE.setItem('w1001.race1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('⛵ 新称号「环岛帆手」 · ⭐+1'); }
-        blip(660); setTimeout(() => blip(880), 130);
-      } else {
-        toast('⛵ 检查点 ' + RACE9.next + '/3 · ' + Math.round(t - RACE9.t0) + ' 秒'); blip(700);
-        RACE9.next = (RACE9.next + 1) % 4;
-      }
-    }
-    if (RACE9.on && vehicle !== 2) { RACE9.on = false; toast('🏳️ 离船——计时赛中止'); }
-  }
-  /* 🧭 导航流光:朝目标流动的光点带(取前 100 米段,贴地) */
-  if (NAV9.mode && navPts9.visible) {
-    const ndx9 = NAV9.x - player.position.x, ndz9 = NAV9.z - player.position.z;
-    const nd9 = Math.hypot(ndx9, ndz9);
-    if (nd9 < 14) {
-      if (NAV9.mode === 9 && chainAct9) {   // 🧵 任务链推进
-        const C9 = CHAINS9[chainAct9];
-        toast(C9.steps[chainStep9].msg); blip(760);
-        chainStep9++;
-        if (chainStep9 >= C9.steps.length) {
-          PSTORE.setItem('w1001.' + C9.done, '1'); earnSB(60); stars++; saveQuest(); updateQuestHUD();
-          setTimeout(() => toast('🏁 任务线完成:' + C9.title + ' · ⚡+60 · ⭐+1'), 2400);
-          chainAct9 = null; NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false;
-        } else chainNav9();
-      } else { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('📍 已到达 ' + NAV9.label); blip(880); }
-    }
-    else {
-      const ux9 = ndx9 / nd9, uz9 = ndz9 / nd9, seg9 = Math.min(nd9, 100);
-      const np9 = navPts9.geometry.attributes.position, mar9 = (t * 6) % 4;
-      for (let i9 = 0; i9 < np9.count; i9++) {
-        const dd9 = 4 + i9 * 4 + mar9;
-        if (dd9 > seg9) { np9.setY(i9, -999); continue; }
-        const qx9 = player.position.x + ux9 * dd9, qz9 = player.position.z + uz9 * dd9;
-        const qh9 = heightMesh(qx9, qz9);
-        np9.setXYZ(i9, qx9, (qh9 < -.4 ? tideY + .5 : qh9 + .6), qz9);
-      }
-      np9.needsUpdate = true;
-      navBeacon9.material.opacity = .12 + Math.sin(t * 2.4) * .06;
-    }
-  }
-  /* ✈️🛥️🎈 环景交通:高空客机 / 巡航渡轮 / 观光气球 */
-  if (ambPlane9) {
-    const ad9 = ambPlane9.userData.dir;
-    ambPlane9.position.x += ad9.dx * 26 * dt; ambPlane9.position.z += ad9.dz * 26 * dt;
-    ambPlane9.rotation.y = Math.atan2(ad9.dx, ad9.dz);
-    ambPlane9.userData.prop.rotation.z += dt * 30;
-    if (Math.abs(ambPlane9.position.x) > 2300 || Math.abs(ambPlane9.position.z) > 2300) {
-      const na9 = Math.random() * Math.PI * 2;
-      ambPlane9.position.set(-Math.cos(na9) * 2200, 140 + Math.random() * 40, -Math.sin(na9) * 2200);
-      ad9.dx = Math.cos(na9); ad9.dz = Math.sin(na9);
-    }
-  }
-  if (ambFerry9) {   // 主岛⇄南塔开特 定期渡轮(纯环景)
-    const uf9 = ambFerry9.userData;
-    uf9.k += uf9.dir * dt / 60;
-    if (uf9.k > 1) { uf9.k = 1; uf9.dir = -1; } else if (uf9.k < 0) { uf9.k = 0; uf9.dir = 1; }
-    const ek9 = uf9.k, eu9 = 1 - ek9;
-    const bx9 = eu9 * eu9 * 400 + 2 * eu9 * ek9 * 560 + ek9 * ek9 * 170;
-    const bz9 = eu9 * eu9 * 40 + 2 * eu9 * ek9 * 380 + ek9 * ek9 * 700;
-    const pvx9 = bx9 - ambFerry9.position.x, pvz9 = bz9 - ambFerry9.position.z;
-    if (pvx9 * pvx9 + pvz9 * pvz9 > 1e-7) ambFerry9.rotation.y = Math.atan2(pvx9, pvz9);
-    ambFerry9.position.set(bx9, tideY + .1, bz9);
-    ambFerry9.rotation.z = Math.sin(t * 1.4) * .03;
-  }
-  if (balloon9) {   // 🎈 绕主岛缓飘
-    const ba9 = t * .022;
-    balloon9.position.set(Math.cos(ba9) * 190, 96 + Math.sin(t * .11) * 9, Math.sin(ba9) * 190);
-    balloon9.rotation.y = ba9;
-  }
-  if (ventPts9) {   // ♨️ 热泉气泡上升
-    const vp9 = ventPts9.geometry.attributes.position;
-    for (let i9 = 0; i9 < vp9.count; i9++) {
-      const v9 = VENTS9[i9 % VENTS9.length];
-      let y9 = vp9.getY(i9) + dt * (1.8 + (i9 % 3) * .7);
-      if (y9 > v9[2] + 11) y9 = v9[2] + .3;
-      vp9.setY(i9, y9);
-      vp9.setX(i9, v9[0] + Math.sin(y9 * 1.3 + i9) * .4);
-    }
-    vp9.needsUpdate = true;
-  }
-  if (freeDive9 && wreck9 && PSTORE.getItem('w1001.owreck') !== '1'
-      && Math.hypot(player.position.x - wreck9.x, player.position.y - wreck9.y, player.position.z - wreck9.z) < 9) {
-    PSTORE.setItem('w1001.owreck', '1'); earnSB(30);
-    toast('⚓ 你发现了外海沉船!货舱里一枚金锭还闪着光。⚡+30'); blip(760);
-  }
-  if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 脚步声(随材质)
-    sndStepT9 -= dt;
-    if (sndStepT9 <= 0) {
-      sndStepT9 = keys.shift ? .27 : .38;
-      const hp9 = player.position.y;
-      const onWood9 = (bh != null && Math.abs(hp9 - bh) < 2) || pierHeight(player.position.x, player.position.z) != null;
-      stepSnd9(onWood9 ? 'wood' : (hp9 < 2 ? 'sand' : 'grass'));
-    }
-  }
-  if (skyLant9) {   // 🏮 秋灯节:孔明灯夜升
-    skyLant9.mat.opacity = (1 - curDA) * .95;
-    if (curDA < .5) for (const l9 of skyLant9) {
-      l9.position.y += l9.userData.sp * dt;
-      l9.position.x += Math.sin(t * .4 + l9.userData.ph) * .12 * dt * 8;
-      if (l9.position.y > 130) { l9.position.set((Math.random() - .5) * 60, 4, (Math.random() - .5) * 60); }
-    }
-  }
-  if (EVENT === 'fireshow' && curDA < .3) {   // 🎆 夏夜烟花大会
-    fireShowT9.t -= dt;
-    if (fireShowT9.t <= 0) { fireShowT9.t = 34 + Math.random() * 22; fireworks(); }
-  }
-  guideT9 -= dt;   // 🧭 新手引导:交谈→钓鱼→渡海
-  if (guideT9 <= 0) {
-    guideT9 = 7;
-    if (PSTORE.getItem('w1001.gdone') !== '1') {
-      const fc9 = parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0;
-      const talked9 = Object.keys(AFF).length > 0;
-      if (stamps && stamps.size > 3) PSTORE.setItem('w1001.gdone', '1');   // 老玩家跳过
-      else if (!talked9 && PSTORE.getItem('w1001.g1') !== 'told') { PSTORE.setItem('w1001.g1', 'told'); toast('🧭 新手指引 1/3:走近任何居民,按 E 和 TA 聊聊'); }
-      else if (talked9 && !fc9 && PSTORE.getItem('w1001.g2') !== 'told') { PSTORE.setItem('w1001.g2', 'told'); toast('🧭 新手指引 2/3:去栈桥尽头,按 E 抛竿钓一条鱼'); }
-      else if (talked9 && fc9 && PSTORE.getItem('w1001.g3') !== 'told') { PSTORE.setItem('w1001.g3', 'told'); toast('🧭 新手指引 3/3:栈桥渡口按 E,渡向另一个世界!'); }
-      else if (talked9 && fc9 && stamps && stamps.size > 1) { PSTORE.setItem('w1001.gdone', '1'); earnSB(20); toast('🎓 新手指引完成——群岛任你闯荡了!⚡+20'); }
-    }
-  }
-  aniSndT9 -= dt;   // 🐔🦖 动物叫声(就近触发)
-  if (aniSndT9 <= 0) {
-    aniSndT9 = 7 + Math.random() * 8;
-    for (const a9 of ANIMALS9) {
-      const k9 = a9.userData.kind;
-      if ((k9 === 'hen' || k9 === 'dino') && Math.hypot(player.position.x - a9.position.x, player.position.z - a9.position.z) < 10) { aniSnd9(k9); break; }
-    }
-  }
-  if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
-  prevSwim9 = swimming;
-  /* 🌧️ 雨落水面涟漪 */
-  if (RAINY && !MOBILE && !diving) {
-    ringT9 -= dt;
-    if (ringT9 <= 0) {
-      ringT9 = .09;
-      const rx9 = player.position.x + (Math.random() - .5) * 70, rz9 = player.position.z + (Math.random() - .5) * 70;
-      if (heightMesh(rx9, rz9) < -.4) {
-        const rg9 = new THREE.Mesh(ringGeo9, ringMat9);
-        rg9.rotation.x = -Math.PI / 2; rg9.position.set(rx9, tideY + .2, rz9);
-        scene.add(rg9); rings9.push({ m: rg9, life: .9 });
-        if (rings9.length > 26) { const o9 = rings9.shift(); scene.remove(o9.m); }
-      }
-    }
-  }
-  for (let i9 = rings9.length - 1; i9 >= 0; i9--) { const r9 = rings9[i9]; r9.life -= dt; if (r9.life < 0) { scene.remove(r9.m); rings9.splice(i9, 1); } else r9.m.scale.setScalar(1 + (0.9 - r9.life) * 4.5); }
-  for (const d9 of dolphins9) {   // 🐬 鼠海豚式跃水
-    const ph9 = d9.userData.ph, aa9 = t * .32 + ph9;
-    const cx9 = 30 + Math.cos(aa9) * 26, cz9 = 474 + Math.sin(aa9) * 26;
-    const jp9 = aa9 * 3.1;
-    d9.position.set(cx9, Math.sin(jp9) * 2.1 - 1.1 + tideY, cz9);
-    d9.rotation.y = Math.atan2(-Math.sin(aa9), Math.cos(aa9));
-    d9.rotation.x = -Math.cos(jp9) * .55;
-    d9.visible = d9.position.y > -2.4;
-  }
-  /* 🔥🚨 光效:火焰跳动 / 火星 / 航标闪烁 */
-  for (const f9 of flames9) { const k9 = .75 + Math.sin(t * 11 + f9.userData.ph9) * .28; f9.scale.set(k9, .8 + Math.sin(t * 13 + f9.userData.ph9 * 2) * .35, k9); f9.material.opacity = (.5 + (1 - curDA) * .4) * (.7 + Math.sin(t * 9 + f9.userData.ph9) * .3); }
-  if (sparks9) {
-    const su9 = sparks9.userData, sp29 = sparks9.geometry.attributes.position;
-    for (let i9 = 0; i9 < sp29.count; i9++) {
-      let y9 = sp29.getY(i9) + dt * (1.6 + (i9 % 3) * .8);
-      if (y9 > su9.fh + 5.5) { y9 = su9.fh + 1; sp29.setX(i9, su9.fx + (Math.random() - .5)); sp29.setZ(i9, su9.fz + (Math.random() - .5)); }
-      sp29.setY(i9, y9);
-      sp29.setX(i9, sp29.getX(i9) + Math.sin(y9 * 2 + i9) * .3 * dt);
-    }
-    sp29.needsUpdate = true;
-    sparks9.material.opacity = .3 + (1 - curDA) * .6;
-  }
-  for (const n9 of NAVL9) n9.m.material.opacity = (1 - curDA) * (Math.sin(t * Math.PI * 2 / n9.per + n9.ph) > .3 ? .95 : .06);
-  /* 🐑🕊️🪼 生命系统:动物游走 / 候鸟 / 水母 */
-  baaT9 -= dt;
-  for (const a9 of ANIMALS9) {
-    const u9 = a9.userData;
-    if (curDA < .22) { a9.scale.y += (.78 - a9.scale.y) * Math.min(1, dt * 2); continue; }   // 🌙 夜眠伏卧
-    if (a9.scale.y < .99) a9.scale.y += (1 - a9.scale.y) * Math.min(1, dt * 2);
-    const pdx9 = player.position.x - a9.position.x, pdz9 = player.position.z - a9.position.z, pd9 = Math.hypot(pdx9, pdz9);
-    if (pd9 < 6 && PSTORE.getItem('w1001.seen_' + u9.kind) !== '1') {   // 🐾 图鉴首见
-      PSTORE.setItem('w1001.seen_' + u9.kind, '1'); earnSB(3);
-      const NM9 = { sheep: '夏尔绵羊', deer: '鲸背斑鹿', rabbit: '草甸兔', beast: '山海异兽崽', fox: '青丘之狐', dino: '侏罗纪幼龙', hen: '南塔开特母鸡' };
-      toast('🐾 动物图鉴新收录:' + (NM9[u9.kind] || u9.kind) + ' ⚡+3');
-      if (['sheep', 'deer', 'rabbit', 'beast', 'fox', 'dino', 'hen'].every(k9 => PSTORE.getItem('w1001.seen_' + k9) === '1')) {
-        if (PSTORE.getItem('w1001.natural9') !== '1') { PSTORE.setItem('w1001.natural9', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「自然观察家」——七种动物全部收录 · ⭐+1'); }
-      }
-    }
-    const beh9 = BEH9[u9.kind];
-    if (u9.run > 0) u9.run -= dt;
-    if (beh9 === 'flee' && pd9 < 7 && u9.run <= 0) {   // 🐇 惊逃
-      u9.run = 1.6; u9.pause = 0;
-      const fx9 = a9.position.x - pdx9 / pd9 * 10, fz9 = a9.position.z - pdz9 / pd9 * 10;
-      if (heightMesh(fx9, fz9) > .5) { u9.tx = fx9; u9.tz = fz9; }
-    } else if (beh9 === 'stare' && pd9 < 6) {   // 🐑 停步对视 + 咩
-      u9.pause = Math.max(u9.pause, .4);
-      a9.rotation.y = Math.atan2(pdx9, pdz9);
-      if (baaT9 <= 0) { baaT9 = 8 + Math.random() * 8; blip(233); setTimeout(() => blip(196), 110); }
-    } else if (beh9 === 'curious' && pd9 < 11 && pd9 > 3.2 && u9.pause <= 0 && u9.run <= 0) {   // 🦊 好奇靠近
-      const cx9 = player.position.x - pdx9 / pd9 * 2.6, cz9 = player.position.z - pdz9 / pd9 * 2.6;
-      if (heightMesh(cx9, cz9) > .5) { u9.tx = cx9; u9.tz = cz9; }
-    }
-    if (u9.pause > 0) { u9.pause -= dt; continue; }
-    const dx9 = u9.tx - a9.position.x, dz9 = u9.tz - a9.position.z, dd9 = Math.hypot(dx9, dz9);
-    if (dd9 < .4) { u9.pause = 2 + Math.random() * 5; const aa9 = Math.random() * Math.PI * 2, rr9 = 4 + Math.random() * 9; const nx9 = u9.hx + Math.cos(aa9) * rr9, nz9 = u9.hz + Math.sin(aa9) * rr9; if (heightMesh(nx9, nz9) > .5) { u9.tx = nx9; u9.tz = nz9; } }
-    else {
-      const spd9 = u9.sp * (u9.run > 0 ? 3 : 1);
-      a9.position.x += dx9 / dd9 * spd9 * dt; a9.position.z += dz9 / dd9 * spd9 * dt;
-      a9.rotation.y = Math.atan2(dx9, dz9);
-      const hop9 = u9.kind === 'rabbit' || (u9.kind === 'hen' && u9.run > 0);
-      a9.position.y = Math.max(heightMesh(a9.position.x, a9.position.z), 0) + (hop9 ? Math.abs(Math.sin(t * 9 + u9.ph)) * .35 : Math.abs(Math.sin(t * 5 + u9.ph)) * .05);
-    }
-  }
-  if (vFlock9) {
-    const uv9 = vFlock9.userData;
-    vFlock9.position.x += uv9.dx * 13 * dt; vFlock9.position.z += uv9.dz * 13 * dt;
-    vFlock9.rotation.y = Math.atan2(uv9.dx, uv9.dz);
-    if (Math.abs(vFlock9.position.x) > 2300 || Math.abs(vFlock9.position.z) > 2300) {
-      const na9 = Math.random() * Math.PI * 2;
-      vFlock9.position.set(-Math.cos(na9) * 2100, 170 + Math.random() * 60, -Math.sin(na9) * 2100);
-      uv9.dx = Math.cos(na9); uv9.dz = Math.sin(na9);
-    }
-    for (const b9 of vFlock9.children) { const f9 = Math.sin(t * 7 + b9.userData.ph) * .5; b9.userData.wl.rotation.z = f9; b9.userData.wr.rotation.z = -f9; }
-  }
-  for (const j9 of jellies9) {
-    const uj9 = j9.userData;
-    j9.position.y = uj9.y0 + Math.sin(t * .7 + uj9.ph) * .6;
-    const pu9 = 1 + Math.sin(t * 2.2 + uj9.ph) * .18;
-    j9.scale.set(pu9, 2 - pu9, pu9);
-    j9.material.emissiveIntensity = .12 + (1 - curDA) * .9;
-    j9.material.opacity = .4 + (1 - curDA) * .25;
-  }
-  /* 👣⛵🫧🌊 微痕迹与泡沫 */
-  if (!MOBILE) {
-    if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
-    CLOUDU9.t.value = t;
-    if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
-      stepT9 -= dt;
-      const hh9 = player.position.y;
-      if (stepT9 <= 0 && hh9 > .2 && hh9 < 1.9) {
-        stepT9 = .34; stepSide9 = -stepSide9;
-        const fp9 = new THREE.Mesh(stepGeo9, stepMat9);
-        fp9.rotation.x = -Math.PI / 2; fp9.scale.set(.8, 1.3, 1); fp9.rotation.z = -faceYaw;
-        fp9.position.set(player.position.x - Math.sin(faceYaw) * .2 + Math.cos(faceYaw) * .28 * stepSide9, Math.max(heightMesh(player.position.x, player.position.z), 0) + .05, player.position.z - Math.cos(faceYaw) * .2 - Math.sin(faceYaw) * .28 * stepSide9);
-        scene.add(fp9); steps9.push({ m: fp9, life: 7 });
-        if (steps9.length > 22) { const o9 = steps9.shift(); scene.remove(o9.m); }
-      }
-    }
-    for (let i9 = steps9.length - 1; i9 >= 0; i9--) { const s9 = steps9[i9]; s9.life -= dt; if (s9.life < 0) { scene.remove(s9.m); steps9.splice(i9, 1); } else if (s9.life < 2) s9.m.scale.setScalar(Math.max(.01, s9.life / 2)); }
-    if ((vehicle === 2 && pMoving) || (flight && flight.sea)) {   // ⛵ 船尾迹(帆船/渡轮)
-      wakeT9 -= dt;
-      if (wakeT9 <= 0) {
-        wakeT9 = .22;
-        const wk9 = new THREE.Mesh(wakeGeo9, wakeMat9);
-        wk9.rotation.x = -Math.PI / 2;
-        wk9.position.set(player.position.x - Math.sin(faceYaw) * 2.6, tideY + .22, player.position.z - Math.cos(faceYaw) * 2.6);
-        scene.add(wk9); wakes9.push({ m: wk9, life: 2.6 });
-        const bw9 = new THREE.Mesh(wakeGeo9, wakeMat9);   // ⛵ 船头破浪
-        bw9.rotation.x = -Math.PI / 2; bw9.scale.setScalar(.5);
-        bw9.position.set(player.position.x + Math.sin(faceYaw) * 2.5, tideY + .24, player.position.z + Math.cos(faceYaw) * 2.5);
-        scene.add(bw9); wakes9.push({ m: bw9, life: 1.2 });
-        if (wakes9.length > 22) { const o9 = wakes9.shift(); scene.remove(o9.m); }
-      }
-    }
-    for (let i9 = wakes9.length - 1; i9 >= 0; i9--) { const w9 = wakes9[i9]; w9.life -= dt; if (w9.life < 0) { scene.remove(w9.m); wakes9.splice(i9, 1); } else { w9.m.scale.setScalar(1 + (2.6 - w9.life) * 1.4); } }
-    if (smokePts9) {   // 🏭 炊烟:缓升回卷,晨昏夜更浓
-      const sp9 = smokePts9.geometry.attributes.position;
-      for (let i9 = 0; i9 < sp9.count; i9++) {
-        const c9 = CHIM9[i9 % CHIM9.length];
-        let y9 = sp9.getY(i9) + dt * (.7 + (i9 % 3) * .25);
-        if (y9 > c9[1] + 5) y9 = c9[1];
-        sp9.setY(i9, y9);
-        sp9.setX(i9, c9[0] + Math.sin(y9 * .8 + smokeSeed9[i9]) * .5);
-      }
-      sp9.needsUpdate = true;
-      smokePts9.material.opacity = .1 + (1 - curDA) * .22;
-    }
-    bubPts9.visible = diving;
-    if (diving) {   // 🫧 潜水气泡
-      const bp9 = bubPts9.geometry.attributes.position;
-      if (pMoving && Math.random() < dt * 9) {
-        bubI9 = (bubI9 + 1) % bp9.count;
-        bp9.setXYZ(bubI9, player.position.x + (Math.random() - .5) * .8, player.position.y + .6, player.position.z + (Math.random() - .5) * .8);
-        bubY09[bubI9] = player.position.y + .6;
-      }
-      for (let i9 = 0; i9 < bp9.count; i9++) { const y9 = bp9.getY(i9); if (y9 > -900) { bp9.setY(i9, y9 + 3 * dt); if (y9 - bubY09[i9] > 7) bp9.setY(i9, -999); } }
-      bp9.needsUpdate = true;
-    }
-  }
-  if (rainPts) {
+  worldFx9(dt, t, pMoving, bh);   // 🌍 世界特效与系统节拍(提为具名函数,主循环瘦身)
+    if (rainPts) {
     rainPts.position.copy(player.position);
     const rp3 = rainPts.geometry.attributes.position, ru9 = rainPts.userData;
     for (let i = 0; i < rp3.count; i++) {
