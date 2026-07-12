@@ -2391,7 +2391,7 @@ if (!MOBILE) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   const sc = sun.shadow.camera;
-  sc.left = -170; sc.right = 170; sc.top = 170; sc.bottom = -170; sc.near = 10; sc.far = 900;
+  sc.left = -260; sc.right = 260; sc.top = 260; sc.bottom = -260; sc.near = 10; sc.far = 900;   // 阴影覆盖扩展(中景建筑也落影)
   sun.shadow.bias = -0.0006;
 }
 /* --- 物理大气天空 --- */
@@ -2574,6 +2574,7 @@ const FESTIVAL = (() => {
   return key ? Object.assign({ key }, FEST_DEFS[key]) : null;
 })();
 const MOON_FULL = FULLMOON || (FESTIVAL && FESTIVAL.key === 'midautumn');   // 中秋强制满月
+const CLOUDU9 = { t: { value: 0 }, a: { value: .13 } };   // 🌥️ 云影 uniforms(时间/强度)
 let rainPts = null;
 if (RAINY) {
   const N4 = WEATHER === 'storm' ? 900 : 480, arr2 = new Float32Array(N4 * 3);
@@ -2595,6 +2596,49 @@ if (RAINY) {
   rainPts.userData.fall = SNOWY9 ? 14 : 55;
   rainPts.userData.snow = SNOWY9;
   scene.add(rainPts);
+} else {   // 🌸🍂 晴日季节粒子:春飘花瓣,秋落黄叶(复用雨粒子更新循环)
+  const M9 = new Date().getMonth() + 1, SEA9 = M9 >= 3 && M9 <= 5 ? 'spring' : (M9 >= 9 && M9 <= 11 ? 'autumn' : null);
+  if (SEA9) {
+    const N4 = 240, arr2 = new Float32Array(N4 * 3), rr2 = mulberry32(45);
+    for (let i = 0; i < N4; i++) { arr2[i * 3] = (rr2() - .5) * 110; arr2[i * 3 + 1] = rr2() * 60; arr2[i * 3 + 2] = (rr2() - .5) * 110; }
+    const g4 = new THREE.BufferGeometry(); g4.setAttribute('position', new THREE.BufferAttribute(arr2, 3));
+    rainPts = new THREE.Points(g4, new THREE.PointsMaterial({
+      color: SEA9 === 'spring' ? 0xf2b8c6 : 0xc8903a, size: 2, transparent: true, opacity: .72, sizeAttenuation: false }));
+    rainPts.userData.fall = SEA9 === 'spring' ? 3.2 : 4.6;
+    rainPts.userData.snow = true;   // 借雪花的横飘
+    scene.add(rainPts);
+  }
+}
+/* 🌊 岸线泡沫(声明;扫描在全部岛屿建成后进行——height 需含 NI 群岛) */
+let foamPts = null;
+/* 🌈 彩虹(雨天白日,远海一道七色弧) */
+let rainbow9 = null;
+if (WEATHER === 'rain') {
+  rainbow9 = new THREE.Group();
+  [0xff4a4a, 0xff9a3a, 0xf2d24a, 0x5ac25a, 0x4a9ae6, 0x5a5ae6, 0x9a5ae6].forEach((c9, i9) => {
+    rainbow9.add(new THREE.Mesh(new THREE.TorusGeometry(300 - i9 * 4.5, 2.1, 5, 56, Math.PI),
+      new THREE.MeshBasicMaterial({ color: c9, transparent: true, opacity: .15, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })));
+  });
+  rainbow9.position.set(-520, -128, -880); rainbow9.visible = false;
+  scene.add(rainbow9);
+}
+/* 🌌 极光(冬季夜空,北天三幅绿幕缓摆) */
+let aurora9 = null;
+if ((new Date().getMonth() + 1) % 12 < 3) {
+  aurora9 = new THREE.Group();
+  const cvA9 = document.createElement('canvas'); cvA9.width = 64; cvA9.height = 256;
+  const cA9 = cvA9.getContext('2d'), grA9 = cA9.createLinearGradient(0, 256, 0, 0);
+  grA9.addColorStop(0, 'rgba(96,255,176,.9)'); grA9.addColorStop(.45, 'rgba(80,220,200,.4)'); grA9.addColorStop(1, 'rgba(120,140,255,0)');
+  cA9.fillStyle = grA9; cA9.fillRect(0, 0, 64, 256);
+  const texA9 = new THREE.CanvasTexture(cvA9);
+  for (let i = 0; i < 3; i++) {
+    const mA9 = new THREE.MeshBasicMaterial({ map: texA9, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    const pl9 = new THREE.Mesh(new THREE.PlaneGeometry(620 + i * 140, 240, 24, 1), mA9);
+    pl9.position.set(-500 + i * 520, 330 + i * 24, -1550 - i * 60);
+    pl9.rotation.z = (i - 1) * .1;
+    aurora9.add(pl9);
+  }
+  scene.add(aurora9);
 }
 let ambT9 = 6;   // 🔊 环境声调度
 function chirp9() {   // 鸟鸣:2-3 声上滑短哨
@@ -2732,6 +2776,9 @@ function updateDayNight(t) {
   }
   const wOp9 = clamp((1 - da) * 1.2, 0, 1) * .92;   // 🪟 夜窗灯
   for (const m9 of WINMATS9) { m9.opacity = wOp9; m9.visible = wOp9 > .03; }
+  if (rainbow9) rainbow9.visible = da > .55;   // 🌈 雨天白日见虹
+  if (aurora9) aurora9.children.forEach((p9, i9) => { p9.material.opacity = (1 - da) * (.2 + Math.sin(t * .13 + i9 * 2.1) * .08); p9.rotation.z = (i9 - 1) * .1 + Math.sin(t * .05 + i9) * .04; });   // 🌌 冬夜极光缓摆
+  CLOUDU9.a.value = (WEATHER === 'clear' ? 1 : .35) * da * .15;   // 🌥️ 云影日间才显
   if (beacon) { beacon.material.opacity = (1 - da) * .32; beacon.rotation.y = t * .9; }
   return da;
 }
@@ -2846,7 +2893,18 @@ function heightMesh(x, z) {
   }
   const terrainMat = MOBILE
     ? new THREE.MeshLambertMaterial({ vertexColors: true })
-    : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .96, metalness: 0 });
+    : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: RAINY ? .58 : .96, metalness: 0 });   // 🌧️ 雨天湿地面微反光
+  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影:两层滚动噪声乘在地表(世界在呼吸)
+    sh9.uniforms.uCldT9 = CLOUDU9.t; sh9.uniforms.uCldA9 = CLOUDU9.a;
+    sh9.vertexShader = sh9.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWXZ9 = ( modelMatrix * vec4( position, 1.0 ) ).xz;');
+    sh9.fragmentShader = sh9.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nuniform float uCldT9;\nuniform float uCldA9;')
+      .replace('#include <dithering_fragment>',
+        'float cs9 = sin( vWXZ9.x * .008 + uCldT9 * .021 + sin( vWXZ9.y * .011 + uCldT9 * .016 ) * 1.7 ) * sin( vWXZ9.y * .007 - uCldT9 * .014 + sin( vWXZ9.x * .009 ) * 1.3 );\n' +
+        'gl_FragColor.rgb *= 1.0 - smoothstep( .25, .9, cs9 ) * uCldA9;\n#include <dithering_fragment>');
+  };
   const w2 = TSEG + 1, GRIDN = w2 * w2;
   for (let chz = 0; chz < TCH; chz++) for (let chx = 0; chx < TCH; chx++) {   // 8×8 分块 + 三档 LOD(1/2/5 细分步长)
     // 顶点 = 网格 w2×w2 + 周边裙边(下压 3m,防 LOD 接缝裂缝)
@@ -5722,6 +5780,18 @@ let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = n
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
 let causticLight = null, causticTex = null;
 let abyssLight = null, MAZE_FLOW = null, MAZE_DIST = null, RAPIDS = new Set(), flowPts = null, nearEdge = 0;
+/* 👣 沙滩脚印 / ⛵ 船尾迹 / 🫧 潜水气泡(小对象池) */
+const steps9 = [], stepGeo9 = new THREE.CircleGeometry(.17, 6), stepMat9 = new THREE.MeshBasicMaterial({ color: 0x7a6a4e, transparent: true, opacity: .4, depthWrite: false });
+let stepT9 = 0, stepSide9 = 1;
+const wakes9 = [], wakeGeo9 = new THREE.CircleGeometry(.5, 8), wakeMat9 = new THREE.MeshBasicMaterial({ color: 0xeef6f4, transparent: true, opacity: .3, depthWrite: false });
+let wakeT9 = 0;
+let bubPts9 = null, bubY09 = null, bubI9 = 0;
+{
+  const NB9 = 48, ba9 = new Float32Array(NB9 * 3).fill(-999); bubY09 = new Float32Array(NB9);
+  const bg9 = new THREE.BufferGeometry(); bg9.setAttribute('position', new THREE.BufferAttribute(ba9, 3));
+  bubPts9 = new THREE.Points(bg9, new THREE.PointsMaterial({ color: 0xcfeefc, size: 1.4, transparent: true, opacity: .55, sizeAttenuation: false, depthWrite: false }));
+  bubPts9.frustumCulled = false; bubPts9.visible = false; scene.add(bubPts9);
+}
 let babelBook = null, babelDust = null;
 const babelLamps = [];
 const jellies = [];
@@ -8625,6 +8695,47 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  /* 👣⛵🫧🌊 微痕迹与泡沫 */
+  if (!MOBILE) {
+    if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
+    CLOUDU9.t.value = t;
+    if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
+      stepT9 -= dt;
+      const hh9 = player.position.y;
+      if (stepT9 <= 0 && hh9 > .2 && hh9 < 1.9) {
+        stepT9 = .34; stepSide9 = -stepSide9;
+        const fp9 = new THREE.Mesh(stepGeo9, stepMat9);
+        fp9.rotation.x = -Math.PI / 2; fp9.scale.set(.8, 1.3, 1); fp9.rotation.z = -faceYaw;
+        fp9.position.set(player.position.x - Math.sin(faceYaw) * .2 + Math.cos(faceYaw) * .28 * stepSide9, Math.max(heightMesh(player.position.x, player.position.z), 0) + .05, player.position.z - Math.cos(faceYaw) * .2 - Math.sin(faceYaw) * .28 * stepSide9);
+        scene.add(fp9); steps9.push({ m: fp9, life: 7 });
+        if (steps9.length > 22) { const o9 = steps9.shift(); scene.remove(o9.m); }
+      }
+    }
+    for (let i9 = steps9.length - 1; i9 >= 0; i9--) { const s9 = steps9[i9]; s9.life -= dt; if (s9.life < 0) { scene.remove(s9.m); steps9.splice(i9, 1); } else if (s9.life < 2) s9.m.scale.setScalar(Math.max(.01, s9.life / 2)); }
+    if (vehicle === 2 && pMoving) {   // ⛵ 船尾迹
+      wakeT9 -= dt;
+      if (wakeT9 <= 0) {
+        wakeT9 = .22;
+        const wk9 = new THREE.Mesh(wakeGeo9, wakeMat9);
+        wk9.rotation.x = -Math.PI / 2;
+        wk9.position.set(player.position.x - Math.sin(faceYaw) * 2.6, tideY + .22, player.position.z - Math.cos(faceYaw) * 2.6);
+        scene.add(wk9); wakes9.push({ m: wk9, life: 2.6 });
+        if (wakes9.length > 14) { const o9 = wakes9.shift(); scene.remove(o9.m); }
+      }
+    }
+    for (let i9 = wakes9.length - 1; i9 >= 0; i9--) { const w9 = wakes9[i9]; w9.life -= dt; if (w9.life < 0) { scene.remove(w9.m); wakes9.splice(i9, 1); } else { w9.m.scale.setScalar(1 + (2.6 - w9.life) * 1.4); } }
+    bubPts9.visible = diving;
+    if (diving) {   // 🫧 潜水气泡
+      const bp9 = bubPts9.geometry.attributes.position;
+      if (pMoving && Math.random() < dt * 9) {
+        bubI9 = (bubI9 + 1) % bp9.count;
+        bp9.setXYZ(bubI9, player.position.x + (Math.random() - .5) * .8, player.position.y + .6, player.position.z + (Math.random() - .5) * .8);
+        bubY09[bubI9] = player.position.y + .6;
+      }
+      for (let i9 = 0; i9 < bp9.count; i9++) { const y9 = bp9.getY(i9); if (y9 > -900) { bp9.setY(i9, y9 + 3 * dt); if (y9 - bubY09[i9] > 7) bp9.setY(i9, -999); } }
+      bp9.needsUpdate = true;
+    }
+  }
   if (rainPts) {
     rainPts.position.copy(player.position);
     const rp3 = rainPts.geometry.attributes.position, ru9 = rainPts.userData;
@@ -9026,12 +9137,32 @@ const BUCKETS = [
   }
   console.log('🧱 静态合并:', rm9, '个网格 →', ad9, '个合并体');
 }
+/* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
+if (!MOBILE) {
+  const rf9 = mulberry32(202), pts9 = [];
+  outer9: for (let gx9 = -1900; gx9 < 1900; gx9 += 7)
+    for (let gz9 = -1900; gz9 < 1900; gz9 += 7) {
+      const h9 = height(gx9 + rf9() * 4, gz9 + rf9() * 4);
+      if (h9 > -1.15 && h9 < .6 && rf9() < .85) {
+        pts9.push(gx9 + rf9() * 6 - 3, .16, gz9 + rf9() * 6 - 3);
+        if (pts9.length > 10500) break outer9;
+      }
+    }
+  const cvF9 = document.createElement('canvas'); cvF9.width = cvF9.height = 32;
+  const cF9 = cvF9.getContext('2d'), gr9 = cF9.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr9.addColorStop(0, 'rgba(255,255,255,.95)'); gr9.addColorStop(.6, 'rgba(255,255,255,.4)'); gr9.addColorStop(1, 'rgba(255,255,255,0)');
+  cF9.fillStyle = gr9; cF9.fillRect(0, 0, 32, 32);
+  const fgF9 = new THREE.BufferGeometry(); fgF9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts9), 3));
+  foamPts = new THREE.Points(fgF9, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(cvF9), color: 0xf4f8f6, size: 2.4, transparent: true, opacity: .34, depthWrite: false }));
+  scene.add(foamPts);
+  console.log('🌊 岸线泡沫:', pts9.length / 3 | 0, '点');
+}
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外;顺路定 IBL 环境强度 */
 if (!MOBILE) {
   const envSeen9 = new Set();
   scene.traverse(o => {
     if (o.isMesh && o.material && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; }
-    if (o.isMesh && o.material && o.material.isMeshStandardMaterial && !envSeen9.has(o.material)) { envSeen9.add(o.material); o.material.envMapIntensity = o.material.vertexColors ? .12 : .25; }   // 顶点色地表弱反射,道具建筑中等
+    if (o.isMesh && o.material && o.material.isMeshStandardMaterial && !envSeen9.has(o.material)) { envSeen9.add(o.material); o.material.envMapIntensity = o.material.vertexColors ? (RAINY ? .32 : .12) : .25; }   // 顶点色地表弱反射(雨天湿面反光加倍),道具建筑中等
   });
   sky.castShadow = sky.receiveShadow = false;
   if (oceanWater) { oceanWater.castShadow = false; oceanWater.receiveShadow = false; }
