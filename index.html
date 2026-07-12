@@ -56,6 +56,9 @@
   /* 海图弹层过场 */
   #bigmap > div { animation: mapPop .22s ease-out; box-shadow: 0 14px 64px rgba(0,0,0,.65), inset 0 0 0 1px rgba(140,200,255,.12); }
   @keyframes mapPop { from { transform: scale(.94); opacity: 0; } }
+#btnWheel9{position:fixed;right:14px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:60;width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(16,24,36,.72);font-size:22px;color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#wheel9{position:fixed;right:14px;bottom:calc(210px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;gap:9px}
+#wheel9 button{width:50px;height:50px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(16,24,36,.72);font-size:21px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 </style>
 </head>
 <body>
@@ -180,6 +183,14 @@
 <!-- 移动端控件 -->
 <div id="stick" class="hidden"><div id="stickKnob"></div></div>
 <button id="btnAct" class="hidden">👀</button>
+<div id="wheel9" class="hidden">
+  <button data-wk="c" title="下潜">🤿</button>
+  <button data-wk="x" title="导航">🧭</button>
+  <button data-wk="r" title="座驾">🚲</button>
+  <button data-wk="k" title="观星">🔭</button>
+  <button data-wk="g" title="画质">🖥️</button>
+</div>
+<button id="btnWheel9" class="hidden">⚙️</button>
 
 <script src="world-data.js?v=3"></script>
 <script type="importmap">
@@ -188,7 +199,7 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=176"></script>
+<script type="module" src="game3d.js?v=179"></script>
 <!-- hub-nav: back to 1001×1001 -->
 <a id="hub-link" href="https://xujiann.github.io/" title="返回 1001 × 1001 · 万物收藏" aria-label="返回 1001×1001 万物收藏">1001 × 1001</a>
 <style>#hub-link{position:fixed;left:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:120;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:100px;background:rgba(18,15,28,.85);border:1px solid rgba(255,255,255,.14);color:#e8e8f0;font:600 12.5px/1 system-ui,-apple-system,"Segoe UI","Noto Sans SC",sans-serif;text-decoration:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35);transition:transform .2s,border-color .2s,background .2s}#hub-link::before{content:"\2756";color:#d9b26a;font-size:13px}#hub-link:hover{transform:translateY(-2px);border-color:rgba(217,178,106,.6);background:rgba(28,22,42,.95)}@media(max-width:640px){#hub-link{font-size:11.5px;padding:6px 11px;left:10px}}</style>

@@ -49,7 +49,9 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck', 'fishking', 'chain1', 'chain2', 'race1', 'racebest',
+  'plot1', 'plot2', 'plot3', 'harp9', 'natural9', 'gdone',
+  'seen_sheep', 'seen_deer', 'seen_rabbit', 'seen_beast', 'seen_fox', 'seen_dino', 'seen_hen'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
@@ -1061,6 +1063,14 @@ const LORE = {
     desc: '拴在船舷的这条马林鱼,从吻到尾比小船还长——银蓝的脊背,长剑似的上颌。圣地亚哥说他等了八十四天,又搏了三天三夜才制服它。如今归途未半,血腥味已招来成群的鲨鱼……你要帮他守住这条鱼吗?' },
   peng:    { icon: '🕊️', color: '#2c4a6a', title: '大鹏', en: 'The Peng', hint: '乘之扶摇直上',
     desc: '《逍遥游》:北冥有鱼,其名为鲲。鲲之大,不知其几千里也;化而为鸟,其名为鹏。鹏之背,不知其几千里也;怒而飞,其翼若垂天之云。——它低头看你,似在相邀:可要乘我扶摇直上,环游这一千零一个世界?' },
+  harp9: { icon: '🎼', color: '#8a6a2a', title: '音乐厅的立式竖琴', en: 'The Concert Harp', hint: '谁都可以弹一段',
+    desc: '黄金音乐厅门口立着一架谁都可以弹的竖琴,琴柱上刻着一行小字:"从最低的那根弦开始,依次拨到最高——琴会记得你。"' },
+  garden9: { icon: '🌷', color: '#4a7a44', title: '小屋花园', en: 'Cottage Garden', hint: '播种·浇灌·等花开',
+    desc: '三只花池挨着小屋的东墙。种下去的花不认游戏里的日月——它们按你世界里的日子生长:今天播种,明天发芽,后天结蕾,第三天清晨开花。开花那天回来收,它会把颜色留给你。' },
+  chbottle: { icon: '🍾', color: '#3a6a7a', title: '栈桥下的漂流瓶', en: 'Message in a Bottle', hint: '一条三站的线索',
+    desc: '瓶子里的字条被海水泡得发皱:"我把想说的话分成了三份,顺着洋流放出去。若你捡到第一份——替我把它们串起来。落款:一个没能出海的人。"' },
+  chstar: { icon: '✨', color: '#4a4a7a', title: '星图人的托付', en: 'The Stargazer\'s Errand', hint: '一封送往云端的信',
+    desc: '报亭旁的长椅上留着一封没贴邮票的信,信封上写:"请交给离星星最近的人。"下面一行小字:寄信人就住在你每晚抬头看的那片天空下。' },
   gardener: { icon: '🤖', color: '#5d6e5d', title: '苔藓园丁', en: 'The Moss Gardener', hint: '它在等谁',
     desc: '一具比城还老的机器人,肩头长满青苔,一只白鸽在它锁骨的凹陷里筑了巢。城里的人走光之后,它守着这几块石碑,日复一日给花浇水。它不说话——制造它的语言早已失传——但它看见你时,眼睛里的灯亮了一格。' },
   skytree: { icon: '🌳', color: '#4f7d46', title: '抱城巨树', en: 'The Great Tree', hint: '根须托着城',
@@ -1311,6 +1321,25 @@ function loreCard(k) {
     : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
   if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button> <button class="again" data-pengsky style="margin-top:8px">🏯 乘大鹏,直上天空之城</button>';
   if (k === 'skyback') btn = '<button class="again" data-skyback>🕊️ 呼唤大鹏,乘风归海</button>';
+  if (k === 'harp9') btn = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">' +
+    [0, 1, 2, 3, 4, 5, 6].map(i9 => `<button class="again" data-note="${i9}" style="min-width:40px">${'哆来咪发索拉西'[i9]}</button>`).join('') + '</div>'
+    + (PSTORE.getItem('w1001.harp9') === '1' ? '<div style="text-align:center;color:#8a7c62;font-size:12px;padding-top:6px">琴已记得你。</div>' : '');
+  if (k === 'garden9') {
+    if (PSTORE.getItem('w1001.home') !== '1') btn = '<span style="color:#8a7c62;font-size:13px">这块地属于小屋——先在东滩置业(200⚡),花园随屋奉送。</span>';
+    else btn = [1, 2, 3].map(i9 => {
+      const d9 = PSTORE.getItem('w1001.plot' + i9);
+      if (!d9) return `<button class="again" data-plant="${i9}" style="display:block;width:100%;margin:4px 0">🌱 ${i9} 号花池 · 播种(10⚡)</button>`;
+      const days9 = Math.floor((Date.now() - new Date(d9).getTime()) / 86400000);
+      if (days9 >= 3) return `<button class="again" data-harvest="${i9}" style="display:block;width:100%;margin:4px 0">🌸 ${i9} 号花池开花了!收获(⚡+25)</button>`;
+      return `<span style="display:block;padding:5px;color:#8a7c62;font-size:13px">${['🌱 刚播下,浇了头遍水', '🌿 发芽了,叶尖顶着露', '🌾 结蕾了,就等明早'][days9] || '🌾 结蕾了'}(${i9} 号 · 还需 ${Math.max(0, 3 - days9)} 天)</span>`;
+    }).join('');
+  }
+  if (k === 'chbottle') btn = PSTORE.getItem('w1001.chain1') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">三只瓶子都找到了。海上再没有没说完的话。</span>'
+    : '<button class="again" data-chainx="bottle">🍾 追这条线索(流光引路)</button>';
+  if (k === 'chstar') btn = PSTORE.getItem('w1001.chain2') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">信已送达,回信已投。夜里那颗星,格外亮。</span>'
+    : '<button class="again" data-chainx="star">✨ 接下这份托付(流光引路)</button>';
   if (k === 'gardener') btn = PSTORE.getItem('w1001.skyflower') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">石碑前多了一朵花。园丁对你微微躬身,又转回它的花去。</span>'
     : '<button class="again" data-flower>🌼 摘一朵花,放在石碑前</button>';
@@ -1627,6 +1656,25 @@ function openCard(s) {
     toast('🕊️ 纵身一跃——大鹏接住了你,乘风归海!');
     blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
   });
+  cardBody.querySelector('[data-chainx]')?.addEventListener('click', ev => { chainStart9(ev.currentTarget.dataset.chainx); });
+  cardBody.querySelectorAll('[data-note]').forEach(b9 => b9.addEventListener('click', () => {
+    const i9 = +b9.dataset.note;
+    blip([262, 294, 330, 349, 392, 440, 494][i9] * 2);
+    window.__harpSeq9 = ((window.__harpSeq9 || '') + i9).slice(-7);
+    if (window.__harpSeq9 === '0123456' && PSTORE.getItem('w1001.harp9') !== '1') {
+      PSTORE.setItem('w1001.harp9', '1'); earnSB(10);
+      toast('🎼 一串完整的音阶掠过大厅——竖琴轻轻共鸣,记住了你的手。⚡+10');
+    }
+  }));
+  cardBody.querySelectorAll('[data-plant]').forEach(b9 => b9.addEventListener('click', () => {
+    if (!spendSB(10)) return;
+    PSTORE.setItem('w1001.plot' + b9.dataset.plant, new Date().toISOString().slice(0, 10));
+    closeModals(); toast('🌱 种下了——明天来看芽,后天看蕾,第三天看花。'); blip(620);
+  }));
+  cardBody.querySelectorAll('[data-harvest]').forEach(b9 => b9.addEventListener('click', () => {
+    PSTORE.removeItem('w1001.plot' + b9.dataset.harvest);
+    earnSB(25); closeModals(); toast('🌸 收下满捧花——池子空了,又可以种下一茬。⚡+25'); blip(760);
+  }));
   cardBody.querySelector('[data-flower]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.skyflower') === '1') return;
     PSTORE.setItem('w1001.skyflower', '1'); earnSB(15);
@@ -1958,6 +2006,9 @@ function titleList() {
     { id: 'connois', name: '🎨 鉴赏大家', got: Object.keys(CATS).some(c => (seen[c] || []).length >= (D[c] ? D[c].length : 1e9)), note: '完整收录任一馆藏' },
     { id: 'skywalk', name: '🏯 云上行者', got: PSTORE.getItem('w1001.skycity') === '1' && PSTORE.getItem('w1001.skychime') === '1', note: '登临天空之城,摇响四季风铃' },
     { id: 'fishking', name: '👑 传奇渔夫', got: PSTORE.getItem('w1001.fishking') === '1', note: '钓起传说中的鱼王' },
+    { id: 'racer', name: '⛵ 环岛帆手', got: PSTORE.getItem('w1001.race1') === '1', note: '完成帆船环岛计时赛' },
+    { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
+    { id: 'chainer', name: '🧵 线索收束人', got: PSTORE.getItem('w1001.chain1') === '1' && PSTORE.getItem('w1001.chain2') === '1', note: '走完两条跨岛任务线' },
     { id: 'astro',  name: '🔭 星图大师',   got: constSeen.size >= constDirs.length && constDirs.length > 0, note: '认全 88 星座' },
   ];
 }
@@ -2652,7 +2703,7 @@ if ((new Date().getMonth() + 1) % 12 < 3) {
   scene.add(aurora9);
 }
 let ambT9 = 6;   // 🔊 环境声调度
-let sndStepT9 = 0, aniSndT9 = 6;   // 👣 脚步声 / 🐑 动物叫声计时
+let sndStepT9 = 0, aniSndT9 = 6, guideT9 = 12;   // 👣 脚步声 / 🐑 动物叫声 / 🧭 引导计时
 function stepSnd9(kind9) {   // 脚步:沙闷 / 草软 / 木板脆
   try {
     if (!actx || !musicOn) return;
@@ -5705,6 +5756,8 @@ let skyGroup = null, skyDetail = null, skyCrystal = null, skyFall = null, skyFal
   // 碰撞(bot:低于 190 的泳者放行)
   cirObs.push({ x: SKY.x, z: SKY.z - 8, r: 10.8, bot: 190 });
   for (let i = 0; i < 4; i++) { const a9 = i * Math.PI / 2 + Math.PI / 4; cirObs.push({ x: SKY.x + Math.cos(a9) * 34, z: SKY.z + Math.sin(a9) * 34, r: 3.4, bot: 190 }); }
+  addSpot(4, 414, 'lore', 'chbottle', { r: 7 });    // 🧵 任务链起点:栈桥
+  addSpot(-8, -32, 'lore', 'chstar', { r: 7 });     // 🧵 任务链起点:报亭长椅
   addSpot(SKY.x, SKY.z + 40, 'lore', 'skyback', { r: 8, y: SKY.y });
   addSpot(SKY.x, SKY.z - 8, 'lore', 'lodestone', { r: 9, y: SKY.y });
   addNpc({ x: SKY.x - 16, z: SKY.z + 14, y: SKY.y, name: '云端乐师', body: 0x3a6a8a, hat: 0xd8d2c4, opts: { hat: 'cone' },
@@ -6455,6 +6508,7 @@ function unjMeeting() {
     lines: ['渡一切想去别的世界的人。', '楚门的世界已通航;中土、霍格沃茨、花果山,在建。', '船票免费,回程也是——但记忆要自己带回来。'] });
 }
 let npcChatT9 = 14;   // 💬 NPC 相遇寒暄计时
+const EVE_SPOTS9 = [[0, -12], [9, -18], [-9, -15], [15, -8], [-4, -24]];   // 🌆 黄昏小聚点(广场灯笼串一带)
 function updateNpcs3(dt) {
   npcFrame++;
   npcChatT9 -= dt;
@@ -6504,7 +6558,8 @@ function updateNpcs3(dt) {
       if (n.pause > 0) { n.pause -= dt; }
       else {
         if (!n.wp) {
-          const target = n.wps[Math.floor(Math.random() * n.wps.length)];
+          const eve9 = curDA < .56 && curDA >= .33 && (n.g.position.x ** 2 + n.g.position.z ** 2 < 102400);   // 🌆 黄昏:主岛居民去广场灯下小聚
+          const target = eve9 ? EVE_SPOTS9[(Math.random() * EVE_SPOTS9.length) | 0] : n.wps[Math.floor(Math.random() * n.wps.length)];
           n.route = [NPC_HUB3, target]; n.leg = 0; n.wp = n.route[0];
         }
         const dx = n.wp[0] - p.x, dz = n.wp[1] - p.z, d = Math.hypot(dx, dz);
@@ -7139,6 +7194,22 @@ function seasonTick(dt, t) {
   seasonPts.position.set(player.position.x, Math.max(player.position.y - 2, 0), player.position.z);
 }
 addSpot(HOME_POS[0], HOME_POS[1] + 4, 'home', 'home', { r: 7 });
+addSpot(160, 258, 'lore', 'harp9', { r: 7 });   // 🎼 音乐厅门口的竖琴
+/* 🌷 小屋花园:三只花池,播种后按现实天数生长(3 天开花) */
+addSpot(HOME_POS[0] + 9, HOME_POS[1] - 2, 'lore', 'garden9', { r: 6 });
+{
+  const gh9 = Math.max(height(HOME_POS[0] + 9, HOME_POS[1] - 2), .3);
+  for (let i9 = 1; i9 <= 3; i9++) {
+    const px9 = HOME_POS[0] + 6 + i9 * 2.2, pz9 = HOME_POS[1] - 3;
+    const soil9 = box(1.8, .5, 1.8, lam(0x5a4632)); soil9.position.set(px9, gh9 + .25, pz9); scene.add(soil9);
+    const d9 = PSTORE.getItem('w1001.plot' + i9);
+    if (d9) {
+      const days9 = Math.floor((Date.now() - new Date(d9).getTime()) / 86400000);
+      if (days9 >= 1) { const st9 = cyl(.06, .09, .5 + Math.min(days9, 3) * .3, lam(0x4f8a48), 5); st9.position.set(px9, gh9 + .75, pz9); scene.add(st9); }
+      if (days9 >= 3) { const fl9 = new THREE.Mesh(sphg(.34, 7, 5), lamOwn(hashCol('花' + i9 + d9))); fl9.position.set(px9, gh9 + 1.75, pz9); scene.add(fl9); }
+    }
+  }
+}
 /* ===== ❤️ 群岛基金会:捐赠与荣誉(算力币的花处) ===== */
 function openFund() {
   const total = parseInt(PSTORE.getItem('w1001.donated') || '0', 10) || 0;
@@ -7388,7 +7459,53 @@ let navPts9 = null, navBeacon9 = null;
     new THREE.MeshBasicMaterial({ color: 0x9af0ff, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   navBeacon9.visible = false; scene.add(navBeacon9);
 }
+/* 👻 幽灵船:只在夜里现形,沿外海大圈缓行 */
+let ghostShip9 = null;
+{
+  const gm9 = new THREE.MeshBasicMaterial({ color: 0xbfe0d8, transparent: true, opacity: 0, fog: false, depthWrite: false });
+  ghostShip9 = new THREE.Group();
+  const hu9 = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 4.4), gm9); hu9.position.y = 2; ghostShip9.add(hu9);
+  for (const mx9 of [-4, 1, 5]) {
+    const ms9 = new THREE.Mesh(new THREE.CylinderGeometry(.14, .18, 9, 5), gm9); ms9.position.set(mx9, 7, 0); ghostShip9.add(ms9);
+    const sl9 = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 5.2), gm9); sl9.position.set(mx9, 7.6, .1); ghostShip9.add(sl9);
+  }
+  ghostShip9.userData.mat = gm9;
+  scene.add(ghostShip9);
+}
+/* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
+const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0 };
+for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
+  const [rx9, rz9] = RACE9.pts[i9];
+  const po9 = cyl(.2, .26, 5, M.woodDark); po9.position.set(rx9, 2, rz9); scene.add(po9);
+  const bu9 = new THREE.Mesh(sphg(1.1, 8, 6), lam(i9 === 0 ? 0x2ac06a : 0xe8862a)); bu9.position.set(rx9, 4.6, rz9); scene.add(bu9);
+}
+/* 🧵 跨岛任务链:走到当前步 14m 内自动推进,导航流光全程指路 */
+const CHAINS9 = {
+  bottle: { title: '漂流瓶的三站', done: 'chain1', steps: [
+    { x: -340, z: 295, label: '西湾浅滩', msg: '🍾 沙里埋着第二只瓶子:"雾大的日子,守灯人看得最远。去灯塔屿。"' },
+    { x: -712, z: -416, label: '灯塔屿', msg: '🗼 守灯人指向西北外海:"三年前有条船在那儿沉了。它一直在等人。"(提示:游到标记处,按 C 下潜)' },
+    { x: -356, z: -337, label: '外海沉船', msg: '⚓ 你潜到了沉船——第三只瓶子卡在货舱缝里,里面是一张全家福,背面写着:谢谢你替我看过大海。' },
+  ] },
+  star: { title: '星图人的托付', done: 'chain2', steps: [
+    { x: 78, z: -48, label: '大鹏栖石', msg: '🕊️ 石缝里塞着信:"把这句话带到离星星最近的地方。"(提示:乘大鹏直上天空之城)' },
+    { x: -550, z: 200, label: '天空之城', msg: '🏯 云端的乐师接过信,读罢一笑:"他还是没学会自己上来。回去告诉他:星星也在看他。"' },
+    { x: 16, z: -2, label: '圆枢广场喷泉', msg: '⛲ 你把回信投进喷泉边的木箱。当晚,广场上空多了一颗特别亮的星。' },
+  ] },
+};
+let chainAct9 = null, chainStep9 = 0;
+function chainNav9() {
+  const st9 = CHAINS9[chainAct9].steps[chainStep9];
+  NAV9.mode = 9; NAV9.x = st9.x; NAV9.z = st9.z; NAV9.label = '🧵 ' + st9.label;
+  navPts9.visible = navBeacon9.visible = true;
+  navBeacon9.position.set(st9.x, Math.max(height(st9.x, st9.z), 0) + 30, st9.z);
+}
+function chainStart9(k9) {
+  if (PSTORE.getItem('w1001.' + CHAINS9[k9].done) === '1') { toast('✅ 这条线索你已走完。'); return; }
+  chainAct9 = k9; chainStep9 = 0; chainNav9();
+  closeModals(); toast('🧵 任务线开启:' + CHAINS9[k9].title + '——跟着流光走'); blip(700);
+}
 function navCycle9() {
+  if (chainAct9 && NAV9.mode !== 9) { chainNav9(); toast('🧵 已回到任务线指引:' + NAV9.label); return; }
   const px9 = player.position.x, pz9 = player.position.z;
   const nearest9 = list9 => { let best9 = null, bd9 = 1e9; for (const e9 of list9) { const d9 = Math.hypot(e9[0] - px9, e9[1] - pz9); if (d9 < bd9) { bd9 = d9; best9 = e9; } } return best9 && { x: best9[0], z: best9[1], name: best9[2], d: bd9 | 0 }; };
   for (let step9 = 0; step9 < 4; step9++) {
@@ -8516,6 +8633,12 @@ $('btnAct').addEventListener('click', () => { modalOpen ? closeModals() : tryInt
 
 const isTouch = matchMedia('(pointer: coarse)').matches || location.hash.includes('touch');
 if (isTouch) $('btnAct').classList.remove('hidden');
+/* 📱 触屏快捷轮盘:按钮直接派发键盘事件,复用全部键位逻辑 */
+$('btnWheel9').addEventListener('click', () => $('wheel9').classList.toggle('hidden'));
+document.querySelectorAll('#wheel9 [data-wk]').forEach(b9 => b9.addEventListener('click', () => {
+  dispatchEvent(new KeyboardEvent('keydown', { key: b9.dataset.wk }));
+}));
+if (isTouch) $('btnWheel9').classList.remove('hidden');
 /* 移动端快捷菜单:⋯ 展开 海图/观星/照片(+滤镜)/蓝图幻影;潜水时收起、改出 📡 声呐钮 */
 let mobMenuOpen = false, mobBtns = {};
 function syncMobMenu() {
@@ -9099,11 +9222,53 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  if (ghostShip9) {   // 👻 幽灵船夜航
+    const ga9 = t * .012;
+    ghostShip9.position.set(Math.cos(ga9) * 1480, tideY, Math.sin(ga9) * 1480);
+    ghostShip9.rotation.y = -ga9 - Math.PI / 2;
+    const gd9 = Math.hypot(player.position.x - ghostShip9.position.x, player.position.z - ghostShip9.position.z);
+    ghostShip9.userData.mat.opacity = (1 - curDA) * .3 * clamp((gd9 - 60) / 120, 0, 1) * (.8 + Math.sin(t * 1.3) * .2);   // 近之则隐
+  }
+  /* ⛵ 环岛计时赛 */
+  if (vehicle === 2 || RACE9.on) {
+    const rp9 = RACE9.pts[RACE9.on ? RACE9.next : 0];
+    const rd9 = Math.hypot(player.position.x - rp9[0], player.position.z - rp9[1]);
+    if (!RACE9.on && vehicle === 2 && rd9 < 16) {
+      RACE9.on = true; RACE9.next = 1; RACE9.t0 = t;
+      toast('🏁 环岛计时赛开始!顺时针绕过三只橙浮标,回到绿浮标'); blip(880);
+    } else if (RACE9.on && rd9 < 16) {
+      if (RACE9.next === 0) {   // 冲线
+        RACE9.on = false;
+        const tt9 = Math.round(t - RACE9.t0);
+        const best9 = parseInt(PSTORE.getItem('w1001.racebest') || '0', 10) || 0;
+        earnSB(30);
+        if (!best9 || tt9 < best9) { PSTORE.setItem('w1001.racebest', String(tt9)); toast('🏆 冲线!' + tt9 + ' 秒——新纪录!⚡+30'); }
+        else toast('🏁 冲线!' + tt9 + ' 秒(最佳 ' + best9 + ' 秒)⚡+30');
+        if (PSTORE.getItem('w1001.race1') !== '1') { PSTORE.setItem('w1001.race1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('⛵ 新称号「环岛帆手」 · ⭐+1'); }
+        blip(660); setTimeout(() => blip(880), 130);
+      } else {
+        toast('⛵ 检查点 ' + RACE9.next + '/3 · ' + Math.round(t - RACE9.t0) + ' 秒'); blip(700);
+        RACE9.next = (RACE9.next + 1) % 4;
+      }
+    }
+    if (RACE9.on && vehicle !== 2) { RACE9.on = false; toast('🏳️ 离船——计时赛中止'); }
+  }
   /* 🧭 导航流光:朝目标流动的光点带(取前 100 米段,贴地) */
   if (NAV9.mode && navPts9.visible) {
     const ndx9 = NAV9.x - player.position.x, ndz9 = NAV9.z - player.position.z;
     const nd9 = Math.hypot(ndx9, ndz9);
-    if (nd9 < 14) { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('📍 已到达 ' + NAV9.label); blip(880); }
+    if (nd9 < 14) {
+      if (NAV9.mode === 9 && chainAct9) {   // 🧵 任务链推进
+        const C9 = CHAINS9[chainAct9];
+        toast(C9.steps[chainStep9].msg); blip(760);
+        chainStep9++;
+        if (chainStep9 >= C9.steps.length) {
+          PSTORE.setItem('w1001.' + C9.done, '1'); earnSB(60); stars++; saveQuest(); updateQuestHUD();
+          setTimeout(() => toast('🏁 任务线完成:' + C9.title + ' · ⚡+60 · ⭐+1'), 2400);
+          chainAct9 = null; NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false;
+        } else chainNav9();
+      } else { NAV9.mode = 0; navPts9.visible = navBeacon9.visible = false; toast('📍 已到达 ' + NAV9.label); blip(880); }
+    }
     else {
       const ux9 = ndx9 / nd9, uz9 = ndz9 / nd9, seg9 = Math.min(nd9, 100);
       const np9 = navPts9.geometry.attributes.position, mar9 = (t * 6) % 4;
@@ -9184,6 +9349,19 @@ function loop() {
     fireShowT9.t -= dt;
     if (fireShowT9.t <= 0) { fireShowT9.t = 34 + Math.random() * 22; fireworks(); }
   }
+  guideT9 -= dt;   // 🧭 新手引导:交谈→钓鱼→渡海
+  if (guideT9 <= 0) {
+    guideT9 = 7;
+    if (PSTORE.getItem('w1001.gdone') !== '1') {
+      const fc9 = parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0;
+      const talked9 = Object.keys(AFF).length > 0;
+      if (stamps && stamps.size > 3) PSTORE.setItem('w1001.gdone', '1');   // 老玩家跳过
+      else if (!talked9 && PSTORE.getItem('w1001.g1') !== 'told') { PSTORE.setItem('w1001.g1', 'told'); toast('🧭 新手指引 1/3:走近任何居民,按 E 和 TA 聊聊'); }
+      else if (talked9 && !fc9 && PSTORE.getItem('w1001.g2') !== 'told') { PSTORE.setItem('w1001.g2', 'told'); toast('🧭 新手指引 2/3:去栈桥尽头,按 E 抛竿钓一条鱼'); }
+      else if (talked9 && fc9 && PSTORE.getItem('w1001.g3') !== 'told') { PSTORE.setItem('w1001.g3', 'told'); toast('🧭 新手指引 3/3:栈桥渡口按 E,渡向另一个世界!'); }
+      else if (talked9 && fc9 && stamps && stamps.size > 1) { PSTORE.setItem('w1001.gdone', '1'); earnSB(20); toast('🎓 新手指引完成——群岛任你闯荡了!⚡+20'); }
+    }
+  }
   aniSndT9 -= dt;   // 🐔🦖 动物叫声(就近触发)
   if (aniSndT9 <= 0) {
     aniSndT9 = 7 + Math.random() * 8;
@@ -9239,6 +9417,14 @@ function loop() {
     if (curDA < .22) { a9.scale.y += (.78 - a9.scale.y) * Math.min(1, dt * 2); continue; }   // 🌙 夜眠伏卧
     if (a9.scale.y < .99) a9.scale.y += (1 - a9.scale.y) * Math.min(1, dt * 2);
     const pdx9 = player.position.x - a9.position.x, pdz9 = player.position.z - a9.position.z, pd9 = Math.hypot(pdx9, pdz9);
+    if (pd9 < 6 && PSTORE.getItem('w1001.seen_' + u9.kind) !== '1') {   // 🐾 图鉴首见
+      PSTORE.setItem('w1001.seen_' + u9.kind, '1'); earnSB(3);
+      const NM9 = { sheep: '夏尔绵羊', deer: '鲸背斑鹿', rabbit: '草甸兔', beast: '山海异兽崽', fox: '青丘之狐', dino: '侏罗纪幼龙', hen: '南塔开特母鸡' };
+      toast('🐾 动物图鉴新收录:' + (NM9[u9.kind] || u9.kind) + ' ⚡+3');
+      if (['sheep', 'deer', 'rabbit', 'beast', 'fox', 'dino', 'hen'].every(k9 => PSTORE.getItem('w1001.seen_' + k9) === '1')) {
+        if (PSTORE.getItem('w1001.natural9') !== '1') { PSTORE.setItem('w1001.natural9', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「自然观察家」——七种动物全部收录 · ⭐+1'); }
+      }
+    }
     const beh9 = BEH9[u9.kind];
     if (u9.run > 0) u9.run -= dt;
     if (beh9 === 'flee' && pd9 < 7 && u9.run <= 0) {   // 🐇 惊逃
