@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=20';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=21';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -3084,6 +3084,82 @@ const cyl = (rT, rB, h, mat, seg = 10) => new THREE.Mesh(geoc('c' + rT + ',' + r
 const sphg = (...a) => geoc('s' + a.join(','), () => new THREE.SphereGeometry(...a));
 const cong = (...a) => geoc('k' + a.join(','), () => new THREE.ConeGeometry(...a));
 
+/* ===== 🏗️ 统一建筑系统:makeBldg(spec) —— 墙/顶/门/窗/台阶/烟囱/碰撞一次装配 =====
+   spec: { x, z, w, d, floors, style, roof?, door?('S'|'N'|'E'|'W'), chimney?, wall?/trim?/roofC? 覆盖 }
+   全部走 lam()+geoc() → 自动进静态合并;窗光进全球队列(建后并成 1 网格);烟囱注册炊烟。 */
+const BSTYLES = {
+  whaler:   { wall: 0xd8d2c2, trim: 0x5a6a7a, roofC: 0x5a4636, roof: 'gable' },
+  jiangnan: { wall: 0xf0ead8, trim: 0x6a6a6e, roofC: 0x34343c, roof: 'pagoda' },
+  venetian: { wall: 0xc8907a, trim: 0xf0e8da, roofC: 0x8a5a4a, roof: 'flat' },
+  desert:   { wall: 0xe2cb96, trim: 0xb89868, roofC: 0xd0b888, roof: 'flat' },
+  stone:    { wall: 0xa8a296, trim: 0x7a746a, roofC: 0x6a665e, roof: 'cone' },
+  nordic:   { wall: 0xa04a38, trim: 0xe8e0d0, roofC: 0x3a4a38, roof: 'gable' },
+};
+const WQUEUE9 = [], CHIM9 = [];
+const gableGeo9 = (w9, d9, rh9) => geoc('gbl' + w9 + ',' + d9 + ',' + rh9, () => {
+  const s9 = new THREE.Shape();
+  s9.moveTo(-d9 / 2, 0); s9.lineTo(d9 / 2, 0); s9.lineTo(0, rh9); s9.closePath();
+  const gg9 = new THREE.ExtrudeGeometry(s9, { depth: w9, bevelEnabled: false });
+  gg9.rotateY(Math.PI / 2); gg9.translate(-w9 / 2, 0, 0);
+  return gg9;
+});
+function makeBldg(spec) {
+  const st9 = Object.assign({}, BSTYLES[spec.style] || BSTYLES.whaler, spec);
+  const w9 = spec.w || 8, d9 = spec.d || 6, fl9 = spec.floors || 1, bh9 = fl9 * 3 + 1;
+  const x9 = spec.x, z9 = spec.z, gy9 = spec.y != null ? spec.y : Math.max(height(x9, z9), .2);
+  const add9 = m9 => { m9.position.y += gy9; scene.add(m9); return m9; };
+  const bd9 = box(w9, bh9, d9, lam(st9.wall)); bd9.position.set(x9, bh9 / 2, z9); add9(bd9);
+  const sk9 = box(w9 + .5, .5, d9 + .5, lam(st9.trim)); sk9.position.set(x9, .25, z9); add9(sk9);
+  const rf9 = st9.roof, rc9 = lam(st9.roofC);
+  if (rf9 === 'gable') {
+    const rh9 = +(1.6 + w9 * .1).toFixed(1);
+    const rg9 = new THREE.Mesh(gableGeo9(w9 + 1.4, d9 + 1.4, rh9), rc9); rg9.position.set(x9, bh9 - .05, z9); add9(rg9);
+  } else if (rf9 === 'cone') {
+    const ch9 = 2.2 + w9 * .12;
+    const cg9 = new THREE.Mesh(cong(+(Math.hypot(w9, d9) * .62).toFixed(1), +ch9.toFixed(1), 4), rc9);
+    cg9.rotation.y = Math.PI / 4; cg9.position.set(x9, bh9 + ch9 / 2 - .1, z9); add9(cg9);
+  } else if (rf9 === 'pagoda') {
+    const ov9 = box(w9 + 2.4, .45, d9 + 2.4, rc9); ov9.position.set(x9, bh9 + .2, z9); add9(ov9);
+    const rg9 = box(w9 * .62, 1.1, d9 * .5, rc9); rg9.position.set(x9, bh9 + .95, z9); add9(rg9);
+    for (const [sx9, sz9] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const ev9 = new THREE.Mesh(cong(.5, 1.1, 4), rc9);
+      ev9.position.set(x9 + sx9 * (w9 / 2 + 1), bh9 + .6, z9 + sz9 * (d9 / 2 + 1)); add9(ev9);
+    }
+  } else {
+    const ov9 = box(w9 + .9, .4, d9 + .9, rc9); ov9.position.set(x9, bh9 + .15, z9); add9(ov9);
+    const up9 = box(2.2, 1.3, 2.2, lam(st9.wall)); up9.position.set(x9 - w9 / 4, bh9 + .85, z9 - d9 / 4); add9(up9);
+  }
+  const dd9 = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[spec.door || 'S'];
+  const dp9 = new THREE.Mesh(geoc('pl1.4,2.2', () => new THREE.PlaneGeometry(1.4, 2.2)), lam(0x3a2e22));
+  dp9.position.set(x9 + dd9[0] * (w9 / 2 + .06), 1.35, z9 + dd9[1] * (d9 / 2 + .06));
+  dp9.rotation.y = Math.atan2(dd9[0], dd9[1]); add9(dp9);
+  const st29 = box(2, .35, 1.1, lam(st9.trim));
+  st29.position.set(x9 + dd9[0] * (w9 / 2 + .5), .17, z9 + dd9[1] * (d9 / 2 + .5)); add9(st29);
+  const wf9 = lam(0x30302c);
+  for (const [ux9, uz9] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+    const hor9 = ux9 === 0, span9 = hor9 ? w9 : d9, n9 = Math.max(1, Math.round(span9 / 4.2));
+    const isDoor9 = ux9 === dd9[0] && uz9 === dd9[1];
+    for (let f9 = 0; f9 < fl9; f9++) for (let i9 = 0; i9 < n9; i9++) {
+      if (isDoor9 && f9 === 0 && Math.abs(i9 - (n9 - 1) / 2) < .6) continue;   // 让开门
+      const off9 = (i9 + .5) / n9 * span9 - span9 / 2;
+      const px9 = x9 + (hor9 ? off9 : ux9 * (w9 / 2 + .06));
+      const pz9 = z9 + (hor9 ? uz9 * (d9 / 2 + .06) : off9);
+      const ry9 = Math.atan2(ux9, uz9);
+      const fq9 = new THREE.Mesh(geoc('pl.95,1.2', () => new THREE.PlaneGeometry(.95, 1.2)), wf9);
+      fq9.position.set(px9, gy9 + 2 + f9 * 3, pz9); fq9.rotation.y = ry9; scene.add(fq9);
+      const gq9 = new THREE.PlaneGeometry(.85, 1.1);
+      gq9.rotateY(ry9); gq9.translate(px9 + ux9 * .05, gy9 + 2 + f9 * 3, pz9 + uz9 * .05);
+      WQUEUE9.push(gq9);
+    }
+  }
+  if (spec.chimney !== false && (rf9 === 'gable' || rf9 === 'pagoda')) {
+    const ct9 = bh9 + (rf9 === 'gable' ? 1.2 + w9 * .05 : 1.5);
+    const ch9 = box(.9, 2.2, .9, rc9); ch9.position.set(x9 - w9 / 4, ct9, z9 - d9 / 4); add9(ch9);
+    CHIM9.push([x9 - w9 / 4, gy9 + ct9 + 1.2, z9 - d9 / 4]);
+  }
+  boxObs.push({ x1: x9 - w9 / 2, z1: z9 - d9 / 2, x2: x9 + w9 / 2, z2: z9 + d9 / 2 });
+  return { x: x9, z: z9, y: gy9, w: w9, d: d9, h: bh9 };
+}
 /* --- 亭台建筑 --- */
 function pavilion(zn, opt) {
   const { x, z, h } = zn, o = Object.assign({ w: 26, d: 20, walls: 'back', roof: 0xa8542c, floor: 0xcfc5ae }, opt);
@@ -3863,9 +3939,7 @@ let sauronEye = null, lavaDisc = null;
   addSpot(-224, -646, 'lore', 'midparty', { r: 7 });   // 比尔博的告别宴(宴会树下)
   {   // 绿龙酒馆(绿门圆窗小屋)
     const gx2 = -252, gz2 = -672, gh2 = height(gx2, gz2);
-    const inn2 = box(7, 4, 5.4, lam(0xc8b088)); inn2.position.set(gx2, gh2 + 2, gz2); scene.add(inn2); cirObs.push({ x: gx2, z: gz2, r: 4.4 });
-    const inr = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.6, 4), lam(0x4a6a2e)); inr.rotation.y = .78; inr.position.set(gx2, gh2 + 5.2, gz2); scene.add(inr);
-    const gdoor = box(1.4, 2.2, .2, lam(0x2a7a2a)); gdoor.position.set(gx2, gh2 + 1.1, gz2 + 2.8); scene.add(gdoor);
+    makeBldg({ x: gx2, z: gz2, w: 7, d: 5.4, style: 'nordic', wall: 0xc8b088, roofC: 0x4a6a2e });   // 🏗️ 统一建筑
     const mug = cyl(.35, .3, .5, M.gold, 10); mug.position.set(gx2 + 2.4, gh2 + 2.9, gz2 + 2.8); scene.add(mug);
     addSpot(gx2, gz2 + 5, 'lore', 'midgreen', { r: 7 });
   }
@@ -4526,9 +4600,7 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   // 屋舍俨然
   [[gx - 16, gz - 12], [gx + 14, gz - 16], [gx + 2, gz + 18]].forEach(([hx, hz]) => {
     const hh = height(hx, hz);
-    const bodyH = box(7, 4, 5.5, lam(0xe8dcc0)); bodyH.position.set(hx, hh + 2, hz); scene.add(bodyH);
-    const roofH = new THREE.Mesh(new THREE.ConeGeometry(5.6, 2.6, 4), lam(0x6a5a40)); roofH.rotation.y = Math.PI / 4; roofH.position.set(hx, hh + 5.3, hz); scene.add(roofH);
-    cirObs.push({ x: hx, z: hz, r: 4.4 });
+    makeBldg({ x: hx, z: hz, w: 7, d: 5.5, style: 'jiangnan', wall: 0xe8dcc0 });   // 🏗️ 统一建筑
   });
   // 良田
   for (let i = 0; i < 4; i++) {
@@ -5612,7 +5684,7 @@ const ISLES = [
   { c: UNJ, name: '未竟之都', icon: '🏛️', theme: 'capital' },
 ];
 /* ===== 海洋文学带:数据驱动内容(每岛一份 lore/npcs/build)===== */
-const NI_CONTENT = makeNIContent({ THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat, winMat9, mergeGeometries });
+const NI_CONTENT = makeNIContent({ THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat, winMat9, mergeGeometries, makeBldg });
 /* 框架:把每岛内容接入世界(渡口/图鉴/海图/配乐/分桶经各自定义点补齐)*/
 for (const s of NISLES) {
   const c = NI_CONTENT[s.key]; if (!c) continue;
@@ -5785,7 +5857,7 @@ const steps9 = [], stepGeo9 = new THREE.CircleGeometry(.17, 6), stepMat9 = new T
 let stepT9 = 0, stepSide9 = 1;
 const wakes9 = [], wakeGeo9 = new THREE.CircleGeometry(.5, 8), wakeMat9 = new THREE.MeshBasicMaterial({ color: 0xeef6f4, transparent: true, opacity: .3, depthWrite: false });
 let wakeT9 = 0;
-let bubPts9 = null, bubY09 = null, bubI9 = 0;
+let bubPts9 = null, bubY09 = null, bubI9 = 0, smokePts9 = null, smokeSeed9 = null;
 {
   const NB9 = 48, ba9 = new Float32Array(NB9 * 3).fill(-999); bubY09 = new Float32Array(NB9);
   const bg9 = new THREE.BufferGeometry(); bg9.setAttribute('position', new THREE.BufferAttribute(ba9, 3));
@@ -8724,6 +8796,18 @@ function loop() {
       }
     }
     for (let i9 = wakes9.length - 1; i9 >= 0; i9--) { const w9 = wakes9[i9]; w9.life -= dt; if (w9.life < 0) { scene.remove(w9.m); wakes9.splice(i9, 1); } else { w9.m.scale.setScalar(1 + (2.6 - w9.life) * 1.4); } }
+    if (smokePts9) {   // 🏭 炊烟:缓升回卷,晨昏夜更浓
+      const sp9 = smokePts9.geometry.attributes.position;
+      for (let i9 = 0; i9 < sp9.count; i9++) {
+        const c9 = CHIM9[i9 % CHIM9.length];
+        let y9 = sp9.getY(i9) + dt * (.7 + (i9 % 3) * .25);
+        if (y9 > c9[1] + 5) y9 = c9[1];
+        sp9.setY(i9, y9);
+        sp9.setX(i9, c9[0] + Math.sin(y9 * .8 + smokeSeed9[i9]) * .5);
+      }
+      sp9.needsUpdate = true;
+      smokePts9.material.opacity = .1 + (1 - curDA) * .22;
+    }
     bubPts9.visible = diving;
     if (diving) {   // 🫧 潜水气泡
       const bp9 = bubPts9.geometry.attributes.position;
@@ -9137,6 +9221,19 @@ const BUCKETS = [
   }
   console.log('🧱 静态合并:', rm9, '个网格 →', ad9, '个合并体');
 }
+/* 🏗️ 统一建筑收尾:窗光并成 1 网格 + 炊烟粒子 */
+if (WQUEUE9.length) {
+  scene.add(new THREE.Mesh(mergeGeometries(WQUEUE9, false), winMat9()));
+  console.log('🏗️ makeBldg:', WQUEUE9.length, '片夜窗(1 网格)/', CHIM9.length, '座烟囱');
+}
+if (!MOBILE && CHIM9.length) {
+  const NS9 = CHIM9.length * 3, sa9 = new Float32Array(NS9 * 3);
+  smokeSeed9 = new Float32Array(NS9);
+  for (let i9 = 0; i9 < NS9; i9++) { const c9 = CHIM9[i9 % CHIM9.length]; sa9[i9 * 3] = c9[0]; sa9[i9 * 3 + 1] = c9[1] + (i9 / NS9) * 4; sa9[i9 * 3 + 2] = c9[2]; smokeSeed9[i9] = i9 * 1.37 % 6; }
+  const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(sa9, 3));
+  smokePts9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xd8dade, size: 1.5, transparent: true, opacity: .25, depthWrite: false }));
+  smokePts9.frustumCulled = false; scene.add(smokePts9);
+}
 /* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
 if (!MOBILE) {
   const rf9 = mulberry32(202), pts9 = [];
@@ -9172,6 +9269,6 @@ loop();
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
   enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
-  quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9,
+  quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9, makeBldg,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
   weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };

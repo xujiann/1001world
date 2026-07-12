@@ -61,7 +61,7 @@ export function osmCity(C, data, gx, gz, zoff, mats) {
   if (wins9.length && C.winMat9) scene.add(new THREE.Mesh((C.mergeGeometries || mergeGeometries)(wins9), C.winMat9()));
 }
 export function makeNIContent(C) {
-  const { THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat } = C;
+  const { THREE, height, box, cyl, lam, M, scene, cirObs, nightLamps, rnd, makeBoat, makeBldg } = C;
   return {
   mys: {
     name: '神秘岛', en: 'The Mysterious Island', icon: '🌋', theme: 'mystisle',
@@ -92,7 +92,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const hx = gx - 14, hz = gz + 12, hh = height(hx, hz);
-      const house = box(9, 5, 7, lam(0x8a8478)); house.position.set(hx, hh + 2.5, hz); scene.add(house); cirObs.push({ x: hx, z: hz, r: 5 });
+      makeBldg({ x: hx, z: hz, w: 9, d: 7, floors: 2, style: 'stone', roof: 'gable', wall: 0x8a8478 });   // 🏗️ 花岗石宫
       const fx = gx + 15, fz = gz - 8, fh = height(fx, fz);
       const forge = cyl(1.1, 1.4, 3.4, M.stone); forge.position.set(fx, fh + 1.7, fz); scene.add(forge);
       const chim = cyl(.5, .6, 2.6, lam(0x5a5048)); chim.position.set(fx, fh + 3.9, fz); scene.add(chim);
@@ -245,7 +245,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const lx = gx - 12, lz = gz - 8, lh = height(lx, lz);
-      const lab = box(11, 5, 8, lam(0x9a9a8a)); lab.position.set(lx, lh + 2.5, lz); scene.add(lab); cirObs.push({ x: lx, z: lz, r: 6 });
+      makeBldg({ x: lx, z: lz, w: 11, d: 8, style: 'stone', roof: 'flat', wall: 0x9a9a8a });   // 🏗️ 实验楼
       const labr = box(12, .5, 9, lam(0x6a6a5a)); labr.position.set(lx, lh + 5.2, lz); scene.add(labr);
       for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, r = 16; const post = cyl(.16, .2, 2.4, M.woodDark); const fx = gx + Math.cos(a) * r, fz = gz + Math.sin(a) * r; post.position.set(fx, height(fx, fz) + 1.2, fz); scene.add(post); }
       for (const [hx, hz] of [[10, 8], [14, -2], [6, 12]]) { const hut = cyl(2, 2.4, 2.6, lam(0x7a5a3a), 6); const u = gx + hx, v = gz + hz, hh = height(u, v); hut.position.set(u, hh + 1.3, v); scene.add(hut); const top = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.6, 6), lam(0x5a4028)); top.position.set(u, hh + 3.4, v); scene.add(top); }
@@ -353,8 +353,7 @@ export function makeNIContent(C) {
     build: (gx, gz) => {
       for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
         const u = gx - 18 + c * 12, v = gz - 12 + r * 12, hh = height(u, v);
-        const house = box(7, 4, 6, lam(0xd8d2c4)); house.position.set(u, hh + 2, v); scene.add(house);
-        const rf = new THREE.Mesh(new THREE.ConeGeometry(5, 2.4, 4), lam(0x8a9098)); rf.rotation.y = Math.PI / 4; rf.position.set(u, hh + 5.2, v); scene.add(rf);
+        makeBldg({ x: u, z: v, w: 7, d: 6, style: 'whaler', roof: 'cone', wall: 0xd8d2c4, roofC: 0x8a9098, chimney: false });   // 🏗️ 乌托邦整齐屋群
       }
       const hx = gx, hz = gz + 20, hh2 = height(hx, hz);
       const hall = cyl(6, 6.6, 6, lam(0xe6e0d2), 12); hall.position.set(hx, hh2 + 3, hz); scene.add(hall); cirObs.push({ x: hx, z: hz, r: 6.6 });
@@ -572,7 +571,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const hx = gx, hz = gz + 4, hh = height(hx, hz);
-      const hut = box(8, 4, 6, lam(0xc8a878)); hut.position.set(hx, hh + 2, hz); scene.add(hut); cirObs.push({ x: hx, z: hz, r: 4.5 });
+      makeBldg({ x: hx, z: hz, w: 8, d: 6, style: 'desert', wall: 0xc8a878 });   // 🏗️
       const rf = new THREE.Mesh(new THREE.ConeGeometry(6, 2.4, 4), lam(0x7a6a3a)); rf.rotation.y = Math.PI / 4; rf.position.set(hx, hh + 5, hz); scene.add(rf);
       for (const [ox, col] of [[-3.9, 0xe0a020], [0, 0xc23a3a], [3.9, 0x2a7a5a]]) { const mural = box(.15, 3, 5.4, lam(col)); mural.position.set(hx - 4.05, hh + 2, hz); scene.add(mural); const m2 = box(5.4, 3, .15, lam([0xd94080, 0x4a8ac0, 0xe0b040][(ox + 4) % 3 | 0])); m2.position.set(hx, hh + 2, hz + 3.05); scene.add(m2); break; }
       const easel = cyl(.1, .12, 3, M.woodDark); easel.position.set(gx + 10, height(gx + 10, gz - 4) + 1.5, gz - 4); scene.add(easel);
@@ -650,7 +649,7 @@ export function makeNIContent(C) {
     ],
     build: (gx, gz) => {
       const hx = gx, hz = gz + 4, hh = height(hx, hz);
-      const hotel = box(12, 6, 8, lam(0x8a8478)); hotel.position.set(hx, hh + 3, hz); scene.add(hotel); cirObs.push({ x: hx, z: hz, r: 6.5 });
+      makeBldg({ x: hx, z: hz, w: 12, d: 8, floors: 2, style: 'whaler', wall: 0x8a8478 });   // 🏗️
       const ver = box(14, .3, 3, M.wood); ver.position.set(hx, hh + .3, hz + 5.5); scene.add(ver);
       const rf = box(13, .5, 9, lam(0x4a4a52)); rf.position.set(hx, hh + 6.3, hz); scene.add(rf);
       for (const px of [-5, -1.5, 1.5, 5]) { const post = cyl(.14, .14, 6, M.woodDark); post.position.set(hx + px, hh + 3, hz + 5.5); scene.add(post); }
@@ -1606,7 +1605,7 @@ export function makeNIContent(C) {
     build: (gx, gz) => {
       osmCity(C, OSM_TUSI, gx - 28, gz, 20, [lam(0xd8c8a8)]);   // 真实街区 © OSM
       const hx9 = gx, hz9 = gz + 4, hh9 = height(hx9, hz9);   // 瓦伊利马:木屋+宽凉台
-      const hus = box(8, 4, 6, lam(0xa8845a)); hus.position.set(hx9, hh9 + 2, hz9); scene.add(hus); cirObs.push({ x: hx9, z: hz9, r: 5 });
+      makeBldg({ x: hx9, z: hz9, w: 8, d: 6, style: 'nordic', wall: 0xa8845a });   // 🏗️
       const vera = box(12, .4, 9, lam(0x8a6a44)); vera.position.set(hx9, hh9 + .5, hz9); scene.add(vera);
       for (const [ox, oz] of [[-5.4, -4], [5.4, -4], [-5.4, 4], [5.4, 4]]) { const pp9 = cyl(.14, .16, 3.4, M.woodDark, 5); pp9.position.set(hx9 + ox, hh9 + 2, hz9 + oz); scene.add(pp9); }
       const rf99 = box(13, .5, 10, lam(0x6a4a32)); rf99.position.set(hx9, hh9 + 4.4, hz9); scene.add(rf99);
