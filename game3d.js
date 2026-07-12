@@ -49,7 +49,7 @@ function curProfileName() {
   return p ? p.name : '未知账号';
 }
 const SAVE_FIELDS = ['seen.v1', 'stars', 'quest', 'shards', 'pos3d', 'sb', 'drinks', 'paper', 'paper2', 'gear', 'ring', 'house', 'dbl', 'ticket',
-  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell'];
+  'lamp', 'rose', 'jingu', 'pantao', 'tiny', 'arrows', 'qian', 'hero', 'rodbuff', 'fishcount', 'siren', 'charge', 'yfb', 'poem', 'flowers', 'flotsam', 'wind', 'taofound', 'stargate', 'vellum', 'guide', 'savev', 'title', 'mile', 'consts', 'purg', 'peng', 'marlin', 'treasure', 'caved', 'wreck', 'babel', 'd_heart', 'd_mural', 'skeleton', 'nq_grant', 'abyss', 'unjb1', 'unjb2', 'unjb3', 'unjb4', 'unjlit', 'unjend', 'unjtop', 'unjgames', 'unjn1', 'unjn2', 'unjn3', 'unjnews', 'skycity', 'skyc1', 'skyc2', 'skyc3', 'skyc4', 'skychime', 'skyflower', 'skyspell', 'owreck'];
 SAVE_FIELDS.push('unjw1', 'unjw2', 'unjw3', 'unjlang');   // 语言迷宫
 SAVE_FIELDS.push('kao1', 'kao2', 'kao3', 'kao4', 'kao5', 'kao6', 'kaodone');   // 群岛考据线
 SAVE_FIELDS.push('stamps', 'pass10', 'pass30', 'passall');   // 环球护照
@@ -2188,7 +2188,7 @@ function openGuide() {
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——六十一座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;游泳时按 <b>C</b> 自由下潜,开放水域的海底有海藻林、珊瑚园、热泉与一艘沉船;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
     <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上环游诸岛,或直上<b>天空之城勒皮他</b>——云端有云端的配乐。<br><br>
@@ -5867,6 +5867,7 @@ for (const k in NI_QUESTS) { const q = Object.assign({ flag: 'nq_' + k, key: k }
 /* ===== 海底隧道迷宫 · 洞穴潜水(导绳=关键装备)===== */
 /* 迷宫拓扑/分区/门/发现点/出入口 → w-maze.js(纯数据模块,顶部 import) */
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
+let freeDive9 = false, prevSwim9 = false, swimHint9 = 0;   // 🤿 开放水域自由潜水
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
 let causticLight = null, causticTex = null;
 let abyssLight = null, MAZE_FLOW = null, MAZE_DIST = null, RAPIDS = new Set(), flowPts = null, nearEdge = 0;
@@ -6280,6 +6281,28 @@ function surfaceDive(pi) {
     toast(`🌊 你从${p.isle}的蓝洞浮出水面!`);
     if (PSTORE.getItem('w1001.caved') !== '1') { PSTORE.setItem('w1001.caved', '1'); earnSB(25); toast('🤿 首次穿越海底隧道 · ⚡+25 · 新称号「洞穴潜水员」'); }
   } else toast('🌊 你原路浮回了洞口。');
+  blip(560);
+}
+/* 🤿 开放水域自由潜水:游泳时 C 键下潜,自由探索海底(不入隧道迷宫) */
+function enterFreeDive9() {
+  if (diving) return;
+  diving = true; freeDive9 = true; diveAir = gearOn('mask') ? 200 : 100;
+  vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+  player.position.y = -2.6; vy = 0;
+  diveLight.visible = true;
+  if (causticLight) causticLight.visible = true;
+  scene.fog.near = 4; scene.fog.far = 74; scene.fog.color.setHex(0x06283c); scene.background.setHex(0x06283c);
+  $('diveHud').classList.remove('hidden');
+  if (matchMedia('(pointer: coarse)').matches) { $('btnDiveUp').classList.remove('hidden'); $('btnDiveDown').classList.remove('hidden'); }
+  toast('🤿 下潜!开放水域——空格上浮,浮近水面即回到泳姿');
+}
+function exitFreeDive9() {
+  diving = false; freeDive9 = false; diveLight.visible = false;
+  if (causticLight) causticLight.visible = false;
+  scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
+  $('diveHud').classList.add('hidden');
+  $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
+  player.position.y = -.55 + tideY; vy = 0;
   blip(560);
 }
 /* 终局:集齐潮汐之心/壁画/巴别地图三线索 → 揭示「世界骨架」*/
@@ -8254,6 +8277,7 @@ addEventListener('keydown', e => {
   if (k === 'p') { togglePhoto(); return; }
   if (k === 'f' && photoMode) { nextFilter(); return; }
   if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
+  if (k === 'c' && swimming && !diving && !modalOpen) { enterFreeDive9(); return; }   // 🤿 自由下潜
   if (k === 'm') { mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
@@ -8456,7 +8480,11 @@ function loop() {
       if (keys.shift || joy.down) player.position.y -= sp;
       if (Math.hypot(mx, mz) > .1) { faceYaw = camYaw; pMoving = true; walkPhase += dt * 6; }
     }
-    clampToMaze(player.position);
+    if (freeDive9) {
+      const sb9 = heightMesh(player.position.x, player.position.z);
+      if (player.position.y < sb9 + .9) player.position.y = sb9 + .9;   // 海床
+      if (player.position.y > -1) { exitFreeDive9(); toast('🌊 浮出水面'); }
+    } else clampToMaze(player.position);
     player.rotation.x += ((-1.2 - camPitch * .25) - player.rotation.x) * Math.min(1, dt * 6);   // 潜水俯身姿态
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
     diveLight.intensity = 2.4;
@@ -8478,7 +8506,7 @@ function loop() {
         arr2[i * 3 + 2] = A2[2] + (B2[2] - A2[2]) * tt3 + u2.fo[i * 2 + 1] * .4;
       }
       flowPts.geometry.attributes.position.needsUpdate = true;
-      const fdir = MAZE_FLOW[nearEdge];
+      const fdir = freeDive9 ? 0 : MAZE_FLOW[nearEdge];
       if (fdir) { const [a3, b3] = MAZE_EDGES[nearEdge], A3 = MAZE_NODES[a3], B3 = MAZE_NODES[b3];
         const dl = Math.hypot(B3[0] - A3[0], B3[1] - A3[1], B3[2] - A3[2]) || 1, pw = (RAPIDS.has(nearEdge) ? 1.6 : .45) * fdir * dt / dl;
         player.position.x += (B3[0] - A3[0]) * pw; player.position.y += (B3[1] - A3[1]) * pw; player.position.z += (B3[2] - A3[2]) * pw; }
@@ -8495,7 +8523,7 @@ function loop() {
     if (inAir && airChamberT <= 0) { airChamberT = 6; toast('🫧 气室——氧气回满,喘口气再走'); }
     airChamberT -= dt;
     const fill = $('diveAirFill'); if (fill) { fill.style.width = Math.max(0, diveAir / (gearOn('mask') ? 2 : 1)) + '%'; fill.style.background = diveAir < 25 ? '#ff5a4a' : 'linear-gradient(90deg,#2ad0ff,#7affd0)'; }
-    if (diveAir <= 0) { toast('🫧 憋不住了——你勉强浮回了洞口'); surfaceDive(diveEntry); }
+    if (diveAir <= 0) { if (freeDive9) { toast('🫧 憋不住了——你猛地浮出水面'); exitFreeDive9(); } else { toast('🫧 憋不住了——你勉强浮回了洞口'); surfaceDive(diveEntry); } }
     // 潮汐门 / 满月门:升降开合 + 关闭时挡路
     for (const gm of gateMeshes) {
       const open = gateOpen(gm.cfg, t);
@@ -8901,6 +8929,24 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  if (ventPts9) {   // ♨️ 热泉气泡上升
+    const vp9 = ventPts9.geometry.attributes.position;
+    for (let i9 = 0; i9 < vp9.count; i9++) {
+      const v9 = VENTS9[i9 % VENTS9.length];
+      let y9 = vp9.getY(i9) + dt * (1.8 + (i9 % 3) * .7);
+      if (y9 > v9[2] + 11) y9 = v9[2] + .3;
+      vp9.setY(i9, y9);
+      vp9.setX(i9, v9[0] + Math.sin(y9 * 1.3 + i9) * .4);
+    }
+    vp9.needsUpdate = true;
+  }
+  if (freeDive9 && wreck9 && PSTORE.getItem('w1001.owreck') !== '1'
+      && Math.hypot(player.position.x - wreck9.x, player.position.y - wreck9.y, player.position.z - wreck9.z) < 9) {
+    PSTORE.setItem('w1001.owreck', '1'); earnSB(30);
+    toast('⚓ 你发现了外海沉船!货舱里一枚金锭还闪着光。⚡+30'); blip(760);
+  }
+  if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
+  prevSwim9 = swimming;
   /* 🌧️ 雨落水面涟漪 */
   if (RAINY && !MOBILE && !diving) {
     ringT9 -= dt;
@@ -9448,6 +9494,87 @@ const BUCKETS = [
   }
   console.log('🧱 静态合并:', rm9, '个网格 →', ad9, '个合并体');
 }
+/* 🤿 开放水域海底景观:海藻林 / 珊瑚园 / 热泉气泡 / 外海沉船 */
+let ventPts9 = null, wreck9 = null;
+const VENTS9 = [];
+if (!MOBILE) {
+  const rk9 = mulberry32(404);
+  const kelp9 = [], corA9 = [], corB9 = [], corC9 = [], ventR9 = [];
+  let nk9 = 0, deepest9 = null;
+  for (const va9 of [.6, 2.7, 4.8]) {   // ♨️ 热泉:三方位外海深处
+    for (let r9 = 400; r9 <= 640; r9 += 40) { const x9 = Math.cos(va9) * r9, z9 = Math.sin(va9) * r9, h9 = height(x9, z9); if (h9 < -8.4) { VENTS9.push([x9, z9, h9]); break; } }
+  }
+  for (let r9 = 400; r9 <= 700; r9 += 30) {   // ⚓ 沉船:西南外海首个深点
+    const x9 = Math.cos(3.9) * r9, z9 = Math.sin(3.9) * r9, h9 = height(x9, z9);
+    if (h9 < -8) { deepest9 = [x9, z9, h9]; break; }
+  }
+  for (let gx9 = -1700; gx9 < 1700 && nk9 < 90; gx9 += 19)   // 🌿 海藻林 + 记录深点
+    for (let gz9 = -1700; gz9 < 1700 && nk9 < 90; gz9 += 19) {
+      const h9 = height(gx9, gz9);
+      if (h9 > -14 && h9 < -5 && rk9() < .35) {
+        nk9++;
+        for (let c9 = 0; c9 < 3; c9++) {
+          const cx9 = gx9 + (rk9() - .5) * 5, cz9 = gz9 + (rk9() - .5) * 5, ch9 = height(cx9, cz9);
+          if (ch9 > -4) continue;
+          const kh9 = 4.5 + rk9() * 3.5;
+          const st9 = new THREE.CylinderGeometry(.09, .13, kh9, 4);
+          st9.rotateZ((rk9() - .5) * .3); st9.translate(cx9, ch9 + kh9 / 2, cz9);
+          kelp9.push(st9);
+          const tp9 = new THREE.ConeGeometry(.22, .9, 4); tp9.translate(cx9, ch9 + kh9 + .4, cz9); kelp9.push(tp9);
+        }
+      }
+    }
+  let nc9 = 0;
+  for (let gx9 = -1700; gx9 < 1700 && nc9 < 130; gx9 += 15)   // 🪸 珊瑚园
+    for (let gz9 = -1700; gz9 < 1700 && nc9 < 130; gz9 += 15) {
+      const h9 = height(gx9, gz9);
+      if (h9 > -8 && h9 < -2.5 && rk9() < .35) {
+        nc9++;
+        const px9 = gx9 + rk9() * 6 - 3, pz9 = gz9 + rk9() * 6 - 3, ph9 = height(px9, pz9);
+        if (ph9 > -2) continue;
+        const pick9 = rk9();
+        if (pick9 < .4) { const ic9 = new THREE.IcosahedronGeometry(.45 + rk9() * .45, 0); ic9.scale(1, .75, 1); ic9.rotateY(rk9() * 6); ic9.translate(px9, ph9 + .3, pz9); corA9.push(ic9); }
+        else if (pick9 < .75) { for (let u9 = 0; u9 < 3; u9++) { const tb9 = new THREE.CylinderGeometry(.11, .16, .8 + rk9() * .7, 5); tb9.translate(px9 + (rk9() - .5), ph9 + .5, pz9 + (rk9() - .5)); corB9.push(tb9); } }
+        else { const cn9 = new THREE.ConeGeometry(.5, 1.1, 5); cn9.translate(px9, ph9 + .5, pz9); corC9.push(cn9); }
+      }
+    }
+  for (const [vx9, vz9, vh9] of VENTS9) {   // ♨️ 热泉口岩环
+    for (let r9 = 0; r9 < 5; r9++) {
+      const ra9 = r9 / 5 * Math.PI * 2;
+      const rk29 = new THREE.IcosahedronGeometry(.5 + rk9() * .3, 0);
+      rk29.translate(vx9 + Math.cos(ra9) * 1.3, vh9 + .3, vz9 + Math.sin(ra9) * 1.3);
+      ventR9.push(rk29);
+    }
+  }
+  if (deepest9) {   // ⚓ 外海沉船(主岛外海深处)
+    const [wx9, wz9, wh9] = deepest9;
+    const hull9 = box(10, 3, 4, lam(0x4a3a2c)); hull9.rotation.z = .42; hull9.rotation.y = .7; hull9.position.set(wx9, wh9 + 1.4, wz9); scene.add(hull9);
+    const bow9 = box(4, 2.4, 3.6, lam(0x42332a)); bow9.rotation.z = -.3; bow9.rotation.y = .9; bow9.position.set(wx9 + 6.4, wh9 + .9, wz9 + 1.4); scene.add(bow9);
+    const mast9 = cyl(.18, .26, 9, M.woodDark); mast9.rotation.z = Math.PI / 2.3; mast9.position.set(wx9 - 3, wh9 + 1.2, wz9 - 2.4); scene.add(mast9);
+    for (let c9 = 0; c9 < 3; c9++) { const cr9 = box(1.1, 1.1, 1.1, lam(0x6a5236)); cr9.rotation.y = c9; cr9.position.set(wx9 + 2 + c9 * 1.6, wh9 + .55, wz9 - 3 + c9); scene.add(cr9); }
+    const glint9 = new THREE.Mesh(sphg(.35, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffd24a, fog: false }));
+    glint9.position.set(wx9 + 2.8, wh9 + 1.3, wz9 - 2.2); scene.add(glint9);
+    wreck9 = { x: wx9, z: wz9, y: wh9 };
+    console.log('⚓ 外海沉船 @', wx9, wz9, '深', wh9.toFixed(1));
+  }
+  const putU9 = (arr9, col9) => { if (arr9.length) scene.add(new THREE.Mesh(mergeGeometries(arr9, false), lam(col9))); };
+  putU9(kelp9, 0x2f6a44); putU9(corA9, 0xe87a9a); putU9(corB9, 0xe8925a); putU9(corC9, 0x9a6ae6); putU9(ventR9, 0x3a3632);
+  if (VENTS9.length) {   // ♨️ 热泉气泡柱
+    const NV9 = VENTS9.length * 12, va9 = new Float32Array(NV9 * 3);
+    for (let i9 = 0; i9 < NV9; i9++) { const v9 = VENTS9[i9 % VENTS9.length]; va9[i9 * 3] = v9[0]; va9[i9 * 3 + 1] = v9[2] + (i9 / NV9) * 10; va9[i9 * 3 + 2] = v9[1]; }
+    const vg9 = new THREE.BufferGeometry(); vg9.setAttribute('position', new THREE.BufferAttribute(va9, 3));
+    ventPts9 = new THREE.Points(vg9, new THREE.PointsMaterial({ color: 0xbfe6f4, size: .9, transparent: true, opacity: .5, depthWrite: false }));
+    ventPts9.frustumCulled = false; scene.add(ventPts9);
+  }
+  console.log('🤿 海底景观:藻林', nk9, '/ 珊瑚', nc9, '/ 热泉', VENTS9.length);
+  // 沉船与藻林处加深水鱼群
+  if (wreck9) for (let i9 = 0; i9 < 8; i9++) {
+    const gf9 = new THREE.Group();
+    const fb9 = new THREE.Mesh(cong(.4, 1.6, 6), lam([0xc0c8d0, 0x8aa0b8][i9 % 2])); fb9.rotation.z = -Math.PI / 2; gf9.add(fb9);
+    gf9.userData = { cx: wreck9.x, cz: wreck9.z, rr: 5 + (i9 * 3) % 12, sp: .4 + (i9 % 4) * .1, ph: i9 * .8, dep: wreck9.y + 2.5 + (i9 % 3) };
+    scene.add(gf9); seaFish.push(gf9);
+  }
+}
 /* 🏗️ 统一建筑收尾:窗光并成 1 网格 + 炊烟粒子 */
 if (WQUEUE9.length) {
   scene.add(new THREE.Mesh(mergeGeometries(WQUEUE9, false), winMat9()));
@@ -9662,7 +9789,7 @@ if (!MOBILE) {
 loop();
 
 window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
-  enterDive, surfaceDive, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
+  enterDive, surfaceDive, enterFreeDive9, exitFreeDive9, freeDiving: () => freeDive9, wreck9: () => wreck9, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9, makeBldg,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
