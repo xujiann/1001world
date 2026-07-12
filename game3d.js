@@ -2718,7 +2718,10 @@ const moonDirN = new THREE.Vector3(0, 1, 0);
   scene.add(moonLight, moonLight.target);
 }
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
-let fireLight = null, lantern = null;
+let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null;
+const rings9 = []; let ringT9 = 0;   // 🌧️ 雨落水面涟漪池
+const ringGeo9 = new THREE.RingGeometry(.35, .5, 12), ringMat9 = new THREE.MeshBasicMaterial({ color: 0xdfeef4, transparent: true, opacity: .4, depthWrite: false, side: THREE.DoubleSide });
+const dolphins9 = [];   // 🐬
 const DAY_LEN = 480, DAY_START = .12;
 const cDaySky = new THREE.Color(0x9fd4ee), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
@@ -2759,6 +2762,7 @@ function updateDayNight(t) {
     oceanWater.position.y = .15 + tideY;
     oceanWater.material.uniforms.sunDirection.value.copy(night > .5 ? moonDirN : sunDirN);
     oceanWater.material.uniforms.sunColor.value.setHex(night > .5 ? 0xbdd8ff : 0xffffff);
+    if (oceanWater.material.uniforms.distortionScale) oceanWater.material.uniforms.distortionScale.value = WEATHER === 'storm' ? 7.4 : (WEATHER === 'rain' ? 5 : 3.7);   // ⛈️ 风暴浪高
   }
   if (mobileWater) mobileWater.position.y = tideY;
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
@@ -2780,6 +2784,7 @@ function updateDayNight(t) {
   if (aurora9) aurora9.children.forEach((p9, i9) => { p9.material.opacity = (1 - da) * (.2 + Math.sin(t * .13 + i9 * 2.1) * .08); p9.rotation.z = (i9 - 1) * .1 + Math.sin(t * .05 + i9) * .04; });   // 🌌 冬夜极光缓摆
   CLOUDU9.a.value = (WEATHER === 'clear' ? 1 : .35) * da * .15;   // 🌥️ 云影日间才显
   if (beacon) { beacon.material.opacity = (1 - da) * .32; beacon.rotation.y = t * .9; }
+  if (beamGrp9) { beamGrp9.rotation.y = t * .9; beamGrp9.children[0].material.opacity = (1 - da) * .18; }   // 🔦 光束随夜扫海
   return da;
 }
 
@@ -3504,6 +3509,19 @@ function makeTree(x, z, scale, birdCol) {
   const flame = new THREE.Mesh(new THREE.ConeGeometry(1, 2.6, 7), new THREE.MeshBasicMaterial({ color: 0xf39c12 }));
   flame.position.set(fx, fh + 1.5, fz); scene.add(flame);
   window.__flame = flame;
+  for (const [fo9, fc9, fs9] of [[.45, 0xffd24a, .6], [-.4, 0xff6a2a, .75], [.1, 0xffb03a, .9]]) {   // 🔥 三舌副焰(错相跳动)
+    const f29 = new THREE.Mesh(new THREE.ConeGeometry(.55 * fs9, 1.9 * fs9, 6),
+      new THREE.MeshBasicMaterial({ color: fc9, transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    f29.position.set(fx + fo9, fh + 1.3, fz + fo9 * .6);
+    f29.userData.ph9 = fo9 * 9; scene.add(f29); flames9.push(f29);
+  }
+  {   // 🔥 火星上飘
+    const NS9 = 14, sa9 = new Float32Array(NS9 * 3);
+    for (let i9 = 0; i9 < NS9; i9++) { sa9[i9 * 3] = fx + (Math.random() - .5); sa9[i9 * 3 + 1] = fh + 1 + Math.random() * 4; sa9[i9 * 3 + 2] = fz + (Math.random() - .5); }
+    const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(sa9, 3));
+    sparks9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xffc46a, size: .5, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    sparks9.userData = { fx, fz, fh }; sparks9.frustumCulled = false; scene.add(sparks9);
+  }
   fireLight = new THREE.PointLight(0xff9a3c, 0, 70, 2);
   fireLight.position.set(fx, fh + 3, fz); scene.add(fireLight);
   for (let i = 0; i < 5; i++) {
@@ -7240,6 +7258,86 @@ const gulls = [];
     scene.add(g); gulls.push(g);
   }
 }
+/* --- 🐬 双海豚(主码头湾内环游,鼠海豚式跃水) --- */
+for (let i9 = 0; i9 < 2; i9++) {
+  const d9 = new THREE.Group();
+  const bd9 = new THREE.Mesh(cong(.55, 2.6, 8), lam(0x4a7a9a)); bd9.rotation.x = Math.PI / 2; d9.add(bd9);
+  const fn9 = new THREE.Mesh(cong(.28, .8, 4), lam(0x3a6a8a)); fn9.position.set(0, .5, .2); d9.add(fn9);
+  const tl9 = box(.9, .12, .5, lam(0x3a6a8a)); tl9.position.set(0, 0, 1.5); d9.add(tl9);
+  d9.userData = { ph: i9 * 2.4 };
+  scene.add(d9); dolphins9.push(d9);
+}
+/* --- 🚨 航标灯(码头红绿闪烁,夜航指路) --- */
+const NAVL9 = [];
+for (const [nx9, nz9, nc9, np9] of [[-4, 428, 0xff3a3a, 1.1], [4, 428, 0x3aff6a, 1.5], [58, 890, 0xff3a3a, 1.3], [66, 884, 0x3aff6a, 1.7]]) {
+  const po9 = cyl(.14, .18, 3.2, M.woodDark); po9.position.set(nx9, Math.max(height(nx9, nz9), 0) + 1.6, nz9); scene.add(po9);
+  const lm9 = new THREE.Mesh(sphg(.32, 8, 6), new THREE.MeshBasicMaterial({ color: nc9, transparent: true, opacity: 0, fog: false }));
+  lm9.position.set(nx9, po9.position.y + 1.8, nz9); scene.add(lm9);
+  NAVL9.push({ m: lm9, per: np9, ph: nx9 });
+}
+/* --- 🏮 广场灯笼串(夜里点起一串暖光) --- */
+{
+  const lp19 = [-12, -16], lp29 = [14, -20];
+  for (const [px9, pz9] of [lp19, lp29]) { const pl9 = cyl(.16, .2, 5, M.woodDark); pl9.position.set(px9, Math.max(height(px9, pz9), 0) + 2.5, pz9); scene.add(pl9); }
+  const glm9 = winMat9();   // 注册进夜窗系统:昼隐夜明
+  for (let i9 = 0; i9 < 7; i9++) {
+    const k9 = (i9 + .5) / 7, sag9 = Math.sin(k9 * Math.PI) * 1.1;
+    const lx9 = lp19[0] + (lp29[0] - lp19[0]) * k9, lz9 = lp19[1] + (lp29[1] - lp19[1]) * k9;
+    const ly9 = Math.max(height(lx9, lz9), 0) + 4.6 - sag9;
+    const sh9 = new THREE.Mesh(sphg(.34, 8, 6), lam(0xc03a3a)); sh9.scale.y = 1.2; sh9.position.set(lx9, ly9, lz9); scene.add(sh9);
+    const gl9 = new THREE.Mesh(sphg(.42, 8, 6), glm9); gl9.scale.y = 1.2; gl9.position.set(lx9, ly9, lz9); scene.add(gl9);
+  }
+}
+/* --- 🐑 岛屿动物(游走小兽:夏尔羊群/主岛鹿兔/山海经异兽崽) --- */
+const ANIMALS9 = [];
+function makeAnimal9(kind9, x9, z9) {
+  const g9 = new THREE.Group();
+  const C9 = { sheep: [0xe8e4da, 0x3a3630], deer: [0x9a6a42, 0x6a4426], rabbit: [0xd8d0c4, 0xb0a898], beast: [0xc85a8a, 0x8a3a5a] }[kind9];
+  const S9 = { sheep: [1.6, 1.1, 2.4], deer: [1.1, 1.2, 2.2], rabbit: [.7, .6, 1.1], beast: [1.2, 1, 2] }[kind9];
+  const by9 = kind9 === 'rabbit' ? .75 : 1.35;
+  const bd9 = box(S9[0], S9[1], S9[2], lam(C9[0])); bd9.position.y = by9; g9.add(bd9);
+  const hd9 = box(S9[0] * .6, S9[1] * .6, S9[1] * .55, lam(C9[0])); hd9.position.set(0, by9 + S9[1] * .45, S9[2] * .62); g9.add(hd9);
+  const lh9 = kind9 === 'rabbit' ? .5 : .9;
+  for (const [sx9, sz9] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const lg9 = box(.22, lh9, .22, lam(C9[1])); lg9.position.set(sx9 * S9[0] * .35, lh9 / 2, sz9 * S9[2] * .32); g9.add(lg9);
+  }
+  if (kind9 === 'deer') for (const s9 of [-1, 1]) { const an9 = box(.1, .8, .1, lam(0x5a4426)); an9.rotation.z = s9 * .5; an9.position.set(s9 * .3, by9 + 1.1, S9[2] * .62); g9.add(an9); }
+  if (kind9 === 'rabbit') for (const s9 of [-1, 1]) { const er9 = box(.14, .6, .1, lam(C9[1])); er9.position.set(s9 * .18, 1.35, .45); g9.add(er9); }
+  if (kind9 === 'sheep') { const wo9 = new THREE.Mesh(sphg(.9, 7, 6), lam(0xf2eee6)); wo9.scale.set(1.1, .8, 1.4); wo9.position.y = 1.8; g9.add(wo9); }
+  if (kind9 === 'beast') { const tl9 = new THREE.Mesh(cong(.25, 1.4, 5), lam(C9[1])); tl9.rotation.x = Math.PI / 2.6; tl9.position.set(0, 1.5, -1.3); g9.add(tl9); }
+  g9.position.set(x9, Math.max(height(x9, z9), 0), z9);
+  g9.userData = { kind: kind9, hx: x9, hz: z9, tx: x9, tz: z9, pause: Math.random() * 4, sp: kind9 === 'rabbit' ? 2.2 : 1.1, ph: Math.random() * 6 };
+  scene.add(g9); ANIMALS9.push(g9);
+}
+[['sheep', -210, -752], ['sheep', -204, -744], ['sheep', -212, -736], ['sheep', -206, -728],
+ ['deer', 100, -142], ['deer', 108, -134], ['rabbit', 100, -110], ['rabbit', 106, -104], ['rabbit', 96, -100],
+ ['beast', -570, -1062], ['beast', -566, -1034]].forEach(a9 => makeAnimal9(a9[0], a9[1], a9[2]));
+/* --- 🕊️ 候鸟 V 字(高空掠过,出界换向重来) --- */
+let vFlock9 = null;
+{
+  vFlock9 = new THREE.Group();
+  for (let i9 = 0; i9 < 9; i9++) {
+    const b9 = new THREE.Group();
+    const wl9 = box(1.8, .08, .42, lam(0x4a4a52)); wl9.position.x = -.9; b9.add(wl9);
+    const wr9 = box(1.8, .08, .42, lam(0x4a4a52)); wr9.position.x = .9; b9.add(wr9);
+    const k9 = Math.ceil(i9 / 2), s9 = i9 % 2 ? 1 : -1;
+    b9.position.set(i9 ? s9 * k9 * 3.2 : 0, -k9 * .3, -k9 * 4);
+    b9.userData = { wl: wl9, wr: wr9, ph: k9 * .6 };
+    vFlock9.add(b9);
+  }
+  vFlock9.position.set(-2100, 190, 600);
+  vFlock9.userData = { dx: 1, dz: -.28 };
+  scene.add(vFlock9);
+}
+/* --- 🪼 夜光水母(南塔开特湾外浅水,夜里发光) --- */
+const jellies9 = [];
+for (let i9 = 0; i9 < 6; i9++) {
+  const jm9 = new THREE.MeshLambertMaterial({ color: 0x9ad4e6, transparent: true, opacity: .5, emissive: 0x2a8aa8, emissiveIntensity: .15 });
+  const j9 = new THREE.Mesh(sphg(.9, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), jm9);
+  j9.position.set(96 + (i9 % 3) * 9, -1.8 - (i9 % 2) * .8, 948 + ((i9 / 3) | 0) * 9);
+  j9.userData = { ph: i9 * 1.1, y0: j9.position.y };
+  scene.add(j9); jellies9.push(j9);
+}
 /* --- 植物园的蝴蝶 --- */
 const flies = [];
 {
@@ -7333,7 +7431,7 @@ function bridgeHeight(x, z) {
   }
 }
 /* --- 灯塔屿 --- */
-let lightLamp = null, beacon = null;
+let lightLamp = null, beacon = null, beamGrp9 = null;
 {
   const bx = IS2.x, bz = IS2.z, bh0 = height(bx, bz);
   const base = cyl(6, 7.2, 3, M.stone); base.position.set(bx, bh0 + 1.2, bz); scene.add(base);
@@ -7347,6 +7445,11 @@ let lightLamp = null, beacon = null;
   lightLamp = new THREE.PointLight(0xfff2b0, 0, 180, 1.8); lightLamp.position.set(bx, bh0 + 22.6, bz); scene.add(lightLamp);
   beacon = new THREE.Mesh(new THREE.PlaneGeometry(80, 2.4), new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, side: THREE.DoubleSide }));
   beacon.position.set(bx, bh0 + 22.6, bz); scene.add(beacon);
+  beamGrp9 = new THREE.Group(); beamGrp9.position.set(bx, bh0 + 22.6, bz);   // 🔦 体积光束扫海
+  const bm9 = new THREE.Mesh(new THREE.CylinderGeometry(.6, 7, 80, 10, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  bm9.rotation.z = Math.PI / 2; bm9.position.x = 40;
+  beamGrp9.add(bm9); scene.add(beamGrp9);
   cirObs.push({ x: bx, z: bz, r: 4.2 });
   makeTree(bx + 24, bz + 16, 1.1, null); makeTree(bx - 20, bz + 24, .9, null); makeTree(bx + 8, bz - 28, 1.2, null);
   const sg = makeSign('灯塔屿', 5.5, '#12242e', '#bfe8ff');
@@ -8313,6 +8416,7 @@ function whaleCall() {
   o.connect(g).connect(actx.destination);
   o.start(t0); o.stop(t0 + 3.5);
 }
+let introT9 = 6.5;   // 🎬 开场运镜:高空缓降绕入(动一下即快进)
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
@@ -8529,6 +8633,17 @@ function loop() {
     target.y = Math.max(target.y, height(target.x, target.z) + 1.4, .8);
     camera.position.lerp(target, Math.min(1, dt * 8));
     camera.lookAt(player.position.x, player.position.y + 2.4, player.position.z);
+  }
+  if (introT9 > 0 && !diving) {   // 🎬 开场运镜覆盖
+    if (!modalOpen) introT9 = Math.max(0, introT9 - dt);
+    if (pMoving && introT9 > 1.2) introT9 = 1.2;
+    const k9 = smooth01(Math.min(1, introT9 / 6));
+    const ia9 = introT9 * .3;
+    camera.position.lerp(v3.set(
+      player.position.x + Math.cos(ia9) * (16 + 240 * k9),
+      player.position.y + 5 + 200 * k9,
+      player.position.z + Math.sin(ia9) * (16 + 240 * k9)), Math.min(1, dt * 3));
+    camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
   }
 
   /* 动画:水 / 云 / 鱼 / 海鸥 / 篝火 / 鸟 */
@@ -8767,6 +8882,77 @@ function loop() {
     b.rotation.z = Math.sin(t * 1.4 + b.position.x) * .05;
   }
   /* 雨幕跟随玩家 + 高处风声 */
+  /* 🌧️ 雨落水面涟漪 */
+  if (RAINY && !MOBILE && !diving) {
+    ringT9 -= dt;
+    if (ringT9 <= 0) {
+      ringT9 = .09;
+      const rx9 = player.position.x + (Math.random() - .5) * 70, rz9 = player.position.z + (Math.random() - .5) * 70;
+      if (heightMesh(rx9, rz9) < -.4) {
+        const rg9 = new THREE.Mesh(ringGeo9, ringMat9);
+        rg9.rotation.x = -Math.PI / 2; rg9.position.set(rx9, tideY + .2, rz9);
+        scene.add(rg9); rings9.push({ m: rg9, life: .9 });
+        if (rings9.length > 26) { const o9 = rings9.shift(); scene.remove(o9.m); }
+      }
+    }
+  }
+  for (let i9 = rings9.length - 1; i9 >= 0; i9--) { const r9 = rings9[i9]; r9.life -= dt; if (r9.life < 0) { scene.remove(r9.m); rings9.splice(i9, 1); } else r9.m.scale.setScalar(1 + (0.9 - r9.life) * 4.5); }
+  for (const d9 of dolphins9) {   // 🐬 鼠海豚式跃水
+    const ph9 = d9.userData.ph, aa9 = t * .32 + ph9;
+    const cx9 = 30 + Math.cos(aa9) * 26, cz9 = 474 + Math.sin(aa9) * 26;
+    const jp9 = aa9 * 3.1;
+    d9.position.set(cx9, Math.sin(jp9) * 2.1 - 1.1 + tideY, cz9);
+    d9.rotation.y = Math.atan2(-Math.sin(aa9), Math.cos(aa9));
+    d9.rotation.x = -Math.cos(jp9) * .55;
+    d9.visible = d9.position.y > -2.4;
+  }
+  /* 🔥🚨 光效:火焰跳动 / 火星 / 航标闪烁 */
+  for (const f9 of flames9) { const k9 = .75 + Math.sin(t * 11 + f9.userData.ph9) * .28; f9.scale.set(k9, .8 + Math.sin(t * 13 + f9.userData.ph9 * 2) * .35, k9); f9.material.opacity = (.5 + (1 - curDA) * .4) * (.7 + Math.sin(t * 9 + f9.userData.ph9) * .3); }
+  if (sparks9) {
+    const su9 = sparks9.userData, sp29 = sparks9.geometry.attributes.position;
+    for (let i9 = 0; i9 < sp29.count; i9++) {
+      let y9 = sp29.getY(i9) + dt * (1.6 + (i9 % 3) * .8);
+      if (y9 > su9.fh + 5.5) { y9 = su9.fh + 1; sp29.setX(i9, su9.fx + (Math.random() - .5)); sp29.setZ(i9, su9.fz + (Math.random() - .5)); }
+      sp29.setY(i9, y9);
+      sp29.setX(i9, sp29.getX(i9) + Math.sin(y9 * 2 + i9) * .3 * dt);
+    }
+    sp29.needsUpdate = true;
+    sparks9.material.opacity = .3 + (1 - curDA) * .6;
+  }
+  for (const n9 of NAVL9) n9.m.material.opacity = (1 - curDA) * (Math.sin(t * Math.PI * 2 / n9.per + n9.ph) > .3 ? .95 : .06);
+  /* 🐑🕊️🪼 生命系统:动物游走 / 候鸟 / 水母 */
+  for (const a9 of ANIMALS9) {
+    const u9 = a9.userData;
+    if (u9.pause > 0) u9.pause -= dt;
+    else {
+      const dx9 = u9.tx - a9.position.x, dz9 = u9.tz - a9.position.z, dd9 = Math.hypot(dx9, dz9);
+      if (dd9 < .4) { u9.pause = 2 + Math.random() * 5; const aa9 = Math.random() * Math.PI * 2, rr9 = 4 + Math.random() * 9; const nx9 = u9.hx + Math.cos(aa9) * rr9, nz9 = u9.hz + Math.sin(aa9) * rr9; if (heightMesh(nx9, nz9) > .5) { u9.tx = nx9; u9.tz = nz9; } }
+      else {
+        a9.position.x += dx9 / dd9 * u9.sp * dt; a9.position.z += dz9 / dd9 * u9.sp * dt;
+        a9.rotation.y = Math.atan2(dx9, dz9);
+        a9.position.y = Math.max(heightMesh(a9.position.x, a9.position.z), 0) + (u9.kind === 'rabbit' ? Math.abs(Math.sin(t * 9 + u9.ph)) * .35 : Math.abs(Math.sin(t * 5 + u9.ph)) * .05);
+      }
+    }
+  }
+  if (vFlock9) {
+    const uv9 = vFlock9.userData;
+    vFlock9.position.x += uv9.dx * 13 * dt; vFlock9.position.z += uv9.dz * 13 * dt;
+    vFlock9.rotation.y = Math.atan2(uv9.dx, uv9.dz);
+    if (Math.abs(vFlock9.position.x) > 2300 || Math.abs(vFlock9.position.z) > 2300) {
+      const na9 = Math.random() * Math.PI * 2;
+      vFlock9.position.set(-Math.cos(na9) * 2100, 170 + Math.random() * 60, -Math.sin(na9) * 2100);
+      uv9.dx = Math.cos(na9); uv9.dz = Math.sin(na9);
+    }
+    for (const b9 of vFlock9.children) { const f9 = Math.sin(t * 7 + b9.userData.ph) * .5; b9.userData.wl.rotation.z = f9; b9.userData.wr.rotation.z = -f9; }
+  }
+  for (const j9 of jellies9) {
+    const uj9 = j9.userData;
+    j9.position.y = uj9.y0 + Math.sin(t * .7 + uj9.ph) * .6;
+    const pu9 = 1 + Math.sin(t * 2.2 + uj9.ph) * .18;
+    j9.scale.set(pu9, 2 - pu9, pu9);
+    j9.material.emissiveIntensity = .12 + (1 - curDA) * .9;
+    j9.material.opacity = .4 + (1 - curDA) * .25;
+  }
   /* 👣⛵🫧🌊 微痕迹与泡沫 */
   if (!MOBILE) {
     if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
@@ -8792,7 +8978,11 @@ function loop() {
         wk9.rotation.x = -Math.PI / 2;
         wk9.position.set(player.position.x - Math.sin(faceYaw) * 2.6, tideY + .22, player.position.z - Math.cos(faceYaw) * 2.6);
         scene.add(wk9); wakes9.push({ m: wk9, life: 2.6 });
-        if (wakes9.length > 14) { const o9 = wakes9.shift(); scene.remove(o9.m); }
+        const bw9 = new THREE.Mesh(wakeGeo9, wakeMat9);   // ⛵ 船头破浪
+        bw9.rotation.x = -Math.PI / 2; bw9.scale.setScalar(.5);
+        bw9.position.set(player.position.x + Math.sin(faceYaw) * 2.5, tideY + .24, player.position.z + Math.cos(faceYaw) * 2.5);
+        scene.add(bw9); wakes9.push({ m: bw9, life: 1.2 });
+        if (wakes9.length > 22) { const o9 = wakes9.shift(); scene.remove(o9.m); }
       }
     }
     for (let i9 = wakes9.length - 1; i9 >= 0; i9--) { const w9 = wakes9[i9]; w9.life -= dt; if (w9.life < 0) { scene.remove(w9.m); wakes9.splice(i9, 1); } else { w9.m.scale.setScalar(1 + (2.6 - w9.life) * 1.4); } }
@@ -9233,6 +9423,88 @@ if (!MOBILE && CHIM9.length) {
   const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(sa9, 3));
   smokePts9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xd8dade, size: 1.5, transparent: true, opacity: .25, depthWrite: false }));
   smokePts9.frustumCulled = false; scene.add(smokePts9);
+}
+/* 🌴🌲🎋🐚🍄 植被多样化与滩涂细节(按材质合并,合计 ~10 draw) */
+if (!MOBILE) {
+  const rv9 = mulberry32(77);
+  const trunks9 = [], fronds9 = [], pineG9 = [], pineT9 = [], bam9 = [], shellA9 = [], shellB9 = [], starA9 = [], mushS9 = [], mushC9 = [];
+  let np9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && np9 < 110; gx9 += 15)   // 🌴 沙滩棕榈
+    for (let gz9 = -1900; gz9 < 1900 && np9 < 110; gz9 += 15) {
+      const h9 = height(gx9, gz9);
+      if (h9 > .5 && h9 < 1.6 && rv9() < .5) {
+        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = height(px9, pz9);
+        if (ph9 < .4) continue;
+        np9++;
+        const lean9 = (rv9() - .5) * .5, ang9 = rv9() * Math.PI * 2, hh9 = 5 + rv9() * 2.5;
+        const tk9 = new THREE.CylinderGeometry(.16, .3, hh9, 5);
+        tk9.rotateZ(lean9); tk9.rotateY(ang9); tk9.translate(px9, ph9 + Math.cos(lean9) * hh9 / 2, pz9);
+        trunks9.push(tk9);
+        const ox9 = -Math.sin(lean9) * hh9;
+        const fx9 = px9 + Math.cos(ang9) * ox9, fz9 = pz9 - Math.sin(ang9) * ox9, fy9 = ph9 + Math.cos(lean9) * hh9;
+        for (let f9 = 0; f9 < 6; f9++) {
+          const fr9 = new THREE.ConeGeometry(.55, 3.4, 4);
+          fr9.scale(1, 1, .3); fr9.rotateX(Math.PI / 2 + .55); fr9.rotateY(f9 / 6 * Math.PI * 2 + ang9);
+          fr9.translate(fx9, fy9, fz9);
+          fronds9.push(fr9);
+        }
+        cirObs.push({ x: px9, z: pz9, r: .5 });
+      }
+    }
+  let npn9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && npn9 < 80; gx9 += 31)   // 🌲 高地松杉
+    for (let gz9 = -1900; gz9 < 1900 && npn9 < 80; gz9 += 31) {
+      const h9 = height(gx9, gz9);
+      if (h9 > 13 && h9 < 55 && rv9() < .4) {
+        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = height(px9, pz9);
+        if (ph9 < 12) continue;
+        npn9++;
+        const s9 = .8 + rv9() * .7;
+        const tk9 = new THREE.CylinderGeometry(.22 * s9, .4 * s9, 3 * s9, 5);
+        tk9.translate(px9, ph9 + 1.5 * s9, pz9); pineT9.push(tk9);
+        [[2.4, 2.6, 2.6], [1.9, 2.2, 4.4], [1.3, 1.8, 5.9]].forEach(([cr9, ch9, cy9]) => {
+          const cn9 = new THREE.ConeGeometry(cr9 * s9, ch9 * s9, 7);
+          cn9.translate(px9, ph9 + cy9 * s9, pz9); pineG9.push(cn9);
+        });
+        cirObs.push({ x: px9, z: pz9, r: .6 });
+      }
+    }
+  for (const [bx9, bz9] of [[THY.x - 30, THY.z + 24], [THY.x + 36, THY.z - 10], [THY.x + 8, THY.z + 44], [SHJ.x + 40, SHJ.z + 30], [SHJ.x - 34, SHJ.z - 38]]) {   // 🎋 竹丛
+    const bh09 = height(bx9, bz9); if (bh09 < .5) continue;
+    for (let c9 = 0; c9 < 7; c9++) {
+      const cx9 = bx9 + (rv9() - .5) * 4, cz9 = bz9 + (rv9() - .5) * 4, ch9 = 4 + rv9() * 2.4;
+      const cn9 = new THREE.CylinderGeometry(.07, .09, ch9, 4);
+      cn9.rotateZ((rv9() - .5) * .12); cn9.translate(cx9, height(cx9, cz9) + ch9 / 2, cz9);
+      bam9.push(cn9);
+      const lf9 = new THREE.ConeGeometry(.5, 1.3, 4); lf9.translate(cx9, height(cx9, cz9) + ch9 + .5, cz9); bam9.push(lf9);
+    }
+  }
+  let nsh9 = 0;
+  for (let gx9 = -1900; gx9 < 1900 && nsh9 < 220; gx9 += 11)   // 🐚 贝壳与海星
+    for (let gz9 = -1900; gz9 < 1900 && nsh9 < 220; gz9 += 11) {
+      const h9 = height(gx9, gz9);
+      if (h9 > .25 && h9 < 1.2 && rv9() < .55) {
+        nsh9++;
+        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = Math.max(height(px9, pz9), .2);
+        const r9 = rv9();
+        if (r9 < .4) { const sh9 = new THREE.SphereGeometry(.17, 5, 4); sh9.scale(1, .4, 1.3); sh9.rotateY(rv9() * 6); sh9.translate(px9, ph9 + .06, pz9); shellA9.push(sh9); }
+        else if (r9 < .75) { const sh9 = new THREE.SphereGeometry(.15, 5, 4); sh9.scale(1.2, .38, 1); sh9.rotateY(rv9() * 6); sh9.translate(px9, ph9 + .06, pz9); shellB9.push(sh9); }
+        else { const st9 = new THREE.ConeGeometry(.32, .09, 5); st9.rotateY(rv9() * 6); st9.translate(px9, ph9 + .05, pz9); starA9.push(st9); }
+      }
+    }
+  for (const [mx9, mz9] of [[150, -158], [-118, -664], [THY.x - 12, THY.z - 30]]) {   // 🍄 蘑菇圈
+    for (let m9 = 0; m9 < 8; m9++) {
+      const ma9 = m9 / 8 * Math.PI * 2, ux9 = mx9 + Math.cos(ma9) * 2.6, uz9 = mz9 + Math.sin(ma9) * 2.6;
+      const uh9 = height(ux9, uz9); if (uh9 < .5) continue;
+      const st9 = new THREE.CylinderGeometry(.08, .12, .5, 5); st9.translate(ux9, uh9 + .25, uz9); mushS9.push(st9);
+      const cp9 = new THREE.SphereGeometry(.26, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2); cp9.translate(ux9, uh9 + .48, uz9); mushC9.push(cp9);
+    }
+  }
+  const put9 = (arr9, col9) => { if (arr9.length) { const mm9 = new THREE.Mesh(mergeGeometries(arr9, false), lam(col9)); mm9.castShadow = true; scene.add(mm9); } };
+  put9(trunks9, 0x8a6a44); put9(fronds9, 0x4f8a48); put9(pineT9, 0x5a4632); put9(pineG9, 0x2e5a40);
+  put9(bam9, 0x6a9a4a); put9(shellA9, 0xf2e8dc); put9(shellB9, 0xe8b8c8); put9(starA9, 0xe8925a);
+  put9(mushS9, 0xe8e0d0); put9(mushC9, 0xc84a3a);
+  console.log('🌴 植被细节:棕榈', np9, '/ 松', npn9, '/ 贝壳海星', nsh9);
 }
 /* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
 if (!MOBILE) {
