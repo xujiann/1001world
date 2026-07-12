@@ -1306,7 +1306,7 @@ function openCard(s) {
     dayCntSet9('w1001.thv.' + isl9, hv9 + 1);
     const gg9 = goods9(); gg9[k9] = (gg9[k9] || 0) + 1; goodsSet9(gg9);
     toast(GOODS9[k9].i + ' 采到一份' + GOODS9[k9].n + '!(货舱 ' + cargoN9() + '/12)'); blip(660);
-    openCard(nearSpot);
+    if (nearSpot && nearSpot.cat === 'trader') openCard(nearSpot); else closeModals();
   }));
   cardBody.querySelectorAll('[data-gbuy]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 产地购入
     const k9 = b9.dataset.gbuy, isl9 = nearSpot && nearSpot.tr;
@@ -1314,7 +1314,7 @@ function openCard(s) {
     dayCntSet9('w1001.tbuy.' + isl9, dayCnt9('w1001.tbuy.' + isl9) + 1);
     const gg9 = goods9(); gg9[k9] = (gg9[k9] || 0) + 1; goodsSet9(gg9);
     toast(GOODS9[k9].i + ' 购入 ' + GOODS9[k9].n + '——去别的岛卖个好价!'); blip(620);
-    openCard(nearSpot);
+    if (nearSpot && nearSpot.cat === 'trader') openCard(nearSpot); else closeModals();
   }));
   cardBody.querySelectorAll('[data-gsell]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 外埠卖出
     const k9 = b9.dataset.gsell, isl9 = nearSpot && nearSpot.tr, sp9 = +b9.dataset.sp;
@@ -1324,7 +1324,7 @@ function openCard(s) {
     PSTORE.setItem('w1001.tradeprofit', String(pf9));
     toast('💰 卖出 ' + GOODS9[k9].n + ' +' + sp9 + '⚡(利润累计 ' + pf9 + '⚡)'); blip(760);
     if (pf9 >= 200 && PSTORE.getItem('w1001.trader1') !== '1') { PSTORE.setItem('w1001.trader1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「丝路行商」——累计利润 200⚡ · ⭐+1'); }
-    openCard(nearSpot);
+    if (nearSpot && nearSpot.cat === 'trader') openCard(nearSpot); else closeModals();
   }));
   cardBody.querySelectorAll('[data-note]').forEach(b9 => b9.addEventListener('click', () => {
     const i9 = +b9.dataset.note;
@@ -7171,7 +7171,7 @@ let ghostShip9 = null;
   scene.add(ghostShip9);
 }
 /* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
-const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0 };
+const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0, cd: 0 };
 for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
   const [rx9, rz9] = RACE9.pts[i9];
   const po9 = cyl(.2, .26, 5, M.woodDark); po9.position.set(rx9, 2, rz9); scene.add(po9);
@@ -8525,12 +8525,13 @@ function worldFx9(dt, t, pMoving, bh) {
   if (vehicle === 2 || RACE9.on) {
     const rp9 = RACE9.pts[RACE9.on ? RACE9.next : 0];
     const rd9 = Math.hypot(player.position.x - rp9[0], player.position.z - rp9[1]);
-    if (!RACE9.on && vehicle === 2 && rd9 < 16) {
+    RACE9.cd = Math.max(0, RACE9.cd - dt);
+    if (!RACE9.on && vehicle === 2 && rd9 < 16 && RACE9.cd <= 0) {
       RACE9.on = true; RACE9.next = 1; RACE9.t0 = t;
       toast('🏁 环岛计时赛开始!顺时针绕过三只橙浮标,回到绿浮标'); blip(880);
     } else if (RACE9.on && rd9 < 16) {
       if (RACE9.next === 0) {   // 冲线
-        RACE9.on = false;
+        RACE9.on = false; RACE9.cd = 12;
         const tt9 = Math.round(t - RACE9.t0);
         const best9 = parseInt(PSTORE.getItem('w1001.racebest') || '0', 10) || 0;
         earnSB(30);
@@ -8604,6 +8605,7 @@ function worldFx9(dt, t, pMoving, bh) {
     const dip9 = Math.max(0, (Math.cos(ba9 - 4.712) - .955) / .045);
     balloon9.position.set(Math.cos(ba9) * 190, (96 + Math.sin(t * .11) * 9) - dip9 * 82, Math.sin(ba9) * 190);
     balloon9.rotation.y = ba9;
+    if (balloonRide9 && (diving || flight)) { balloonRide9 = false; toast('🎈 你离开了吊篮'); }
     if (balloonRide9) {
       player.position.set(balloon9.position.x, balloon9.position.y + 2.2, balloon9.position.z);
       vy = 0;
@@ -8740,7 +8742,8 @@ function worldFx9(dt, t, pMoving, bh) {
   for (let i9 = bio9.length - 1; i9 >= 0; i9--) { const b9 = bio9[i9]; b9.life -= dt; if (b9.life < 0) { scene.remove(b9.m); bio9.splice(i9, 1); } else b9.m.scale.setScalar(Math.max(.05, b9.life / 2.4) * 1.2); }
   {   // 🔔 广场钟声:一日十二响(夜里不敲)
     const pDay9 = (t / DAY_LEN + DAY_START) % 1, hr9 = Math.floor(pDay9 * 12);
-    if (hr9 !== lastHr9) { lastHr9 = hr9; if (curDA > .35) { blip(392); setTimeout(() => blip(311), 380); } }
+    if (lastHr9 === -1) lastHr9 = hr9;
+    else if (hr9 !== lastHr9) { lastHr9 = hr9; if (curDA > .35) { blip(392); setTimeout(() => blip(311), 380); } }
   }
   /* 🌧️ 雨落水面涟漪 */
   if (RAINY && !MOBILE && !diving) {
