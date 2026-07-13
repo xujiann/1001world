@@ -2542,7 +2542,7 @@ if (RAINY) {
   }
 }
 /* 🌊 岸线泡沫(声明;扫描在全部岛屿建成后进行——height 需含 NI 群岛) */
-let foamPts = null;
+let foamPts = null, shallowsMesh = null;
 /* 🌈 彩虹(雨天白日,远海一道七色弧) */
 let rainbow9 = null;
 if (WEATHER === 'rain') {
@@ -9069,6 +9069,7 @@ function worldFx9(dt, t, pMoving, bh) {
   /* 👣⛵🫧🌊 微痕迹与泡沫 */
   if (!MOBILE) {
     if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
+    if (shallowsMesh) shallowsMesh.position.y = tideY;
     CLOUDU9.t.value = t;
     if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
       stepT9 -= dt;
@@ -10434,6 +10435,39 @@ if (!MOBILE) {
   foamPts = new THREE.Points(fgF9, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(cvF9), color: 0xf4f8f6, size: 2.4, transparent: true, opacity: .34, depthWrite: false }));
   scene.add(foamPts);
   console.log('🌊 岸线泡沫:', pts9.length / 3 | 0, '点');
+  /* 🏖️ 浅滩色带:海岸一圈青绿浅水,顶点色 alpha 按海床深度渐隐(风之杖式) */
+  {
+    const step9 = 12, teal9 = new THREE.Color(0x5fd6c8), blue9 = new THREE.Color(0x2c6f96);
+    const verts9 = [], cols9 = [];
+    const corner9 = (x9, z9) => {
+      const h9 = height(x9, z9);
+      let a9 = 0, r9 = teal9.r, gg9 = teal9.g, b9 = teal9.b;
+      if (h9 < .35 && h9 > -11) {
+        const d9 = Math.max(0, -h9);
+        a9 = (1 - clamp(d9 / 9, 0, 1)) * .5;
+        if (h9 > 0) a9 *= Math.max(0, 1 - h9 / .35);           // 上岸渐隐
+        const cc9 = teal9.clone().lerp(blue9, clamp(d9 / 5, 0, 1));
+        r9 = cc9.r; gg9 = cc9.g; b9 = cc9.b;
+      }
+      return [a9, r9, gg9, b9];
+    };
+    let cells9 = 0;
+    for (let x9 = -1960; x9 < 1960 && cells9 < 9000; x9 += step9)
+      for (let z9 = -1960; z9 < 1960 && cells9 < 9000; z9 += step9) {
+        const c00 = corner9(x9, z9), c10 = corner9(x9 + step9, z9), c01 = corner9(x9, z9 + step9), c11 = corner9(x9 + step9, z9 + step9);
+        if (c00[0] < .01 && c10[0] < .01 && c01[0] < .01 && c11[0] < .01) continue;   // 全深/全岸 → 跳
+        cells9++;
+        const push9 = (cx9, cz9, c9) => { verts9.push(cx9, .2, cz9); cols9.push(c9[1], c9[2], c9[3], c9[0]); };
+        push9(x9, z9, c00); push9(x9, z9 + step9, c01); push9(x9 + step9, z9, c10);           // 三角1
+        push9(x9 + step9, z9, c10); push9(x9, z9 + step9, c01); push9(x9 + step9, z9 + step9, c11);   // 三角2
+      }
+    const sg9 = new THREE.BufferGeometry();
+    sg9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts9), 3));
+    sg9.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cols9), 4));
+    shallowsMesh = new THREE.Mesh(sg9, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    shallowsMesh.renderOrder = 2; scene.add(shallowsMesh);
+    console.log('🏖️ 浅滩色带:', cells9, '格');
+  }
 }
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外;顺路定 IBL 环境强度 */
 if (!MOBILE) {
