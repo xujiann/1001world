@@ -2116,7 +2116,13 @@ function openGuide() {
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-close-guide]')?.addEventListener('click', () => closeModals());
 }
-$('btnStart').addEventListener('click', () => {
+const START_LABEL9 = $('btnStart').textContent;
+let worldStarted9 = false, autoEnterT9 = null, autoEnterLeft9 = 8;
+function startWorld9() {
+  if (worldStarted9) { $('intro').classList.add('hidden'); return; }   // 已开始:H 重开当帮助看时,点按钮/任意键只是关掉
+  worldStarted9 = true;
+  if (autoEnterT9) { clearInterval(autoEnterT9); autoEnterT9 = null; }
+  $('btnStart').textContent = START_LABEL9;
   $('intro').classList.add('hidden');
   initAudio();
   try {
@@ -2137,7 +2143,22 @@ $('btnStart').addEventListener('click', () => {
   if (LOWTIDE9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
   setTimeout(() => { toast('📸 今日摄影题:「' + PH_TODAY9.name + '」——照片模式拍到即得 ⚡15'); }, 12000);
   if (FESTIVAL) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 4800);
-});
+}
+$('btnStart').addEventListener('click', startWorld9);
+/* 🎬 首次加载:任意键/点按钮即启程;闲置则按钮读秒自动进场(展开「岛屿一览」= 想细看 → 取消倒计时) */
+{
+  const btn9 = $('btnStart');
+  const cancelAuto9 = () => { if (autoEnterT9) { clearInterval(autoEnterT9); autoEnterT9 = null; btn9.textContent = START_LABEL9; } };
+  btn9.textContent = START_LABEL9 + ' · ' + autoEnterLeft9;
+  autoEnterT9 = setInterval(() => {
+    if (worldStarted9) { cancelAuto9(); return; }
+    if (!window.__w3d || !window.__w3d.scene) return;   // 世界还没建好就不读秒(慢加载别把人提前丢进空场景)
+    if (--autoEnterLeft9 <= 0) startWorld9();
+    else btn9.textContent = START_LABEL9 + ' · ' + autoEnterLeft9;
+  }, 1000);
+  const isles9 = document.querySelector('#introCard .isles');
+  if (isles9) isles9.addEventListener('toggle', () => { if (isles9.open) cancelAuto9(); });
+}
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
 let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null, windGain = null;
@@ -8786,6 +8807,7 @@ function tryPhantom() {
 }
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (!worldStarted9 && !$('intro').classList.contains('hidden') && !['shift', 'control', 'alt', 'meta'].includes(k)) { startWorld9(); return; }   // 🎬 开场卡:任意键启程
   if (k === 'escape') { closeModals(); return; }
   if (k === 'j') { modalOpen && !$('journal').classList.contains('hidden') ? closeModals() : openJournal(); return; }
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
