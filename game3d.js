@@ -3400,8 +3400,13 @@ function makeSign(text, w = 9, bg = '#3a2a18', fg = '#ffd76a') {
   c.fillStyle = fg; c.font = 'bold 58px "Microsoft YaHei", sans-serif';
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 256, 64);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.Mesh(new THREE.PlaneGeometry(w, w * 120 / 512),
-    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+  const geo = new THREE.PlaneGeometry(w, w * 120 / 512);
+  const mat = new THREE.MeshBasicMaterial({ map: tex });        // FrontSide:正面朝 +z 读字正常
+  const sign = new THREE.Mesh(geo, mat);
+  const back = new THREE.Mesh(geo, mat);                         // 背面另加一块正面朝 -z 的板
+  back.rotation.y = Math.PI; back.position.z = -0.02;           // 转 180°→其正面(非镜像)朝后;微退避免共面 z-fighting
+  sign.add(back);
+  return sign;
 }
 /* 山墙三角(古典建筑) */
 function pediment(w, h, depth, color) {
@@ -4597,8 +4602,10 @@ function updateScoreboard(minute) {
     const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 150;
     scoreCtx = sc2.getContext('2d');
     scoreTex = new THREE.CanvasTexture(sc2); scoreTex.colorSpace = THREE.SRGBColorSpace;
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(17, 5),
-      new THREE.MeshBasicMaterial({ map: scoreTex, side: THREE.DoubleSide }));
+    const boardGeo = new THREE.PlaneGeometry(17, 5), boardMat = new THREE.MeshBasicMaterial({ map: scoreTex });
+    const board = new THREE.Mesh(boardGeo, boardMat);
+    const boardBack = new THREE.Mesh(boardGeo, boardMat);   // 背面另挂一块正面朝后(共享 scoreTex,比分同步),避免记分牌背面镜像
+    boardBack.rotation.y = Math.PI; boardBack.position.z = -0.05; board.add(boardBack);
     board.position.set(cx3, baseH + 27, cz3 - 46); scene.add(board);
     updateScoreboard(0);
   }
