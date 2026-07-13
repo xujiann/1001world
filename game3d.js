@@ -1100,6 +1100,7 @@ function uisleCard9(cell9) {
 function pioneerCard9() {
   const mine9 = PSTORE.getItem('w1001.myisle');
   const d9 = mine9 ? uisleDec9(mine9) : null;
+  let visN9 = 0; try { visN9 = JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]').length; } catch (e) {}   // 损坏数据不炸卡
   const opts9 = (o9, sel9) => Object.keys(o9).map(k9 => `<option value="${k9}" ${k9 === sel9 ? 'selected' : ''}>${o9[k9].n || UPRESETS9[k9] || k9}</option>`).join('');
   const themeOpts9 = Object.keys(BSTYLES).map(k9 => `<option value="${k9}" ${d9 && d9.theme === k9 ? 'selected' : ''}>${k9}</option>`).join('');
   return `<div class="cardHead" style="background:#2a6a5a">🏝️ 开拓者事务所 · Pioneer Office</div>
@@ -1113,7 +1114,7 @@ function pioneerCard9() {
       <button class="again" data-ubuild style="display:block;width:100%;margin:8px 0 4px">${d9 ? '🔨 更新我的岛' : '🏝️ 建成我的岛(免费)'}</button>
       <div style="display:flex;gap:6px">${d9 ? '<button class="again" data-uexport style="flex:1">📤 岛屿码</button><button class="again" data-ulink style="flex:1">🔗 分享链接</button><button class="again" data-ugo style="flex:1">⛵ 前往我的岛</button>' : ''}</div>
       <textarea id="pioCode" placeholder="岛屿码出现在这里;或把朋友的岛屿码粘进来,点导入" style="width:100%;box-sizing:border-box;height:56px;margin:6px 0 4px;padding:7px;border:1px solid #d8ceb8;border-radius:8px;font-size:11px"></textarea>
-      <button class="again" data-uimport style="display:block;width:100%">📥 导入朋友的岛(已迎 ${(JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]')).length}/8 座)</button>
+      <button class="again" data-uimport style="display:block;width:100%">📥 导入朋友的岛(已迎 ${visN9}/8 座)</button>
       ${netOn() ? `<div style="border-top:1px dashed #d8ceb8;margin:10px 0 6px;padding-top:8px">
         <b style="font-size:13px">🌐 群岛集市</b>
         <button class="again" data-mkpub style="float:right;font-size:12px" ${d9 ? '' : 'disabled'}>发布我的岛</button>
@@ -1501,7 +1502,8 @@ function openCard(s) {
   }));
   cardBody.querySelectorAll('[data-gbuy]').forEach(b9 => b9.addEventListener('click', () => {   // 🧺 产地购入
     const k9 = b9.dataset.gbuy, isl9 = nearSpot && nearSpot.tr;
-    if (!isl9 || !spendSB(GOODS9[k9].p)) return;
+    if (!isl9 || cargoN9() >= 12 || dayCnt9('w1001.tbuy.' + isl9) >= 5) return;   // 货舱/日限硬守卫(先于扣钱)
+    if (!spendSB(GOODS9[k9].p)) return;
     dayCntSet9('w1001.tbuy.' + isl9, dayCnt9('w1001.tbuy.' + isl9) + 1);
     const gg9 = goods9(); gg9[k9] = (gg9[k9] || 0) + 1; goodsSet9(gg9);
     toast(GOODS9[k9].i + ' 购入 ' + GOODS9[k9].n + '——去别的岛卖个好价!'); blip(620);
