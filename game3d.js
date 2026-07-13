@@ -8308,6 +8308,7 @@ let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
+let GRASS_COL9 = null, FLOWER_COL9 = null, ROCK_COL9 = null;
 {
   const GN = MOBILE ? 1000 : 3400, R = MOBILE ? 30 : 48;   // F:近景草加密
   const bladeGeo = new THREE.ConeGeometry(.055, .62, 3);   // 细小草叶(更像草,不像圆锥)
@@ -8337,6 +8338,7 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   const gc = [new THREE.Color(0x5aa048), new THREE.Color(0x6cb556), new THREE.Color(0x4c8c40), new THREE.Color(0x7fb85e)];
   { const t9 = { spring: [.02, .06, .03], autumn: [-.09, .03, -.02], winter: [-.04, -.32, .1] }[SEASON]; if (t9) gc.forEach(c9 => c9.offsetHSL(t9[0], t9[1], t9[2])); }   // 草叶随季
   for (let i = 0; i < GN; i++) grassBlades.setColorAt(i, gc[i % 4]);
+  GRASS_COL9 = gc;
   // 野花:草丛间零星点缀(实例化,随草一起重铺)
   const FN = MOBILE ? 140 : 460;
   flowerInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.26, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), FN);
@@ -8345,6 +8347,7 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   flowerInst.userData = { FN, R, rnd: mulberry32(717) };
   const fc = [new THREE.Color(0xe8b4c8), new THREE.Color(0xffd76a), new THREE.Color(0xffffff), new THREE.Color(0xd94f6b), new THREE.Color(0x9a7fd6)];
   for (let i = 0; i < FN; i++) flowerInst.setColorAt(i, fc[i % 5]);
+  FLOWER_COL9 = fc;
   // 碎石:地表零星石块(随草一起重铺)
   const KN = MOBILE ? 70 : 210;
   rockInst = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.55, 0), new THREE.MeshLambertMaterial({ vertexColors: false }), KN);
@@ -8353,6 +8356,7 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
   rockInst.userData = { KN, R, rnd: mulberry32(431) };
   const kc = [new THREE.Color(0x8d8577), new THREE.Color(0x9a9184), new THREE.Color(0x77706a), new THREE.Color(0xa39a8c)];
   for (let i = 0; i < KN; i++) rockInst.setColorAt(i, kc[i % 4]);
+  ROCK_COL9 = kc;
 }
 /* 无草岛屿(按地理:火山岩/沙滩/岩石/荒岛/石铺港,不长草)*/
 const NO_GRASS = [
@@ -8365,49 +8369,52 @@ const NO_GRASS = [
   { x: 350, z: 620, r: 125 },     // 未竟之都(白石之城)
 ];
 function grassOK(x, z) { for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
+/* 世界锚定的抖动网格散布:位置由世界格坐标 hash 决定 → 随玩家移动只在圆盘边缘增减,
+   圈内格保持原位不动 = 草地平滑铺开、不再整体重洗;颜色也按格 hash 稳定(免闪) */
+const _sgM4 = new THREE.Matrix4(), _sgQ = new THREE.Quaternion(), _sgS = new THREE.Vector3(), _sgP = new THREE.Vector3(), _sgE = new THREE.Euler();
+function scatterGrid9(inst, N, R, cx, cz, cell, colors, filter, place) {
+  const R2 = R * R;
+  const gx0 = Math.floor((cx - R) / cell), gx1 = Math.ceil((cx + R) / cell);
+  const gz0 = Math.floor((cz - R) / cell), gz1 = Math.ceil((cz + R) / cell);
+  let i = 0;
+  for (let gx = gx0; gx <= gx1 && i < N; gx++)
+    for (let gz = gz0; gz <= gz1 && i < N; gz++) {
+      const x = (gx + hash2(gx * 1.7, gz * 2.3)) * cell, z = (gz + hash2(gx * 3.1 + 11, gz * 1.9 + 5)) * cell;
+      const dx = x - cx, dz = z - cz;
+      if (dx * dx + dz * dz > R2) continue;
+      const h = heightMesh(x, z);
+      if (!filter(x, z, h)) continue;
+      place(x, z, h, gx, gz, _sgM4, _sgQ, _sgS, _sgP, _sgE);
+      inst.setMatrixAt(i, _sgM4);
+      if (colors) inst.setColorAt(i, colors[(hash2(gx * 5.2, gz * 4.4) * colors.length) | 0]);
+      i++;
+    }
+  _sgM4.compose(_sgP.set(0, -999, 0), _sgQ.identity(), _sgS.set(0, 0, 0));
+  for (; i < N; i++) inst.setMatrixAt(i, _sgM4);
+  inst.instanceMatrix.needsUpdate = true;
+  if (colors && inst.instanceColor) inst.instanceColor.needsUpdate = true;
+}
 function redistributeGrass(cx, cz) {
   grassCx = cx; grassCz = cz;
-  const u = grassBlades.userData, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
-  for (let i = 0; i < u.GN; i++) {
-    const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
-    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
-    if (h > 2.6 && h < 19 && grassOK(x, z) && fbm(x * .045, z * .045) > .5) {   // 草地高度带 + 地理门控 + 噪声成簇(留出空地)
-      e.set(0, u.rnd() * 6.2832, 0);
-      q.setFromEuler(e); s.set(.9 + u.rnd() * .5, .7 + u.rnd() * .5, .9 + u.rnd() * .5);
-      m4.compose(p.set(x, h, z), q, s);
-    } else {
-      m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));   // 非草地:藏起
-    }
-    grassBlades.setMatrixAt(i, m4);
-  }
-  grassBlades.instanceMatrix.needsUpdate = true;
-  if (grassBlades.instanceColor) grassBlades.instanceColor.needsUpdate = true;
-  // 野花同步重铺
-  if (flowerInst) {
-    const fu = flowerInst.userData;
-    for (let i = 0; i < fu.FN; i++) {
-      const a = fu.rnd() * 6.2832, rr = Math.sqrt(fu.rnd()) * fu.R;
-      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
-      if (h > 2.8 && h < 17 && grassOK(x, z)) { q.setFromEuler(e.set(0, fu.rnd() * 6.2832, 0)); s.set(1, 1, 1); m4.compose(p.set(x, h + .45, z), q, s); }
-      else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
-      flowerInst.setMatrixAt(i, m4);
-    }
-    flowerInst.instanceMatrix.needsUpdate = true;
-    if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
-  }
-  // 碎石同步重铺(草地与低岩带,半埋入地)
-  if (rockInst) {
-    const ku = rockInst.userData;
-    for (let i = 0; i < ku.KN; i++) {
-      const a = ku.rnd() * 6.2832, rr = Math.sqrt(ku.rnd()) * ku.R;
-      const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
-      if (h > 2 && h < 26) { q.setFromEuler(e.set(ku.rnd() * 3, ku.rnd() * 6.28, ku.rnd() * 3)); const sc = .5 + ku.rnd() * 1.4; s.set(sc, sc * .7, sc); m4.compose(p.set(x, h + .1, z), q, s); }
-      else m4.compose(p.set(x, -999, z), q.identity(), s.set(0, 0, 0));
-      rockInst.setMatrixAt(i, m4);
-    }
-    rockInst.instanceMatrix.needsUpdate = true;
-    if (rockInst.instanceColor) rockInst.instanceColor.needsUpdate = true;
-  }
+  const gu = grassBlades.userData;
+  scatterGrid9(grassBlades, gu.GN, gu.R, cx, cz, 1.5, GRASS_COL9,   // cell 1.5:满草区候选格(~3200)<GN 上限,保证整盘填满不留半秃
+    (x, z, h) => h > 2.6 && h < 19 && grassOK(x, z) && fbm(x * .045, z * .045) > .5,
+    (x, z, h, gx, gz, m, q, s, p, e) => {
+      q.setFromEuler(e.set(0, hash2(gx + .3, gz + .7) * 6.2832, 0));
+      const r2 = hash2(gx + 9, gz + 3), r3 = hash2(gx + 2, gz + 8);
+      s.set(.9 + r2 * .5, .7 + r3 * .5, .9 + r2 * .5);
+      m.compose(p.set(x, h, z), q, s);
+    });
+  if (flowerInst) { const fu = flowerInst.userData; scatterGrid9(flowerInst, fu.FN, fu.R, cx, cz, 4.0, FLOWER_COL9,
+    (x, z, h) => h > 2.8 && h < 17 && grassOK(x, z) && fbm(x * .07 + 3, z * .07) > .46,
+    (x, z, h, gx, gz, m, q, s, p, e) => { q.setFromEuler(e.set(0, hash2(gx + 4, gz + 1) * 6.2832, 0)); s.set(1, 1, 1); m.compose(p.set(x, h + .45, z), q, s); }); }
+  if (rockInst) { const ku = rockInst.userData; scatterGrid9(rockInst, ku.KN, ku.R, cx, cz, 4.4, ROCK_COL9,
+    (x, z, h) => h > 2 && h < 26 && fbm(x * .05 + 8, z * .05) > .6,   // 🪨 噪声成簇:石头只落在少数石砾斑块,不再满地颗粒
+    (x, z, h, gx, gz, m, q, s, p, e) => {
+      q.setFromEuler(e.set(hash2(gx, gz + 5) * 3, hash2(gx + 6, gz) * 6.28, hash2(gx + 2, gz + 2) * 3));
+      const sc = .5 + hash2(gx + 1, gz + 9) * 1.1; s.set(sc, sc * .7, sc);
+      m.compose(p.set(x, h + .1, z), q, s);
+    }); }
 }
 /* --- 萤火虫(夜间草地随玩家浮动发光) --- */
 let fireflies = null, ffCx = 1e9, ffCz = 1e9;
@@ -9574,7 +9581,7 @@ function loop() {
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
   if (grassBlades) {
-    if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 49) redistributeGrass(player.position.x, player.position.z);
+    if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 6.25) redistributeGrass(player.position.x, player.position.z);
     const gust9 = Math.max(.3, .74 + .26 * Math.sin(t * .21) + .16 * Math.sin(t * 1.13 + 2) + (WEATHER === 'storm' ? .4 * Math.sin(t * 3.1) : 0));   // 🌬️ 分层阵风
     if (grassMat.userData.shader) { grassMat.userData.shader.uniforms.uTime.value = t; grassMat.userData.shader.uniforms.uGust.value = gust9; }
     for (const m of treeWindMats) if (m.userData.shader) { m.userData.shader.uniforms.uTime.value = t; m.userData.shader.uniforms.uGust.value = gust9; }   // 树冠风摆
