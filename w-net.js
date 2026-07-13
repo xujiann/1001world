@@ -4,8 +4,8 @@
    安全:anon key 公开属设计内,边界在数据库 RLS;
         下载的岛屿码一律回到 uisleDec9 白名单校验后才渲染。
    ============================================================ */
-export const NET_URL = '';    // ← Supabase Project URL(拿到后填入)
-export const NET_KEY = '';    // ← Supabase anon public key
+export const NET_URL = 'https://bxxfucrzjemnirltfavx.supabase.co';   // Supabase Project URL
+export const NET_KEY = 'sb_publishable_Nkiou2WFkw0ODGUQmWumIg_woWn2Ss6';   // anon/publishable key(公开安全,边界在 RLS)
 
 let sb9 = null, uid9 = null;
 

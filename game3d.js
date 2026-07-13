@@ -26,7 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
-import { netOn, netPublish, netList, netLike, netReport } from './w-net.js?v=1';
+import { netOn, netPublish, netList, netLike, netReport } from './w-net.js?v=2';
 
 const D = window.WORLD_DATA;
 const CDN = {
