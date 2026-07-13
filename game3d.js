@@ -2283,15 +2283,20 @@ if (!MOBILE) {
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
-    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.04 }, uVig: { value: .26 } },
+    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.04 }, uVig: { value: .26 }, uCon: { value: .12 }, uSplit: { value: .4 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
     fragmentShader: [
-      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig;',
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig; uniform float uCon; uniform float uSplit;',
       'void main(){',
       '  vec4 c = texture2D( tDiffuse, vUv );',
       '  c.rgb *= uTint;',
       '  float l = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
       '  c.rgb = mix( vec3( l ), c.rgb, uSat );',
+      '  c.rgb = clamp( c.rgb, 0.0, 1.0 );',
+      '  c.rgb = mix( c.rgb, c.rgb * c.rgb * ( 3.0 - 2.0 * c.rgb ), uCon );',    // 柔和 filmic 对比 S 曲线
+      '  float l2 = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
+      '  vec3 tone = mix( vec3( .94, .975, 1.075 ), vec3( 1.07, 1.015, .915 ), smoothstep( .12, .86, l2 ) );',   // 冷影→暖高光
+      '  c.rgb *= mix( vec3( 1.0 ), tone, uSplit );',
       '  float d = distance( vUv, vec2( .5 ) );',
       '  c.rgb *= 1.0 - uVig * smoothstep( .38, .74, d );',
       '  gl_FragColor = c;',
@@ -2671,6 +2676,23 @@ const moonDirN = new THREE.Vector3(0, 1, 0);
   moonLight = new THREE.DirectionalLight(0xa8c0e8, 0);
   scene.add(moonLight, moonLight.target);
 }
+/* --- 太阳:可见日轮 + 辉光(给 Bloom 与海面波光一个真实光源;近地平线变大变红) --- */
+let sunMesh = null, sunGlow = null;
+{
+  const mkTex9 = (stops) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const cx = cv.getContext('2d'), gd = cx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    stops.forEach(([o, col]) => gd.addColorStop(o, col));
+    cx.fillStyle = gd; cx.fillRect(0, 0, 128, 128);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx;
+  };
+  const coreTex9 = mkTex9([[0, 'rgba(255,255,251,1)'], [.26, 'rgba(255,247,216,1)'], [.55, 'rgba(255,216,142,.5)'], [1, 'rgba(255,190,120,0)']]);
+  const glowTex9 = mkTex9([[0, 'rgba(255,238,196,.5)'], [.5, 'rgba(255,212,152,.15)'], [1, 'rgba(255,190,130,0)']]);
+  sunMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreTex9, transparent: true, fog: false, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending }));
+  sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex9, transparent: true, fog: false, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending }));
+  sunMesh.renderOrder = 1; sunGlow.renderOrder = 0;
+  scene.add(sunGlow, sunMesh);
+}
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
 let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null, FIRE_POS9 = null;
 const rings9 = []; let ringT9 = 0;   // 🌧️ 雨落水面涟漪池
@@ -2703,6 +2725,23 @@ function updateDayNight(t) {
   skyUni.sunPosition.value.copy(sunDirN);            // 驱动大气散射
   sun.position.copy(player.position).addScaledVector(sunDirN, 330);
   sun.target.position.copy(player.position);
+  if (sunMesh) {   // ☀️ 可见日轮:高空小而白,贴地平线大而橙红
+    const up9 = sunDirN.y;
+    const vis9 = up9 > -0.03 && da > 0.015;
+    sunMesh.visible = sunGlow.visible = vis9;
+    if (vis9) {
+      sunMesh.position.copy(player.position).addScaledVector(sunDirN, 1500);
+      sunGlow.position.copy(sunMesh.position);
+      const low9 = clamp((0.34 - up9) / 0.34, 0, 1);           // 0 正午 → 1 地平线
+      sunMesh.scale.setScalar(122 + low9 * 96);
+      sunGlow.scale.setScalar(360 + low9 * 300);
+      sunMesh.material.color.setRGB(1, 1 - low9 * 0.42, 0.95 - low9 * 0.58);
+      sunGlow.material.color.setRGB(1, 1 - low9 * 0.30, 0.9 - low9 * 0.46);
+      const op9 = clamp(da * 1.5 + dusk * 0.6, 0, 1);
+      sunMesh.material.opacity = op9;
+      sunGlow.material.opacity = op9 * (0.55 + low9 * 0.4);    // 黄昏辉光更盛
+    }
+  }
   /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
   const night = 1 - da;
   const mp = clamp((p - .6) / .36, 0, 1);              // 夜段进度 0..1
@@ -2760,6 +2799,8 @@ function updateDayNight(t) {
     gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
     gradePass9.uniforms.uSat.value = 1.04 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
+    gradePass9.uniforms.uCon.value = .11 + dusk * .06;                       // 黄昏对比更强
+    gradePass9.uniforms.uSplit.value = clamp(.34 + dusk * .34 - (1 - da) * .12, 0, .72);   // 黄昏分离调色浓,深夜收敛
   }
   const wOp9 = clamp((1 - da) * 1.2, 0, 1) * .92;   // 🪟 夜窗灯
   for (const m9 of WINMATS9) { m9.opacity = wOp9; m9.visible = wOp9 > .03; }
