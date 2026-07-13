@@ -3966,12 +3966,23 @@ function animLimbs(g, phase, amt) {
   L.armL.rotation.x = -s * .8; L.armR.rotation.x = s * .8;
 }
 /* 游泳姿态:配合俯身,打腿 + 交替划水 */
-function animSwim(g, phase) {
+function animSwim(g, phase, stroke = 0) {
   const L = g.userData.limbs; if (!L) return;
-  const k = Math.sin(phase * 2);
-  L.legL.rotation.x = k * .45; L.legR.rotation.x = -k * .45;
-  L.armL.rotation.x = -1.4 + Math.sin(phase) * 1.3;
-  L.armR.rotation.x = -1.4 + Math.sin(phase + Math.PI) * 1.3;
+  const s = Math.sin(phase), s2 = Math.sin(phase * 2);
+  L.armL.rotation.z = L.armR.rotation.z = L.legL.rotation.z = L.legR.rotation.z = 0;   // 清零侧展(切换泳姿不留残)
+  if (stroke === 1) {                 // 🐸 蛙泳:对称划臂 + 蛙腿(外展→蹬夹)
+    const a = (s + 1) * .5, b = (Math.sin(phase - 1) + 1) * .5;
+    L.armL.rotation.x = -0.5 - a * 0.7; L.armR.rotation.x = -0.5 - a * 0.7;
+    L.armL.rotation.z = 0.55 - a * 0.75; L.armR.rotation.z = -(0.55 - a * 0.75);
+    L.legL.rotation.x = b * 0.9; L.legR.rotation.x = b * 0.9;
+    L.legL.rotation.z = b * 0.5; L.legR.rotation.z = -b * 0.5;
+  } else if (stroke === 3) {          // 🦋 蝶泳:双臂齐甩 + 海豚腿(双腿并拢)
+    L.armL.rotation.x = -1.5 + s * 2.0; L.armR.rotation.x = -1.5 + s * 2.0;
+    L.legL.rotation.x = s2 * 0.5; L.legR.rotation.x = s2 * 0.5;
+  } else {                            // 🏊 自由泳(0)/ 仰泳(2):交替风车臂 + 打腿(仰泳靠身体翻面区分)
+    L.armL.rotation.x = -1.4 + s * 1.9; L.armR.rotation.x = -1.4 + Math.sin(phase + Math.PI) * 1.9;
+    L.legL.rotation.x = s2 * 0.35; L.legR.rotation.x = -s2 * 0.35;
+  }
 }
 const NPC_HUB3 = [14, 24];
 const allNpcs = [];
@@ -8304,7 +8315,7 @@ const blob = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasic
 blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
 scene.add(player);
-let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0;
+let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0, swimStroke9 = 0, swimProcOn9 = false;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
@@ -8782,6 +8793,7 @@ addEventListener('keydown', e => {
   if (k === 'f' && photoMode) { nextFilter(); return; }
   if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
   if (k === 'c' && swimming && !diving && !modalOpen) { enterFreeDive9(); return; }   // 🤿 自由下潜
+  if (k === 'z' && swimming && !diving) { swimStroke9 = (swimStroke9 + 1) % 4; toast('🏊 泳姿:' + ['自由泳', '蛙泳', '仰泳', '蝶泳'][swimStroke9]); return; }
   if (k === 'm') { mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
@@ -9138,7 +9150,7 @@ function worldFx9(dt, t, pMoving, bh) {
       if ((k9 === 'hen' || k9 === 'dino') && Math.hypot(player.position.x - a9.position.x, player.position.z - a9.position.z) < 10) { aniSnd9(k9); break; }
     }
   }
-  if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 C 键下潜——海底有海藻林、珊瑚园,还有一艘沉船'); }
+  if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 Z 切换四种泳姿 · C 键下潜——海底有海藻林、珊瑚园与沉船'); }
   prevSwim9 = swimming;
   /* 🌠 流星许愿:观星模式里每见一颗流星即许一愿,七愿成真 */
   {
@@ -9560,7 +9572,8 @@ function loop() {
       if (vehicle === 1) { vehicle = 0; bikeGrp.visible = false; toast('🚲 自行车不会游泳——下车!'); }
       vy = 0; grounded = false;
       player.position.y += ((-.55 + tideY) - player.position.y) * Math.min(1, dt * 6);
-      player.rotation.x += ((-1.15 + Math.sin(t * 2.4) * .08) - player.rotation.x) * Math.min(1, dt * 5);   // 俯身入水
+      const swPose9 = swimStroke9 === 2 ? (1.02 + Math.sin(t * 2.2) * .06) : (-1.15 + Math.sin(t * 2.4) * .08);   // 仰泳仰面 / 余泳俯身
+      player.rotation.x += (swPose9 - player.rotation.x) * Math.min(1, dt * 5);
     } else {
       player.rotation.x += (0 - player.rotation.x) * Math.min(1, dt * 8);
       vy -= 34 * dt;
@@ -9571,10 +9584,17 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
+  const swimNow9 = swimming || diving;
   if (usingGLTF) {
-    playerMixer.update(dt);
-    setPlayerAct((swimming || diving) ? 'Running' : (pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle'));
-  } else if (swimming || diving) animSwim(player, t * 6.5);
+    if (swimNow9) {   // 🏊 游泳/潜水:换回程序化身体以展示四种泳姿(glTF 机器人无泳姿动画)
+      if (!swimProcOn9) { swimProcOn9 = true; if (playerRobot) playerRobot.visible = false; for (const m of player.userData.procMeshes) m.visible = true; }
+      animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
+    } else {
+      if (swimProcOn9) { swimProcOn9 = false; if (playerRobot) playerRobot.visible = true; for (const m of player.userData.procMeshes) m.visible = false; }
+      playerMixer.update(dt);
+      setPlayerAct(pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');
+    }
+  } else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
   else animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
