@@ -2257,7 +2257,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -2330,6 +2330,27 @@ if (!MOBILE) {
     ].join('\n'),
   });
   composer.addPass(gradePass9);
+  photoPass9 = new ShaderPass({   // 📷 照片模式镜头味:径向色差 + 胶片颗粒 + 轻暗角
+    uniforms: { tDiffuse: { value: null }, uAmt: { value: .03 }, uTime: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform float uAmt; uniform float uTime;',
+      'float h9( vec2 p ){ return fract( sin( dot( p, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ); }',
+      'void main(){',
+      '  vec2 dir = vUv - 0.5;',
+      '  vec2 off = dir * dot( dir, dir ) * uAmt;',                                  // 边缘更强的色差
+      '  float cr = texture2D( tDiffuse, vUv - off ).r;',
+      '  float cg = texture2D( tDiffuse, vUv ).g;',
+      '  float cb = texture2D( tDiffuse, vUv + off ).b;',
+      '  vec3 c = vec3( cr, cg, cb );',
+      '  c += ( h9( vUv * vec2( 1920.0, 1080.0 ) + uTime ) - 0.5 ) * 0.055;',        // 胶片颗粒
+      '  c *= 1.0 - 0.2 * smoothstep( 0.3, 0.78, length( dir ) );',                  // 轻暗角
+      '  gl_FragColor = vec4( c, 1.0 );',
+      '}',
+    ].join('\n'),
+  });
+  photoPass9.enabled = false;
+  composer.addPass(photoPass9);
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
@@ -8717,6 +8738,7 @@ function togglePhoto() {
   photoMode = !photoMode;
   for (const id of ['hud', 'minimap', 'compass', 'hint']) $(id).style.visibility = photoMode ? 'hidden' : '';
   if (bokehPass) bokehPass.enabled = photoMode;   // 景深仅照片模式
+  if (photoPass9) photoPass9.enabled = photoMode;   // 📷 镜头味仅照片模式
   btnSnap.style.display = photoMode ? '' : 'none';
   if (!photoMode) { renderer.domElement.style.filter = ''; photoFilter = 0; toast('已退出照片模式'); }
   else toast(isTouch ? '📷 照片模式:景深虚化开启(🎞️ 换滤镜,再点 📷 退出)' : '📷 照片模式:景深虚化开启(F 切换滤镜,P 退出)');
@@ -9281,6 +9303,7 @@ function worldFx9(dt, t, pMoving, bh) {
   if (!MOBILE) {
     if (foamPts) { foamPts.material.uniforms.uTime.value = t; foamPts.material.uniforms.uGlobal.value = WEATHER === 'storm' ? .62 : (WEATHER === 'rain' ? .44 : .34); foamPts.position.y = tideY * .8; }
     updateRainFx9();
+    if (photoPass9 && photoPass9.enabled) photoPass9.uniforms.uTime.value = t;
     if (shallowsMesh) shallowsMesh.position.y = tideY;
     CLOUDU9.t.value = t;
     if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
