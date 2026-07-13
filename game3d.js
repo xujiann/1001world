@@ -2234,16 +2234,19 @@ const MOBILE = matchMedia('(pointer: coarse)').matches;
 const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !MOBILE });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MOBILE ? 1.5 : 1.75));
 /* 🌫️ 高度雾:全局改雾着色器——低处浓、高处清(山顶与天空之城在雾线之上)。
-   用 position 而非 transformed:所有内置着色器(网格/点/水面)都有该属性,不炸自定义 shader。 */
-THREE.ShaderChunk.fog_pars_vertex = THREE.ShaderChunk.fog_pars_vertex.replace(
-  'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
-THREE.ShaderChunk.fog_vertex = THREE.ShaderChunk.fog_vertex.replace(
-  'vFogDepth = - mvPosition.z;', 'vFogDepth = - mvPosition.z;\n\tvFogY9 = ( modelMatrix * vec4( position, 1.0 ) ).y;');
-THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace(
-  'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
-THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace(
-  'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );',
-  'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );\n\tfogFactor = clamp( fogFactor * ( 0.42 + 0.78 * exp( - max( vFogY9, 0.0 ) * 0.016 ) ), 0.0, 1.0 );');
+   用 position 而非 transformed:所有内置着色器(网格/点/水面)都有该属性,不炸自定义 shader。
+   ⚠️ 幂等守卫:THREE.ShaderChunk 是全局共享,若模块被多次加载(HMR/动态 import)会重复追加 vFogY9→shader redefinition 编译失败。 */
+if (!THREE.ShaderChunk.fog_pars_vertex.includes('vFogY9')) {
+  THREE.ShaderChunk.fog_pars_vertex = THREE.ShaderChunk.fog_pars_vertex.replace(
+    'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
+  THREE.ShaderChunk.fog_vertex = THREE.ShaderChunk.fog_vertex.replace(
+    'vFogDepth = - mvPosition.z;', 'vFogDepth = - mvPosition.z;\n\tvFogY9 = ( modelMatrix * vec4( position, 1.0 ) ).y;');
+  THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace(
+    'varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying float vFogY9;');
+  THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace(
+    'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );',
+    'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );\n\tfogFactor = clamp( fogFactor * ( 0.42 + 0.78 * exp( - max( vFogY9, 0.0 ) * 0.016 ) ), 0.0, 1.0 );');
+}
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .68;
 if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
@@ -10507,6 +10510,41 @@ if (!MOBILE) {
     rockCliff9.castShadow = true; rockCliff9.receiveShadow = true;
     scene.add(rockCliff9);
     console.log('🪨 岩崖山石:', RN9, '块 / 候选', items9.length);
+  }
+  /* 🗿 海蚀柱:近岸浅水(-1..-6m)里的礁石尖峰,顶部露出水面 */
+  {
+    const rs9 = mulberry32(829), stk9 = [];
+    for (let x9 = -1900; x9 < 1900 && stk9.length < 90; x9 += 26)
+      for (let z9 = -1900; z9 < 1900 && stk9.length < 90; z9 += 26) {
+        const h9 = height(x9, z9);
+        if (h9 > -1 || h9 < -6.5) continue;                     // 只在近岸浅水
+        const land9 = height(x9 + 26, z9) > .5 || height(x9 - 26, z9) > .5 || height(x9, z9 + 26) > .5 || height(x9, z9 - 26) > .5;
+        if (!land9) continue;                                   // 需临近陆地
+        if (rs9() > .22) continue;
+        const px9 = x9 + (rs9() - .5) * 10, pz9 = z9 + (rs9() - .5) * 10, ph9 = height(px9, pz9);
+        if (ph9 > -.5 || ph9 < -7) continue;
+        stk9.push([px9, ph9, pz9, 2.6 + rs9() * 4.5, rs9() * 6.28, rs9()]);
+      }
+    if (stk9.length) {
+      const SN9 = stk9.length, sgeo9 = new THREE.ConeGeometry(1, 2.4, 6);   // 尖礁
+      const sMesh9 = new THREE.InstancedMesh(sgeo9, new THREE.MeshStandardMaterial({ color: 0x6a655c, roughness: .97, metalness: 0, flatShading: true, envMapIntensity: .18 }), SN9);
+      const m49 = new THREE.Matrix4(), q9 = new THREE.Quaternion(), sc9 = new THREE.Vector3(), pos9 = new THREE.Vector3();
+      const sc9c = [new THREE.Color(0x6a655c), new THREE.Color(0x57524a), new THREE.Color(0x787065)];
+      for (let i9 = 0; i9 < SN9; i9++) {
+        const [x9, y9, z9, tall9, ry9, j9] = stk9[i9];
+        q9.setFromEuler(new THREE.Euler((j9 - .5) * .28, ry9, (rs9() - .5) * .28));   // 微斜
+        const top9 = y9 + tall9;                                  // 顶部露出水面(tall 含出水段)
+        sc9.set(1.1 + j9 * 1.4, tall9 / 2, 1.1 + j9 * 1.2);       // 尖礁高度撑到出水
+        m49.compose(pos9.set(x9, (y9 + top9) / 2, z9), q9, sc9);
+        sMesh9.setMatrixAt(i9, m49);
+        sMesh9.setColorAt(i9, sc9c[i9 % 3]);
+        cirObs.push({ x: x9, z: z9, r: 1.1 + j9 * 1.4 });         // 礁石挡路
+      }
+      sMesh9.instanceMatrix.needsUpdate = true;
+      if (sMesh9.instanceColor) sMesh9.instanceColor.needsUpdate = true;
+      sMesh9.castShadow = true; scene.add(sMesh9);
+      console.log('🗿 海蚀柱:', SN9, '座');
+    }
   }
 }
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外;顺路定 IBL 环境强度 */
