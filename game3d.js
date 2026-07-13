@@ -10350,7 +10350,7 @@ if (EVENT === 'lantfest') {
   for (const n9 of allNpcs) {
     const h9 = hsh9(n9.name), tall9 = (n9.opts && n9.opts.tall) || 1;
     if (h9 % 3 === 0) {   // 🧔 胡子
-      const bd9 = box(.34, .16, .1, lam([0x4a3a2a, 0x777777, 0x2a2a2a][h9 % 3 === 0 ? (h9 >> 3) % 3 : 0]));
+      const bd9 = box(.34, .16, .1, lam([0x4a3a2a, 0x777777, 0x2a2a2a][(h9 >>> 3) % 3]));   // >>> 无符号:h9 可达 2³²,有符号 >> 会得负索引→lam(undefined)白胡子
       bd9.position.set(0, 2.12 * tall9, .42); n9.g.add(bd9);
     }
     if (h9 % 5 === 1) {   // 👓 眼镜
@@ -10467,6 +10467,44 @@ if (!MOBILE) {
     shallowsMesh = new THREE.Mesh(sg9, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
     shallowsMesh.renderOrder = 2; scene.add(shallowsMesh);
     console.log('🏖️ 浅滩色带:', cells9, '格');
+  }
+  /* 🪨 岩崖与山石:陡坡海崖 + 高山棱线,角状岩体实例化(纯装饰,填补光秃山坡) */
+  {
+    const rrk9 = mulberry32(613), items9 = [];
+    for (let x9 = -1900; x9 < 1900; x9 += 14)
+      for (let z9 = -1900; z9 < 1900; z9 += 14) {
+        const h9 = height(x9, z9);
+        if (h9 < .4) continue;                                  // 水下/沙滩交给浅滩泡沫
+        const slope9 = Math.abs(height(x9 + 6, z9) - h9) + Math.abs(height(x9, z9 + 6) - h9);
+        const steep9 = slope9 > 2.2, high9 = h9 > 20;
+        if (!(steep9 || (high9 && slope9 > .8))) continue;      // 只在陡坡/高地
+        if (rrk9() > (steep9 ? .8 : .35)) continue;             // 密度
+        const n9 = steep9 ? 1 + (rrk9() * 2 | 0) : 1;
+        for (let k9 = 0; k9 < n9; k9++) {
+          const px9 = x9 + (rrk9() - .5) * 11, pz9 = z9 + (rrk9() - .5) * 11, ph9 = height(px9, pz9);
+          if (ph9 < .4) continue;
+          const s9 = steep9 ? 1.3 + rrk9() * 2.4 : .8 + rrk9() * 1.3;
+          items9.push([px9, ph9 + s9 * .32, pz9, s9, rrk9() * 6.28, rrk9(), rrk9()]);
+        }
+      }
+    const RN9 = Math.min(items9.length, 1500);
+    const rockGeo9 = new THREE.IcosahedronGeometry(1, 0);
+    const rockCliff9 = new THREE.InstancedMesh(rockGeo9, new THREE.MeshStandardMaterial({ color: 0x8a8478, roughness: .96, metalness: 0, flatShading: true, envMapIntensity: .2 }), RN9);
+    const m49 = new THREE.Matrix4(), q9 = new THREE.Quaternion(), sc9 = new THREE.Vector3(), pos9 = new THREE.Vector3();
+    const cc9 = [new THREE.Color(0x8a8478), new THREE.Color(0x736c62), new THREE.Color(0x9a938a), new THREE.Color(0x655e54)];
+    for (let i9 = 0; i9 < RN9; i9++) {
+      const [x9, y9, z9, s9, ry9, j19, j29] = items9[i9];
+      q9.setFromEuler(new THREE.Euler((j19 - .5) * .7, ry9, (j29 - .5) * .7));
+      sc9.set(s9 * (.7 + j19 * .6), s9 * (.85 + j29 * .5), s9 * (.7 + j29 * .6));   // 压扁成不规则块
+      m49.compose(pos9.set(x9, y9, z9), q9, sc9);
+      rockCliff9.setMatrixAt(i9, m49);
+      rockCliff9.setColorAt(i9, cc9[i9 & 3]);
+    }
+    rockCliff9.instanceMatrix.needsUpdate = true;
+    if (rockCliff9.instanceColor) rockCliff9.instanceColor.needsUpdate = true;
+    rockCliff9.castShadow = true; rockCliff9.receiveShadow = true;
+    scene.add(rockCliff9);
+    console.log('🪨 岩崖山石:', RN9, '块 / 候选', items9.length);
   }
 }
 /* 阴影开关(桌面):不透明网格投/受阴影,天空与水面除外;顺路定 IBL 环境强度 */
