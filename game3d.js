@@ -2700,7 +2700,7 @@ const moonDirN = new THREE.Vector3(0, 1, 0);
   scene.add(moonLight, moonLight.target);
 }
 /* --- 太阳:可见日轮 + 辉光(给 Bloom 与海面波光一个真实光源;近地平线变大变红) --- */
-let sunMesh = null, sunGlow = null; const _sunNDC = new THREE.Vector3();
+let sunMesh = null, sunGlow = null; const _sunNDC = new THREE.Vector3(), _camFwd = new THREE.Vector3(); let dustMotes = null;
 {
   const mkTex9 = (stops) => {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
@@ -2715,6 +2715,40 @@ let sunMesh = null, sunGlow = null; const _sunNDC = new THREE.Vector3();
   sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex9, transparent: true, fog: false, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending }));
   sunMesh.renderOrder = 1; sunGlow.renderOrder = 0;
   scene.add(sunGlow, sunMesh);
+}
+/* --- 空气浮尘:跟随玩家的漂浮微粒,竖直循环流动,面向太阳时最亮(阳光里的浮尘) --- */
+if (!MOBILE) {
+  const ND9 = 680, BXd = 70, BYd = 42, dp9 = new Float32Array(ND9 * 3), dph9 = new Float32Array(ND9), dr9 = mulberry32(9137);
+  for (let i9 = 0; i9 < ND9; i9++) { dp9[i9 * 3] = (dr9() - .5) * 2 * BXd; dp9[i9 * 3 + 1] = dr9() * BYd; dp9[i9 * 3 + 2] = (dr9() - .5) * 2 * BXd; dph9[i9] = dr9(); }
+  const dGeo9 = new THREE.BufferGeometry();
+  dGeo9.setAttribute('position', new THREE.BufferAttribute(dp9, 3));
+  dGeo9.setAttribute('aPhase', new THREE.BufferAttribute(dph9, 1));
+  const dMat9 = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { uTime: { value: 0 }, uOpacity: { value: .4 }, uColor: { value: new THREE.Color(0xfff2d8) }, uBox: { value: BXd } },
+    vertexShader: [
+      'uniform float uTime; uniform float uOpacity; uniform float uBox; attribute float aPhase; varying float vA;',
+      'void main(){',
+      '  vec3 p = position;',
+      '  p.x += sin( uTime * 0.15 + aPhase * 6.2831 ) * 4.0;',
+      '  p.z += cos( uTime * 0.13 + aPhase * 6.2831 ) * 4.0;',
+      '  p.y = mod( p.y + uTime * 0.45 + aPhase * 40.0, 42.0 );',            // 缓缓升腾并循环
+      '  float tw = 0.5 + 0.5 * sin( uTime * 2.0 + aPhase * 30.0 );',        // 微闪
+      '  vec4 mv = modelViewMatrix * vec4( p, 1.0 );',
+      '  float fade = 1.0 - smoothstep( uBox * 0.55, uBox * 1.1, length( mv.xyz ) );',
+      '  vA = tw * fade * uOpacity;',
+      '  gl_PointSize = ( 0.9 + tw * 1.7 ) * ( 200.0 / -mv.z );',
+      '  gl_Position = projectionMatrix * mv;',
+      '}',
+    ].join('\n'),
+    fragmentShader: [
+      'precision mediump float; uniform vec3 uColor; varying float vA;',
+      'void main(){ vec2 c = gl_PointCoord - 0.5; float d = length( c ); if ( d > 0.5 ) discard; gl_FragColor = vec4( uColor, smoothstep( 0.5, 0.0, d ) * vA ); }',
+    ].join('\n'),
+  });
+  dustMotes = new THREE.Points(dGeo9, dMat9);
+  dustMotes.frustumCulled = false; dustMotes.renderOrder = 4;
+  scene.add(dustMotes);
 }
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
 let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null, FIRE_POS9 = null;
@@ -2778,6 +2812,16 @@ function updateDayNight(t) {
       godPass9.enabled = str9 > 0.015;
       godPass9.uniforms.uStr.value = str9;
     }
+  }
+  if (dustMotes) {   // 🌫️ 浮尘:居中玩家、面向太阳更亮
+    camera.getWorldDirection(_camFwd);
+    const backlit9 = clamp(_camFwd.dot(sunDirN), 0, 1);
+    dustMotes.position.copy(player.position);
+    dustMotes.material.uniforms.uTime.value = t;
+    const base9 = WEATHER === 'clear' ? 0.5 : (WEATHER === 'fog' ? 0.32 : 0.2);
+    const op9d = da * base9 * (0.4 + backlit9 * 0.9);
+    dustMotes.material.uniforms.uOpacity.value = op9d;
+    dustMotes.visible = !diving && op9d > 0.02;
   }
   /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
   const night = 1 - da;
