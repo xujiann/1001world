@@ -9255,7 +9255,7 @@ function worldFx9(dt, t, pMoving, bh) {
   }
   /* 👣⛵🫧🌊 微痕迹与泡沫 */
   if (!MOBILE) {
-    if (foamPts) { foamPts.material.opacity = .26 + Math.sin(t * 1.1) * .1; foamPts.position.y = tideY * .8; }
+    if (foamPts) { foamPts.material.uniforms.uTime.value = t; foamPts.material.uniforms.uGlobal.value = WEATHER === 'storm' ? .62 : (WEATHER === 'rain' ? .44 : .34); foamPts.position.y = tideY * .8; }
     if (shallowsMesh) shallowsMesh.position.y = tideY;
     CLOUDU9.t.value = t;
     if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
@@ -10605,12 +10605,13 @@ if (RAINY) {
 }
 /* 🌊 岸线泡沫:世界建成后沿全部海岸撒点(含 NI 群岛),单 Points */
 if (!MOBILE) {
-  const rf9 = mulberry32(202), pts9 = [];
+  const rf9 = mulberry32(202), pts9 = [], jit9 = [];
   outer9: for (let gx9 = -1900; gx9 < 1900; gx9 += 7)
     for (let gz9 = -1900; gz9 < 1900; gz9 += 7) {
       const h9 = height(gx9 + rf9() * 4, gz9 + rf9() * 4);
       if (h9 > -1.15 && h9 < .6 && rf9() < .85) {
         pts9.push(gx9 + rf9() * 6 - 3, .16, gz9 + rf9() * 6 - 3);
+        jit9.push(rf9());
         if (pts9.length > 10500) break outer9;
       }
     }
@@ -10618,8 +10619,30 @@ if (!MOBILE) {
   const cF9 = cvF9.getContext('2d'), gr9 = cF9.createRadialGradient(16, 16, 0, 16, 16, 16);
   gr9.addColorStop(0, 'rgba(255,255,255,.95)'); gr9.addColorStop(.6, 'rgba(255,255,255,.4)'); gr9.addColorStop(1, 'rgba(255,255,255,0)');
   cF9.fillStyle = gr9; cF9.fillRect(0, 0, 32, 32);
-  const fgF9 = new THREE.BufferGeometry(); fgF9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts9), 3));
-  foamPts = new THREE.Points(fgF9, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(cvF9), color: 0xf4f8f6, size: 2.4, transparent: true, opacity: .34, depthWrite: false }));
+  const fgF9 = new THREE.BufferGeometry();
+  fgF9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts9), 3));
+  fgF9.setAttribute('aJit', new THREE.BufferAttribute(new Float32Array(jit9), 1));
+  const foamMat9 = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uTime: { value: 0 }, uMap: { value: new THREE.CanvasTexture(cvF9) }, uColor: { value: new THREE.Color(0xf4f8f6) }, uGlobal: { value: .34 } },
+    vertexShader: [
+      'uniform float uTime; attribute float aJit; varying float vA;',
+      'void main(){',
+      '  vec3 p = position;',
+      '  float s = sin( uTime * 1.3 + p.x * 0.05 + aJit * 6.2831 ) * 0.5 + sin( uTime * 0.9 - p.z * 0.045 + aJit * 3.0 ) * 0.5;',   // 两道低频波 + 逐点抖动 = 成片涌动
+      '  float surge = smoothstep( -0.2, 0.9, s );',                              // 锐化成浪峰(一处处拍岸)
+      '  vA = 0.16 + surge * 0.64;',
+      '  vec4 mv = modelViewMatrix * vec4( p, 1.0 );',
+      '  gl_PointSize = ( 1.5 + surge * 2.8 ) * ( 300.0 / -mv.z );',              // 浪峰处泡沫更大更亮
+      '  gl_Position = projectionMatrix * mv;',
+      '}',
+    ].join('\n'),
+    fragmentShader: [
+      'uniform sampler2D uMap; uniform vec3 uColor; uniform float uGlobal; varying float vA;',
+      'void main(){ vec4 t = texture2D( uMap, gl_PointCoord ); gl_FragColor = vec4( uColor, t.a * vA * uGlobal ); }',
+    ].join('\n'),
+  });
+  foamPts = new THREE.Points(fgF9, foamMat9);
   scene.add(foamPts);
   console.log('🌊 岸线泡沫:', pts9.length / 3 | 0, '点');
   /* 🏖️ 浅滩色带:海岸一圈青绿浅水,顶点色 alpha 按海床深度渐隐(风之杖式) */
