@@ -2254,7 +2254,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -2281,6 +2281,29 @@ if (!MOBILE) {
     composer.addPass(gtaoPass);
   } catch (e) {}
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
+  godPass9 = new ShaderPass({   // 🌤️ 空中光柱:朝太阳屏幕位置径向累积亮像素(穷人版体积光散射)
+    uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(.5, .5) }, uStr: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec2 uSun; uniform float uStr;',
+      'void main(){',
+      '  vec4 base = texture2D( tDiffuse, vUv );',
+      '  if ( uStr <= 0.002 ) { gl_FragColor = base; return; }',
+      '  vec2 delta = ( uSun - vUv ) / 28.0 * 0.92;',
+      '  vec2 uv = vUv; float decay = 1.0; vec3 acc = vec3( 0.0 );',
+      '  for ( int i = 0; i < 28; i++ ) {',
+      '    uv += delta;',
+      '    vec3 s = texture2D( tDiffuse, clamp( uv, 0.0, 1.0 ) ).rgb;',
+      '    float lum = max( 0.0, dot( s, vec3( .299, .587, .114 ) ) - 0.72 );',   // 只让亮部(天空/日轮)成束
+      '    acc += s * lum * decay;',
+      '    decay *= 0.93;',
+      '  }',
+      '  gl_FragColor = vec4( base.rgb + acc * uStr * 0.6, base.a );',
+      '}',
+    ].join('\n'),
+  });
+  godPass9.enabled = false;
+  composer.addPass(godPass9);
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
     uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.04 }, uVig: { value: .26 }, uCon: { value: .12 }, uSplit: { value: .4 } },
@@ -2677,7 +2700,7 @@ const moonDirN = new THREE.Vector3(0, 1, 0);
   scene.add(moonLight, moonLight.target);
 }
 /* --- 太阳:可见日轮 + 辉光(给 Bloom 与海面波光一个真实光源;近地平线变大变红) --- */
-let sunMesh = null, sunGlow = null;
+let sunMesh = null, sunGlow = null; const _sunNDC = new THREE.Vector3();
 {
   const mkTex9 = (stops) => {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
@@ -2740,6 +2763,20 @@ function updateDayNight(t) {
       const op9 = clamp(da * 1.5 + dusk * 0.6, 0, 1);
       sunMesh.material.opacity = op9;
       sunGlow.material.opacity = op9 * (0.55 + low9 * 0.4);    // 黄昏辉光更盛
+    }
+    if (godPass9) {   // 🌤️ 空中光柱强度:太阳在屏内+地平线附近+晴朗时最盛
+      const sp9 = _sunNDC.copy(sunMesh.position).project(camera);
+      const front9 = sp9.z < 1 && sunDirN.y > 0.015 && sunMesh.visible;
+      let str9 = 0;
+      if (front9) {
+        godPass9.uniforms.uSun.value.set(sp9.x * 0.5 + 0.5, sp9.y * 0.5 + 0.5);
+        const edge9 = clamp(1.15 - Math.max(Math.abs(sp9.x), Math.abs(sp9.y)), 0, 1);   // 出屏渐隐
+        const low9b = clamp(1 - sunDirN.y / 0.6, 0, 1);                                  // 低日更盛
+        const wx9 = WEATHER === 'clear' ? 1 : (WEATHER === 'fog' ? .55 : .32);
+        str9 = edge9 * (0.32 + low9b * 0.68) * wx9 * clamp(da * 1.3, 0, 1);
+      }
+      godPass9.enabled = str9 > 0.015;
+      godPass9.uniforms.uStr.value = str9;
     }
   }
   /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
