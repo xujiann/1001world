@@ -2753,6 +2753,30 @@ if (!MOBILE) {
   dustMotes.frustumCulled = false; dustMotes.renderOrder = 4;
   scene.add(dustMotes);
 }
+/* --- 🌧️ 屏幕雨丝(湿镜头):2D 覆盖层,雨/风暴时落下斜 streak --- */
+const rainFxCv = $('rainfx'), rainFxCtx = rainFxCv && rainFxCv.getContext('2d');
+let rainDrops9 = [], rainFxOn9 = false, rainFxW9 = 0, rainFxH9 = 0;
+function rainFxResize9() { if (!rainFxCv) return; rainFxW9 = rainFxCv.width = innerWidth; rainFxH9 = rainFxCv.height = innerHeight; }
+addEventListener('resize', rainFxResize9); rainFxResize9();
+function rainFxSpawn9(n) { rainDrops9 = []; for (let i = 0; i < n; i++) rainDrops9.push({ x: Math.random() * rainFxW9, y: Math.random() * rainFxH9, l: 9 + Math.random() * 20, v: 10 + Math.random() * 14, o: .10 + Math.random() * .22 }); }
+function updateRainFx9() {
+  if (!rainFxCtx) return;
+  const heavy9 = WEATHER === 'storm', wet9 = heavy9 || WEATHER === 'rain';
+  if (wet9 && !rainFxOn9) { rainFxOn9 = true; rainFxCv.classList.remove('hidden'); rainFxSpawn9(heavy9 ? 240 : 130); }
+  else if (!wet9 && rainFxOn9) { rainFxOn9 = false; rainFxCv.classList.add('hidden'); rainFxCtx.clearRect(0, 0, rainFxW9, rainFxH9); return; }
+  if (!rainFxOn9) return;
+  const want9 = heavy9 ? 240 : 130; if (rainDrops9.length !== want9) rainFxSpawn9(want9);
+  const cx9 = rainFxCtx; cx9.clearRect(0, 0, rainFxW9, rainFxH9);
+  cx9.strokeStyle = '#cfe0ee'; cx9.lineWidth = heavy9 ? 1.6 : 1.05;
+  const skew9 = heavy9 ? 3.4 : 1.7, spd9 = heavy9 ? 1.5 : 1;
+  for (const d9 of rainDrops9) {
+    cx9.globalAlpha = d9.o; cx9.beginPath(); cx9.moveTo(d9.x, d9.y); cx9.lineTo(d9.x - skew9, d9.y - d9.l); cx9.stroke();
+    d9.y += d9.v * spd9; d9.x -= skew9 * .3;
+    if (d9.y - d9.l > rainFxH9) { d9.y = -d9.l; d9.x = Math.random() * rainFxW9; }
+    if (d9.x < 0) d9.x = rainFxW9;
+  }
+  cx9.globalAlpha = 1;
+}
 /* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
 let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null, FIRE_POS9 = null;
 const rings9 = []; let ringT9 = 0;   // 🌧️ 雨落水面涟漪池
@@ -9256,6 +9280,7 @@ function worldFx9(dt, t, pMoving, bh) {
   /* 👣⛵🫧🌊 微痕迹与泡沫 */
   if (!MOBILE) {
     if (foamPts) { foamPts.material.uniforms.uTime.value = t; foamPts.material.uniforms.uGlobal.value = WEATHER === 'storm' ? .62 : (WEATHER === 'rain' ? .44 : .34); foamPts.position.y = tideY * .8; }
+    updateRainFx9();
     if (shallowsMesh) shallowsMesh.position.y = tideY;
     CLOUDU9.t.value = t;
     if (grounded && pMoving && !diving && vehicle === 0) {   // 👣 沙滩脚印
