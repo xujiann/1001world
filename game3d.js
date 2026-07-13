@@ -2782,7 +2782,7 @@ addEventListener('resize', rainFxResize9); rainFxResize9();
 function rainFxSpawn9(n) { rainDrops9 = []; for (let i = 0; i < n; i++) rainDrops9.push({ x: Math.random() * rainFxW9, y: Math.random() * rainFxH9, l: 9 + Math.random() * 20, v: 10 + Math.random() * 14, o: .10 + Math.random() * .22 }); }
 function updateRainFx9() {
   if (!rainFxCtx) return;
-  const heavy9 = WEATHER === 'storm', wet9 = heavy9 || WEATHER === 'rain';
+  const heavy9 = WEATHER === 'storm', wet9 = (heavy9 || WEATHER === 'rain') && !diving;   // 潜水时不叠屏幕雨丝
   if (wet9 && !rainFxOn9) { rainFxOn9 = true; rainFxCv.classList.remove('hidden'); rainFxSpawn9(heavy9 ? 240 : 130); }
   else if (!wet9 && rainFxOn9) { rainFxOn9 = false; rainFxCv.classList.add('hidden'); rainFxCtx.clearRect(0, 0, rainFxW9, rainFxH9); return; }
   if (!rainFxOn9) return;
@@ -2832,7 +2832,7 @@ function updateDayNight(t) {
   sun.target.position.copy(player.position);
   if (sunMesh) {   // ☀️ 可见日轮:高空小而白,贴地平线大而橙红
     const up9 = sunDirN.y;
-    const vis9 = up9 > -0.03 && da > 0.015;
+    const vis9 = up9 > -0.03 && da > 0.015 && !diving;   // 潜水时日轮/光柱一并隐(fog:false 的日轮否则会透出水面)
     sunMesh.visible = sunGlow.visible = vis9;
     if (vis9) {
       sunMesh.position.copy(player.position).addScaledVector(sunDirN, 1500);
@@ -9301,7 +9301,7 @@ function worldFx9(dt, t, pMoving, bh) {
   }
   /* 👣⛵🫧🌊 微痕迹与泡沫 */
   if (!MOBILE) {
-    if (foamPts) { foamPts.material.uniforms.uTime.value = t; foamPts.material.uniforms.uGlobal.value = WEATHER === 'storm' ? .62 : (WEATHER === 'rain' ? .44 : .34); foamPts.position.y = tideY * .8; }
+    if (foamPts) { foamPts.visible = !diving; foamPts.material.uniforms.uTime.value = t; foamPts.material.uniforms.uGlobal.value = WEATHER === 'storm' ? .62 : (WEATHER === 'rain' ? .44 : .34); foamPts.position.y = tideY * .8; }
     updateRainFx9();
     if (photoPass9 && photoPass9.enabled) photoPass9.uniforms.uTime.value = t;
     if (shallowsMesh) shallowsMesh.position.y = tideY;
@@ -10679,8 +10679,9 @@ if (!MOBILE) {
       '  vec3 p = position;',
       '  float s = sin( uTime * 1.3 + p.x * 0.05 + aJit * 6.2831 ) * 0.5 + sin( uTime * 0.9 - p.z * 0.045 + aJit * 3.0 ) * 0.5;',   // 两道低频波 + 逐点抖动 = 成片涌动
       '  float surge = smoothstep( -0.2, 0.9, s );',                              // 锐化成浪峰(一处处拍岸)
-      '  vA = 0.16 + surge * 0.64;',
       '  vec4 mv = modelViewMatrix * vec4( p, 1.0 );',
+      '  float fogFade = 1.0 - smoothstep( 300.0, 1850.0, length( mv.xyz ) );',   // 远处泡沫随距离淡出(补回原 fog 效果)
+      '  vA = ( 0.16 + surge * 0.64 ) * fogFade;',
       '  gl_PointSize = ( 1.5 + surge * 2.8 ) * ( 300.0 / -mv.z );',              // 浪峰处泡沫更大更亮
       '  gl_Position = projectionMatrix * mv;',
       '}',
