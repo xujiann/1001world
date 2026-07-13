@@ -2725,6 +2725,17 @@ function updateDayNight(t) {
     if (oceanWater.material.uniforms.distortionScale) oceanWater.material.uniforms.distortionScale.value = WEATHER === 'storm' ? 7.4 : (WEATHER === 'rain' ? 5 : 3.7);   // ⛈️ 风暴浪高
   }
   if (mobileWater) mobileWater.position.y = tideY;
+  if (seaSparkle) {   // ✨ 波光:跟随玩家、贴海面、朝当前主光向铺开;潜水/夜深自然收敛
+    const isN9 = night > .5, L9 = isN9 ? moonDirN : sunDirN;
+    seaSparkle.position.set(player.position.x, .15 + tideY + .35, player.position.z);
+    const u9 = seaSparkle.material.uniforms;
+    u9.uTime.value = t;
+    u9.uLightXZ.value.set(L9.x, L9.z).normalize();
+    u9.uColor.value.setHex(isN9 ? 0xbcd8ff : 0xfff0c8);
+    u9.uGust.value = WEATHER === 'storm' ? 1.5 : (WEATHER === 'clear' ? 1 : .7);   // 阴天/雨天波光弱
+    u9.uOpacity.value = (da * .95 + night * (MOON_FULL ? .55 : .3)) * (WEATHER === 'clear' ? 1 : .6);
+    seaSparkle.visible = !diving && u9.uOpacity.value > .04;
+  }
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
   starField.rotation.y = t * .006;                                        // 缓慢天旋
   if (constStars) { constStars.material.opacity = night * .95; constLines.material.opacity = night * .32; }   // 星座随夜显现
@@ -2928,7 +2939,7 @@ function heightMesh(x, z) {
   }
 }
 /* --- 海洋:桌面用反射水面着色器,手机用轻量波浪 --- */
-let waterGeo = null, oceanWater = null, mobileWater = null;
+let waterGeo = null, oceanWater = null, mobileWater = null, seaSparkle = null;
 function makeWaterNormals() {   // 程序化水面法线贴图(免外部纹理)
   const S = 256, cv2 = document.createElement('canvas'); cv2.width = cv2.height = S;
   const c = cv2.getContext('2d'), img = c.createImageData(S, S);
@@ -2959,6 +2970,52 @@ if (!MOBILE) {
   oceanWater.rotation.x = -Math.PI / 2;
   oceanWater.position.y = .15;
   scene.add(oceanWater);
+  /* ✨ 海面波光:跟随玩家的一片闪烁点云,朝光向密、成"海上月道/日照金鳞" */
+  {
+    const NG = 1700, R = 640, pos = new Float32Array(NG * 3), pha = new Float32Array(NG), rg = mulberry32(4271);
+    for (let i = 0; i < NG; i++) {
+      const rr = Math.sqrt(rg()) * R, ang = rg() * 6.2831;         // 均匀铺满圆盘
+      pos[i * 3] = Math.cos(ang) * rr; pos[i * 3 + 1] = 0; pos[i * 3 + 2] = Math.sin(ang) * rr;
+      pha[i] = rg();
+    }
+    const gGeo = new THREE.BufferGeometry();
+    gGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    gGeo.setAttribute('aPhase', new THREE.BufferAttribute(pha, 1));
+    const gMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+      uniforms: {
+        uTime: { value: 0 }, uLightXZ: { value: new THREE.Vector2(1, 0) },
+        uColor: { value: new THREE.Color(0xfff0c8) }, uOpacity: { value: .9 }, uGust: { value: 1 },
+      },
+      vertexShader: `
+        uniform float uTime; uniform vec2 uLightXZ; uniform float uOpacity; uniform float uGust;
+        attribute float aPhase; varying float vA;
+        void main() {
+          vec2 rel = position.xz;
+          float dist = length(rel);
+          float fade = 1.0 - smoothstep(300.0, 640.0, dist);
+          vec2 dir = dist > 0.001 ? rel / dist : vec2(0.0);
+          float band = smoothstep(0.05, 0.85, dot(dir, uLightXZ));          // 朝光向 = 反光海道
+          float tw = sin(uTime * 3.1 + aPhase * 6.2831 + dist * 0.02);
+          float spark = pow(max(tw, 0.0), 9.0);                             // 尖锐一闪一闪
+          vA = spark * fade * (0.14 + band * 1.15) * uOpacity;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = (1.4 + spark * 5.2 * uGust) * fade * (260.0 / -mv.z);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        precision mediump float; uniform vec3 uColor; varying float vA;
+        void main() {
+          vec2 c = gl_PointCoord - 0.5;
+          float d = length(c);
+          if (d > 0.5) discard;
+          gl_FragColor = vec4(uColor, smoothstep(0.5, 0.0, d) * vA);
+        }`,
+    });
+    seaSparkle = new THREE.Points(gGeo, gMat);
+    seaSparkle.frustumCulled = false; seaSparkle.renderOrder = 3;
+    scene.add(seaSparkle);
+  }
 } else {
   waterGeo = new THREE.PlaneGeometry(5200, 5200, 72, 72);
   waterGeo.rotateX(-Math.PI / 2);
