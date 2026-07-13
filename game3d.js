@@ -26,6 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
+import { netOn, netPublish, netList, netLike, netReport } from './w-net.js?v=1';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -1113,6 +1114,12 @@ function pioneerCard9() {
       <div style="display:flex;gap:6px">${d9 ? '<button class="again" data-uexport style="flex:1">📤 岛屿码</button><button class="again" data-ulink style="flex:1">🔗 分享链接</button><button class="again" data-ugo style="flex:1">⛵ 前往我的岛</button>' : ''}</div>
       <textarea id="pioCode" placeholder="岛屿码出现在这里;或把朋友的岛屿码粘进来,点导入" style="width:100%;box-sizing:border-box;height:56px;margin:6px 0 4px;padding:7px;border:1px solid #d8ceb8;border-radius:8px;font-size:11px"></textarea>
       <button class="again" data-uimport style="display:block;width:100%">📥 导入朋友的岛(已迎 ${(JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]')).length}/8 座)</button>
+      ${netOn() ? `<div style="border-top:1px dashed #d8ceb8;margin:10px 0 6px;padding-top:8px">
+        <b style="font-size:13px">🌐 群岛集市</b>
+        <button class="again" data-mkpub style="float:right;font-size:12px" ${d9 ? '' : 'disabled'}>发布我的岛</button>
+        <div style="display:flex;gap:6px;margin:6px 0"><button class="again" data-mklist="new" style="flex:1;font-size:12px">🆕 最新</button><button class="again" data-mklist="hot" style="flex:1;font-size:12px">🔥 最热</button></div>
+        <div id="mkRows9" style="font-size:12.5px;color:#5a5244">点「最新/最热」浏览各地旅人发布的岛。</div>
+      </div>` : ''}
     </div>`;
 }
 /* ═══ 🧺 生产与岛际贸易 ═══
@@ -1414,6 +1421,40 @@ function openCard(s) {
     closeModals(); toast('🏝️ 「' + ck9.name + '」落成于开拓海域!导出岛屿码即可送给朋友'); blip(760);
     if (PSTORE.getItem('w1001.pioneer1') !== '1') { PSTORE.setItem('w1001.pioneer1', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「开拓者」 · ⭐+1'); }
   });
+  cardBody.querySelector('[data-mkpub]')?.addEventListener('click', async () => {   // 🌐 发布到集市
+    const code9 = PSTORE.getItem('w1001.myisle'); if (!code9) return;
+    const d9 = uisleDec9(code9); if (!d9) return;
+    toast('🌐 发布中……');
+    const r9 = await netPublish(code9, d9.name, d9.owner);
+    toast(r9.ok ? '🌐 「' + d9.name + '」已登上群岛集市!' : '🌐 发布失败:' + r9.msg);
+    if (r9.ok) blip(760);
+  });
+  cardBody.querySelectorAll('[data-mklist]').forEach(b9 => b9.addEventListener('click', async () => {   // 🌐 浏览集市
+    const el9 = document.getElementById('mkRows9'); if (!el9) return;
+    el9.innerHTML = '加载中……';
+    const rows9 = await netList(b9.dataset.mklist);
+    if (!rows9.length) { el9.innerHTML = '集市空空如也——做第一个发布的人?'; return; }
+    el9.innerHTML = rows9.map(r9 => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px dotted #e4dcc8">
+      <span style="flex:1">🏝️ <b>${esc(r9.name)}</b> · ${esc(r9.owner)} · ❤️${r9.likes}</span>
+      <button class="gBtn" data-mkvisit="${r9.id}" style="font-size:11px">迎接</button>
+      <button class="gBtn off" data-mklike="${r9.id}" style="font-size:11px">❤️</button>
+      <button class="gBtn off" data-mkrep="${r9.id}" style="font-size:11px">⚠️</button></div>`).join('');
+    el9.dataset.cache = JSON.stringify(rows9.map(r9 => ({ id: r9.id, code: r9.code, name: r9.name })));
+    el9.querySelectorAll('[data-mkvisit]').forEach(v9 => v9.addEventListener('click', () => {
+      const c9 = JSON.parse(el9.dataset.cache).find(x9 => x9.id === v9.dataset.mkvisit); if (!c9) return;
+      const d9 = uisleDec9(c9.code);   // ⚠️ 服务器数据不可信:一律回白名单校验
+      if (!d9) { toast('❌ 这座岛的数据无效'); return; }
+      if (d9.cell === myCell9()) d9.cell = (d9.cell + 1) % 60;
+      let vl9 = []; try { vl9 = JSON.parse(PSTORE.getItem('w1001.visitisles') || '[]'); } catch (e) {}
+      vl9 = vl9.filter(cc9 => { const p9 = uisleDec9(cc9); return p9 && p9.cell !== d9.cell; });
+      vl9.push(uisleEnc9(d9)); while (vl9.length > 8) vl9.shift();
+      PSTORE.setItem('w1001.visitisles', JSON.stringify(vl9));
+      buildUserIsle9(d9, false);
+      closeModals(); toast('📥 「' + d9.name + '」已落成开拓海域!'); blip(700);
+    }));
+    el9.querySelectorAll('[data-mklike]').forEach(v9 => v9.addEventListener('click', () => { netLike(v9.dataset.mklike); v9.disabled = true; toast('❤️ 已点赞'); }));
+    el9.querySelectorAll('[data-mkrep]').forEach(v9 => v9.addEventListener('click', () => { netReport(v9.dataset.mkrep); v9.disabled = true; toast('⚠️ 已举报,多人举报后将下架'); }));
+  }));
   cardBody.querySelector('[data-ulink]')?.addEventListener('click', () => {   // 🔗 一键分享 URL
     const code9 = PSTORE.getItem('w1001.myisle'); if (!code9) return;
     const url9 = location.origin + location.pathname + '#visit=' + code9;
