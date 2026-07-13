@@ -14,6 +14,16 @@
   #game { touch-action: none; }
   #hintSub { display: block; font-size: 11px; color: #cbd6b8; margin-top: 2px; }
   #introCard .story { color: #d8e2c4; }
+  /* 主要功能网格 */
+  #introCard .feats { margin: 16px 0 12px; }
+  #introCard .feats > b { display: block; text-align: left; color: #ffd76a; letter-spacing: 1px; font-size: 13px; margin-bottom: 9px; }
+  #introCard .featGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; text-align: left; }
+  #introCard .feat { background: rgba(255,255,255,.05); border: 1px solid rgba(255,215,106,.16); border-radius: 11px; padding: 9px 11px; transition: border-color .18s, background .18s; }
+  #introCard .feat:hover { border-color: rgba(255,215,106,.42); background: rgba(255,215,106,.07); }
+  #introCard .feat .fi { font-size: 19px; line-height: 1; }
+  #introCard .feat .ft { color: #eee6cf; font-weight: 700; font-size: 12.5px; margin: 5px 0 3px; }
+  #introCard .feat .fd { color: #a4ad91; font-size: 11px; line-height: 1.55; }
+  @media (max-width: 640px) { #introCard .featGrid { grid-template-columns: 1fr 1fr; gap: 6px; } #introCard .feat { padding: 7px 9px; } #introCard .feat .fd { font-size: 10.5px; } }
   .back2d { display: inline-block; margin-top: 14px; color: #9fc2d8; font-size: 13px; text-decoration: none; }
   .npcBub {
     position: fixed; transform: translate(-50%, -100%); z-index: 14; pointer-events: none;
@@ -119,6 +129,21 @@
     <h1>1001 世界</h1>
     <p class="tagline">收藏之岛 · 3D — Isle of 1001</p>
     <p class="story">大海中央一头鲸形的岛,藏着世间美好之物的一千零一种;四面海上,五十八座岛铺成一颗按真实经纬排布的文学地球。扬帆去吧。</p>
+
+    <div class="feats">
+      <b>✦ 这个世界里能做什么</b>
+      <div class="featGrid">
+        <div class="feat"><div class="fi">🎨</div><div class="ft">1001×1001 真实藏品</div><div class="fd">六十一岛汇聚名画·百鸟·奇花·游鱼·爵士·古典·精酿·典籍,亲眼看、逐一收录</div></div>
+        <div class="feat"><div class="fi">🌍</div><div class="ft">文学地球</div><div class="fd">名著长成的岛按真实经纬铺开,每座都藏一条故事线,踏访即盖护照章</div></div>
+        <div class="feat"><div class="fi">⛵</div><div class="ft">扬帆远行</div><div class="fd">帆船·自行车·十九座机场;海图点岛直航,转动地球仪选目的地</div></div>
+        <div class="feat"><div class="fi">🤿</div><div class="ft">潜海探秘</div><div class="fd">自由潜水、海底洞窟、声呐寻沉船,夜泳拖出一道荧光泳迹</div></div>
+        <div class="feat"><div class="fi">🌗</div><div class="ft">昼夜·天气·月相</div><div class="fd">八分钟一天,四种天气含风暴,真实月相大潮,流星·极光·绿闪</div></div>
+        <div class="feat"><div class="fi">🔭</div><div class="ft">观星辨座</div><div class="fd">夜空投影星座之名,认全一片星空即解锁</div></div>
+        <div class="feat"><div class="fi">👥</div><div class="ft">两百余位居民</div><div class="fd">各有话题与支线;交谈、寄明信片攒好感,换装、开小吃增益、置业安家</div></div>
+        <div class="feat"><div class="fi">🏝️</div><div class="ft">自建岛 · 群岛集市</div><div class="fd">造一座你自己的岛,发布到集市,也去逛别人的岛、点个赞</div></div>
+        <div class="feat"><div class="fi">✨</div><div class="ft">收藏与成就</div><div class="fd">二十四枚星之碎片、世界完成度、称号系统、每日委托与节庆</div></div>
+      </div>
+    </div>
 
     <div class="steps">
       <b>三步上手</b>
