@@ -2246,6 +2246,9 @@ if (!THREE.ShaderChunk.fog_pars_vertex.includes('vFogY9')) {
   THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace(
     'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );',
     'float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );\n\tfogFactor = clamp( fogFactor * ( 0.42 + 0.78 * exp( - max( vFogY9, 0.0 ) * 0.016 ) ), 0.0, 1.0 );');
+  THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace(   // 🏔️ 空气透视:远景随雾去饱和(峰因高度雾更清)
+    'gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
+    'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( dot( gl_FragColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), fogFactor * 0.32 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
 }
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .68;
