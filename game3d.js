@@ -8088,6 +8088,8 @@ let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerIns
          vec3 iP = vec3(0.0);
        #endif
        float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * uAmp * uGust * transformed.y;
+       float streak = smoothstep(.45, 1.0, sin(dot(iP.xz, vec2(.66, .75)) * .045 - uTime * 1.15));   // 🌾 行进风纹带(顺风方向)
+       wv += streak * .26 * uGust * transformed.y;
        transformed.x += wv; transformed.z += wv * .55;`);
     grassMat.userData.shader = sh;
   };
