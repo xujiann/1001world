@@ -4084,6 +4084,17 @@ function animLimbs(g, phase, amt) {
   L.armL.rotation.x = -s * .8; L.armR.rotation.x = s * .8;
 }
 /* 游泳姿态:配合俯身,打腿 + 交替划水 */
+function animRest9(g, state, t) {   // 🪑坐 / 🛌躺 姿态(身体倾角由物理 rotation.x 负责,这里摆四肢)
+  const L = g.userData.limbs; if (!L) return;
+  L.armL.rotation.z = L.armR.rotation.z = L.legL.rotation.z = L.legR.rotation.z = 0;
+  if (state === 2) {   // 躺平:四肢自然摊开
+    L.legL.rotation.x = 0.05; L.legR.rotation.x = -0.05;
+    L.armL.rotation.x = -0.2; L.armR.rotation.x = -0.2; L.armL.rotation.z = 0.45; L.armR.rotation.z = -0.45;
+  } else {   // 坐下:双腿前伸,双臂轻搭
+    L.legL.rotation.x = -1.35; L.legR.rotation.x = -1.35;
+    L.armL.rotation.x = -0.4 + Math.sin(t * .8) * .04; L.armR.rotation.x = -0.4 + Math.sin(t * .8 + .5) * .04;
+  }
+}
 function animSwim(g, phase, stroke = 0) {
   const L = g.userData.limbs; if (!L) return;
   const s = Math.sin(phase), s2 = Math.sin(phase * 2);
@@ -8593,7 +8604,7 @@ const blob = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasic
 blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
 scene.add(player);
-let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0, swimStroke9 = 0, swimProcOn9 = false;
+let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0, swimStroke9 = 0, swimProcOn9 = false, restState9 = 0;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
@@ -9126,6 +9137,11 @@ addEventListener('keydown', e => {
   if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
   if (k === 'c' && swimming && !diving && !modalOpen) { enterFreeDive9(); return; }   // 🤿 自由下潜
   if (k === 'z' && swimming && !diving) { swimStroke9 = (swimStroke9 + 1) % 4; toast('🏊 泳姿:' + ['自由泳', '蛙泳', '仰泳', '蝶泳'][swimStroke9]); return; }
+  if (k === 't' && grounded && !swimming && !diving && vehicle === 0 && !modalOpen) {   // 🛌 歇脚:站→坐→躺
+    restState9 = (restState9 + 1) % 3;
+    toast(restState9 === 1 ? '🪑 坐下了——转身面朝大海,听听潮声(动一下即起身)' : restState9 === 2 ? '🛌 躺平了——看云走、看鸟飞、看飞机划过(动一下即起身)' : '🧍 起身');
+    return;
+  }
   if (k === 'm') { mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
@@ -9911,6 +9927,7 @@ function loop() {
       player.position.x += dx; player.position.z += dz;
       faceYaw = Math.atan2(dx, dz);
       walkPhase += dt * 10; pMoving = true;
+      if (restState9) restState9 = 0;   // 🧍 一动就起身
     }
     // 边界
     // 世界边界:方形 ±1960(地形网格为 ±2000 方格,四角亦可驻岛)
@@ -9986,7 +10003,8 @@ function loop() {
       const swPose9 = swimStroke9 === 2 ? (1.02 + Math.sin(t * 2.2) * .06) : (-1.15 + Math.sin(t * 2.4) * .08);   // 仰泳仰面 / 余泳俯身
       player.rotation.x += (swPose9 - player.rotation.x) * Math.min(1, dt * 5);
     } else {
-      player.rotation.x += (0 - player.rotation.x) * Math.min(1, dt * 8);
+      const rrx9 = restState9 === 2 ? -1.4 : restState9 === 1 ? -0.28 : 0;   // 🛌躺 / 🪑坐 身体倾角
+      player.rotation.x += (rrx9 - player.rotation.x) * Math.min(1, dt * 6);
       vy -= 34 * dt;
       player.position.y += vy * dt;
       if (player.position.y <= gh + .06) { player.position.y = gh + .06; vy = 0; grounded = true; } else grounded = false;   // +.06 防止在崎岖地面轻微陷入
@@ -9995,17 +10013,18 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
-  const swimNow9 = swimming || diving;
+  const swimNow9 = swimming || diving, procNow9 = swimNow9 || restState9 > 0;
   if (usingGLTF) {
-    if (swimNow9) {   // 🏊 游泳/潜水:换回程序化身体以展示四种泳姿(glTF 机器人无泳姿动画)
+    if (procNow9) {   // 🏊🛌 游泳/潜水/歇脚:换回程序化身体演姿势(glTF 机器人无这些动画)
       if (!swimProcOn9) { swimProcOn9 = true; if (playerRobot) playerRobot.visible = false; for (const m of player.userData.procMeshes) m.visible = true; }
-      animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
+      if (restState9) animRest9(player, restState9, t); else animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
     } else {
       if (swimProcOn9) { swimProcOn9 = false; if (playerRobot) playerRobot.visible = true; for (const m of player.userData.procMeshes) m.visible = false; }
       playerMixer.update(dt);
       setPlayerAct(pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');
     }
-  } else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
+  } else if (restState9) animRest9(player, restState9, t);
+  else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
   else animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
@@ -10024,6 +10043,15 @@ function loop() {
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
     camera.position.lerp(v3.set(player.position.x - fx * 4.2, player.position.y + 1.6 + camPitch * 2, player.position.z - fz * 4.2), Math.min(1, dt * 9));
     camera.lookAt(player.position.x + fx * 6, player.position.y - camPitch * 3, player.position.z + fz * 6);
+  } else if (restState9) {
+    const rfx9 = Math.sin(faceYaw), rfz9 = Math.cos(faceYaw);
+    if (restState9 === 2) {   // 🛌 躺平看天:相机贴地略仰望天空
+      camera.position.lerp(v3.set(player.position.x - rfx9 * 2.6, player.position.y + 1.5, player.position.z - rfz9 * 2.6), Math.min(1, dt * 3));
+      camera.lookAt(player.position.x + rfx9 * 6, player.position.y + 32, player.position.z + rfz9 * 6);
+    } else {   // 🪑 坐下看海:望向前方地平线
+      camera.position.lerp(v3.set(player.position.x - rfx9 * 4.5, player.position.y + 3.2, player.position.z - rfz9 * 4.5), Math.min(1, dt * 3));
+      camera.lookAt(player.position.x + rfx9 * 70, player.position.y + 2, player.position.z + rfz9 * 70);
+    }
   } else {
     const cp = camPitch, off = new THREE.Vector3(Math.sin(camYaw) * Math.cos(cp), Math.sin(cp), Math.cos(camYaw) * Math.cos(cp)).multiplyScalar(camDist);
     const target = v3.copy(player.position).add(off);
@@ -10031,7 +10059,7 @@ function loop() {
     camera.position.lerp(target, Math.min(1, dt * 8));
     camera.lookAt(player.position.x, player.position.y + 2.4, player.position.z);
   }
-  if (introT9 > 0 && !diving) {   // 🎬 开场运镜覆盖
+  if (introT9 > 0 && !diving && !restState9) {   // 🎬 开场运镜覆盖
     if (!modalOpen) introT9 = Math.max(0, introT9 - dt);
     if (pMoving && introT9 > 1.2) introT9 = 1.2;
     const k9 = smooth01(Math.min(1, introT9 / 6));
@@ -10041,13 +10069,13 @@ function loop() {
       player.position.y + 5 + 200 * k9,
       player.position.z + Math.sin(ia9) * (16 + 240 * k9)), Math.min(1, dt * 3));
     camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
-    if (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving) {   // 💨 走动镜头呼吸
-      camera.position.y += Math.sin(walkPhase * 2) * (keys.shift ? .09 : .05);
-      camera.position.x += Math.cos(camYaw) * Math.sin(walkPhase) * .04;
-    }
-    { const tf9 = (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && keys.shift) ? 62 : 58;   // 冲刺微扩视野 = 速度感
-      if (Math.abs(camera.fov - tf9) > .05) { camera.fov += (tf9 - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); } }
   }
+  if (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && !restState9) {   // 💨 走动镜头呼吸(移出开场块,始终生效)
+    camera.position.y += Math.sin(walkPhase * 2) * (keys.shift ? .09 : .05);
+    camera.position.x += Math.cos(camYaw) * Math.sin(walkPhase) * .04;
+  }
+  { const tf9 = (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && !restState9 && keys.shift) ? 62 : 58;   // 冲刺微扩视野 = 速度感
+    if (Math.abs(camera.fov - tf9) > .05) { camera.fov += (tf9 - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); } }
 
   /* 动画:水 / 云 / 鱼 / 海鸥 / 篝火 / 鸟 */
   if (oceanWater) oceanWater.material.uniforms.time.value = t * .55;
