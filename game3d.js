@@ -1861,6 +1861,7 @@ function titleList() {
     { id: 'honor2', name: '🎗️ 灯塔守护者', got: PSTORE.getItem('w1001.honor2') === '1', note: '基金会荣誉(800 ⚡)' },
     { id: 'fundstone', name: '❤️ 群岛基石', got: PSTORE.getItem('w1001.fundstone') === '1', note: '累计捐赠 2000 ⚡' },
     { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍九道地方味' },
+    { id: 'regular', name: '🔥 岛屿常客', got: PSTORE.getItem('w1001.streak7') === '1', note: '连续 7 天到访群岛' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -2116,6 +2117,28 @@ function openGuide() {
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-close-guide]')?.addEventListener('click', () => closeModals());
 }
+/* 🔥 每日到访 streak + 🏝️ 今日一岛(留存钩子,纯本地) */
+let FEAT_ISLE9 = null, featDone9 = false;
+function featuredIsle9() {
+  if (!FEAT_ISLE9) { const h9 = mulberry32([...todayStr()].reduce((a9, c9) => (a9 * 67 + c9.charCodeAt(0)) | 0, 11))(); FEAT_ISLE9 = ISLES[Math.floor(h9 * ISLES.length)]; }
+  return FEAT_ISLE9;
+}
+function dailyStreak9() {
+  try {
+    const today = todayStr();
+    if (PSTORE.getItem('w1001.lastseen') === today) { featDone9 = PSTORE.getItem('w1001.featvisit') === today; return; }
+    const yst = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    let streak = parseInt(PSTORE.getItem('w1001.streak') || '0', 10) || 0;
+    streak = (PSTORE.getItem('w1001.lastseen') === yst) ? streak + 1 : 1;
+    PSTORE.setItem('w1001.lastseen', today); PSTORE.setItem('w1001.streak', String(streak));
+    if (streak > (parseInt(PSTORE.getItem('w1001.streakbest') || '0', 10) || 0)) PSTORE.setItem('w1001.streakbest', String(streak));
+    featDone9 = PSTORE.getItem('w1001.featvisit') === today;
+    const rw9 = Math.min(10 + streak * 5, 60);
+    earnSB(rw9);
+    setTimeout(() => toast('🔥 连续到访第 ' + streak + ' 天 · ⚡+' + rw9 + (streak >= 7 ? ' · 群岛常客' : '')), 1600);
+    if (streak >= 7 && PSTORE.getItem('w1001.streak7') !== '1') { PSTORE.setItem('w1001.streak7', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🏆 新称号「岛屿常客」——连续到访 7 天 · ⭐+1'), 3200); }
+  } catch (e) {}
+}
 const START_LABEL9 = $('btnStart').textContent;
 let worldStarted9 = false, autoEnterT9 = null, autoEnterLeft9 = 8;
 function startWorld9() {
@@ -2125,6 +2148,8 @@ function startWorld9() {
   $('btnStart').textContent = START_LABEL9;
   $('intro').classList.add('hidden');
   initAudio();
+  dailyStreak9();
+  setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
   try {
     if (PSTORE.getItem('w1001.guide') !== '1') {
       PSTORE.setItem('w1001.guide', '1');
@@ -9185,6 +9210,13 @@ function worldFx9(dt, t, pMoving, bh) {
     }
   }
   if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 Z 切换四种泳姿 · C 键下潜——海底有海藻林、珊瑚园与沉船'); }
+  if (!featDone9) {   // 🏝️ 今日一岛到访奖励
+    const fi9 = featuredIsle9();
+    if ((player.position.x - fi9.c.x) ** 2 + (player.position.z - fi9.c.z) ** 2 < (fi9.c.r + 45) ** 2) {
+      featDone9 = true; PSTORE.setItem('w1001.featvisit', todayStr()); earnSB(40);
+      toast('🏝️ 抵达今日一岛「' + fi9.name + '」· ⚡+40 · 明天换一座'); blip(760);
+    }
+  }
   prevSwim9 = swimming;
   /* 🌠 流星许愿:观星模式里每见一颗流星即许一愿,七愿成真 */
   {
