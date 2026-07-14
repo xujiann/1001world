@@ -67,6 +67,7 @@ SAVE_FIELDS.push('kraken');   // 🦑 海怪目击
 SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
 SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
+SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -7929,6 +7930,22 @@ let krakenGrp9 = null, krakenState9 = 'idle', krakenT9 = 0, krakenCD9 = 30; cons
   krakenGrp9.userData = { eye: eye9 };
   krakenGrp9.visible = false; scene.add(krakenGrp9);
 }
+/* ⚓ 每日沉箱:按日选一处深海沉一只箱,潜下去打捞(每天一只,位置每日一换) */
+const CHEST_SPOTS9 = [[-356, -337], [1150, -1120], [-1180, 880], [1500, -1500], [420, 60], [0, -430], [900, 800], [-800, -900]];
+const CHEST_DIR9 = ['东', '东南', '南', '西南', '西', '西北', '北', '东北'];
+let chestGrp9 = null, nearChest9 = false, chestHintT9 = 0;
+{
+  const seed9 = [...todayStr()].reduce((a9, c9) => (a9 * 43 + c9.charCodeAt(0)) | 0, 7);
+  const sp9 = CHEST_SPOTS9[((seed9 % CHEST_SPOTS9.length) + CHEST_SPOTS9.length) % CHEST_SPOTS9.length];
+  chestGrp9 = new THREE.Group();
+  const bx9 = box(1.8, 1.1, 1.2, lam(0x6a4a26)); bx9.position.y = .55; chestGrp9.add(bx9);
+  const lid9 = box(1.9, .35, 1.3, lam(0x8a6236)); lid9.position.y = 1.2; chestGrp9.add(lid9);
+  const band9 = box(1.95, .18, .3, lam(0xd9a62e)); band9.position.y = .7; chestGrp9.add(band9);
+  const gl9 = new THREE.Mesh(sphg(2.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: .12, depthWrite: false, fog: false })); gl9.position.y = .8; chestGrp9.add(gl9);
+  chestGrp9.position.set(sp9[0], Math.min(height(sp9[0], sp9[1]), -2) + .1, sp9[1]);
+  chestGrp9.visible = PSTORE.getItem('w1001.chest') !== todayStr();
+  scene.add(chestGrp9);
+}
 /* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
 const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0, cd: 0 };
 for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
@@ -9278,6 +9295,17 @@ function tryInteract() {
   if (diving) { if (nearPortal >= 0) surfaceDive(nearPortal); return; }
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
+  if (nearChest9) {
+    PSTORE.setItem('w1001.chest', todayStr());
+    chestGrp9.visible = false; nearChest9 = false;
+    const n9 = (parseInt(PSTORE.getItem('w1001.chestn') || '0', 10) || 0) + 1;
+    PSTORE.setItem('w1001.chestn', String(n9));
+    const rw9 = 25 + ((n9 * 7) % 21);
+    earnSB(rw9);
+    toast('⚓ 撬开沉箱——' + ['一把西班牙银币', '一串盐渍珍珠', '一只完好的六分仪', '半瓶未变质的朗姆酒', '一册防水油布包的海图'][n9 % 5] + '!⚡+' + rw9 + '(累计打捞 ' + n9 + ' 箱)');
+    blip(700); setTimeout(() => blip(940), 130);
+    return;
+  }
   if (nearDoub9) { pickDoubloon9(nearDoub9); return; }
   if (nearGhost9) { openGhostCard(); return; }
   if (nearSpot && nearSpot.cat === 'air') { openAirCounter(nearSpot.airKey); return; }
@@ -10256,6 +10284,20 @@ function loop() {
     if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
     if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
   }
+  nearChest9 = false;
+  if (chestGrp9 && chestGrp9.visible) {   // ⚓ 每日沉箱
+    if (diving) {
+      const cd9 = Math.hypot(player.position.x - chestGrp9.position.x, player.position.z - chestGrp9.position.z);
+      nearChest9 = !modalOpen && cd9 < 9 && Math.abs(player.position.y - chestGrp9.position.y) < 7;
+      chestHintT9 -= dt;
+      if (freeDive9 && chestHintT9 <= 0) {   // 潜水中每 20s 报一次方位
+        chestHintT9 = 20;
+        const ang9 = Math.atan2(chestGrp9.position.x - player.position.x, -(chestGrp9.position.z - player.position.z));
+        const oct9 = CHEST_DIR9[((Math.round(ang9 / (Math.PI / 4)) % 8) + 8) % 8];
+        if (cd9 > 40) toast('⚓ 声呐微响:今日沉箱在' + oct9 + '方约 ' + Math.round(cd9) + ' 米');
+      }
+    }
+  }
   evT += dt;   // 🎪 事件景物
   if (krakenGrp9) {   // 🦑 海怪:深夜深海偶现,升起→扭动→没入,不伤害
     if (krakenState9 === 'idle') {
@@ -10803,6 +10845,7 @@ function loop() {
   else if (nearSpot) { hintTxt = HINTS[nearSpot.type] || '看看'; hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
   else if (nearFspot) { hintTxt = '🎣 抛竿钓鱼'; hx = nearFspot.bx; hy = 3; hz = nearFspot.bz; }
   else if (nearNpc) { hintTxt = '💬 交谈'; hx = nearNpc.g.position.x; hy = nearNpc.g.position.y + 3.6; hz = nearNpc.g.position.z; }
+  else if (nearChest9 && chestGrp9) { hintTxt = '⚓ 打捞沉箱'; hx = chestGrp9.position.x; hy = chestGrp9.position.y + 3; hz = chestGrp9.position.z; }
   else if (nearDoub9) { hintTxt = '🪙 拾起金币'; hx = nearDoub9.position.x; hy = nearDoub9.position.y + 3; hz = nearDoub9.position.z; }
   else if (nearGhost9 && ghostShip9) { hintTxt = '☠️ 呼喊离魂号'; hx = ghostShip9.position.x; hy = 16; hz = ghostShip9.position.z; }
   if (hintTxt && !modalOpen) {
