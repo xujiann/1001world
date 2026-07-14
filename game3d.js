@@ -63,6 +63,7 @@ SAVE_FIELDS.push('wreck2', 'pearl9');   // 隧道新发现
 SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金会
 SAVE_FIELDS.push('aff');   // NPC 好感度
 SAVE_FIELDS.push('ghost', 'doubloons');   // ☠️ 海盗弧:幽灵船 / 被诅咒的金币
+SAVE_FIELDS.push('kraken');   // 🦑 海怪目击
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -1866,6 +1867,7 @@ function titleList() {
     { id: 'regular', name: '🔥 岛屿常客', got: PSTORE.getItem('w1001.streak7') === '1', note: '连续 7 天到访群岛' },
     { id: 'ghost', name: '☠️ 幽灵船目击者', got: !!PSTORE.getItem('w1001.ghost'), note: '在深海寻见离魂号' },
     { id: 'ghostsolve', name: '⚱️ 解咒人', got: PSTORE.getItem('w1001.ghost') === 'done', note: '为离魂号解开百年诅咒' },
+    { id: 'kraken', name: '🦑 深渊的目击者', got: PSTORE.getItem('w1001.kraken') === '1', note: '深海夜航直面海怪而生还' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -7755,6 +7757,24 @@ function pickDoubloon9(gm9) {
   earnSB(15); blip(700);
   toast('🪙 拾得一枚被诅咒的金币(' + doubGot9.size + '/3)——手心一阵发凉。' + (doubGot9.size >= 3 ? '三枚已齐!回离魂号交给船长。' : ''));
 }
+/* 🦑 海怪:深夜深海航行时偶现的巨型触手(轻量惊吓,不造成伤害) */
+let krakenGrp9 = null, krakenState9 = 'idle', krakenT9 = 0, krakenCD9 = 30; const krakenTents9 = [];
+{
+  krakenGrp9 = new THREE.Group();
+  const km9 = MOBILE ? new THREE.MeshLambertMaterial({ color: 0x2c3a3a }) : new THREE.MeshStandardMaterial({ color: 0x2c3a3a, roughness: .82, metalness: .05 });
+  for (let i9 = 0; i9 < 6; i9++) {
+    const a9 = i9 / 6 * Math.PI * 2, rr9 = 10 + (i9 % 2) * 4;
+    const t9 = new THREE.Mesh(new THREE.ConeGeometry(1.1, 20, 6), km9);
+    t9.position.set(Math.cos(a9) * rr9, -8, Math.sin(a9) * rr9);
+    t9.userData = { ph: i9 * 1.1 };
+    krakenGrp9.add(t9); krakenTents9.push(t9);
+  }
+  const eye9 = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 12), MOBILE ? new THREE.MeshLambertMaterial({ color: 0x1a2226 }) : new THREE.MeshStandardMaterial({ color: 0x1a2226, roughness: .5 }));
+  const pupil9 = new THREE.Mesh(new THREE.SphereGeometry(1.3, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffcf5a }));
+  pupil9.position.z = 2.4; eye9.add(pupil9); eye9.position.y = -6; krakenGrp9.add(eye9);
+  krakenGrp9.userData = { eye: eye9 };
+  krakenGrp9.visible = false; scene.add(krakenGrp9);
+}
 /* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
 const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0, cd: 0 };
 for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
@@ -9832,6 +9852,34 @@ function loop() {
     if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
   }
   evT += dt;   // 🎪 事件景物
+  if (krakenGrp9) {   // 🦑 海怪:深夜深海偶现,升起→扭动→没入,不伤害
+    if (krakenState9 === 'idle') {
+      krakenCD9 -= dt;
+      if (krakenCD9 <= 0 && !modalOpen && !diving && (vehicle === 2 || swimming) && curDA < 0.38 && heightMesh(player.position.x, player.position.z) < -6 && Math.random() < dt * 0.05) {
+        krakenState9 = 'up'; krakenT9 = 0;
+        krakenGrp9.position.set(player.position.x, 0, player.position.z);
+        krakenGrp9.visible = true;
+        toast('🦑 海面下,有大得不像话的东西正在上浮……'); blip(120); setTimeout(() => blip(90), 200);
+      }
+    } else {
+      krakenT9 += dt;
+      const amp9 = clamp(Math.min(1, krakenT9 / 2) - Math.max(0, (krakenT9 - 6.5) / 2), 0, 1);   // 0→1→0 起落包络
+      for (const t9 of krakenTents9) {
+        t9.position.y = -8 + amp9 * (13 + Math.sin(t9.userData.ph + t * 2) * 3);
+        t9.rotation.z = Math.sin(t * 1.6 + t9.userData.ph) * .5 * amp9;
+        t9.rotation.x = Math.cos(t * 1.3 + t9.userData.ph) * .4 * amp9;
+        t9.scale.y = 0.05 + amp9 * 0.95;
+      }
+      krakenGrp9.userData.eye.position.y = -6 + amp9 * 9;
+      camera.position.x += (Math.random() - .5) * amp9 * .5;
+      camera.position.y += (Math.random() - .5) * amp9 * .3;
+      if (krakenT9 > 8.5) {
+        krakenState9 = 'idle'; krakenGrp9.visible = false; krakenCD9 = 100;
+        if (PSTORE.getItem('w1001.kraken') !== '1') { PSTORE.setItem('w1001.kraken', '1'); earnSB(80); toast('🦑 你亲眼见过深渊里的东西,而且活着回来了——⚡+80 · 新称号「深渊的目击者」'); blip(900); }
+        else toast('🦑 触手缓缓没入深海,海面重归平静。');
+      }
+    }
+  }
   if (evMeteors && curDA < .35) for (let i = 0; i < evMeteors.length; i++) {   // 流星:夜间每隔几秒划一道
     const m9 = evMeteors[i], ph9 = (evT * .22 + i * .37) % 1;
     if (ph9 < .12) { if (m9.material.opacity === 0) m9.position.set(player.position.x - 120 + ((evT * 7 + i * 131) % 240), 150 + i * 22, player.position.z - 180);
