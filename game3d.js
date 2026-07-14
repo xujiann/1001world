@@ -2279,6 +2279,7 @@ scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
 let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+const REDUCE9 = matchMedia('(prefers-reduced-motion: reduce)').matches;   // ♿ 系统"减少动态"→ 关掉氛围粒子/光柱/运镜
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -2375,7 +2376,13 @@ if (!MOBILE) {
   composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
-function applyQuality() { if (gtaoPass) gtaoPass.enabled = quality >= 2; }
+function applyQuality() {
+  if (gtaoPass) gtaoPass.enabled = quality >= 2;
+  const fx9 = quality > 0 && !REDUCE9;
+  if (typeof seaSparkle !== 'undefined' && seaSparkle) seaSparkle.visible = seaSparkle.visible && fx9;
+  if (typeof dustMotes !== 'undefined' && dustMotes) dustMotes.visible = dustMotes.visible && fx9;
+  if (godPass9) godPass9.enabled = godPass9.enabled && fx9;
+}
 
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x77995a, .95);
 scene.add(hemi);
@@ -2803,7 +2810,7 @@ addEventListener('resize', rainFxResize9); rainFxResize9();
 function rainFxSpawn9(n) { rainDrops9 = []; for (let i = 0; i < n; i++) rainDrops9.push({ x: Math.random() * rainFxW9, y: Math.random() * rainFxH9, l: 9 + Math.random() * 20, v: 10 + Math.random() * 14, o: .10 + Math.random() * .22 }); }
 function updateRainFx9() {
   if (!rainFxCtx) return;
-  const heavy9 = WEATHER === 'storm', wet9 = (heavy9 || WEATHER === 'rain') && !diving;   // 潜水时不叠屏幕雨丝
+  const heavy9 = WEATHER === 'storm', wet9 = (heavy9 || WEATHER === 'rain') && !diving && !REDUCE9;   // 潜水/减少动态时不叠屏幕雨丝
   if (wet9 && !rainFxOn9) { rainFxOn9 = true; rainFxCv.classList.remove('hidden'); rainFxSpawn9(heavy9 ? 240 : 130); }
   else if (!wet9 && rainFxOn9) { rainFxOn9 = false; rainFxCv.classList.add('hidden'); rainFxCtx.clearRect(0, 0, rainFxW9, rainFxH9); return; }
   if (!rainFxOn9) return;
@@ -2878,7 +2885,7 @@ function updateDayNight(t) {
         const wx9 = WEATHER === 'clear' ? 1 : (WEATHER === 'fog' ? .55 : .32);
         str9 = edge9 * (0.32 + low9b * 0.68) * wx9 * clamp(da * 1.3, 0, 1);
       }
-      godPass9.enabled = str9 > 0.015;
+      godPass9.enabled = str9 > 0.015 && quality > 0 && !REDUCE9;
       godPass9.uniforms.uStr.value = str9;
     }
   }
@@ -2890,7 +2897,7 @@ function updateDayNight(t) {
     const base9 = WEATHER === 'clear' ? 0.5 : (WEATHER === 'fog' ? 0.32 : 0.2);
     const op9d = da * base9 * (0.4 + backlit9 * 0.9);
     dustMotes.material.uniforms.uOpacity.value = op9d;
-    dustMotes.visible = !diving && op9d > 0.02;
+    dustMotes.visible = !diving && op9d > 0.02 && quality > 0 && !REDUCE9;
   }
   /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
   const night = 1 - da;
@@ -2923,7 +2930,7 @@ function updateDayNight(t) {
     u9.uColor.value.setHex(isN9 ? 0xbcd8ff : 0xfff0c8);
     u9.uGust.value = WEATHER === 'storm' ? 1.5 : (WEATHER === 'clear' ? 1 : .7);   // 阴天/雨天波光弱
     u9.uOpacity.value = (da * .95 + night * (MOON_FULL ? .55 : .3)) * (WEATHER === 'clear' ? 1 : .6);
-    seaSparkle.visible = !diving && u9.uOpacity.value > .04;
+    seaSparkle.visible = !diving && u9.uOpacity.value > .04 && quality > 0 && !REDUCE9;
   }
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
   starField.rotation.y = t * .006;                                        // 缓慢天旋
@@ -8907,6 +8914,7 @@ function syncMobMenu() {
   mobBtns.phantom.style.display = Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) < 175 ? '' : 'none';
   if (mobBtns.home) mobBtns.home.style.display = PSTORE.getItem('w1001.home') === '1' ? '' : 'none';
   mobBtns.sonar.style.display = diving ? '' : 'none';
+  if (mobBtns.stroke) mobBtns.stroke.style.display = (swimming && !diving) ? '' : 'none';
 }
 if (isTouch) {
   const mk = (sym, title) => { const b = document.createElement('button'); b.textContent = sym; b.title = title;
@@ -8929,8 +8937,12 @@ if (isTouch) {
   const bSonar = mk('📡', '声呐探路');
   Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bSonar);
-  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome };
+  const bStroke = mk('🏊', '换泳姿');   // 🏊 游泳时循环四种泳姿(对应桌面 Z)
+  Object.assign(bStroke.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
+  document.body.appendChild(bStroke);
+  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome, stroke: bStroke };
   bSonar.addEventListener('click', () => fireSonar());
+  bStroke.addEventListener('click', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'z' })));
   tog.addEventListener('click', () => { mobMenuOpen = !mobMenuOpen; syncMobMenu(); blip(640); });
   bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(false); });
   bGlb.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(true); });
@@ -9010,7 +9022,7 @@ function whaleCall() {
   o.connect(g).connect(actx.destination);
   o.start(t0); o.stop(t0 + 3.5);
 }
-let introT9 = 6.5;   // 🎬 开场运镜:高空缓降绕入(动一下即快进)
+let introT9 = REDUCE9 ? 0 : 6.5;   // 🎬 开场运镜:高空缓降绕入(动一下即快进;减少动态则跳过)
 /* 🌍 每帧世界特效与系统节拍:幽灵船/竞速/导航/环景交通/热泉/生命系统/光效/微痕迹/引导 */
 function worldFx9(dt, t, pMoving, bh) {
   if (PIO_GLOW9) { const pb9 = .7 + Math.sin(t * 2.3) * .3; PIO_GLOW9.scale.setScalar(pb9); PIO_GLOW9.material.opacity = .55 + pb9 * .35; }   // 🏝️ 事务所柜台呼吸光
@@ -9623,7 +9635,8 @@ function loop() {
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
   if (grassBlades) {
-    if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > 6.25) redistributeGrass(player.position.x, player.position.z);
+    const gThr9 = (MOBILE || quality === 0) ? 30 : 6.25;   // 弱机放宽重铺阈值,减少扫描频率
+    if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > gThr9) redistributeGrass(player.position.x, player.position.z);
     const gust9 = Math.max(.3, .74 + .26 * Math.sin(t * .21) + .16 * Math.sin(t * 1.13 + 2) + (WEATHER === 'storm' ? .4 * Math.sin(t * 3.1) : 0));   // 🌬️ 分层阵风
     if (grassMat.userData.shader) { grassMat.userData.shader.uniforms.uTime.value = t; grassMat.userData.shader.uniforms.uGust.value = gust9; }
     for (const m of treeWindMats) if (m.userData.shader) { m.userData.shader.uniforms.uTime.value = t; m.userData.shader.uniforms.uGust.value = gust9; }   // 树冠风摆
