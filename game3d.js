@@ -10310,8 +10310,11 @@ function loop() {
     const fps = fpsN / fpsT; fpsN = 0; fpsT = 0;
     if (location.hash.includes('perf')) {   // 📊 #perf 性能 HUD(真机验收用)
       if (!window.__perfEl9) { const pe = document.createElement('div'); pe.style.cssText = 'position:fixed;right:12px;top:64px;z-index:60;font:600 12px monospace;color:#9fe8b0;background:rgba(10,16,12,.68);padding:5px 10px;border-radius:8px;pointer-events:none'; document.body.appendChild(pe); window.__perfEl9 = pe; }
-      const ri9 = renderer.info.render;
-      window.__perfEl9.textContent = fps.toFixed(0) + ' fps · ' + ri9.calls + ' calls · ' + (ri9.triangles / 1000).toFixed(0) + 'k△ · LOD ' + TCHUNKS.filter(c9 => c9.userData.lod === 0).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 1).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 2).length;
+      const ri9 = renderer.info.render, mem9 = renderer.info.memory;
+      const heap9 = (performance && performance.memory) ? (performance.memory.usedJSHeapSize / 1048576).toFixed(0) + 'M' : '—';
+      const prog9 = renderer.info.programs ? renderer.info.programs.length : '?';
+      window.__perfEl9.innerHTML = fps.toFixed(0) + ' fps · ' + ri9.calls + ' calls · ' + (ri9.triangles / 1000).toFixed(0) + 'k△ · LOD ' + TCHUNKS.filter(c9 => c9.userData.lod === 0).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 1).length + '/' + TCHUNKS.filter(c9 => c9.userData.lod === 2).length
+        + '<br>Q' + quality + ' pr' + prScale.toFixed(2) + ' · prog ' + prog9 + ' · geo ' + mem9.geometries + ' tex ' + mem9.textures + ' · heap ' + heap9;
     }
     if (fps < 20 && quality > 0 && prScale <= .85) { quality--; applyQuality(); toast('🖥️ 帧率偏低,已自动降到' + ['低画质', '中画质'][quality] + '(G 键可手动调)'); }   // 先降像素比,仍卡再降画质档
     if (fps < 27 && prScale > .85) {
