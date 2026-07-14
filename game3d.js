@@ -1872,6 +1872,7 @@ function titleList() {
     { id: 'kraken', name: '🦑 深渊的目击者', got: PSTORE.getItem('w1001.kraken') === '1', note: '深海夜航直面海怪而生还' },
     { id: 'trawler', name: '🕸️ 远洋渔夫', got: PSTORE.getItem('w1001.trawler') === '1', note: '一网拖起四尾以上' },
     { id: 'seasonfish', name: '🎏 四季渔人', got: PSTORE.getItem('w1001.seasonfish4') === '1', note: '春夏秋冬的当季限定鱼都钓过' },
+    { id: 'quizace', name: '🎓 藏品鉴赏家', got: PSTORE.getItem('w1001.quizace') === '1', note: '鉴赏挑战答出满分' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -1984,6 +1985,76 @@ function fireworks() {   // 🎇 屏幕烟花(DOM,零 3D 风险)
   blip(660); setTimeout(() => blip(880), 200); setTimeout(() => blip(990), 400);
 }
 let journalTab = 'over';   // 图鉴当前标签页
+/* 🎓 每日鉴赏挑战:真实藏品出 5 题(名画作者/鸟类类群/植物科属/唱片音乐家…) */
+const QTYPES9 = [
+  ['art', it => ['《' + it.title + '》的作者是?', it.artist], p => p.artist],
+  ['birds', it => ['「' + it.zh + '」属于哪一类?', it.group], p => p.group],
+  ['plants', it => ['「' + it.zh + '」属于哪一科?', it.family], p => p.family],
+  ['fish', it => ['「' + it.name + '」属于哪一科?', it.family], p => p.family],
+  ['jazz', it => ['专辑《' + it.title + '》的音乐家是?', it.artist], p => p.artist],
+  ['classical', it => { const t9 = it.zh || it.title; return [(t9[0] === '《' ? t9 : '《' + t9 + '》') + '的作曲家是?', it.artist]; }, p => p.artist],
+  ['books', it => ['《' + it.zh + '》的作者是?', it.author], p => p.author],
+  ['beers', it => ['「' + it.name + '」出自哪家酒厂?', it.brewery], p => p.brewery],
+];
+let QZ9 = null;
+try { const z0 = JSON.parse(PSTORE.getItem('w1001.quiz') || 'null'); if (z0 && z0.d === todayStr()) QZ9 = z0; } catch (e) {}
+const saveQZ9 = () => { try { PSTORE.setItem('w1001.quiz', JSON.stringify(QZ9)); } catch (e) {} };
+function rollQuiz9() {
+  const rnd = mulberry32([...todayStr()].reduce((a9, c9) => (a9 * 61 + c9.charCodeAt(0)) | 0, 17));
+  const picks = shuffled(QTYPES9.filter(([k9]) => Array.isArray(D[k9]) && D[k9].length >= 8), rnd).slice(0, 5);
+  const qs = [];
+  for (const [k9, mk9, fld9] of picks) {
+    const pool = D[k9], it = pool[(rnd() * pool.length) | 0];
+    const [q9, ans9] = mk9(it);
+    if (!ans9) continue;
+    const wrongs = shuffled([...new Set(pool.map(fld9).filter(v9 => v9 && v9 !== ans9))], rnd).slice(0, 3);
+    if (wrongs.length < 3) continue;
+    qs.push({ q: q9, o: shuffled([ans9, ...wrongs], rnd), a: ans9, k: k9 });
+  }
+  QZ9 = { d: todayStr(), qs, i: 0, sc: 0, done: qs.length ? 0 : 1 };
+  saveQZ9();
+}
+const quizHtml9 = () => { const z9 = (QZ9 && QZ9.d === todayStr()) ? QZ9 : null;
+  return `<div class="qBox" style="border:1px dashed rgba(180,220,160,.5)"><div class="qTitle"><span>🎓 今日鉴赏挑战</span><span>${z9 && z9.done ? '✅ ' + z9.sc + '/' + (z9.qs.length || 5) : '每日 5 题'}</span></div>
+    <div style="font-size:12.5px;color:#c4d2c0;padding:2px 2px 6px">${z9 && z9.done ? '今天已鉴赏——明天换一批藏品再来。' : '认得馆里的藏品吗?答对有 ⚡,满分有称号。'}</div>
+    ${z9 && z9.done ? '' : '<button id="btnQuiz9" class="again" style="width:100%">🎓 开始鉴赏(5 题)</button>'}</div>`; };
+function openQuiz9() {
+  if (!QZ9 || QZ9.d !== todayStr()) rollQuiz9();
+  closeModals();
+  const z9 = QZ9;
+  if (z9.done) {
+    cardBody.innerHTML = `<div class="cardHead" style="background:#3a5a2c">🎓 鉴赏挑战 · Connoisseur</div>
+      <div class="cardTitle" style="padding-top:14px"><h3>今日成绩:${z9.sc}/${z9.qs.length || 5}</h3><div class="en">明天换一批藏品再来</div></div>
+      <div style="text-align:center;padding:10px 0 16px"><button class="again" data-qzclose>合上笔记</button></div>`;
+    modal.classList.remove('hidden'); modalOpen = true;
+    cardBody.querySelector('[data-qzclose]')?.addEventListener('click', closeModals);
+    return;
+  }
+  const q9 = z9.qs[z9.i];
+  cardBody.innerHTML = `<div class="cardHead" style="background:#3a5a2c">🎓 鉴赏挑战 · 第 ${z9.i + 1}/${z9.qs.length} 题</div>
+    <div class="cardTitle" style="padding-top:14px"><h3 style="font-size:16px;line-height:1.5">${esc(q9.q)}</h3><div class="en">${CATS[q9.k] ? CATS[q9.k].icon + ' ' + (CATS[q9.k].name || '') : ''}</div></div>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:10px 22px 18px">
+      ${q9.o.map(o9 => `<button class="again" data-qzopt="${esc(o9)}" style="width:100%;text-align:left">${esc(o9)}</button>`).join('')}
+    </div>`;
+  modal.classList.remove('hidden'); modalOpen = true;
+  cardBody.querySelectorAll('[data-qzopt]').forEach(b9 => b9.addEventListener('click', () => {
+    const ok9 = b9.dataset.qzopt === q9.a;
+    if (ok9) { z9.sc++; blip(880); toast('✅ 答对!'); } else { blip(220); toast('❌ 是「' + q9.a + '」'); }
+    z9.i++;
+    if (z9.i >= z9.qs.length) {
+      z9.done = 1;
+      const rw9 = z9.sc * 6 + (z9.sc >= z9.qs.length ? 20 : 0);
+      if (rw9) earnSB(rw9);
+      setTimeout(() => toast('🎓 鉴赏完毕 ' + z9.sc + '/' + z9.qs.length + ' · ⚡+' + rw9), 900);
+      if (z9.sc >= z9.qs.length && PSTORE.getItem('w1001.quizace') !== '1') {
+        PSTORE.setItem('w1001.quizace', '1'); stars++; saveQuest(); updateQuestHUD(); fireworks();
+        setTimeout(() => toast('🏆 新称号「藏品鉴赏家」——满分!⭐+1'), 2200);
+      }
+    }
+    saveQZ9();
+    setTimeout(openQuiz9, 650);
+  }));
+}
 function openJournal() {
   const list = $('journalList');
   const mq = mainQuest();
@@ -1998,7 +2069,7 @@ function openJournal() {
     <div style="height:10px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;margin:4px 0 8px"><div style="height:100%;width:${pct9}%;background:linear-gradient(90deg,#d9a62e,#ffd76a);border-radius:6px"></div></div>
     ${pct9 >= 75 && pct9 < 100 ? '<div style="font-size:12px;color:#d8ceb0;margin-bottom:4px">距离圆满:' + wc9.parts.filter(x9 => x9[1] < x9[2]).map(x9 => x9[0] + ' ' + Math.min(x9[1], x9[2]) + '/' + x9[2]).join(' · ') + '</div>' : ''}
     ${pct9 >= 100 ? '<div style="font-size:12.5px;color:#ffd76a">🎇 圆满。你是「1001 世界的居民」</div>' : ''}</div>`;
-  const mHtml = wcHtml + dqHtml + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
+  const mHtml = wcHtml + dqHtml + quizHtml9() + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
     <div style="font-size:13.5px;color:#8fd0ff;font-weight:700;padding:2px 2px 5px">${mq.st}</div>
     <div style="font-size:12.5px;color:#c4d2c0;padding:0 2px 4px;line-height:1.6">👉 ${mq.tip}</div></div>`;
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -2089,6 +2160,7 @@ function openJournal() {
   $('journal').classList.remove('hidden'); modalOpen = true;
   const sc9 = list.querySelector('#starChart'); if (sc9) drawStarChart(sc9);
   list.querySelector('#btnRotate')?.addEventListener('click', rotateExhibits);
+  list.querySelector('#btnQuiz9')?.addEventListener('click', openQuiz9);
   list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
   list.querySelectorAll('[data-jtab]').forEach(b => b.addEventListener('click', () => { journalTab = b.dataset.jtab; openJournal(); blip(600); }));
   list.querySelectorAll('[data-sendc]').forEach(b => b.addEventListener('click', () => {
