@@ -463,6 +463,7 @@ const GEAR = [
   { id: 'swim',    icon: '🩱', name: '鲸泳衣',     en: 'Swimsuit',     slot: '身体', price: 20, desc: '专为鲸背海域设计,贴合流线。', effect: '解锁畅游:游泳恢复全速,不再受寒', brand: null },
   { id: 'goggles', icon: '🥽', name: '深蓝泳镜',   en: 'Goggles',      slot: '眼部', price: 15, desc: '看清深蓝之下的一切。',       effect: '海中的星之碎片升起光柱指引', brand: null },
   { id: 'boots',   icon: '🥾', name: '雪峰登山靴', en: 'Hiking Boots', slot: '脚部', price: 25, desc: '背鳍雪山特供防滑大底。',     effect: '奔跑 +18%,跳跃更高', brand: null },
+  { id: 'glider',  icon: '🪂', name: '青鸢滑翔翼', en: 'Kite Glider',  slot: '背部', price: 220, desc: '一对帆布翅膀,风会接住你。', effect: '空中按住空格展开滑翔:缓降前行,从雪峰一路滑到海', brand: null },
   { id: 'rod',     icon: '🎣', name: '专业鱼竿',   en: 'Pro Rod',      slot: '手部', price: 30, desc: '等戈多,不如等鱼。',         effect: '咬钩窗口更长,渔获价格 +2 SB', brand: null },
   { id: 'wax',     icon: '🕯️', name: '蜂蜡耳塞',   en: 'Beeswax Plugs', slot: '耳部', price: 12, desc: '奥德修斯同款,船员们都说好。', effect: '塞壬海域免疫歌声魅惑,可安全穿越', brand: null },
   { id: 'rope',    icon: '🧵', name: '阿里阿德涅导绳', en: 'Guide Reel', slot: '腰间', price: 28, desc: '洞穴潜水员的命——一头系在洞口,顺着它绝不会迷路。', effect: '海底隧道迷宫中显现发光导绳与出口浮标,照亮通往各岛的暗道', brand: null },
@@ -8688,6 +8689,10 @@ player.add(fitGrp); applyOutfit();   // 👘 衣橱挂载
   for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.08, 6, 5), lam(0x222222)); eye.position.set(.17 * s, 2.4, .48); player.add(eye); }
   player.userData.limbs = plimbs;
   player.userData.procMeshes = player.children.filter(c => c.isMesh || c.userData.limbs || c.type === 'Group');   // 程序化可见部件(加载 glTF 后隐藏)
+  const wingG9 = new THREE.Mesh(new THREE.ConeGeometry(2.7, 1.2, 3), lam(0x2c9ab8));   // 🪂 滑翔翼面(三角帆)
+  wingG9.rotation.x = Math.PI; wingG9.scale.z = .4; wingG9.position.y = 3.5;
+  wingG9.visible = false; wingG9.name = 'glider9'; player.add(wingG9);
+  player.userData.glider9 = wingG9;
   lantern = new THREE.PointLight(0xffc978, 0, 22, 2);
   lantern.position.set(0, 2.6, .6); player.add(lantern);
 }
@@ -8717,7 +8722,7 @@ const blob = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasic
 blob.rotation.x = -Math.PI / 2; scene.add(blob);
 player.position.set(0, height(0, 14) + .1, 14);
 scene.add(player);
-let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0, swimStroke9 = 0, swimProcOn9 = false, restState9 = 0;
+let vy = 0, grounded = true, swimming = false, walkPhase = 0, faceYaw = 0, swimStroke9 = 0, swimProcOn9 = false, restState9 = 0, gliding9 = false;
 
 /* --- 跟随玩家的实例化草地(荒野之息式,着色器风摆,零 CPU 摇曳) --- */
 let grassBlades = null, grassMat = null, grassCx = 1e9, grassCz = 1e9, flowerInst = null, rockInst = null;
@@ -10177,6 +10182,14 @@ function loop() {
       const rrx9 = restState9 === 2 ? -1.4 : (restState9 === 1 && !usingGLTF) ? -0.28 : 0;   // 🛌躺倾身;🪑坐:glTF 走 Sitting 动画故不倾身
       player.rotation.x += (rrx9 - player.rotation.x) * Math.min(1, dt * 6);
       vy -= 34 * dt;
+      gliding9 = gearOn('glider') && keys[' '] && !grounded && vy < -1 && vehicle === 0;
+      if (gliding9) {   // 🪂 滑翔:托住下坠,顺镜头前行
+        vy = Math.max(vy, -3.4);
+        const gfx9 = -Math.sin(camYaw), gfz9 = -Math.cos(camYaw);
+        player.position.x += gfx9 * 17 * dt; player.position.z += gfz9 * 17 * dt;
+        faceYaw = camYaw; pMoving = true;
+      }
+      if (player.userData.glider9) player.userData.glider9.visible = gliding9;
       player.position.y += vy * dt;
       if (player.position.y <= gh + .06) { player.position.y = gh + .06; vy = 0; grounded = true; } else grounded = false;   // +.06 防止在崎岖地面轻微陷入
     }
