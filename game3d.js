@@ -9086,6 +9086,7 @@ function syncMobMenu() {
   if (mobBtns.home) mobBtns.home.style.display = PSTORE.getItem('w1001.home') === '1' ? '' : 'none';
   mobBtns.sonar.style.display = diving ? '' : 'none';
   if (mobBtns.stroke) mobBtns.stroke.style.display = (swimming && !diving) ? '' : 'none';
+  if (mobBtns.trawl) mobBtns.trawl.style.display = (vehicle === 2 && !diving) ? '' : 'none';
 }
 if (isTouch) {
   const mk = (sym, title) => { const b = document.createElement('button'); b.textContent = sym; b.title = title;
@@ -9111,9 +9112,13 @@ if (isTouch) {
   const bStroke = mk('🏊', '换泳姿');   // 🏊 游泳时循环四种泳姿(对应桌面 Z)
   Object.assign(bStroke.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bStroke);
-  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome, stroke: bStroke };
+  const bTrawl = mk('🕸️', '撒网');   // 🕸️ 帆船撒/收拖网(对应桌面 F)
+  Object.assign(bTrawl.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
+  document.body.appendChild(bTrawl);
+  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome, stroke: bStroke, trawl: bTrawl };
   bSonar.addEventListener('click', () => fireSonar());
   bStroke.addEventListener('click', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'z' })));
+  bTrawl.addEventListener('click', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'f' })));
   tog.addEventListener('click', () => { mobMenuOpen = !mobMenuOpen; syncMobMenu(); blip(640); });
   bMap.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(false); });
   bGlb.addEventListener('click', () => { mobMenuOpen = false; syncMobMenu(); mapKey(true); });
