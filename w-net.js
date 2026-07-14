@@ -34,7 +34,7 @@ export async function netPublish(code, name, owner) {
 /* 集市列表:hot=按赞,new=按更新 */
 export async function netList(mode) {
   const c9 = await client9(); if (!c9) return [];
-  const q9 = c9.from('islands').select('id,name,owner,likes,code')
+  const q9 = c9.from('islands').select('id,name,owner,likes,visits,code')
     .order(mode === 'hot' ? 'likes' : 'updated_at', { ascending: false }).limit(18);
   const { data, error } = await q9;
   return error ? [] : (data || []);
@@ -48,6 +48,12 @@ export async function netLike(iid) {
 export async function netReport(iid) {
   const c9 = await client9(); if (!c9) return;
   await c9.rpc('report_island', { iid });
+}
+
+/* 到访计数(社交实证):迎接一座岛时 +1 */
+export async function netVisit(iid) {
+  const c9 = await client9(); if (!c9) return;
+  await c9.rpc('visit_island', { iid });
 }
 
 /* 匿名埋点(fire-and-forget):直接 REST POST 到 events 表,不加载 supabase SDK(轻);

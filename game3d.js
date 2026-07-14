@@ -26,7 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
-import { netOn, netPublish, netList, netLike, netReport, netEvent } from './w-net.js?v=3';
+import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit } from './w-net.js?v=4';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -1438,11 +1438,11 @@ function openCard(s) {
     const rows9 = await netList(b9.dataset.mklist);
     if (!rows9.length) { el9.innerHTML = '<span style="color:#8a7c62">集市暂无岛屿(可能服务维护中,或还没人发布)——你可以做第一个,或用分享码直接互访。</span>'; return; }
     el9.innerHTML = rows9.map(r9 => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px dotted #e4dcc8">
-      <span style="flex:1">🏝️ <b>${esc(r9.name)}</b> · ${esc(r9.owner)} · ❤️${r9.likes}</span>
+      <span style="flex:1">🏝️ <b>${esc(r9.name)}</b> · ${esc(r9.owner)} · ❤️${r9.likes} · 👣${r9.visits || 0}</span>
       <button class="gBtn" data-mkvisit="${r9.id}" style="font-size:11px">迎接</button>
       <button class="gBtn off" data-mklike="${r9.id}" style="font-size:11px">❤️</button>
       <button class="gBtn off" data-mkrep="${r9.id}" style="font-size:11px">⚠️</button></div>`).join('');
-    el9.dataset.cache = JSON.stringify(rows9.map(r9 => ({ id: r9.id, code: r9.code, name: r9.name })));
+    el9.dataset.cache = JSON.stringify(rows9.map(r9 => ({ id: r9.id, code: r9.code, name: r9.name, visits: r9.visits || 0 })));
     el9.querySelectorAll('[data-mkvisit]').forEach(v9 => v9.addEventListener('click', () => {
       const c9 = JSON.parse(el9.dataset.cache).find(x9 => x9.id === v9.dataset.mkvisit); if (!c9) return;
       const d9 = uisleDec9(c9.code);   // ⚠️ 服务器数据不可信:一律回白名单校验
@@ -1452,8 +1452,9 @@ function openCard(s) {
       vl9 = vl9.filter(cc9 => { const p9 = uisleDec9(cc9); return p9 && p9.cell !== d9.cell; });
       vl9.push(uisleEnc9(d9)); while (vl9.length > 8) vl9.shift();
       PSTORE.setItem('w1001.visitisles', JSON.stringify(vl9));
+      netVisit(c9.id);   // 🌐 到访 +1(社交实证)
       buildUserIsle9(d9, false);
-      closeModals(); toast('📥 「' + d9.name + '」已落成开拓海域!'); blip(700);
+      closeModals(); toast('📥 「' + d9.name + '」已落成开拓海域!你是第 ' + ((c9.visits || 0) + 1) + ' 位到访者'); blip(700);
     }));
     el9.querySelectorAll('[data-mklike]').forEach(v9 => v9.addEventListener('click', () => { netLike(v9.dataset.mklike); v9.disabled = true; toast('❤️ 已点赞'); }));
     el9.querySelectorAll('[data-mkrep]').forEach(v9 => v9.addEventListener('click', () => { netReport(v9.dataset.mkrep); v9.disabled = true; toast('⚠️ 已举报,多人举报后将下架'); }));

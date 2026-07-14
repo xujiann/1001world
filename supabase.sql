@@ -37,3 +37,10 @@ $$ update islands set reported = reported + 1 where id = iid; $$;
 -- 允许匿名登录用户执行
 grant execute on function like_island(uuid) to authenticated;
 grant execute on function report_island(uuid) to authenticated;
+
+-- ── 到访计数(社交实证:第 N 位旅人到访。已建过表的项目单独跑这三句即可)──
+alter table islands add column if not exists visits int not null default 0;
+create or replace function visit_island(iid uuid) returns void
+language sql security definer as
+$$ update islands set visits = visits + 1 where id = iid; $$;
+grant execute on function visit_island(uuid) to authenticated;
