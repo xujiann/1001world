@@ -68,6 +68,7 @@ SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
 SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
 SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
+SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -1886,6 +1887,7 @@ function titleList() {
     { id: 'racer', name: '⛵ 环岛帆手', got: PSTORE.getItem('w1001.race1') === '1', note: '完成帆船环岛计时赛' },
     { id: 'biker', name: '🚲 环城车手', got: PSTORE.getItem('w1001.bikerace') === '1', note: '完成环城骑行赛' },
     { id: 'swimmer', name: '🏊 破浪泳者', got: PSTORE.getItem('w1001.swimrace') === '1', note: '完成西湾横渡赛' },
+    { id: 'stormer', name: '⛈️ 风暴水手', got: PSTORE.getItem('w1001.storm1') === '1', note: '风暴天驶抵远海悬赏浮标' },
     { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
     { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
     { id: 'wisher', name: '🌠 许愿者', got: (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) >= 7, note: '向七颗流星许愿' },
@@ -2254,7 +2256,7 @@ function startWorld9() {
   // 今日天气播报(雨天提示渔汛)
   setTimeout(() => {
     if (WEATHER === 'rain') toast('🌧️ 今日有雨——渔汛正旺!钓鱼上钩快、售价翻倍');
-    else if (WEATHER === 'storm') toast('⛈️ 今日风暴!半数航班延误,帆船颠簸,蜃楼隐没——适合窝在酒馆听故事');
+    else if (WEATHER === 'storm') toast('⛈️ 今日风暴!半数航班延误,帆船颠簸——但远海挂出了黑旗悬赏浮标,敢开船去的人有赏(M 海图外缘方向)');
     else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
     if (EVENT !== 'none') setTimeout(() => toast(EVENTS[EVENT].icon + ' 今日事件:' + EVENTS[EVENT].name + '——' + EVENTS[EVENT].note), 4200);
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
@@ -7947,6 +7949,21 @@ let chestGrp9 = null, nearChest9 = false, chestHintT9 = 0;
   chestGrp9.visible = PSTORE.getItem('w1001.chest') !== todayStr();
   scene.add(chestGrp9);
 }
+/* ⛈️ 风暴悬赏:仅风暴日,远海一只黑旗浮标——顶着浪开到它那儿(自愿式挑战) */
+let stormBuoy9 = null;
+if (WEATHER === 'storm') {
+  const sSeed9 = [...todayStr()].reduce((a9, c9) => (a9 * 37 + c9.charCodeAt(0)) | 0, 3);
+  const sPts9 = [[1500, -1500], [900, 800], [-800, -900], [-1180, 880], [1150, -1120]];
+  const sp9 = sPts9[((sSeed9 % sPts9.length) + sPts9.length) % sPts9.length];
+  stormBuoy9 = new THREE.Group();
+  const po9 = cyl(.3, .4, 7, M.woodDark); po9.position.y = 3; stormBuoy9.add(po9);
+  const bu9 = new THREE.Mesh(sphg(1.5, 10, 8), lam(0xc03030)); bu9.position.y = 7.2; stormBuoy9.add(bu9);
+  const fl9 = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.4), new THREE.MeshBasicMaterial({ color: 0x16211f, side: THREE.DoubleSide, fog: false }));
+  fl9.position.set(1.2, 9, 0); stormBuoy9.add(fl9);
+  stormBuoy9.position.set(sp9[0], 0, sp9[1]);
+  stormBuoy9.visible = PSTORE.getItem('w1001.storm1d') !== todayStr();
+  scene.add(stormBuoy9);
+}
 /* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
 const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0, cd: 0 };
 for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
@@ -10296,6 +10313,17 @@ function loop() {
     mg.visible = mv > .03;
     if (mg.visible) { for (const m2 of mg.userData.mats) m2.opacity = m2.userData.base * mv; mg.position.y = Math.sin(t * .4 + mi * 2.1) * 1.5; }
     if (mg.visible && mg.userData.orbit) mg.rotation.y += dt * mg.userData.orbit;   // 海市船队环行
+  }
+  if (stormBuoy9 && stormBuoy9.visible) {   // ⛈️ 风暴悬赏
+    stormBuoy9.position.y = tideY + Math.sin(t * 2.2) * 1.1;
+    stormBuoy9.rotation.z = Math.sin(t * 1.7) * .16;
+    if (vehicle === 2 && (player.position.x - stormBuoy9.position.x) ** 2 + (player.position.z - stormBuoy9.position.z) ** 2 < 225) {
+      stormBuoy9.visible = false;
+      PSTORE.setItem('w1001.storm1d', todayStr());
+      earnSB(60);
+      toast('⛈️ 顶着风浪驶抵悬赏浮标!旗下拴着防水赏金匣 · ⚡+60'); blip(660); setTimeout(() => blip(880), 130);
+      if (PSTORE.getItem('w1001.storm1') !== '1') { PSTORE.setItem('w1001.storm1', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🏆 新称号「风暴水手」——风暴是你的顺风 · ⭐+1'), 1400); }
+    }
   }
   nearChest9 = false;
   if (chestGrp9 && chestGrp9.visible) {   // ⚓ 每日沉箱
