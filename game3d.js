@@ -6156,6 +6156,7 @@ function openGhostCard() {
     body9 = '雾里浮出一艘破败的三桅帆船,幽绿的光顺着桅索淌下来。甲板上立着船长——半是人,半是骨:<br><br>"活人?稀客。我是离魂号的巴索罗谬。三百年前,我们劫了一船被教廷诅咒的西班牙金币,从此不生不死,不能靠岸,也不能沉眠。金币散了,咒就散不掉。"<br><br>"你有条船,还有一口气——替我把那三枚金币找回来,我便把这片海里没人知道的门道,教给你。"';
     btn9 = '<button class="again" data-ghostjoin>⚓ 接下这桩海上旧债</button>';
   }
+  if (MOON_FULL && curDA < .35) body9 = '<i style="color:#bcd8ff">满月当空——甲板上的水手此刻都成了白骨,月光里一根根肋骨清晰可数,唯有船长还留着半张脸。</i><br><br>' + body9;
   cardBody.innerHTML = `<div class="cardHead" style="background:#16211f">☠️ 离魂号 · The Wraith</div>
     <div class="cardTitle" style="padding-top:14px"><h3>幽灵船船长 · 巴索罗谬</h3><div class="en">A Ghost Ship of the Deep</div></div>
     <div class="cardDesc" style="font-size:13px;line-height:1.8;padding:12px 20px 6px">${body9}</div>
@@ -6172,7 +6173,7 @@ function openGhostCard() {
     if (PSTORE.getItem('w1001.ghost')) return;
     PSTORE.setItem('w1001.ghost', '1'); doubActive9 = true; earnSB(60);
     closeModals();
-    toast('☠️ 你登上了离魂号——船长的旧债,如今系在你身上。⚡+60 · 新称号「幽灵船目击者」'); blip(760); setTimeout(() => blip(920), 130);
+    toast('☠️ 你登上了离魂号——船长塞给你一枚会指向金币的旧罗盘(看顶部罗盘上的 ☠ 金点)。⚡+60 · 新称号「幽灵船目击者」'); blip(760); setTimeout(() => blip(920), 130);
   });
 }
 /* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) *//* 海洋文学带故事线 NI_QUESTS → w-config.js(纯数据模块,顶部 import) */
@@ -7624,6 +7625,17 @@ function renderCompass() {
     cpCtx.globalAlpha = .95;
     cpCtx.fillStyle = mk.col;
     cpCtx.beginPath(); cpCtx.arc(x, 37, 3.6, 0, 7); cpCtx.fill();
+  }
+  if (doubActive9 && doubGot9.size < 3) {   // 🪙 海盗罗盘:接旧债后,指向最近的被诅咒金币
+    let bx9 = 0, bz9 = 0, bd9 = 1e18;
+    for (const gm9 of doubloonMeshes9) { if (doubGot9.has(gm9.userData.id)) continue; const dd9 = (gm9.position.x - player.position.x) ** 2 + (gm9.position.z - player.position.z) ** 2; if (dd9 < bd9) { bd9 = dd9; bx9 = gm9.position.x; bz9 = gm9.position.z; } }
+    const dcp9 = off(Math.atan2(bx9 - player.position.x, bz9 - player.position.z));
+    if (Math.abs(dcp9) <= span) {
+      const xc9 = W / 2 + dcp9 / span * (W / 2 - 18), pu9 = .6 + Math.sin(performance.now() * .006) * .4;
+      cpCtx.globalAlpha = 1; cpCtx.fillStyle = '#ffd76a';
+      cpCtx.beginPath(); cpCtx.arc(xc9, 37, 4 + pu9 * 2.4, 0, 7); cpCtx.fill();
+      cpCtx.fillStyle = '#6a4a10'; cpCtx.font = 'bold 9px sans-serif'; cpCtx.textAlign = 'center'; cpCtx.textBaseline = 'middle'; cpCtx.fillText('☠', xc9, 37);
+    }
   }
   cpCtx.globalAlpha = 1;
   cpCtx.fillStyle = '#ffd76a';                          // 中央准星
