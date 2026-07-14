@@ -1988,7 +1988,7 @@ function openJournal() {
   const list = $('journalList');
   const mq = mainQuest();
   const evHtml = EVENT === 'none' ? '' : `<div class="qBox" style="border:1px dashed rgba(255,215,106,.5)"><div class="qTitle"><span>${EVENTS[EVENT].icon} 今日事件 · ${EVENTS[EVENT].name}</span><span>限今日</span></div><div style="font-size:12.5px;color:#d8ceb0;padding:2px 2px 4px">${EVENTS[EVENT].note}</div></div>`;
-  const dqHtml = (DQ && DQ.length) ? `<div class="qBox"><div class="qTitle"><span>🤝 今日居民委托</span><span>${DQ.filter(q => q.s === 2).length}/${DQ.length}</span></div>${DQ.map(q => `<div class="qRow${q.s === 2 ? ' ok' : ''}"><span>${q.s === 2 ? '✅' : '❗'} ${q.n}</span><span class="qn">${q.t === 'food' ? (q.s === 1 ? '🥡 已备货,去交付' : '想吃 ' + ((FOODS.find(f => f[0] === q.f) || [])[1] || '')) : (q.s === 2 ? '已收到' : '想收一张明信片')}</span></div>`).join('')}</div>` : '';
+  const dqHtml = (DQ && DQ.length) ? `<div class="qBox"><div class="qTitle"><span>🤝 今日居民委托</span><span>${DQ.filter(q => q.s === 2).length}/${DQ.length}</span></div>${DQ.map(q => `<div class="qRow${q.s === 2 ? ' ok' : ''}"><span>${q.s === 2 ? '✅' : '❗'} ${q.n}</span><span class="qn">${dqLabel9(q)}</span></div>`).join('')}</div>` : '';
   const wc9 = worldCompletion(); const pct9 = Math.floor(wc9.p * 100);
   if (wc9.p >= 1 && PSTORE.getItem('w1001.wc100') !== '1') {
     PSTORE.setItem('w1001.wc100', '1'); stars++; saveQuest(); updateQuestHUD(); fireworks();
@@ -8487,6 +8487,8 @@ function haulTrawl9() {
     total9 += Math.round((FISH_PRICE[f9.cat] || 4) * (WEATHER === 'rain' ? 1.5 : 1) * (deep9 ? 1.6 : 1) * FISH_MKT9);
     caught9.push(f9);
     try { PSTORE.setItem('w1001.fishcount', String((parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0) + 1)); } catch (e) {}
+  { const dqf9 = (DQ || []).find(q => q.t === 'fish' && q.s === 0);
+    if (dqf9) { dqf9.s = 1; saveDQ(); setTimeout(() => toast('🤝 委托的鱼有了——拿去给 ' + dqf9.n), 1600); } }
     markSeen('fish', f9.id, f9.name);
   }
   earnSB(total9);
@@ -9015,6 +9017,11 @@ let DQ = null;
 try { const d0 = JSON.parse(PSTORE.getItem('w1001.dq') || 'null'); if (d0 && d0.d === DQ_DATE) DQ = d0.q; } catch (e) {}
 const saveDQ = () => { try { PSTORE.setItem('w1001.dq', JSON.stringify({ d: DQ_DATE, q: DQ })); } catch (e) {} };
 const dqFor = nm9 => (DQ || []).find(q => q.n === nm9 && q.s < 2);
+const dqLabel9 = q => q.t === 'food' ? (q.s === 1 ? '🥡 已备货,去交付' : '想吃 ' + ((FOODS.find(f => f[0] === q.f) || [])[1] || ''))
+  : q.t === 'fish' ? (q.s === 1 ? '🐟 鱼有了,去交付' : '想尝一条现钓的鱼')
+  : q.t === 'photo' ? (q.s === 1 ? '📸 拍好了,拿去给TA看' : '想看一张你拍的照片')
+  : q.t === 'visit' ? (q.s === 2 ? '已替TA看过' : '想请你去看看「' + (q.i || '') + '」')
+  : (q.s === 2 ? '已收到' : '想收一张明信片');
 (function dqInit() {
   if (DQ) return;
   const pool = allNpcs.filter(n => n.name && !n.night && !n.day && !/赶集|观鲸|放风筝/.test(n.name));
@@ -9023,9 +9030,13 @@ const dqFor = nm9 => (DQ || []).find(q => q.n === nm9 && q.s < 2);
   const n1 = pool[(seed * 7919) % pool.length];
   let n2 = pool[(seed * 7919 + 131) % pool.length];
   if (n2 === n1) n2 = pool[(seed * 7919 + 262) % pool.length];
-  DQ = [
-    { n: n1.name, t: 'food', f: DQ_FOODS[seed % DQ_FOODS.length], s: 0 },
-    { n: n2.name, t: 'card', s: 0 },
+  let n3 = pool[(seed * 7919 + 401) % pool.length];
+  if (n3 === n1 || n3 === n2) n3 = pool[(seed * 7919 + 523) % pool.length];
+  const vi9 = ISLES[(seed * 31) % ISLES.length];
+  DQ = [   // 🤝 动词按日交替:美食/钓鱼 · 明信片/照片 · 探访(委托生成器,全接现成玩法)
+    seed % 2 ? { n: n1.name, t: 'food', f: DQ_FOODS[seed % DQ_FOODS.length], s: 0 } : { n: n1.name, t: 'fish', s: 0 },
+    seed % 2 ? { n: n2.name, t: 'photo', s: 0 } : { n: n2.name, t: 'card', s: 0 },
+    { n: n3.name, t: 'visit', i: vi9.name, c: [vi9.c.x, vi9.c.z], r: vi9.c.r || 100, s: 0 },
   ];
   saveDQ();
 })();
@@ -9202,6 +9213,8 @@ function talkTo(npc) {
   if (visitGift9 === npc.name) { visitGift9 = null; earnSB(15); setTimeout(() => toast('🎁 ' + npc.name + ' 带了乔迁贺礼 · ⚡+15——"住得像样,就常回来。"'), 800); }
   const dq0 = dqFor(npc.name);
   if (dq0 && dq0.t === 'food' && dq0.s === 1) { dq0.s = 2; saveDQ(); earnSB(10); affAdd(npc.name, 2); setTimeout(() => toast('🤝 委托完成!' + npc.name + ' 接过还热乎的吃食 · ⚡+10 ❤+2'), 500); }
+  if (dq0 && dq0.t === 'fish' && dq0.s === 1) { dq0.s = 2; saveDQ(); earnSB(12); affAdd(npc.name, 2); setTimeout(() => toast('🤝 委托完成!' + npc.name + ' 接过还活蹦的鱼 · ⚡+12 ❤+2'), 500); }
+  if (dq0 && dq0.t === 'photo' && dq0.s === 1) { dq0.s = 2; saveDQ(); earnSB(12); affAdd(npc.name, 2); setTimeout(() => toast('🤝 委托完成!' + npc.name + ' 把照片端详了很久 · ⚡+12 ❤+2'), 500); }
   const a9 = affAdd(npc.name, 1);
   if (a9.n >= 6 && !a9.g) { a9.g = 1; PSTORE.setItem('w1001.aff', JSON.stringify(AFF)); earnSB(6); setTimeout(() => toast('🎁 ' + npc.name + ' 塞给你一件小玩意 · ⚡+6——"拿着,老朋友的规矩。"'), 600); }
   renderTalk(npc.lines[0] || '(……)'); blip(520);
@@ -9560,6 +9573,11 @@ function worldFx9(dt, t, pMoving, bh) {
     }
   }
   if (swimming && !prevSwim9 && !diving && !swimHint9) { swimHint9 = 1; toast('💡 按 Z 切换四种泳姿 · C 键下潜——海底有海藻林、珊瑚园与沉船'); }
+  { const dqv9 = (DQ || []).find(q => q.t === 'visit' && q.s < 2);
+    if (dqv9 && dqv9.c && (player.position.x - dqv9.c[0]) ** 2 + (player.position.z - dqv9.c[1]) ** 2 < (dqv9.r + 40) ** 2) {
+      dqv9.s = 2; saveDQ(); earnSB(12);
+      toast('🤝 委托完成!替 ' + dqv9.n + ' 看过了「' + dqv9.i + '」 · ⚡+12'); blip(760);
+    } }
   if (!featDone9) {   // 🏝️ 今日一岛到访奖励
     const fi9 = featuredIsle9();
     if ((player.position.x - fi9.c.x) ** 2 + (player.position.z - fi9.c.z) ** 2 < (fi9.c.r + 45) ** 2) {
@@ -10752,6 +10770,8 @@ function loop() {
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
   if (pcPending) {
     pcPending = false; makePostcard();
+    { const dqp9 = (DQ || []).find(q => q.t === 'photo' && q.s === 0);
+      if (dqp9) { dqp9.s = 1; saveDQ(); setTimeout(() => toast('🤝 照片拍好了——去拿给 ' + dqp9.n + ' 看'), 1600); } }
     if (PSTORE.getItem('w1001.photodo') !== todayStr() && PH_TODAY9.ck()) {   // 📸 今日摄影题判定
       PSTORE.setItem('w1001.photodo', todayStr()); earnSB(15);
       toast('📸 今日摄影题达成:「' + PH_TODAY9.name + '」 ⚡+15');
