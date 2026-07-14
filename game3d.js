@@ -8402,10 +8402,10 @@ function toggleTrawl9() {
 }
 function haulTrawl9() {
   trawlOn9 = false; trawlNet9.visible = false;
-  const deep9 = heightMesh(player.position.x, player.position.z) < -5.5;
-  const n9 = Math.max(1, Math.round(trawlFill9 * 5));
+  const deep9 = heightMesh(player.position.x, player.position.z) < -5.5, grd9 = inGround9(player.position.x, player.position.z);
+  const n9 = Math.max(1, Math.round(trawlFill9 * 5)) + (grd9 ? 2 : 0);
   let pool9 = D.fish;
-  if (deep9) { pool9 = []; for (const f9 of D.fish) { pool9.push(f9); if (f9.cat === 'deep' || f9.cat === 'rare') pool9.push(f9, f9); } }
+  if (deep9 || grd9) { pool9 = []; for (const f9 of D.fish) { pool9.push(f9); if (f9.cat === 'deep' || f9.cat === 'rare') pool9.push(f9, f9); } }
   let total9 = 0; const caught9 = [];
   for (let i9 = 0; i9 < n9; i9++) {
     const f9 = pool9[Math.floor(Math.random() * pool9.length)];
@@ -8422,6 +8422,21 @@ function haulTrawl9() {
   blip(760); setTimeout(() => blip(1040), 120);
   if (n9 >= 4 && PSTORE.getItem('w1001.trawler') !== '1') { PSTORE.setItem('w1001.trawler', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🏆 新称号「远洋渔夫」——一网拖起四尾以上 · ⭐+1'), 900); }
   trawlFill9 = 0;
+}
+/* 🐟 渔场:海鸥盘旋的鱼群热点(拖网/抛竿更肥) */
+const GROUNDS9 = [{ x: -356, z: -337, r: 95 }, { x: 1150, z: -1120, r: 95 }, { x: -1180, z: 880, r: 95 }];
+const inGround9 = (x, z) => { for (const gr9 of GROUNDS9) if ((x - gr9.x) ** 2 + (z - gr9.z) ** 2 < gr9.r * gr9.r) return gr9; return null; };
+let groundTold9 = null; const groundFlocks9 = [];
+for (const gr9 of GROUNDS9) {
+  const flock9 = new THREE.Group();
+  for (let i9 = 0; i9 < 5; i9++) {
+    const gu9 = new THREE.Group();
+    const wl9 = box(1.4, .08, .34, M.white); wl9.position.x = -.7; gu9.add(wl9);
+    const wr9 = box(1.4, .08, .34, M.white); wr9.position.x = .7; gu9.add(wr9);
+    gu9.userData = { rr: 8 + i9 * 3, sp: .5 + i9 * .12, ph: i9 * 1.3, hgt: 9 + i9 * 2, wl: wl9, wr: wr9 };
+    flock9.add(gu9);
+  }
+  flock9.position.set(gr9.x, 0, gr9.z); scene.add(flock9); groundFlocks9.push(flock9);
 }
 function catchFish() {
   const deep9 = fishing.spot && heightMesh(fishing.spot.bx, fishing.spot.bz) < -5.5;   // 🌊 深水钓点
@@ -9385,13 +9400,22 @@ function worldFx9(dt, t, pMoving, bh) {
     if (vehicle !== 2) haulTrawl9();   // 收帆/搁浅 → 自动收网
     else {
       const hh9 = heightMesh(player.position.x, player.position.z);
-      const rate9 = hh9 < -5.5 ? 1.8 : hh9 < -1 ? 1 : .3;
+      const rate9 = (hh9 < -5.5 ? 1.8 : hh9 < -1 ? 1 : .3) * (inGround9(player.position.x, player.position.z) ? 2 : 1);
       trawlFill9 = Math.min(1, trawlFill9 + dt * .06 * rate9 * (pMoving ? 1 : .3));
       trawlNet9.position.set(player.position.x - Math.sin(faceYaw) * 7, .25 + tideY, player.position.z - Math.cos(faceYaw) * 7);
       trawlNet9.rotation.y = faceYaw;
       if (trawlFill9 >= 1 && !trawlFullTold9) { trawlFullTold9 = true; toast('🕸️ 网满了!按 F 收网'); blip(880); }
     }
   }
+  for (const flock9 of groundFlocks9) for (const gu9 of flock9.children) {   // 🐟 渔场海鸥盘旋
+    const u9 = gu9.userData, aa9 = t * u9.sp + u9.ph;
+    gu9.position.set(Math.cos(aa9) * u9.rr, u9.hgt, Math.sin(aa9) * u9.rr);
+    gu9.rotation.y = -aa9;
+    const fl9 = Math.sin(t * 8 + u9.ph) * .5; u9.wl.rotation.z = fl9; u9.wr.rotation.z = -fl9;
+  }
+  { const cg9 = inGround9(player.position.x, player.position.z);
+    if (cg9 && cg9 !== groundTold9) { groundTold9 = cg9; toast('🐟 海鸥盘旋、鱼群翻涌——这片是渔场!撒网收获翻倍'); }
+    else if (!cg9) groundTold9 = null; }
   /* 🌠 流星许愿:观星模式里每见一颗流星即许一愿,七愿成真 */
   {
     const mv9 = meteor && meteor.material.opacity > .5;
