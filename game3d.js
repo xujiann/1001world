@@ -3477,7 +3477,7 @@ function makeBldg(spec) {
 }
 /* --- 亭台建筑 --- */
 function pavilion(zn, opt) {
-  const { x, z, h } = zn, o = Object.assign({ w: 26, d: 20, walls: 'back', roof: 0xa8542c, floor: 0xcfc5ae }, opt);
+  const { x, z, h } = zn, o = Object.assign({ w: 26, d: 20, walls: 'three', roof: 0xa8542c, floor: 0xcfc5ae }, opt);
   const grp = new THREE.Group(); grp.position.set(x, h, z);
   const fl = box(o.w, .8, o.d, lam(o.floor)); fl.position.y = .4; grp.add(fl);
   for (const [cx, cz] of [[-o.w / 2 + 1, -o.d / 2 + 1], [o.w / 2 - 1, -o.d / 2 + 1], [-o.w / 2 + 1, o.d / 2 - 1], [o.w / 2 - 1, o.d / 2 - 1]]) {
@@ -3682,7 +3682,7 @@ function makeTree(x, z, scale, birdCol) {
 /* --- 酒馆 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'beers');
-  const grp = pavilion(zn, { w: 28, d: 22, walls: 'back', roof: 0x7a4a26, floor: 0x9c6b39 });
+  const grp = pavilion(zn, { w: 28, d: 22, walls: 'three', roof: 0x7a4a26, floor: 0x9c6b39 });
   // 欧式老酒馆:人字坡顶 + 悬挂招牌 + 门口一棵戈多枯树
   for (const sgn of [-1, 1]) {
     const slope = box(31, .6, 13.2, lam(0x6e3f1e));
@@ -3762,7 +3762,7 @@ function makeTree(x, z, scale, birdCol) {
 /* --- 爵士俱乐部 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'jazz');
-  const grp = pavilion(zn, { w: 24, d: 20, walls: 'back', roof: 0x33202e, floor: 0x4a2f3e });
+  const grp = pavilion(zn, { w: 24, d: 20, walls: 'three', roof: 0x33202e, floor: 0x4a2f3e });
   // 新奥尔良风:条纹雨棚 + 霓虹招牌
   for (let i = 0; i < 8; i++) {
     const seg = box(3.1, .25, 3.6, lam(i % 2 ? 0xc0392b : 0xf5efdc));
@@ -3782,7 +3782,7 @@ function makeTree(x, z, scale, birdCol) {
 /* --- 音乐厅 --- */
 {
   const zn = ZONES3D.find(z => z.key === 'classical');
-  const grp = pavilion(zn, { w: 26, d: 22, walls: 'back', roof: 0x8a6238, floor: 0xd9cdb2 });
+  const grp = pavilion(zn, { w: 26, d: 22, walls: 'three', roof: 0x8a6238, floor: 0xd9cdb2 });
   // 金色大厅风:一排金拱窗 + 坡顶(参考维也纳金色大厅)
   for (let i = 0; i < 5; i++) {
     const win = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), new THREE.MeshBasicMaterial({ color: 0xffd76a, side: THREE.DoubleSide }));
@@ -5552,7 +5552,7 @@ const boats = [];
     reedI.instanceMatrix.needsUpdate = true;
     scene.add(reedI);
   }
-  pavilion({ x: gx + 30, z: gz - 30, h: height(gx + 30, gz - 30) }, { w: 26, d: 18, walls: 'back', roof: 0x8c2f24, floor: 0xc8b06a });
+  pavilion({ x: gx + 30, z: gz - 30, h: height(gx + 30, gz - 30) }, { w: 26, d: 18, walls: 'three', roof: 0x8c2f24, floor: 0xc8b06a });
   {   // 替天行道大旗
     const fx3 = gx + 30, fz3 = gz - 14, fh3 = height(fx3, fz3);
     const pole2 = cyl(.2, .28, 16, M.woodDark); pole2.position.set(fx3, fh3 + 8, fz3); scene.add(pole2);
@@ -5749,8 +5749,8 @@ const boats = [];
 /* —— 红楼梦 · 大观园 —— */
 {
   const gx = DGY.x, gz = DGY.z;
-  pavilion({ x: gx - 20, z: gz - 16, h: height(gx - 20, gz - 16) }, { w: 22, d: 16, walls: 'back', roof: 0x2e5a4a, floor: 0xd8c8a8 });
-  pavilion({ x: gx + 24, z: gz - 10, h: height(gx + 24, gz - 10) }, { w: 20, d: 14, walls: 'back', roof: 0x8c2f4e, floor: 0xe0d0b0 });
+  pavilion({ x: gx - 20, z: gz - 16, h: height(gx - 20, gz - 16) }, { w: 22, d: 16, walls: 'three', roof: 0x2e5a4a, floor: 0xd8c8a8 });
+  pavilion({ x: gx + 24, z: gz - 10, h: height(gx + 24, gz - 10) }, { w: 20, d: 14, walls: 'three', roof: 0x8c2f4e, floor: 0xe0d0b0 });
   {   // 沁芳亭(水边小亭)
     const ax3 = gx + 2, az3 = gz + 26, ah3 = height(ax3, az3);
     for (let i = 0; i < 6; i++) {
