@@ -3935,6 +3935,7 @@ updateShardHUD();
 updateTitleHUD();
 function collectShard(s) {
   shardsGot.push(s.i);
+  playerEmote9('ThumbsUp', 1.6);   // 🎭 拾到碎片,比个赞
   try { PSTORE.setItem('w1001.shards', JSON.stringify(shardsGot)); } catch (e) {}
   scene.remove(s.m);
   if (s.beam) scene.remove(s.beam);
@@ -8582,6 +8583,8 @@ player.add(fitGrp); applyOutfit();   // 👘 衣橱挂载
 }
 /* --- 玩家 glTF 骨骼模型(RobotExpressive,Three CDN 自带,含骨骼动画;加载失败则沿用程序化模型)--- */
 let playerMixer = null, playerActions = {}, playerAct = '', usingGLTF = false, playerRobot = null;
+let emote9 = '', emoteT9 = 0;   // 🎭 一次性表情动作(挥手/点赞/跳舞),用机器人闲置动画
+function playerEmote9(name9, secs9) { if (!usingGLTF || !playerActions[name9]) return; emote9 = name9; emoteT9 = secs9; }
 function setPlayerAct(name, fade = .22) {
   if (!playerMixer || playerAct === name || !playerActions[name]) return;
   const nx = playerActions[name]; nx.reset().fadeIn(fade).play();
@@ -9137,6 +9140,11 @@ addEventListener('keydown', e => {
   if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
   if (k === 'c' && swimming && !diving && !modalOpen) { enterFreeDive9(); return; }   // 🤿 自由下潜
   if (k === 'z' && swimming && !diving) { swimStroke9 = (swimStroke9 + 1) % 4; toast('🏊 泳姿:' + ['自由泳', '蛙泳', '仰泳', '蝶泳'][swimStroke9]); return; }
+  if (k === 'y' && grounded && !swimming && !diving && vehicle === 0 && !modalOpen) {   // 💃 跳一段
+    restState9 = 0; playerEmote9('Dance', 5);
+    toast(FESTIVAL ? `${FESTIVAL.emoji} ${FESTIVAL.name}——跳一段!` : '💃 跳一段(动一下即停)');
+    return;
+  }
   if (k === 't' && grounded && !swimming && !diving && vehicle === 0 && !modalOpen) {   // 🛌 歇脚:站→坐→躺
     restState9 = (restState9 + 1) % 3;
     toast(restState9 === 1 ? '🪑 坐下了——转身面朝大海,听听潮声(动一下即起身)' : restState9 === 2 ? '🛌 躺平了——看云走、看鸟飞、看飞机划过(动一下即起身)' : '🧍 起身');
@@ -9188,6 +9196,7 @@ function tryInteract() {
 /* --- NPC 文字对话:走近按 E,选话题、听应答 --- */
 function talkTo(npc) {
   talkNpc = npc; npc._t = 0;
+  playerEmote9('Wave', 2.2);   // 🎭 打招呼
   if (npcSleeping(npc)) { npc._asleep = true; npc._ctx = ''; renderTalk('……(平稳的鼾声。' + npc.name + '睡得正香,梦里像是在讨价还价。)'); return; }
   npc._asleep = false; npc._ctx = npcCtxLine();
   if (visitGift9 === npc.name) { visitGift9 = null; earnSB(15); setTimeout(() => toast('🎁 ' + npc.name + ' 带了乔迁贺礼 · ⚡+15——"住得像样,就常回来。"'), 800); }
@@ -10014,6 +10023,7 @@ function loop() {
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
   const swimNow9 = swimming || diving, procNow9 = swimNow9 || restState9 === 2;   // 🛌躺卧无对应动画→程序化;🪑坐下用机器人 Sitting
+  if (emoteT9 > 0) { emoteT9 -= dt; if (pMoving || swimNow9) emoteT9 = 0; }   // 🎭 表情:动一下/入水就收
   if (usingGLTF) {
     if (procNow9) {   // 🏊🛌 游泳/潜水/躺平:换回程序化身体演姿势(机器人无这些动画)
       if (!swimProcOn9) { swimProcOn9 = true; if (playerRobot) playerRobot.visible = false; for (const m of player.userData.procMeshes) m.visible = true; }
@@ -10021,7 +10031,7 @@ function loop() {
     } else {
       if (swimProcOn9) { swimProcOn9 = false; if (playerRobot) playerRobot.visible = true; for (const m of player.userData.procMeshes) m.visible = false; }
       playerMixer.update(dt);
-      setPlayerAct(restState9 === 1 ? 'Sitting' : (!grounded && vehicle === 0) ? 'Jump' : pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');   // 🪑 真坐姿 / 🦘 跳跃
+      setPlayerAct(emoteT9 > 0 ? emote9 : restState9 === 1 ? 'Sitting' : (!grounded && vehicle === 0) ? 'Jump' : pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');   // 🎭表情 / 🪑真坐姿 / 🦘跳跃
     }
   } else if (restState9) animRest9(player, restState9, t);
   else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
