@@ -26,7 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
-import { netOn, netPublish, netList, netLike, netReport } from './w-net.js?v=2';
+import { netOn, netPublish, netList, netLike, netReport, netEvent } from './w-net.js?v=3';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -2150,6 +2150,14 @@ function startWorld9() {
   initAudio();
   dailyStreak9();
   setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
+  try {   // 📊 匿名埋点:会话快照 + 心跳(留存/时长/进度分布;无 events 表则静默降级)
+    let cid9 = PSTORE.getItem('w1001.cid');
+    if (!cid9) { cid9 = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); PSTORE.setItem('w1001.cid', cid9); }
+    const seenN9 = Object.values(seen).reduce((a9, b9) => a9 + (b9 && b9.length ? b9.length : 0), 0);
+    netEvent('session', { cid: cid9, ver: 219, comp: worldCompletion(), streak: parseInt(PSTORE.getItem('w1001.streak') || '0', 10) || 0, seen: seenN9, titles: titleList().filter(t9 => t9.got).length, main: !!PSTORE.getItem('w1001.unjend'), skel: PSTORE.getItem('w1001.skeleton') === '1', mob: MOBILE });
+    const sess09 = Date.now();
+    setInterval(() => netEvent('ping', { cid: cid9, min: Math.round((Date.now() - sess09) / 60000) }), 150000);
+  } catch (e) {}
   try {
     if (PSTORE.getItem('w1001.guide') !== '1') {
       PSTORE.setItem('w1001.guide', '1');

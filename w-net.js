@@ -49,3 +49,17 @@ export async function netReport(iid) {
   const c9 = await client9(); if (!c9) return;
   await c9.rpc('report_island', { iid });
 }
+
+/* 匿名埋点(fire-and-forget):直接 REST POST 到 events 表,不加载 supabase SDK(轻);
+   keepalive 让离场心跳也能送达。无表/失败一律静默,不阻塞游戏。
+   隐私:仅记聚合进度/时长 + 一个本地随机 cid(无任何 PII);anon 无 select 策略,读取只在后台。 */
+export function netEvent(type, meta) {
+  try {
+    if (!NET_URL || !NET_KEY) return;
+    fetch(NET_URL + '/rest/v1/events', {
+      method: 'POST', keepalive: true,
+      headers: { apikey: NET_KEY, Authorization: 'Bearer ' + NET_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ type, meta: meta || {} }),
+    }).catch(() => {});
+  } catch (e) {}
+}
