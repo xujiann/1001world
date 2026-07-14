@@ -66,6 +66,7 @@ SAVE_FIELDS.push('ghost', 'doubloons');   // ☠️ 海盗弧:幽灵船 / 被诅
 SAVE_FIELDS.push('kraken');   // 🦑 海怪目击
 SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
 SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
+SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -1881,6 +1882,8 @@ function titleList() {
     { id: 'skywalk', name: '🏯 云上行者', got: PSTORE.getItem('w1001.skycity') === '1' && PSTORE.getItem('w1001.skychime') === '1', note: '登临天空之城,摇响四季风铃' },
     { id: 'fishking', name: '👑 传奇渔夫', got: PSTORE.getItem('w1001.fishking') === '1', note: '钓起传说中的鱼王' },
     { id: 'racer', name: '⛵ 环岛帆手', got: PSTORE.getItem('w1001.race1') === '1', note: '完成帆船环岛计时赛' },
+    { id: 'biker', name: '🚲 环城车手', got: PSTORE.getItem('w1001.bikerace') === '1', note: '完成环城骑行赛' },
+    { id: 'swimmer', name: '🏊 破浪泳者', got: PSTORE.getItem('w1001.swimrace') === '1', note: '完成西湾横渡赛' },
     { id: 'natural9', name: '🐾 自然观察家', got: PSTORE.getItem('w1001.natural9') === '1', note: '走近观察全部七种动物' },
     { id: 'gflash', name: '🟢 追光者', got: PSTORE.getItem('w1001.gflash') === '1', note: '目睹日落绿闪' },
     { id: 'wisher', name: '🌠 许愿者', got: (parseInt(PSTORE.getItem('w1001.wishes') || '0', 10) || 0) >= 7, note: '向七颗流星许愿' },
@@ -7933,6 +7936,19 @@ for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
   const po9 = cyl(.2, .26, 5, M.woodDark); po9.position.set(rx9, 2, rz9); scene.add(po9);
   const bu9 = new THREE.Mesh(sphg(1.1, 8, 6), lam(i9 === 0 ? 0x2ac06a : 0xe8862a)); bu9.position.set(rx9, 4.6, rz9); scene.add(bu9);
 }
+/* 🏁 竞速家族:自行车环城 / 西湾横渡(帆船计时赛的姊妹赛,同一套打点机制) */
+const RACES9 = [
+  { pts: [[24, 48], [52, 220], [300, 40], [430, -70], [200, -210], [-60, -120]], icon: '🚲', name: '环城骑行赛',
+    need: () => vehicle === 1, quit: () => vehicle !== 1, flag: 'bikerace', best: 'bikebest', tnm: '环城车手', rw: 25, on: false, next: 0, t0: 0, cd: 0 },
+  { pts: [[-368, 322], [-452, 380], [-478, 296]], icon: '🏊', name: '西湾横渡赛',
+    need: () => swimming && !diving && vehicle === 0, quit: () => (!swimming && !diving) || vehicle !== 0, flag: 'swimrace', best: 'swimbest', tnm: '破浪泳者', rw: 25, on: false, next: 0, t0: 0, cd: 0 },
+];
+for (const R9 of RACES9) for (let i9 = 0; i9 < R9.pts.length; i9++) {
+  const [rx9, rz9] = R9.pts[i9], onLand9 = height(rx9, rz9) > 0;
+  const by9 = onLand9 ? Math.max(height(rx9, rz9), 0) : 0;
+  const po9 = cyl(.18, .24, onLand9 ? 4 : 5, M.woodDark); po9.position.set(rx9, by9 + 2, rz9); scene.add(po9);
+  const bu9 = new THREE.Mesh(sphg(1, 8, 6), lam(i9 === 0 ? 0x2ac06a : (R9.icon === '🚲' ? 0xe8d43a : 0xe84a6a))); bu9.position.set(rx9, by9 + 4.4, rz9); scene.add(bu9);
+}
 /* 🧵 跨岛任务链:走到当前步 14m 内自动推进,导航流光全程指路 */
 const CHAINS9 = {
   bottle: { title: '漂流瓶的三站', done: 'chain1', steps: [
@@ -9492,6 +9508,31 @@ function worldFx9(dt, t, pMoving, bh) {
       }
     }
     if (RACE9.on && vehicle !== 2) { RACE9.on = false; toast('🏳️ 离船——计时赛中止'); }
+  }
+  for (const R9 of RACES9) {   // 🏁 骑行/横渡 竞速(同帆船赛机制)
+    if (!(R9.on || R9.need())) continue;
+    const rp9 = R9.pts[R9.on ? R9.next : 0];
+    const rd9 = Math.hypot(player.position.x - rp9[0], player.position.z - rp9[1]);
+    R9.cd = Math.max(0, R9.cd - dt);
+    if (!R9.on && R9.need() && rd9 < 12 && R9.cd <= 0) {
+      R9.on = true; R9.next = 1; R9.t0 = t;
+      toast('🏁 ' + R9.name + '开始!按顺序绕过彩浮标,回到绿浮标'); blip(880);
+    } else if (R9.on && rd9 < 12) {
+      if (R9.next === 0) {
+        R9.on = false; R9.cd = 12;
+        const tt9 = Math.round(t - R9.t0);
+        const best9 = parseInt(PSTORE.getItem('w1001.' + R9.best) || '0', 10) || 0;
+        earnSB(R9.rw);
+        if (!best9 || tt9 < best9) { PSTORE.setItem('w1001.' + R9.best, String(tt9)); toast('🏆 冲线!' + tt9 + ' 秒——新纪录!⚡+' + R9.rw); }
+        else toast('🏁 冲线!' + tt9 + ' 秒(最佳 ' + best9 + ' 秒)⚡+' + R9.rw);
+        if (PSTORE.getItem('w1001.' + R9.flag) !== '1') { PSTORE.setItem('w1001.' + R9.flag, '1'); stars++; saveQuest(); updateQuestHUD(); toast(R9.icon + ' 新称号「' + R9.tnm + '」 · ⭐+1'); }
+        blip(660); setTimeout(() => blip(880), 130);
+      } else {
+        toast(R9.icon + ' 检查点 ' + R9.next + '/' + (R9.pts.length - 1) + ' · ' + Math.round(t - R9.t0) + ' 秒'); blip(700);
+        R9.next = (R9.next + 1) % R9.pts.length;
+      }
+    }
+    if (R9.on && R9.quit()) { R9.on = false; toast('🏳️ ' + R9.name + '中止'); }
   }
   /* 🧭 导航流光:朝目标流动的光点带(取前 100 米段,贴地) */
   if (NAV9.mode && navPts9.visible) {
