@@ -7290,6 +7290,9 @@ for (const [fid, fx9, fz9] of FOOD_SPOTS) {
 /* ===== 👘 裁缝铺:披风 · 帽子 · 围巾(玩家换装) ===== */
 
 
+CAPES.push(['春樱', 0xf2b8c6], ['夏浪', 0x3ab8c8], ['秋枫', 0xc85a28], ['冬雪', 0xdfe8f0], ['鲸帆金', 0xe8c34a]);   // 🧵 季节限定(idx4-7)+ 镇店款(idx8)
+const capePrice9 = i9 => i9 >= 8 ? 500 : i9 >= 4 ? 120 : 30;
+const capeAvail9 = i9 => (i9 < 4 || i9 === 8) ? true : (i9 - 4) === SEASON_IDX9;   // 季节款仅当季上架(已买的永远可穿)
 let WD = { capes: [], hats: [], scarf: 0, eq: { c: -1, h: -1, s: 0 } };
 try { const w0 = JSON.parse(PSTORE.getItem('w1001.wardrobe') || 'null'); if (w0 && w0.eq) WD = w0; } catch (e) {}
 const saveWD = () => PSTORE.setItem('w1001.wardrobe', JSON.stringify(WD));
@@ -7307,15 +7310,15 @@ function applyOutfit() {
 function openTailor() {
   const row9 = (nm, price, owned, worn, act) => `<div class="gRow"><div class="gi">👘</div><div class="gInfo"><b>${nm}</b></div>${worn ? '<span style="color:#2c7a4b;font-size:12px">✅ 穿着</span>' : owned ? `<button class="gBtn" ${act}>穿上</button>` : `<button class="gBtn" ${act} ${sb < price ? 'disabled' : ''}>${price} ⚡</button>`}</div>`;
   cardBody.innerHTML = `<div class="cardHead" style="background:#4a3a5a">👘 千帆裁缝铺 · The Sailmaker Tailor</div>
-    <div class="cardDesc" style="font-size:12.5px;padding:12px 20px 4px">"帆布做披风,最懂风。"——买过即入衣橱,随时免费换穿。<button class="gBtn off" data-naked style="float:right;padding:4px 10px;font-size:11px">全部脱下</button></div>
+    <div class="cardDesc" style="font-size:12.5px;padding:12px 20px 4px">"帆布做披风,最懂风。"——买过即入衣橱,随时免费换穿。<b style="color:#b8862e">本季限定款上架中,过季即撤。</b><button class="gBtn off" data-naked style="float:right;padding:4px 10px;font-size:11px">全部脱下</button></div>
     <div style="padding:4px 16px 16px">
-      ${CAPES.map((c9, i9) => row9('披风 · ' + c9[0], 30, WD.capes.includes(i9), WD.eq.c === i9, `data-cape="${i9}"`)).join('')}
+      ${CAPES.map((c9, i9) => (!capeAvail9(i9) && !WD.capes.includes(i9)) ? '' : row9((i9 >= 8 ? '🏆 镇店 · ' : i9 >= 4 ? SEASON_LABEL9[i9 - 4] + '季限定 · ' : '') + '披风 · ' + c9[0], capePrice9(i9), WD.capes.includes(i9), WD.eq.c === i9, `data-cape="${i9}"`)).join('')}
       ${HATS.map((h9, i9) => row9(h9[0], 25, WD.hats.includes(i9), WD.eq.h === i9, `data-hat="${i9}"`)).join('')}
       ${row9('暮金围巾', 15, WD.scarf > 0, WD.eq.s === 1, 'data-scarf')}
     </div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   const buyEq = (owned, price, doEq) => { if (!owned && !spendSB(price)) return false; doEq(); saveWD(); applyOutfit(); blip(700); openTailor(); return true; };
-  cardBody.querySelectorAll('[data-cape]').forEach(b9 => b9.addEventListener('click', () => { const i9 = +b9.dataset.cape; buyEq(WD.capes.includes(i9), 30, () => { if (!WD.capes.includes(i9)) WD.capes.push(i9); WD.eq.c = i9; }); }));
+  cardBody.querySelectorAll('[data-cape]').forEach(b9 => b9.addEventListener('click', () => { const i9 = +b9.dataset.cape; buyEq(WD.capes.includes(i9), capePrice9(i9), () => { if (!WD.capes.includes(i9)) WD.capes.push(i9); WD.eq.c = i9; }); }));
   cardBody.querySelectorAll('[data-hat]').forEach(b9 => b9.addEventListener('click', () => { const i9 = +b9.dataset.hat; buyEq(WD.hats.includes(i9), 25, () => { if (!WD.hats.includes(i9)) WD.hats.push(i9); WD.eq.h = i9; }); }));
   cardBody.querySelector('[data-naked]')?.addEventListener('click', () => { WD.eq = { c: -1, h: -1, s: 0 }; saveWD(); applyOutfit(); openTailor(); });
   cardBody.querySelector('[data-scarf]')?.addEventListener('click', () => { buyEq(WD.scarf > 0, 15, () => { WD.scarf = 1; WD.eq.s = 1; }); });
