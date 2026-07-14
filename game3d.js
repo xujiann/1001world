@@ -10003,7 +10003,7 @@ function loop() {
       const swPose9 = swimStroke9 === 2 ? (1.02 + Math.sin(t * 2.2) * .06) : (-1.15 + Math.sin(t * 2.4) * .08);   // 仰泳仰面 / 余泳俯身
       player.rotation.x += (swPose9 - player.rotation.x) * Math.min(1, dt * 5);
     } else {
-      const rrx9 = restState9 === 2 ? -1.4 : restState9 === 1 ? -0.28 : 0;   // 🛌躺 / 🪑坐 身体倾角
+      const rrx9 = restState9 === 2 ? -1.4 : (restState9 === 1 && !usingGLTF) ? -0.28 : 0;   // 🛌躺倾身;🪑坐:glTF 走 Sitting 动画故不倾身
       player.rotation.x += (rrx9 - player.rotation.x) * Math.min(1, dt * 6);
       vy -= 34 * dt;
       player.position.y += vy * dt;
@@ -10013,15 +10013,15 @@ function loop() {
   }
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
-  const swimNow9 = swimming || diving, procNow9 = swimNow9 || restState9 > 0;
+  const swimNow9 = swimming || diving, procNow9 = swimNow9 || restState9 === 2;   // 🛌躺卧无对应动画→程序化;🪑坐下用机器人 Sitting
   if (usingGLTF) {
-    if (procNow9) {   // 🏊🛌 游泳/潜水/歇脚:换回程序化身体演姿势(glTF 机器人无这些动画)
+    if (procNow9) {   // 🏊🛌 游泳/潜水/躺平:换回程序化身体演姿势(机器人无这些动画)
       if (!swimProcOn9) { swimProcOn9 = true; if (playerRobot) playerRobot.visible = false; for (const m of player.userData.procMeshes) m.visible = true; }
-      if (restState9) animRest9(player, restState9, t); else animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
+      if (restState9 === 2) animRest9(player, 2, t); else animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
     } else {
       if (swimProcOn9) { swimProcOn9 = false; if (playerRobot) playerRobot.visible = true; for (const m of player.userData.procMeshes) m.visible = false; }
       playerMixer.update(dt);
-      setPlayerAct(pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');
+      setPlayerAct(restState9 === 1 ? 'Sitting' : (!grounded && vehicle === 0) ? 'Jump' : pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');   // 🪑 真坐姿 / 🦘 跳跃
     }
   } else if (restState9) animRest9(player, restState9, t);
   else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
