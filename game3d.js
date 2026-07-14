@@ -64,6 +64,7 @@ SAVE_FIELDS.push('donated', 'honor1', 'honor2', 'fundstone');   // 群岛基金�
 SAVE_FIELDS.push('aff');   // NPC 好感度
 SAVE_FIELDS.push('ghost', 'doubloons');   // ☠️ 海盗弧:幽灵船 / 被诅咒的金币
 SAVE_FIELDS.push('kraken');   // 🦑 海怪目击
+SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -1868,6 +1869,7 @@ function titleList() {
     { id: 'ghost', name: '☠️ 幽灵船目击者', got: !!PSTORE.getItem('w1001.ghost'), note: '在深海寻见离魂号' },
     { id: 'ghostsolve', name: '⚱️ 解咒人', got: PSTORE.getItem('w1001.ghost') === 'done', note: '为离魂号解开百年诅咒' },
     { id: 'kraken', name: '🦑 深渊的目击者', got: PSTORE.getItem('w1001.kraken') === '1', note: '深海夜航直面海怪而生还' },
+    { id: 'trawler', name: '🕸️ 远洋渔夫', got: PSTORE.getItem('w1001.trawler') === '1', note: '一网拖起四尾以上' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -8384,6 +8386,43 @@ function startCast(fs) {
   blip(440);
 }
 function endFishing() { fishing.state = 'idle'; fishing.spot = null; bobber.visible = false; }
+/* 🕸️ 海洋捕捞:帆船拖网 */
+let trawlOn9 = false, trawlFill9 = 0, trawlNet9 = null, trawlFullTold9 = false;
+{
+  trawlNet9 = new THREE.Group();
+  const netMat9 = new THREE.MeshBasicMaterial({ color: 0xd6e6e6, transparent: true, opacity: .3, wireframe: true, fog: false });
+  const bag9 = new THREE.Mesh(new THREE.ConeGeometry(3.4, 9, 10, 4, true), netMat9); bag9.rotation.x = -Math.PI / 2; bag9.position.z = -5.5; trawlNet9.add(bag9);
+  for (const fx9 of [-3.2, 3.2]) { const fl9 = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff7a4a, fog: false })); fl9.position.set(fx9, .3, -1); trawlNet9.add(fl9); }
+  trawlNet9.visible = false; scene.add(trawlNet9);
+}
+function toggleTrawl9() {
+  if (vehicle !== 2) { toast('🕸️ 得先扬帆出海(按 R 上燕鸥号)才能撒网捕捞'); return; }
+  if (!trawlOn9) { trawlOn9 = true; trawlFill9 = 0; trawlFullTold9 = false; trawlNet9.visible = true; toast('🕸️ 撒网!拖着网慢慢航行——深海鱼多、装满得快;网满了再按 F 收网'); blip(440); }
+  else haulTrawl9();
+}
+function haulTrawl9() {
+  trawlOn9 = false; trawlNet9.visible = false;
+  const deep9 = heightMesh(player.position.x, player.position.z) < -5.5;
+  const n9 = Math.max(1, Math.round(trawlFill9 * 5));
+  let pool9 = D.fish;
+  if (deep9) { pool9 = []; for (const f9 of D.fish) { pool9.push(f9); if (f9.cat === 'deep' || f9.cat === 'rare') pool9.push(f9, f9); } }
+  let total9 = 0; const caught9 = [];
+  for (let i9 = 0; i9 < n9; i9++) {
+    const f9 = pool9[Math.floor(Math.random() * pool9.length)];
+    total9 += Math.round((FISH_PRICE[f9.cat] || 4) * (WEATHER === 'rain' ? 1.5 : 1) * (deep9 ? 1.6 : 1) * FISH_MKT9);
+    caught9.push(f9);
+    try { PSTORE.setItem('w1001.fishcount', String((parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0) + 1)); } catch (e) {}
+    markSeen('fish', f9.id, f9.name);
+  }
+  earnSB(total9);
+  let by9 = '';
+  if (Math.random() < .12) { earnSB(30); by9 = ' · 网底还缠着个漂流瓶(⚡+30)'; }
+  const names9 = [...new Set(caught9.map(f9 => f9.name))].slice(0, 4).join('、');
+  toast('🕸️ 收网!一网 ' + n9 + ' 尾(' + names9 + (new Set(caught9.map(f9 => f9.name)).size > 4 ? '…' : '') + ')· ⚡+' + total9 + (deep9 ? '(深海+60%)' : '') + by9);
+  blip(760); setTimeout(() => blip(1040), 120);
+  if (n9 >= 4 && PSTORE.getItem('w1001.trawler') !== '1') { PSTORE.setItem('w1001.trawler', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🏆 新称号「远洋渔夫」——一网拖起四尾以上 · ⭐+1'), 900); }
+  trawlFill9 = 0;
+}
 function catchFish() {
   const deep9 = fishing.spot && heightMesh(fishing.spot.bx, fishing.spot.bz) < -5.5;   // 🌊 深水钓点
   let pool9 = D.fish;
@@ -8909,7 +8948,7 @@ function toggleVehicle() {
     vehicle = 0; bikeGrp.visible = boatGrp.visible = false; return;
   }
   const h = height(player.position.x, player.position.z);
-  if ((swimming || h < 1.2) && gear.owned.includes('boat')) { vehicle = 2; boatGrp.visible = true; toast('⛵ 燕鸥号扬帆!任何一座岛的岸,都是码头'); blip(680); return; }
+  if ((swimming || h < 1.2) && gear.owned.includes('boat')) { vehicle = 2; boatGrp.visible = true; toast('⛵ 燕鸥号扬帆!任何一座岛的岸,都是码头(海上按 F 撒网捕捞)'); blip(680); return; }
   if (!swimming && h >= .5 && gear.owned.includes('bike')) { vehicle = 1; bikeGrp.visible = true; toast('🚲 骑上自行车(再按 R 下车,Shift 冲刺)'); blip(680); return; }
   if (!gear.owned.includes('bike') && !gear.owned.includes('boat')) toast('🛒 座驾在千岛装备行有售:🚲 折叠自行车 60 ⚡ / ⛵ 燕鸥号帆船 160 ⚡');
   else toast(swimming || h < 1.2 ? '这里下水——帆船需在装备行购得' : '这里是陆地——自行车需在装备行购得');
@@ -8948,6 +8987,7 @@ addEventListener('keydown', e => {
   if (k === 'j') { modalOpen && !$('journal').classList.contains('hidden') ? closeModals() : openJournal(); return; }
   if (k === 'h') { $('intro').classList.remove('hidden'); return; }
   if (k === 'p') { togglePhoto(); return; }
+  if (k === 'f' && vehicle === 2 && !photoMode) { toggleTrawl9(); return; }
   if (k === 'f' && photoMode) { nextFilter(); return; }
   if (k === 'c' && photoMode) { pcPending = true; return; }   // 💌 拍明信片
   if (k === 'c' && swimming && !diving && !modalOpen) { enterFreeDive9(); return; }   // 🤿 自由下潜
@@ -9336,6 +9376,17 @@ function worldFx9(dt, t, pMoving, bh) {
     }
   }
   prevSwim9 = swimming;
+  if (trawlOn9) {   // 🕸️ 拖网:航行中充网(深海更快),网体拖在船尾
+    if (vehicle !== 2) haulTrawl9();   // 收帆/搁浅 → 自动收网
+    else {
+      const hh9 = heightMesh(player.position.x, player.position.z);
+      const rate9 = hh9 < -5.5 ? 1.8 : hh9 < -1 ? 1 : .3;
+      trawlFill9 = Math.min(1, trawlFill9 + dt * .06 * rate9 * (pMoving ? 1 : .3));
+      trawlNet9.position.set(player.position.x - Math.sin(faceYaw) * 7, .25 + tideY, player.position.z - Math.cos(faceYaw) * 7);
+      trawlNet9.rotation.y = faceYaw;
+      if (trawlFill9 >= 1 && !trawlFullTold9) { trawlFullTold9 = true; toast('🕸️ 网满了!按 F 收网'); blip(880); }
+    }
+  }
   /* 🌠 流星许愿:观星模式里每见一颗流星即许一愿,七愿成真 */
   {
     const mv9 = meteor && meteor.material.opacity > .5;
@@ -9676,7 +9727,7 @@ function loop() {
       mx /= Math.max(len, 1); mz /= Math.max(len, 1);
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
       const rx = -fz, rz = fx;
-      const sp = (vehicle === 2 ? (keys.shift ? 40 : 33)
+      const sp = (vehicle === 2 ? (keys.shift ? 40 : 33) * (trawlOn9 ? .5 : 1)
         : swimming ? (gearOn('swim') ? 7.5 : (chowderT > 0 ? 5.5 : 3.2))
         : vehicle === 1 ? (keys.shift ? 35 : 29) * (BUFF.ride > 0 ? 1.15 : 1)
         : (keys.shift ? (gearOn('boots') ? 26 : 22) : 14) * (BUFF.run > 0 ? 1.12 : 1)) * dt;
