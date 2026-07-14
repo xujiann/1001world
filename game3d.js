@@ -1865,6 +1865,7 @@ function titleList() {
     { id: 'foodie', name: '🍜 环球食客', got: PSTORE.getItem('w1001.foodie') === '1', note: '尝遍九道地方味' },
     { id: 'regular', name: '🔥 岛屿常客', got: PSTORE.getItem('w1001.streak7') === '1', note: '连续 7 天到访群岛' },
     { id: 'ghost', name: '☠️ 幽灵船目击者', got: !!PSTORE.getItem('w1001.ghost'), note: '在深海寻见离魂号' },
+    { id: 'ghostsolve', name: '⚱️ 解咒人', got: PSTORE.getItem('w1001.ghost') === 'done', note: '为离魂号解开百年诅咒' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -6143,8 +6144,14 @@ function openGhostCard() {
     body9 = '离魂号的诅咒已解。船长巴索罗谬摘下三角帽:"三枚金币各归其位,弟兄们终于能合眼了。"——甲板上,骷髅重新长回血肉,又在晨雾里淡去。船还在海上巡弋,但船尾那盏灯,如今是暖黄的。';
     btn9 = '<button class="again" data-ghostclose>合上航海志</button>';
   } else if (st9 === '1') {
-    body9 = '船长巴索罗谬的眼窝亮着幽火:"金币还没凑齐。三枚被诅咒的西班牙金币,当年被弟兄们私分,散落在这片海——一枚落在<b>金银岛</b>的沙里,一枚沉在<b>外海那艘破船</b>的货舱,一枚被<b>塞壬海域</b>的礁石卷了去。凑齐带回来,我们才能安眠。"';
-    btn9 = '<button class="again" data-ghostclose>这就去寻</button>';
+    const nd9 = doubGot9.size;
+    if (nd9 >= 3) {
+      body9 = '船长巴索罗谬盯着你手心的三枚金币,喉咙里发出很久没用过的、像是笑的声音:"……都齐了。"';
+      btn9 = '<button class="again" data-ghostsolve>⚱️ 归还三枚金币,解咒</button>';
+    } else {
+      body9 = '船长的眼窝亮着幽火:"金币还差 ' + (3 - nd9) + ' 枚——一枚在<b>金银岛</b>的沙里,一枚在<b>外海那艘破船</b>,一枚被<b>塞壬海域</b>的礁石卷了去。"(已寻回 ' + nd9 + '/3)';
+      btn9 = '<button class="again" data-ghostclose>这就去寻</button>';
+    }
   } else {
     body9 = '雾里浮出一艘破败的三桅帆船,幽绿的光顺着桅索淌下来。甲板上立着船长——半是人,半是骨:<br><br>"活人?稀客。我是离魂号的巴索罗谬。三百年前,我们劫了一船被教廷诅咒的西班牙金币,从此不生不死,不能靠岸,也不能沉眠。金币散了,咒就散不掉。"<br><br>"你有条船,还有一口气——替我把那三枚金币找回来,我便把这片海里没人知道的门道,教给你。"';
     btn9 = '<button class="again" data-ghostjoin>⚓ 接下这桩海上旧债</button>';
@@ -6155,9 +6162,15 @@ function openGhostCard() {
     <div style="text-align:center;padding:6px 0 16px">${btn9}</div>`;
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelector('[data-ghostclose]')?.addEventListener('click', closeModals);
+  cardBody.querySelector('[data-ghostsolve]')?.addEventListener('click', () => {
+    if (PSTORE.getItem('w1001.ghost') === 'done') return;
+    PSTORE.setItem('w1001.ghost', 'done'); doubActive9 = false; earnSB(150); stars++; saveQuest(); updateQuestHUD();
+    closeModals();
+    toast('⚱️ 三枚金币各归其位——甲板上骷髅重新长回血肉,又在晨雾里淡去。⚡+150 · ⭐+1 · 新称号「解咒人」'); blip(760); setTimeout(() => blip(1040), 150);
+  });
   cardBody.querySelector('[data-ghostjoin]')?.addEventListener('click', () => {
     if (PSTORE.getItem('w1001.ghost')) return;
-    PSTORE.setItem('w1001.ghost', '1'); earnSB(60);
+    PSTORE.setItem('w1001.ghost', '1'); doubActive9 = true; earnSB(60);
     closeModals();
     toast('☠️ 你登上了离魂号——船长的旧债,如今系在你身上。⚡+60 · 新称号「幽灵船目击者」'); blip(760); setTimeout(() => blip(920), 130);
   });
@@ -7708,6 +7721,28 @@ let ghostShip9 = null, PIO_GLOW9 = null, nearGhost9 = false;
   ghostShip9.userData.mat = gm9;
   scene.add(ghostShip9);
 }
+/* ☠️ 被诅咒的金币:三枚散落三处海,接下船长旧债(ghost=1)后现形可拾 */
+const DOUBLOONS9 = [{ id: 'a', x: -486, z: 345 }, { id: 'b', x: -356, z: -337 }, { id: 'c', x: 1330, z: 640 }];
+const doubloonMeshes9 = [];
+let doubActive9 = PSTORE.getItem('w1001.ghost') === '1', nearDoub9 = null;
+const doubGot9 = new Set((PSTORE.getItem('w1001.doubloons') || '').split(',').filter(Boolean));
+for (const d9 of DOUBLOONS9) {
+  const grp9 = new THREE.Group();
+  const coin9 = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, .28, 16), new THREE.MeshStandardMaterial({ color: 0xffd76a, metalness: .85, roughness: .32, emissive: 0x7a5410, emissiveIntensity: .55 }));
+  coin9.rotation.x = Math.PI / 2; grp9.add(coin9);
+  const gl9 = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: .16, depthWrite: false, fog: false })); grp9.add(gl9);
+  const by9 = Math.min(Math.max(height(d9.x, d9.z), 0), 3.5) + 1.7;   // 礁石上也压到近水线,船上够得着
+  grp9.position.set(d9.x, by9, d9.z);
+  grp9.userData = { id: d9.id, baseY: by9, ph: Math.random() * 6.28 };
+  grp9.visible = false; scene.add(grp9); doubloonMeshes9.push(grp9);
+}
+function pickDoubloon9(gm9) {
+  if (doubGot9.has(gm9.userData.id)) return;
+  doubGot9.add(gm9.userData.id);
+  PSTORE.setItem('w1001.doubloons', [...doubGot9].join(','));
+  earnSB(15); blip(700);
+  toast('🪙 拾得一枚被诅咒的金币(' + doubGot9.size + '/3)——手心一阵发凉。' + (doubGot9.size >= 3 ? '三枚已齐!回离魂号交给船长。' : ''));
+}
 /* ⛵ 帆船环岛计时赛:4 只橙浮标顺时针一圈,起点即终点 */
 const RACE9 = { pts: [[60, 470], [420, 60], [0, -430], [-420, 60]], on: false, next: 0, t0: 0, cd: 0 };
 for (let i9 = 0; i9 < RACE9.pts.length; i9++) {
@@ -8911,6 +8946,7 @@ function tryInteract() {
   if (diving) { if (nearPortal >= 0) surfaceDive(nearPortal); return; }
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
+  if (nearDoub9) { pickDoubloon9(nearDoub9); return; }
   if (nearGhost9) { openGhostCard(); return; }
   if (nearSpot && nearSpot.cat === 'air') { openAirCounter(nearSpot.airKey); return; }
   if (nearSpot && nearSpot.cat === 'fund') { openFund(); return; }
@@ -9097,6 +9133,16 @@ function worldFx9(dt, t, pMoving, bh) {
     const close9 = gd9 < 46;   // ☠️ 近身则从幻影凝成实体,可登船呼喊船长
     ghostShip9.userData.mat.opacity = close9 ? (.6 + Math.sin(t * 1.3) * .16) : (1 - curDA) * .3 * clamp((gd9 - 60) / 120, 0, 1) * (.8 + Math.sin(t * 1.3) * .2);
     nearGhost9 = !modalOpen && gd9 < 26;
+  }
+  nearDoub9 = null;   // 🪙 被诅咒金币:接旧债后现形,旋转发光,近之可拾
+  for (const gm9 of doubloonMeshes9) {
+    const vis9 = doubActive9 && !doubGot9.has(gm9.userData.id);
+    gm9.visible = vis9;
+    if (vis9) {
+      gm9.rotation.y += dt * 1.3;
+      gm9.position.y = gm9.userData.baseY + Math.sin(t * 2 + gm9.userData.ph) * .22;
+      if (!modalOpen && (player.position.x - gm9.position.x) ** 2 + (player.position.z - gm9.position.z) ** 2 < 100) nearDoub9 = gm9;
+    }
   }
   /* ⛵ 环岛计时赛 */
   if (vehicle === 2 || RACE9.on) {
@@ -10278,6 +10324,7 @@ function loop() {
   else if (nearSpot) { hintTxt = HINTS[nearSpot.type] || '看看'; hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
   else if (nearFspot) { hintTxt = '🎣 抛竿钓鱼'; hx = nearFspot.bx; hy = 3; hz = nearFspot.bz; }
   else if (nearNpc) { hintTxt = '💬 交谈'; hx = nearNpc.g.position.x; hy = nearNpc.g.position.y + 3.6; hz = nearNpc.g.position.z; }
+  else if (nearDoub9) { hintTxt = '🪙 拾起金币'; hx = nearDoub9.position.x; hy = nearDoub9.position.y + 3; hz = nearDoub9.position.z; }
   else if (nearGhost9 && ghostShip9) { hintTxt = '☠️ 呼喊离魂号'; hx = ghostShip9.position.x; hy = 16; hz = ghostShip9.position.z; }
   if (hintTxt && !modalOpen) {
     v3.set(hx, hy, hz).project(camera);
