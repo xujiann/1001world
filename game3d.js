@@ -65,6 +65,7 @@ SAVE_FIELDS.push('aff');   // NPC 好感度
 SAVE_FIELDS.push('ghost', 'doubloons');   // ☠️ 海盗弧:幽灵船 / 被诅咒的金币
 SAVE_FIELDS.push('kraken');   // 🦑 海怪目击
 SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
+SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -1870,6 +1871,7 @@ function titleList() {
     { id: 'ghostsolve', name: '⚱️ 解咒人', got: PSTORE.getItem('w1001.ghost') === 'done', note: '为离魂号解开百年诅咒' },
     { id: 'kraken', name: '🦑 深渊的目击者', got: PSTORE.getItem('w1001.kraken') === '1', note: '深海夜航直面海怪而生还' },
     { id: 'trawler', name: '🕸️ 远洋渔夫', got: PSTORE.getItem('w1001.trawler') === '1', note: '一网拖起四尾以上' },
+    { id: 'seasonfish', name: '🎏 四季渔人', got: PSTORE.getItem('w1001.seasonfish4') === '1', note: '春夏秋冬的当季限定鱼都钓过' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -7419,6 +7421,19 @@ let visitGift9 = null;
 })();
 /* ===== 🍂 四季流转:按真实月份 ===== */
 const SEASON = (m9 => m9 >= 3 && m9 <= 5 ? 'spring' : m9 >= 6 && m9 <= 8 ? 'summer' : m9 >= 9 && m9 <= 11 ? 'autumn' : 'winter')(new Date().getMonth() + 1);
+/* 🌸 季节限定鱼:约 28% 的鱼按 id 定季,仅当季出没 */
+const SEASON_IDX9 = { spring: 0, summer: 1, autumn: 2, winter: 3 }[SEASON];
+const SEASON_LABEL9 = ['🌸春', '☀️夏', '🍁秋', '❄️冬'];
+const fishSeason9 = f9 => (!f9 || f9.id == null) ? -1 : (mulberry32(f9.id * 7 + 3)() < .28 ? (mulberry32(f9.id * 13 + 5)() * 4 | 0) : -1);
+const inSeasonPool9 = p9 => { const q9 = p9.filter(f9 => { const s9 = fishSeason9(f9); return s9 === -1 || s9 === SEASON_IDX9; }); return q9.length ? q9 : p9; };
+function recordSeasonFish9() {
+  try {
+    const sf9 = new Set((PSTORE.getItem('w1001.seasonfish') || '').split(',').filter(Boolean));
+    if (sf9.has(String(SEASON_IDX9))) return;
+    sf9.add(String(SEASON_IDX9)); PSTORE.setItem('w1001.seasonfish', [...sf9].join(','));
+    if (sf9.size >= 4 && PSTORE.getItem('w1001.seasonfish4') !== '1') { PSTORE.setItem('w1001.seasonfish4', '1'); stars++; saveQuest(); updateQuestHUD(); setTimeout(() => toast('🏆 新称号「四季渔人」——春夏秋冬的当季鱼都钓过 · ⭐+1'), 1000); }
+  } catch (e) {}
+}
 let seasonPts = null;
 (function seasonInit() {
   const CFG = { spring: [0xffb7c5, .5, 1.1], summer: [0xfff3d6, .32, -.5], autumn: [0xd98a3e, .5, 1.4], winter: [0xffffff, .42, 2.2] }[SEASON];
@@ -8406,6 +8421,7 @@ function haulTrawl9() {
   const n9 = Math.max(1, Math.round(trawlFill9 * 5)) + (grd9 ? 2 : 0);
   let pool9 = D.fish;
   if (deep9 || grd9) { pool9 = []; for (const f9 of D.fish) { pool9.push(f9); if (f9.cat === 'deep' || f9.cat === 'rare') pool9.push(f9, f9); } }
+  pool9 = inSeasonPool9(pool9);   // 🌸 只出当季鱼
   let total9 = 0; const caught9 = [];
   for (let i9 = 0; i9 < n9; i9++) {
     const f9 = pool9[Math.floor(Math.random() * pool9.length)];
@@ -8415,6 +8431,7 @@ function haulTrawl9() {
     markSeen('fish', f9.id, f9.name);
   }
   earnSB(total9);
+  if (caught9.some(f9 => fishSeason9(f9) === SEASON_IDX9)) recordSeasonFish9();
   let by9 = '';
   if (Math.random() < .12) { earnSB(30); by9 = ' · 网底还缠着个漂流瓶(⚡+30)'; }
   const names9 = [...new Set(caught9.map(f9 => f9.name))].slice(0, 4).join('、');
@@ -8442,10 +8459,12 @@ function catchFish() {
   const deep9 = fishing.spot && heightMesh(fishing.spot.bx, fishing.spot.bz) < -5.5;   // 🌊 深水钓点
   let pool9 = D.fish;
   if (deep9) { pool9 = []; for (const f9 of D.fish) { pool9.push(f9); if (f9.cat === 'deep' || f9.cat === 'rare') pool9.push(f9, f9); } }
+  pool9 = inSeasonPool9(pool9);   // 🌸 只出当季鱼
   const f = pool9[Math.floor(Math.random() * pool9.length)];
+  const sig9 = fishSeason9(f) === SEASON_IDX9;   // 当季限定鱼
   const rainy = WEATHER === 'rain';
   const king9 = Math.random() < (gearOn('rod') ? .07 : .04);   // 👑 鱼王!
-  let price = Math.round(((FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0)) * (rainy ? 2 : 1) * (deep9 ? 1.5 : 1) * FISH_MKT9 * (king9 ? 5 : 1));
+  let price = Math.round(((FISH_PRICE[f.cat] || 4) + (gearOn('rod') ? 2 : 0)) * (rainy ? 2 : 1) * (deep9 ? 1.5 : 1) * FISH_MKT9 * (king9 ? 5 : 1) * (sig9 ? 1.4 : 1));
   openCard({ cat: 'fish', type: 'tank', item: f });   // 收进图鉴(+2)
   try { PSTORE.setItem('w1001.fishcount', String((parseInt(PSTORE.getItem('w1001.fishcount') || '0', 10) || 0) + 1)); } catch (e) {}
   earnSB(price);
@@ -8455,9 +8474,10 @@ function catchFish() {
     if (PSTORE.getItem('w1001.fishking') !== '1') { PSTORE.setItem('w1001.fishking', '1'); stars++; saveQuest(); updateQuestHUD(); toast('🏆 新称号「传奇渔夫」 · ⭐+1'); }
     blip(523); setTimeout(() => blip(659), 110); setTimeout(() => blip(880), 220); setTimeout(() => blip(1180), 330);
   } else {
-    toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}${rainy ? '(雨天渔汛×2)' : ''}${deep9 ? '(深水+50%)' : ''}`);
+    toast(`🎣 钓到了「${f.name}」!卖给水族馆 ⚡+${price}${rainy ? '(雨天渔汛×2)' : ''}${deep9 ? '(深水+50%)' : ''}${sig9 ? '(' + SEASON_LABEL9[SEASON_IDX9] + '当季+40%)' : ''}`);
     blip(880); setTimeout(() => blip(1180), 110);
   }
+  if (sig9) recordSeasonFish9();
   if (!mktTold9) { mktTold9 = true; if (FISH_MKT9 > 1.25) toast('💰 今日渔市高价:鱼获 ×' + FISH_MKT9.toFixed(1)); else if (FISH_MKT9 < .85) toast('📉 今日渔市疲软:鱼获 ×' + FISH_MKT9.toFixed(1)); }
   endFishing();
 }
