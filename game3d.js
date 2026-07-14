@@ -8560,7 +8560,8 @@ let GRASS_COL9 = null, FLOWER_COL9 = null, ROCK_COL9 = null;
     sh.uniforms.uTime = { value: 0 };
     sh.uniforms.uAmp = { value: WEATHER === 'storm' ? .38 : RAINY ? .24 : .16 };   // 风力:暴风草伏,雨天草劲
     sh.uniforms.uGust = { value: 1 };   // 阵风包络(主循环逐帧驱动)
-    sh.vertexShader = 'uniform float uTime;\nuniform float uAmp;\nuniform float uGust;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+    sh.uniforms.uPlayer = { value: new THREE.Vector2(1e9, 1e9) };   // 🌿 玩家位置:草随之分开
+    sh.vertexShader = 'uniform float uTime;\nuniform float uAmp;\nuniform float uGust;\nuniform vec2 uPlayer;\n' + sh.vertexShader.replace('#include <begin_vertex>',
       `#include <begin_vertex>
        #ifdef USE_INSTANCING
          vec3 iP = instanceMatrix[3].xyz;
@@ -8570,7 +8571,11 @@ let GRASS_COL9 = null, FLOWER_COL9 = null, ROCK_COL9 = null;
        float wv = sin(uTime * 1.5 + iP.x * .28 + iP.z * .19) * uAmp * uGust * transformed.y;
        float streak = smoothstep(.45, 1.0, sin(dot(iP.xz, vec2(.66, .75)) * .045 - uTime * 1.15));   // 🌾 行进风纹带(顺风方向)
        wv += streak * .26 * uGust * transformed.y;
-       transformed.x += wv; transformed.z += wv * .55;`);
+       transformed.x += wv; transformed.z += wv * .55;
+       vec2 toB9 = iP.xz - uPlayer;                                     // 🌿 荒野之息式:草随玩家分开并压伏
+       float pd9 = length(toB9);
+       float bend9 = smoothstep(2.7, 0.3, pd9) * transformed.y;
+       if (pd9 > 0.001) { vec2 dir9 = toB9 / pd9; transformed.x += dir9.x * bend9 * 0.95; transformed.z += dir9.y * bend9 * 0.95; transformed.y -= bend9 * 0.38; }`);
     grassMat.userData.shader = sh;
   };
   grassBlades = new THREE.InstancedMesh(bladeGeo, grassMat, GN);
@@ -8685,6 +8690,39 @@ function redistributeFireflies(cx, cz) {
     const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
     b[i * 3] = x; b[i * 3 + 2] = z;
     b[i * 3 + 1] = (h > 2.2 && h < 20) ? h + 1.2 + u.rnd() * 2.5 : -999;
+  }
+}
+/* 🦋 白天草地蝴蝶:跟随玩家、草地上翩飞(萤火虫的日间对应) */
+let butterflies9 = null, bfCx = 1e9, bfCz = 1e9;
+{
+  const BF = MOBILE ? 7 : 14;
+  const bc9 = document.createElement('canvas'); bc9.width = bc9.height = 32; const bx9 = bc9.getContext('2d');
+  bx9.fillStyle = '#fff';
+  bx9.beginPath(); bx9.ellipse(11, 15, 7, 10, -0.35, 0, 7); bx9.fill();
+  bx9.beginPath(); bx9.ellipse(21, 15, 7, 10, 0.35, 0, 7); bx9.fill();
+  bx9.beginPath(); bx9.ellipse(12, 22, 5, 6, -0.2, 0, 7); bx9.fill();
+  bx9.beginPath(); bx9.ellipse(20, 22, 5, 6, 0.2, 0, 7); bx9.fill();
+  const bTex9 = new THREE.CanvasTexture(bc9);
+  const bg9 = new THREE.BufferGeometry();
+  bg9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BF * 3), 3));
+  const bcol9 = new Float32Array(BF * 3), pal9 = [[1, .85, .3], [1, .5, .55], [.96, .96, .99], [.72, .6, .92], [1, .72, .32]];
+  for (let i = 0; i < BF; i++) { const c9 = pal9[i % pal9.length]; bcol9[i * 3] = c9[0]; bcol9[i * 3 + 1] = c9[1]; bcol9[i * 3 + 2] = c9[2]; }
+  bg9.setAttribute('color', new THREE.BufferAttribute(bcol9, 3));
+  butterflies9 = new THREE.Points(bg9, new THREE.PointsMaterial({ map: bTex9, size: 1.7, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, sizeAttenuation: true, fog: false }));
+  butterflies9.frustumCulled = false;
+  const bph9 = new Float32Array(BF), br9 = mulberry32(4242);
+  for (let i = 0; i < BF; i++) bph9[i] = br9() * 6.2832;
+  butterflies9.userData = { BF, R: 26, rnd: br9, base: new Float32Array(BF * 3), ph: bph9 };
+  scene.add(butterflies9);
+}
+function redistributeButterflies9(cx, cz) {
+  bfCx = cx; bfCz = cz;
+  const u = butterflies9.userData, b = u.base;
+  for (let i = 0; i < u.BF; i++) {
+    const a = u.rnd() * 6.2832, rr = Math.sqrt(u.rnd()) * u.R;
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
+    b[i * 3] = x; b[i * 3 + 2] = z;
+    b[i * 3 + 1] = (h > 2.4 && h < 18 && grassOK(x, z)) ? h + 1 + u.rnd() * 2 : -999;
   }
 }
 /* --- 流星(夜空偶尔划过) --- */
@@ -9888,7 +9926,7 @@ function loop() {
     const gThr9 = (MOBILE || quality === 0) ? 30 : 6.25;   // 弱机放宽重铺阈值,减少扫描频率
     if ((player.position.x - grassCx) ** 2 + (player.position.z - grassCz) ** 2 > gThr9) redistributeGrass(player.position.x, player.position.z);
     const gust9 = Math.max(.3, .74 + .26 * Math.sin(t * .21) + .16 * Math.sin(t * 1.13 + 2) + (WEATHER === 'storm' ? .4 * Math.sin(t * 3.1) : 0));   // 🌬️ 分层阵风
-    if (grassMat.userData.shader) { grassMat.userData.shader.uniforms.uTime.value = t; grassMat.userData.shader.uniforms.uGust.value = gust9; }
+    if (grassMat.userData.shader) { grassMat.userData.shader.uniforms.uTime.value = t; grassMat.userData.shader.uniforms.uGust.value = gust9; grassMat.userData.shader.uniforms.uPlayer.value.set(player.position.x, player.position.z); }
     for (const m of treeWindMats) if (m.userData.shader) { m.userData.shader.uniforms.uTime.value = t; m.userData.shader.uniforms.uGust.value = gust9; }   // 树冠风摆
   }
 
@@ -10409,6 +10447,20 @@ function loop() {
     fireflies.geometry.attributes.position.needsUpdate = true;
     fireflies.visible = nite > .12;
     fireflies.material.opacity = (RAINY ? 0 : nite) * (.55 + Math.sin(t * 3) * .45);   // 雨天休演
+  }
+  if (butterflies9 && !diving) {   // 🦋 白天草地蝴蝶
+    if ((player.position.x - bfCx) ** 2 + (player.position.z - bfCz) ** 2 > 36) redistributeButterflies9(player.position.x, player.position.z);
+    const u = butterflies9.userData, b = u.base, arr = butterflies9.geometry.attributes.position.array;
+    for (let i = 0; i < u.BF; i++) {
+      if (b[i * 3 + 1] < -900) { arr[i * 3 + 1] = -999; continue; }
+      const p2 = u.ph[i];
+      arr[i * 3] = b[i * 3] + Math.sin(t * 1.7 + p2) * 1.5 + Math.sin(t * 4.1 + p2) * .35;
+      arr[i * 3 + 2] = b[i * 3 + 2] + Math.cos(t * 1.4 + p2 * 1.3) * 1.5;
+      arr[i * 3 + 1] = b[i * 3 + 1] + Math.sin(t * 2.9 + p2) * .6 + Math.abs(Math.sin(t * 6 + p2)) * .35;
+    }
+    butterflies9.geometry.attributes.position.needsUpdate = true;
+    butterflies9.material.opacity = clamp(curDA * .82, 0, .82) * (WEATHER === 'clear' ? 1 : 0) * (REDUCE9 ? 0 : 1);
+    butterflies9.visible = butterflies9.material.opacity > .02;
   }
   if (meteor) {
     if (meteorLife > 0) {
