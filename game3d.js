@@ -2845,6 +2845,41 @@ if (!MOBILE) {
   dustMotes.frustumCulled = false; dustMotes.renderOrder = 4;
   scene.add(dustMotes);
 }
+/* 🍂 季节飘落物:秋叶 / 春樱,跟随玩家从空中飘落(仅秋/春,桌面) */
+let fallPts9 = null;
+if (!MOBILE) {
+  const NF9 = 240, FBX9 = 55, FBY9 = 34, fp9 = new Float32Array(NF9 * 3), fph9 = new Float32Array(NF9), fr9 = mulberry32(8123);
+  for (let i9 = 0; i9 < NF9; i9++) { fp9[i9 * 3] = (fr9() - .5) * 2 * FBX9; fp9[i9 * 3 + 1] = fr9() * FBY9; fp9[i9 * 3 + 2] = (fr9() - .5) * 2 * FBX9; fph9[i9] = fr9(); }
+  const fGeo9 = new THREE.BufferGeometry();
+  fGeo9.setAttribute('position', new THREE.BufferAttribute(fp9, 3));
+  fGeo9.setAttribute('aPhase', new THREE.BufferAttribute(fph9, 1));
+  const fMat9 = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, fog: false,
+    uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0xd8863a) }, uBox: { value: FBX9 } },
+    vertexShader: [
+      'uniform float uTime; uniform float uOpacity; uniform float uBox; attribute float aPhase; varying float vA;',
+      'void main(){',
+      '  vec3 p = position;',
+      '  p.y = mod( p.y - uTime * 1.7 - aPhase * 34.0, 34.0 );',
+      '  p.x += sin( uTime * 0.6 + aPhase * 6.2831 ) * 3.6;',
+      '  p.z += cos( uTime * 0.5 + aPhase * 6.2831 ) * 3.6;',
+      '  float flip = 0.5 + 0.5 * sin( uTime * 3.0 + aPhase * 20.0 );',
+      '  float fade = 1.0 - smoothstep( uBox * 0.55, uBox * 1.05, length( p.xz ) );',
+      '  vA = ( 0.35 + flip * 0.65 ) * fade * uOpacity;',
+      '  vec4 mv = modelViewMatrix * vec4( p, 1.0 );',
+      '  gl_PointSize = ( 2.2 + flip * 2.6 ) * ( 200.0 / -mv.z );',
+      '  gl_Position = projectionMatrix * mv;',
+      '}',
+    ].join('\n'),
+    fragmentShader: [
+      'precision mediump float; uniform vec3 uColor; varying float vA;',
+      'void main(){ vec2 c = gl_PointCoord - 0.5; float d = length( c ); if ( d > 0.5 ) discard; gl_FragColor = vec4( uColor, smoothstep( 0.5, 0.0, d ) * vA ); }',
+    ].join('\n'),
+  });
+  fallPts9 = new THREE.Points(fGeo9, fMat9);
+  fallPts9.frustumCulled = false; fallPts9.renderOrder = 4;
+  scene.add(fallPts9);
+}
 /* --- 🌧️ 屏幕雨丝(湿镜头):2D 覆盖层,雨/风暴时落下斜 streak --- */
 const rainFxCv = $('rainfx'), rainFxCtx = rainFxCv && rainFxCv.getContext('2d');
 let rainDrops9 = [], rainFxOn9 = false, rainFxW9 = 0, rainFxH9 = 0;
@@ -2942,6 +2977,18 @@ function updateDayNight(t) {
     dustMotes.material.uniforms.uOpacity.value = op9d;
     dustMotes.visible = !diving && op9d > 0.02 && quality > 0 && !REDUCE9;
   }
+  if (fallPts9) {   // 🍂 季节飘落物
+    const fseas9 = SEASON === 'autumn' ? 1 : SEASON === 'spring' ? 2 : 0;
+    if (fseas9) {
+      fallPts9.position.set(player.position.x, 0, player.position.z);
+      fallPts9.material.uniforms.uTime.value = t;
+      fallPts9.material.uniforms.uColor.value.setHex(fseas9 === 1 ? 0xd8863a : 0xf2b8c6);
+      const fop9 = (da * .5 + .12) * (WEATHER === 'clear' ? 1 : .5) * (REDUCE9 ? 0 : 1);
+      fallPts9.material.uniforms.uOpacity.value = fop9;
+      fallPts9.visible = !diving && fop9 > 0.03;
+    } else fallPts9.visible = false;
+  }
+  if (grassMat) grassMat.emissive.setRGB(dusk * .15, dusk * .085, dusk * .02);   // 🌅 黄昏草地暖照(近背光感,grassMat 独享材质安全)
   /* 月亮:夜里从海上升起,月光在水面拉出反光带(海上明月共潮生) */
   const night = 1 - da;
   const mp = clamp((p - .6) / .36, 0, 1);              // 夜段进度 0..1
@@ -8715,6 +8762,20 @@ let butterflies9 = null, bfCx = 1e9, bfCz = 1e9;
   butterflies9.userData = { BF, R: 26, rnd: br9, base: new Float32Array(BF * 3), ph: bph9 };
   scene.add(butterflies9);
 }
+/* 🐦 惊飞的鸟:陆上白昼移动时前方偶有几只鸟扑棱飞起(小对象池) */
+let flushBirds9 = null, flushT9 = 0, flushCD9 = 10;
+{
+  flushBirds9 = new THREE.Group();
+  const bm9 = lam(0x3a352c);
+  for (let i9 = 0; i9 < 6; i9++) {
+    const b9 = new THREE.Group();
+    const wl9 = box(1.0, .06, .3, bm9); wl9.position.x = -.5; b9.add(wl9);
+    const wr9 = box(1.0, .06, .3, bm9); wr9.position.x = .5; b9.add(wr9);
+    b9.userData = { vx: 0, vy: 0, vz: 0, wl: wl9, wr: wr9, ph: i9 * 1.1 };
+    b9.visible = false; flushBirds9.add(b9);
+  }
+  scene.add(flushBirds9);
+}
 function redistributeButterflies9(cx, cz) {
   bfCx = cx; bfCz = cz;
   const u = butterflies9.userData, b = u.base;
@@ -9361,6 +9422,34 @@ function worldFx9(dt, t, pMoving, bh) {
       ad9.dx = Math.cos(na9); ad9.dz = Math.sin(na9);
     }
   }
+  if (flushBirds9) {   // 🐦 惊飞的鸟
+    if (flushT9 > 0) {
+      flushT9 -= dt;
+      for (const b9 of flushBirds9.children) {
+        b9.position.x += b9.userData.vx * dt; b9.position.y += b9.userData.vy * dt; b9.position.z += b9.userData.vz * dt;
+        b9.userData.vy -= 4.5 * dt;
+        b9.rotation.y = Math.atan2(b9.userData.vx, b9.userData.vz);
+        const fw9 = Math.sin(t * 17 + b9.userData.ph) * .6; b9.userData.wl.rotation.z = fw9; b9.userData.wr.rotation.z = -fw9;
+      }
+      if (flushT9 <= 0) for (const b9 of flushBirds9.children) b9.visible = false;
+    } else {
+      flushCD9 -= dt;
+      if (flushCD9 <= 0 && grounded && pMoving && !diving && vehicle === 0 && curDA > .35 && grassOK(player.position.x, player.position.z) && heightMesh(player.position.x, player.position.z) > 2 && Math.random() < dt * 0.5) {
+        const ffx9 = -Math.sin(camYaw), ffz9 = -Math.cos(camYaw);
+        const sx9 = player.position.x + ffx9 * 11, sz9 = player.position.z + ffz9 * 11, sy9 = Math.max(heightMesh(sx9, sz9), 0) + 1.4;
+        flushBirds9.position.set(sx9, sy9, sz9);
+        for (const b9 of flushBirds9.children) {
+          const aa9 = Math.random() * 6.2831;
+          b9.position.set((Math.random() - .5) * 2, 0, (Math.random() - .5) * 2);
+          b9.userData.vx = Math.cos(aa9) * (2.5 + Math.random() * 3);
+          b9.userData.vz = Math.sin(aa9) * (2.5 + Math.random() * 3);
+          b9.userData.vy = 6 + Math.random() * 4; b9.visible = true;
+        }
+        flushT9 = 2.2; flushCD9 = 14 + Math.random() * 12;
+        blip(1600); setTimeout(() => blip(2000), 80);
+      }
+    }
+  }
   if (ambFerry9) {   // 主岛⇄南塔开特 定期渡轮(纯环景)
     const uf9 = ambFerry9.userData;
     uf9.k += uf9.dir * dt / 60;
@@ -9952,6 +10041,12 @@ function loop() {
       player.position.y + 5 + 200 * k9,
       player.position.z + Math.sin(ia9) * (16 + 240 * k9)), Math.min(1, dt * 3));
     camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
+    if (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving) {   // 💨 走动镜头呼吸
+      camera.position.y += Math.sin(walkPhase * 2) * (keys.shift ? .09 : .05);
+      camera.position.x += Math.cos(camYaw) * Math.sin(walkPhase) * .04;
+    }
+    { const tf9 = (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && keys.shift) ? 62 : 58;   // 冲刺微扩视野 = 速度感
+      if (Math.abs(camera.fov - tf9) > .05) { camera.fov += (tf9 - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); } }
   }
 
   /* 动画:水 / 云 / 鱼 / 海鸥 / 篝火 / 鸟 */
