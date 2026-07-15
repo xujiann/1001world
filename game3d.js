@@ -578,7 +578,7 @@ function accountCard() {
           <button class="gBtn" data-accup style="flex:1">⬆️ 备份到云端</button>
           <button class="gBtn off" data-accdown style="flex:1">⬇️ 从云端恢复</button>
         </div>
-        <div style="font-size:12px;color:#5a6b5a;margin-top:8px">本机绑定码:<b style="letter-spacing:1px">${cloudClaim9()}</b> <span style="color:#8a7c62">——在另一台设备输入即可取回这里的云档</span></div>
+        <div style="font-size:12px;color:#5a6b5a;margin-top:8px">本机绑定码:<b style="letter-spacing:1px">${cloudClaim9()}</b> <span style="color:#8a7c62">——在另一台设备输入即可取回这里的云档。<b style="color:#b8622e">建议把它抄在别处:清浏览器后,这串码是找回云档的唯一钥匙</b></span></div>
         <div style="display:flex;gap:8px;margin-top:6px">
           <input id="accClaim" placeholder="输入另一台设备的绑定码…" style="flex:1;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:13px;box-sizing:border-box">
           <button class="gBtn off" data-accclaim>认领云档</button>
