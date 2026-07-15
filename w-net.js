@@ -73,17 +73,44 @@ export function netEvent(type, meta) {
 /* ☁️ 云存档:data = 与本地「导出存档码」同格式的文本,每匿名身份一行(见 cloud.sql)。
    安全:RLS 只许本人读写自己那行;跨设备取档走 claim_save RPC(凭绑定码只读复制)。
    健壮性:长挂页面的缓存会话可能掉成匿名态(后台节流耽误刷新)——写前先验真身份,失败刷新重试一次。 */
+let who9 = null;   // { anon, email } — authed9/登录/注册时刷新
+const setWho9 = u9 => { uid9 = u9 && u9.id; who9 = u9 ? { anon: !!u9.is_anonymous, email: u9.email || '' } : null; };
 async function authed9() {
   const c9 = await client9(); if (!c9) return null;
-  try { const { data } = await c9.auth.getUser(); uid9 = data && data.user && data.user.id; } catch (e) { uid9 = null; }
+  try { const { data } = await c9.auth.getUser(); setWho9(data && data.user); } catch (e) { setWho9(null); }
   if (!uid9) {
-    try { await c9.auth.signInAnonymously(); const { data } = await c9.auth.getUser(); uid9 = data && data.user && data.user.id; } catch (e) {}
+    try { await c9.auth.signInAnonymously(); const { data } = await c9.auth.getUser(); setWho9(data && data.user); } catch (e) {}
   }
   return uid9 ? c9 : null;
 }
+
+/* 🔐 真注册:匿名身份直接升级绑邮箱(uid 不变→云档自动跟人)/ 邮箱登录 / 退出 */
+export async function netWho() { const c9 = await authed9(); return c9 ? Object.assign({ uid: uid9 }, who9) : null; }
+export async function netRegister(email, pass) {
+  const c9 = await authed9(); if (!c9) return { ok: false, msg: '登录未就绪,稍后再试' };
+  const { data, error } = await c9.auth.updateUser({ email, password: pass });
+  if (error) return { ok: false, msg: error.message };
+  const u9 = data && data.user;
+  const pending = !(u9 && u9.email && u9.email_confirmed_at);   // 项目若开着「邮箱确认」则需去邮箱点链接
+  if (!pending) setWho9(u9);
+  return { ok: true, pending };
+}
+export async function netLogin(email, pass) {
+  const c9 = await client9(); if (!c9) return { ok: false, msg: '集市未开通' };
+  const { error } = await c9.auth.signInWithPassword({ email, password: pass });
+  if (error) return { ok: false, msg: error.message };
+  try { const { data } = await c9.auth.getUser(); setWho9(data && data.user); } catch (e) {}
+  return { ok: true };
+}
+export async function netLogout() {
+  const c9 = await client9(); if (!c9) return;
+  try { await c9.auth.signOut(); } catch (e) {}
+  setWho9(null);
+}
 export async function netSaveUp(code, claim) {
   const c9 = await authed9(); if (!c9) return { ok: false, msg: '登录未就绪,稍后再试' };
-  const row9 = () => c9.from('saves').upsert({ owner_uid: uid9, data: code, claim, updated_at: new Date().toISOString() }, { onConflict: 'owner_uid' });
+  const cl9 = (who9 && !who9.anon) ? null : claim;   // 已注册用户凭邮箱跨设备,绑定码置空(免多设备互相覆写码)
+  const row9 = () => c9.from('saves').upsert({ owner_uid: uid9, data: code, claim: cl9, updated_at: new Date().toISOString() }, { onConflict: 'owner_uid' });
   let { error } = await row9();
   if (error && /row-level|JWT|401|403/i.test(error.message || '')) {   // 会话失效:刷新后重试一次
     try { await c9.auth.refreshSession(); } catch (e) {}

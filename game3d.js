@@ -26,7 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
-import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim } from './w-net.js?v=6';
+import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim, netWho, netRegister, netLogin, netLogout } from './w-net.js?v=7';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -533,6 +533,7 @@ function applySave9(code) {
   if (data.cards) try { JSON.parse(data.cards); PSTORE.setItem('w1001.cards', data.cards); } catch (e) {}
   return true;
 }
+let cloudWho9 = null;   // 🔐 登录态缓存:{anon,email}|null(openAccount 异步刷新)
 function cloudClaim9() {
   let c9 = '';
   try { c9 = RAWLS.getItem('w1001.claim9') || ''; } catch (e) {}
@@ -578,11 +579,27 @@ function accountCard() {
           <button class="gBtn" data-accup style="flex:1">⬆️ 备份到云端</button>
           <button class="gBtn off" data-accdown style="flex:1">⬇️ 从云端恢复</button>
         </div>
+        ${cloudWho9 && !cloudWho9.anon ? `
+        <div style="font-size:12.5px;color:#2c5a3c;margin-top:10px;background:rgba(44,122,75,.08);border:1px solid rgba(44,122,75,.3);border-radius:8px;padding:8px 10px">🔐 已登录:<b>${esc(cloudWho9.email)}</b>
+          <button class="gBtn off" data-acclogout style="float:right;padding:3px 10px;font-size:11px">退出登录</button>
+          <div style="color:#5a6b5a;font-size:11.5px;margin-top:4px">云档随此邮箱走——换设备登录后点「⬇️ 从云端恢复」即取回进度</div></div>` : `
         <div style="font-size:12px;color:#5a6b5a;margin-top:8px">本机绑定码:<b style="letter-spacing:1px">${cloudClaim9()}</b> <span style="color:#8a7c62">——在另一台设备输入即可取回这里的云档。<b style="color:#b8622e">建议把它抄在别处:清浏览器后,这串码是找回云档的唯一钥匙</b></span></div>
         <div style="display:flex;gap:8px;margin-top:6px">
           <input id="accClaim" placeholder="输入另一台设备的绑定码…" style="flex:1;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:13px;box-sizing:border-box">
           <button class="gBtn off" data-accclaim>认领云档</button>
         </div>
+        <div style="border-top:1px dashed #d8ceb8;margin-top:12px;padding-top:10px">
+          <b style="font-size:13px">🔐 注册 / 登录(可选,不想记绑定码就用它)</b>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="accEmail" type="email" placeholder="邮箱" style="flex:1.2;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:13px;box-sizing:border-box">
+            <input id="accPass" type="password" placeholder="密码(≥6位)" style="flex:1;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="gBtn" data-accreg style="flex:1">📝 注册并绑定当前进度</button>
+            <button class="gBtn off" data-acclogin style="flex:1">🔑 登录已有账号</button>
+          </div>
+          <div style="font-size:11.5px;color:#8a7c62;margin-top:5px">注册=把这台设备的进度绑到邮箱(身份原地升级,进度不动);登录后云备份/恢复都认这个邮箱。</div>
+        </div>`}
       </div>` : ''}
     </div>`;
 }
@@ -640,6 +657,37 @@ function openAccount() {
     if (!row9 || !row9.data) { el9.disabled = false; el9.dataset.arm = ''; el9.textContent = '⬇️ 从云端恢复'; toast('☁️ 云端还没有这台设备的存档(先备份一次)'); return; }
     try { applySave9(row9.data); toast('☁️ 已从云端恢复(' + (row9.updated_at || '').slice(0, 10) + ' 的备份),正在重载…'); setTimeout(() => location.reload(), 700); }
     catch (e) { el9.disabled = false; el9.dataset.arm = ''; el9.textContent = '⬇️ 从云端恢复'; toast('云档解析失败'); }
+  });
+  cardBody.querySelector('[data-accreg]')?.addEventListener('click', async () => {
+    const em9 = (document.getElementById('accEmail').value || '').trim(), pw9 = document.getElementById('accPass').value || '';
+    if (!/.+@.+\..+/.test(em9)) { toast('邮箱格式不对'); return; }
+    if (pw9.length < 6) { toast('密码至少 6 位'); return; }
+    const el9 = cardBody.querySelector('[data-accreg]'); el9.disabled = true; el9.textContent = '📝 注册中…';
+    const r9 = await netRegister(em9, pw9);
+    el9.disabled = false; el9.textContent = '📝 注册并绑定当前进度';
+    if (!r9.ok) { toast('注册没成:' + (/already|registered|exists/i.test(r9.msg || '') ? '这个邮箱已注册过——用右边「登录」' : /rate limit/i.test(r9.msg || '') ? '注册邮件配额已满,稍后再试(站长关闭「邮箱确认」后可秒注册)' : r9.msg)); return; }
+    if (r9.pending) { toast('📮 确认邮件已发往 ' + em9 + '——点邮件里的链接完成绑定(之后用它登录即可)'); return; }
+    cloudWho9 = await netWho(); openAccount();
+    toast('🔐 注册成功!当前进度已绑定 ' + em9 + '——换设备用它登录即可'); blip(740);
+    cloudUp9().then(r2 => { if (r2.ok) { try { RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} } });
+  });
+  cardBody.querySelector('[data-acclogin]')?.addEventListener('click', async () => {
+    const em9 = (document.getElementById('accEmail').value || '').trim(), pw9 = document.getElementById('accPass').value || '';
+    if (!/.+@.+\..+/.test(em9) || pw9.length < 6) { toast('填上邮箱和密码(≥6位)再登录'); return; }
+    const el9 = cardBody.querySelector('[data-acclogin]'); el9.disabled = true; el9.textContent = '🔑 登录中…';
+    const r9 = await netLogin(em9, pw9);
+    el9.disabled = false; el9.textContent = '🔑 登录已有账号';
+    if (!r9.ok) { toast('登录没成:' + (/invalid/i.test(r9.msg || '') ? '邮箱或密码不对(或邮箱还没点确认链接)' : r9.msg)); return; }
+    cloudWho9 = await netWho(); openAccount();
+    toast('🔑 已登录 ' + em9 + '——点「⬇️ 从云端恢复」取回该账号的进度'); blip(740);
+  });
+  cardBody.querySelector('[data-acclogout]')?.addEventListener('click', async () => {
+    await netLogout(); cloudWho9 = null; openAccount();
+    toast('已退出登录——回到游客身份(云备份改用绑定码模式)');
+  });
+  netOn() && netWho().then(w9 => {   // 🔐 异步刷新登录态,变了且卡还开着就重渲一次
+    const k9 = w9 ? (w9.anon ? 'a' : 'u:' + w9.email) : 'n';
+    if (k9 !== openAccount._w) { openAccount._w = k9; cloudWho9 = w9; if (modalOpen && cardBody.querySelector('[data-accup]')) openAccount(); }
   });
   cardBody.querySelector('[data-accclaim]')?.addEventListener('click', async () => {
     const code9 = (document.getElementById('accClaim').value || '').trim().toUpperCase();
