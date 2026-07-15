@@ -26,7 +26,7 @@ import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_
 import { makeLORE } from './w-lore.js?v=1';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
-import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit } from './w-net.js?v=4';
+import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim } from './w-net.js?v=5';
 
 const D = window.WORLD_DATA;
 const CDN = {
@@ -520,6 +520,37 @@ function openBag() {
   bindGear(openBag);
 }
 
+/* ☁️ 云存档:打包=本地导出同格式;绑定码本机一枚(每匿名身份一行云档) */
+function packSave9() {
+  const data = {};
+  SAVE_FIELDS.forEach(f => { const v = PSTORE.getItem('w1001.' + f); if (v != null) data[f] = v; });
+  try { const cd9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); if (cd9.length) data.cards = JSON.stringify(cd9.slice(-3)); } catch (e) {}
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+function applySave9(code) {
+  const data = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+  SAVE_FIELDS.forEach(f => { if (data[f] != null) PSTORE.setItem('w1001.' + f, data[f]); });
+  if (data.cards) try { JSON.parse(data.cards); PSTORE.setItem('w1001.cards', data.cards); } catch (e) {}
+  return true;
+}
+function cloudClaim9() {
+  let c9 = '';
+  try { c9 = RAWLS.getItem('w1001.claim9') || ''; } catch (e) {}
+  if (!c9) {
+    const a9 = new Uint8Array(8); crypto.getRandomValues(a9);
+    const AB9 = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+    c9 = [...a9].map(x9 => AB9[x9 % 30]).join('');
+    c9 = c9.slice(0, 4) + '-' + c9.slice(4);
+    try { RAWLS.setItem('w1001.claim9', c9); } catch (e) {}
+  }
+  return c9;
+}
+async function cloudUp9() {   // 上传(绑定码撞车则换码重试一次;表未建给指引)
+  let r9 = await netSaveUp(packSave9(), cloudClaim9());
+  if (!r9.ok && /claim|unique|duplicate/i.test(r9.msg || '')) { try { RAWLS.removeItem('w1001.claim9'); } catch (e) {} r9 = await netSaveUp(packSave9(), cloudClaim9()); }
+  return r9;
+}
+const cloudErr9 = m9 => /relation|does not exist|schema|42P01/i.test(m9 || '') ? '云存档尚未开通(控制台 SQL Editor 跑一遍 cloud.sql 即可)' : '云端暂时没接住:' + (m9 || '未知原因');
 /* --- 账号管理界面 --- */
 function accountCard() {
   const list = profileList();
@@ -541,6 +572,18 @@ function accountCard() {
         <button class="gBtn off" data-accimport style="flex:1">📥 导入存档码</button>
       </div>
       <textarea id="accCode" placeholder="存档码会出现在这里;或把别的设备导出的存档码粘贴到这里,点导入" style="width:100%;height:70px;margin-top:8px;border:1px solid #d8ceb8;border-radius:8px;padding:8px;font-size:11px;box-sizing:border-box"></textarea>
+      ${netOn() ? `<div style="border-top:1px dashed #d8ceb8;margin:12px 0 0;padding-top:10px">
+        <b style="font-size:13px">☁️ 云存档</b> <span style="font-size:11px;color:#8a7c62">备份当前账号进度;每天进游戏也会静默自动备份一次</span>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="gBtn" data-accup style="flex:1">⬆️ 备份到云端</button>
+          <button class="gBtn off" data-accdown style="flex:1">⬇️ 从云端恢复</button>
+        </div>
+        <div style="font-size:12px;color:#5a6b5a;margin-top:8px">本机绑定码:<b style="letter-spacing:1px">${cloudClaim9()}</b> <span style="color:#8a7c62">——在另一台设备输入即可取回这里的云档</span></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input id="accClaim" placeholder="输入另一台设备的绑定码…" style="flex:1;padding:8px;border:1px solid #d8ceb8;border-radius:8px;font-size:13px;box-sizing:border-box">
+          <button class="gBtn off" data-accclaim>认领云档</button>
+        </div>
+      </div>` : ''}
     </div>`;
 }
 function openAccount() {
@@ -577,12 +620,36 @@ function openAccount() {
   });
   cardBody.querySelector('[data-accimport]')?.addEventListener('click', () => {
     try {
-      const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('accCode').value.trim()))));
-      SAVE_FIELDS.forEach(f => { if (data[f] != null) PSTORE.setItem('w1001.' + f, data[f]); });
-      if (data.cards) try { JSON.parse(data.cards); PSTORE.setItem('w1001.cards', data.cards); } catch (e) {}
+      applySave9(document.getElementById('accCode').value);
       toast('📥 导入成功,正在重载…');
       setTimeout(() => location.reload(), 600);
     } catch (e) { toast('存档码无效,请检查后重试'); }
+  });
+  cardBody.querySelector('[data-accup]')?.addEventListener('click', async b9 => {
+    const el9 = cardBody.querySelector('[data-accup]'); el9.disabled = true; el9.textContent = '⬆️ 备份中…';
+    const r9 = await cloudUp9();
+    el9.disabled = false; el9.textContent = '⬆️ 备份到云端';
+    if (r9.ok) { try { RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} toast('☁️ 已备份到云端——清浏览器也不怕了'); blip(740); }
+    else toast('☁️ ' + cloudErr9(r9.msg));
+  });
+  cardBody.querySelector('[data-accdown]')?.addEventListener('click', async () => {
+    const el9 = cardBody.querySelector('[data-accdown]');
+    if (el9.dataset.arm !== '1') { el9.dataset.arm = '1'; el9.textContent = '⚠️ 确认覆盖当前进度?再点一次'; return; }
+    el9.disabled = true; el9.textContent = '⬇️ 取档中…';
+    const row9 = await netSaveDown();
+    if (!row9 || !row9.data) { el9.disabled = false; el9.dataset.arm = ''; el9.textContent = '⬇️ 从云端恢复'; toast('☁️ 云端还没有这台设备的存档(先备份一次)'); return; }
+    try { applySave9(row9.data); toast('☁️ 已从云端恢复(' + (row9.updated_at || '').slice(0, 10) + ' 的备份),正在重载…'); setTimeout(() => location.reload(), 700); }
+    catch (e) { el9.disabled = false; el9.dataset.arm = ''; el9.textContent = '⬇️ 从云端恢复'; toast('云档解析失败'); }
+  });
+  cardBody.querySelector('[data-accclaim]')?.addEventListener('click', async () => {
+    const code9 = (document.getElementById('accClaim').value || '').trim().toUpperCase();
+    if (code9.length < 6) { toast('绑定码不对——去另一台设备的账号卡里抄下来'); return; }
+    const el9 = cardBody.querySelector('[data-accclaim]'); el9.disabled = true; el9.textContent = '认领中…';
+    const dat9 = await netSaveClaim(code9);
+    el9.disabled = false; el9.textContent = '认领云档';
+    if (!dat9) { toast('☁️ 没找到这个绑定码的云档(对方先「备份到云端」一次)'); return; }
+    try { applySave9(dat9); toast('☁️ 认领成功!已取回云档,正在重载…'); setTimeout(() => location.reload(), 700); }
+    catch (e) { toast('云档解析失败'); }
   });
 }
 
@@ -2239,6 +2306,7 @@ function startWorld9() {
   $('intro').classList.add('hidden');
   initAudio();
   dailyStreak9();
+  try { if (netOn() && RAWLS.getItem('w1001.cloudday') !== todayStr()) setTimeout(async () => { try { const r9 = await cloudUp9(); if (r9.ok) RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} }, 15000); } catch (e) {}   // ☁️ 每日静默云备份
   setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
   try {   // 📊 匿名埋点:会话快照 + 心跳(留存/时长/进度分布;无 events 表则静默降级)
     let cid9 = PSTORE.getItem('w1001.cid');

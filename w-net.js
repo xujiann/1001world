@@ -69,3 +69,22 @@ export function netEvent(type, meta) {
     }).catch(() => {});
   } catch (e) {}
 }
+
+/* ☁️ 云存档:data = 与本地「导出存档码」同格式的文本,每匿名身份一行(见 cloud.sql)。
+   安全:RLS 只许本人读写自己那行;跨设备取档走 claim_save RPC(凭绑定码只读复制)。 */
+export async function netSaveUp(code, claim) {
+  const c9 = await client9(); if (!c9) return { ok: false, msg: '集市未开通' };
+  const { error } = await c9.from('saves')
+    .upsert({ owner_uid: uid9, data: code, claim, updated_at: new Date().toISOString() }, { onConflict: 'owner_uid' });
+  return error ? { ok: false, msg: error.message } : { ok: true };
+}
+export async function netSaveDown() {
+  const c9 = await client9(); if (!c9) return null;
+  const { data, error } = await c9.from('saves').select('data,claim,updated_at').eq('owner_uid', uid9).maybeSingle();
+  return error ? null : data;
+}
+export async function netSaveClaim(code) {
+  const c9 = await client9(); if (!c9) return null;
+  const { data, error } = await c9.rpc('claim_save', { code });
+  return error ? null : data;
+}
