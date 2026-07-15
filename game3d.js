@@ -69,6 +69,7 @@ SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
 SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
+SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
 
 /* ---------- 收藏类别(与 2D 一致) ---------- */
@@ -10212,6 +10213,8 @@ function loop() {
     }
     }
   }
+  if (gliding9 && (grounded || swimming || diving || vehicle !== 0)) gliding9 = false;   // 🪂 着地/入水/上船即收翼(修:原只在陆地物理分支清除,滑翔入水会卡翼)
+  if (player.userData.glider9 && player.userData.glider9.visible !== gliding9) player.userData.glider9.visible = gliding9;
   player.rotation.y += ((faceYaw - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 10);
   player.children[0].scale.y = 1 + (grounded ? Math.sin(walkPhase) * .04 : 0);
   const swimNow9 = swimming || diving, procNow9 = swimNow9 || restState9 === 2;   // 🛌躺卧无对应动画→程序化;🪑坐下用机器人 Sitting
@@ -10335,7 +10338,7 @@ function loop() {
         chestHintT9 = 20;
         const ang9 = Math.atan2(chestGrp9.position.x - player.position.x, -(chestGrp9.position.z - player.position.z));
         const oct9 = CHEST_DIR9[((Math.round(ang9 / (Math.PI / 4)) % 8) + 8) % 8];
-        if (cd9 > 40) toast('⚓ 声呐微响:今日沉箱在' + oct9 + '方约 ' + Math.round(cd9) + ' 米');
+        if (cd9 > 40 && cd9 < 600) toast('⚓ 声呐微响:今日沉箱在' + oct9 + '方约 ' + Math.round(cd9) + ' 米');
       }
     }
   }
