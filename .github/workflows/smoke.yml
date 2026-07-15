@@ -1,0 +1,35 @@
+name: 冒烟测试
+
+# 每次 push / PR 自动跑:无头开浏览器真加载一遍游戏,
+# 专治「node --check 过了但浏览器白屏」那类事故(本项目真出过 ghostShip9 重名白屏)。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 语法检查(快速失败)
+        run: |
+          for f in game3d.js w-*.js world-data.js constellations.js tests/smoke.mjs; do
+            node --check "$f" || exit 1
+          done
+          echo "✅ 全部模块语法通过"
+
+      - name: 安装 Playwright + Chromium
+        run: |
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps chromium
+
+      - name: 冒烟测试(真加载游戏)
+        run: npm test

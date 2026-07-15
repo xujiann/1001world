@@ -1,0 +1,12 @@
+{
+  "name": "1001world",
+  "private": true,
+  "description": "1001 世界 · 三维开放世界。游戏本体是零构建的原生 ESM(index.html 直接跑,无需打包)——本文件只服务于开发期的冒烟测试,不参与部署。",
+  "scripts": {
+    "test": "node tests/smoke.mjs",
+    "check": "node --check game3d.js && node --check world-data.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

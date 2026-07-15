@@ -28,6 +28,38 @@ import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_P
 import { makeCards } from './w-cards.js?v=1';
 import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim, netWho, netRegister, netLogin, netLogout } from './w-net.js?v=7';
 
+/* 🏷️ 版本号:从自身 URL 的 ?v= 推导——随 index.html 自动同步,不会再写死变味 */
+const GAME_VER9 = +((String(import.meta.url).match(/[?&]v=(\d+)/) || [])[1]) || 0;
+/* 🚨 生产错误上报:玩家侧崩溃直达 events 表(复用既有埋点管道)。
+   限流:每会话至多 5 条、同一错误只报一次;全程 try 包裹,绝不反过来影响游戏。
+   隐私:沿用既有立场——不采集 UA/GPU 等指纹,只报错误本身 + 版本 + 本地随机 cid。 */
+const cidOf9 = () => {
+  try {
+    let c9 = PSTORE.getItem('w1001.cid');
+    if (!c9) { c9 = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); PSTORE.setItem('w1001.cid', c9); }
+    return c9;
+  } catch (e) { return '?'; }
+};
+let errN9 = 0; const errSeen9 = new Set();
+function reportErr9(kind9, msg9, extra9) {
+  try {
+    msg9 = String(msg9 || '').slice(0, 200);
+    const key9 = kind9 + '|' + msg9;
+    if (errN9 >= 5 || errSeen9.has(key9)) return;
+    errSeen9.add(key9); errN9++;
+    netEvent('error', Object.assign({ cid: cidOf9(), ver: GAME_VER9, kind: kind9, msg: msg9, mob: typeof MOBILE === 'boolean' ? MOBILE : null }, extra9 || {}));
+  } catch (e) {}
+}
+addEventListener('error', e9 => reportErr9('js', e9 && e9.message, {
+  src: String((e9 && e9.filename) || '').split('/').pop().slice(0, 40),
+  line: e9 && e9.lineno, col: e9 && e9.colno,
+  stack: String((e9 && e9.error && e9.error.stack) || '').slice(0, 400),
+}));
+addEventListener('unhandledrejection', e9 => reportErr9('promise', (e9 && e9.reason && (e9.reason.message || e9.reason)) || 'unknown', {
+  stack: String((e9 && e9.reason && e9.reason.stack) || '').slice(0, 400),
+}));
+window.__ver9 = GAME_VER9;   // 冒烟测试读取
+
 const D = window.WORLD_DATA;
 const CDN = {
   art: 'https://cdn.jsdelivr.net/gh/xujiann/1001art-img@v1/',
@@ -2359,10 +2391,9 @@ function startWorld9() {
   try { if (netOn() && RAWLS.getItem('w1001.cloudday') !== todayStr()) setTimeout(async () => { try { const r9 = await cloudUp9(); if (r9.ok) RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} }, 15000); } catch (e) {}   // ☁️ 每日静默云备份
   setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
   try {   // 📊 匿名埋点:会话快照 + 心跳(留存/时长/进度分布;无 events 表则静默降级)
-    let cid9 = PSTORE.getItem('w1001.cid');
-    if (!cid9) { cid9 = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); PSTORE.setItem('w1001.cid', cid9); }
+    const cid9 = cidOf9();
     const seenN9 = Object.values(seen).reduce((a9, b9) => a9 + (b9 && b9.length ? b9.length : 0), 0);
-    netEvent('session', { cid: cid9, ver: 219, comp: worldCompletion(), streak: parseInt(PSTORE.getItem('w1001.streak') || '0', 10) || 0, seen: seenN9, titles: titleList().filter(t9 => t9.got).length, main: !!PSTORE.getItem('w1001.unjend'), skel: PSTORE.getItem('w1001.skeleton') === '1', mob: MOBILE });
+    netEvent('session', { cid: cid9, ver: GAME_VER9, comp: worldCompletion(), streak: parseInt(PSTORE.getItem('w1001.streak') || '0', 10) || 0, seen: seenN9, titles: titleList().filter(t9 => t9.got).length, main: !!PSTORE.getItem('w1001.unjend'), skel: PSTORE.getItem('w1001.skeleton') === '1', mob: MOBILE });
     const sess09 = Date.now();
     setInterval(() => netEvent('ping', { cid: cid9, min: Math.round((Date.now() - sess09) / 60000) }), 150000);
   } catch (e) {}
