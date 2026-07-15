@@ -11271,9 +11271,9 @@ if (!MOBILE) {
   let np9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && np9 < 110; gx9 += 15)   // 🌴 沙滩棕榈
     for (let gz9 = -1900; gz9 < 1900 && np9 < 110; gz9 += 15) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > .5 && h9 < 1.6 && rv9() < .5) {
-        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = height(px9, pz9);
+        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = heightMesh(px9, pz9);
         if (ph9 < .4) continue;
         np9++;
         const lean9 = (rv9() - .5) * .5, ang9 = rv9() * Math.PI * 2, hh9 = 5 + rv9() * 2.5;
@@ -11294,9 +11294,9 @@ if (!MOBILE) {
   let npn9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && npn9 < 80; gx9 += 31)   // 🌲 高地松杉
     for (let gz9 = -1900; gz9 < 1900 && npn9 < 80; gz9 += 31) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > 13 && h9 < 55 && rv9() < .4) {
-        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = height(px9, pz9);
+        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = heightMesh(px9, pz9);
         if (ph9 < 12) continue;
         npn9++;
         const s9 = .8 + rv9() * .7;
@@ -11310,22 +11310,22 @@ if (!MOBILE) {
       }
     }
   for (const [bx9, bz9] of [[THY.x - 30, THY.z + 24], [THY.x + 36, THY.z - 10], [THY.x + 8, THY.z + 44], [SHJ.x + 40, SHJ.z + 30], [SHJ.x - 34, SHJ.z - 38]]) {   // 🎋 竹丛
-    const bh09 = height(bx9, bz9); if (bh09 < .5) continue;
+    const bh09 = heightMesh(bx9, bz9); if (bh09 < .5) continue;
     for (let c9 = 0; c9 < 7; c9++) {
       const cx9 = bx9 + (rv9() - .5) * 4, cz9 = bz9 + (rv9() - .5) * 4, ch9 = 4 + rv9() * 2.4;
       const cn9 = new THREE.CylinderGeometry(.07, .09, ch9, 4);
-      cn9.rotateZ((rv9() - .5) * .12); cn9.translate(cx9, height(cx9, cz9) + ch9 / 2, cz9);
+      cn9.rotateZ((rv9() - .5) * .12); cn9.translate(cx9, heightMesh(cx9, cz9) + ch9 / 2, cz9);
       bam9.push(cn9);
-      const lf9 = new THREE.ConeGeometry(.5, 1.3, 4); lf9.translate(cx9, height(cx9, cz9) + ch9 + .5, cz9); bam9.push(lf9);
+      const lf9 = new THREE.ConeGeometry(.5, 1.3, 4); lf9.translate(cx9, heightMesh(cx9, cz9) + ch9 + .5, cz9); bam9.push(lf9);
     }
   }
   let nsh9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && nsh9 < 220; gx9 += 11)   // 🐚 贝壳与海星
     for (let gz9 = -1900; gz9 < 1900 && nsh9 < 220; gz9 += 11) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > .25 && h9 < 1.2 && rv9() < .55) {
         nsh9++;
-        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = Math.max(height(px9, pz9), .2);
+        const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = Math.max(heightMesh(px9, pz9), .2);
         const r9 = rv9();
         if (r9 < .4) { const sh9 = new THREE.SphereGeometry(.17, 5, 4); sh9.scale(1, .4, 1.3); sh9.rotateY(rv9() * 6); sh9.translate(px9, ph9 + .06, pz9); shellA9.push(sh9); }
         else if (r9 < .75) { const sh9 = new THREE.SphereGeometry(.15, 5, 4); sh9.scale(1.2, .38, 1); sh9.rotateY(rv9() * 6); sh9.translate(px9, ph9 + .06, pz9); shellB9.push(sh9); }
@@ -11335,7 +11335,7 @@ if (!MOBILE) {
   for (const [mx9, mz9] of [[150, -158], [-118, -664], [THY.x - 12, THY.z - 30]]) {   // 🍄 蘑菇圈
     for (let m9 = 0; m9 < 8; m9++) {
       const ma9 = m9 / 8 * Math.PI * 2, ux9 = mx9 + Math.cos(ma9) * 2.6, uz9 = mz9 + Math.sin(ma9) * 2.6;
-      const uh9 = height(ux9, uz9); if (uh9 < .5) continue;
+      const uh9 = heightMesh(ux9, uz9); if (uh9 < .5) continue;
       const st9 = new THREE.CylinderGeometry(.08, .12, .5, 5); st9.translate(ux9, uh9 + .25, uz9); mushS9.push(st9);
       const cp9 = new THREE.SphereGeometry(.26, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2); cp9.translate(ux9, uh9 + .48, uz9); mushC9.push(cp9);
     }
@@ -11343,10 +11343,10 @@ if (!MOBILE) {
   let nw9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && nw9 < 22; gx9 += 27)   // 🌳 水边垂柳
     for (let gz9 = -1900; gz9 < 1900 && nw9 < 22; gz9 += 27) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > .6 && h9 < 1.5 && rv9() < .25) {
         nw9++;
-        const px9 = gx9 + rv9() * 6 - 3, pz9 = gz9 + rv9() * 6 - 3, ph9 = Math.max(height(px9, pz9), .3);
+        const px9 = gx9 + rv9() * 6 - 3, pz9 = gz9 + rv9() * 6 - 3, ph9 = Math.max(heightMesh(px9, pz9), .3);
         const tk9 = new THREE.CylinderGeometry(.28, .48, 4.4, 5); tk9.translate(px9, ph9 + 2.2, pz9); trunks9.push(tk9);
         const cp9 = new THREE.SphereGeometry(2.6, 8, 6); cp9.scale(1, .55, 1); cp9.translate(px9, ph9 + 4.9, pz9); willow9.push(cp9);
         for (let d9 = 0; d9 < 8; d9++) {
@@ -11362,7 +11362,7 @@ if (!MOBILE) {
   let nr9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && nr9 < 70; gx9 += 13)   // 🌾 浅滩芦苇丛
     for (let gz9 = -1900; gz9 < 1900 && nr9 < 70; gz9 += 13) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > -.35 && h9 < .3 && rv9() < .4) {
         nr9++;
         for (let c9 = 0; c9 < 5; c9++) {
@@ -11376,17 +11376,17 @@ if (!MOBILE) {
   let nb9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && nb9 < 130; gx9 += 21)   // 🌱 灌木层
     for (let gz9 = -1900; gz9 < 1900 && nb9 < 130; gz9 += 21) {
-      const h9 = height(gx9, gz9);
+      const h9 = heightMesh(gx9, gz9);
       if (h9 > 5 && h9 < 11 && rv9() < .35) {
         nb9++;
-        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = height(px9, pz9);
+        const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = heightMesh(px9, pz9);
         if (ph9 < 4) continue;
         const sb9 = new THREE.IcosahedronGeometry(.6 + rv9() * .5, 0);
         sb9.scale(1, .6, 1); sb9.rotateY(rv9() * 6); sb9.translate(px9, ph9 + .35, pz9); shrub9.push(sb9);
       }
     }
   for (const [ax9, az9] of [[124, 82], [134, 90], [142, 80], [128, 96], [138, 98]]) {   // 🍎 主岛苹果园
-    const ah9 = Math.max(height(ax9, az9), .3);
+    const ah9 = Math.max(heightMesh(ax9, az9), .3);
     const tk9 = new THREE.CylinderGeometry(.24, .4, 2.8, 5); tk9.translate(ax9, ah9 + 1.4, az9); trunks9.push(tk9);
     const cp9 = new THREE.SphereGeometry(2, 8, 6); cp9.translate(ax9, ah9 + 3.7, az9); appleL9.push(cp9);
     for (let f9 = 0; f9 < 6; f9++) {
@@ -11399,7 +11399,7 @@ if (!MOBILE) {
   }
   if ((new Date().getMonth() + 1) >= 3 && (new Date().getMonth() + 1) <= 5) {   // 🌸 春樱(桃花源 + 主岛东坡)
     for (const [cx9, cz9] of [[1006, -138], [1014, -128], [998, -148], [1022, -140], [222, 66], [230, 58], [216, 58], [226, 74]]) {
-      const chh9 = Math.max(height(cx9, cz9), .3); if (chh9 < .5) continue;
+      const chh9 = Math.max(heightMesh(cx9, cz9), .3); if (chh9 < .5) continue;
       const tk9 = new THREE.CylinderGeometry(.22, .38, 3, 5); tk9.translate(cx9, chh9 + 1.5, cz9); trunks9.push(tk9);
       const c19 = new THREE.SphereGeometry(2.3, 8, 6); c19.scale(1.15, .8, 1.15); c19.translate(cx9, chh9 + 4, cz9); cherry9.push(c19);
       const c29 = new THREE.SphereGeometry(1.4, 7, 5); c29.translate(cx9 + .8, chh9 + 4.9, cz9 - .5); cherry29.push(c29);
@@ -11418,7 +11418,7 @@ if (!MOBILE) {
     for (const [fx9, fz9] of FP9)
       for (let i9 = 0; i9 < 240; i9++) {
         const fa9 = rv9() * Math.PI * 2, fr9 = Math.sqrt(rv9()) * 14;
-        const px9 = fx9 + Math.cos(fa9) * fr9, pz9 = fz9 + Math.sin(fa9) * fr9, ph9 = height(px9, pz9);
+        const px9 = fx9 + Math.cos(fa9) * fr9, pz9 = fz9 + Math.sin(fa9) * fr9, ph9 = heightMesh(px9, pz9);
         if (ph9 < 1) continue;
         fpos9.push(px9, ph9 + .28, pz9);
         const cc9 = FCOL9[(rv9() * FCOL9.length) | 0];
@@ -11532,7 +11532,7 @@ if (!MOBILE) {
   const rf9 = mulberry32(202), pts9 = [], jit9 = [];
   outer9: for (let gx9 = -1900; gx9 < 1900; gx9 += 7)
     for (let gz9 = -1900; gz9 < 1900; gz9 += 7) {
-      const h9 = height(gx9 + rf9() * 4, gz9 + rf9() * 4);
+      const h9 = heightMesh(gx9 + rf9() * 4, gz9 + rf9() * 4);
       if (h9 > -1.15 && h9 < .6 && rf9() < .85) {
         pts9.push(gx9 + rf9() * 6 - 3, .16, gz9 + rf9() * 6 - 3);
         jit9.push(rf9());
@@ -11575,7 +11575,7 @@ if (!MOBILE) {
     const step9 = 12, teal9 = new THREE.Color(0x5fd6c8), blue9 = new THREE.Color(0x2c6f96);
     const verts9 = [], cols9 = [];
     const corner9 = (x9, z9) => {
-      const h9 = height(x9, z9);
+      const h9 = heightMesh(x9, z9);
       let a9 = 0, r9 = teal9.r, gg9 = teal9.g, b9 = teal9.b;
       if (h9 < .35 && h9 > -11) {
         const d9 = Math.max(0, -h9);
@@ -11608,15 +11608,15 @@ if (!MOBILE) {
     const rrk9 = mulberry32(613), items9 = [];
     for (let x9 = -1900; x9 < 1900; x9 += 14)
       for (let z9 = -1900; z9 < 1900; z9 += 14) {
-        const h9 = height(x9, z9);
+        const h9 = heightMesh(x9, z9);
         if (h9 < .4) continue;                                  // 水下/沙滩交给浅滩泡沫
-        const slope9 = Math.abs(height(x9 + 6, z9) - h9) + Math.abs(height(x9, z9 + 6) - h9);
+        const slope9 = Math.abs(heightMesh(x9 + 6, z9) - h9) + Math.abs(heightMesh(x9, z9 + 6) - h9);
         const steep9 = slope9 > 2.2, high9 = h9 > 20;
         if (!(steep9 || (high9 && slope9 > .8))) continue;      // 只在陡坡/高地
         if (rrk9() > (steep9 ? .8 : .35)) continue;             // 密度
         const n9 = steep9 ? 1 + (rrk9() * 2 | 0) : 1;
         for (let k9 = 0; k9 < n9; k9++) {
-          const px9 = x9 + (rrk9() - .5) * 11, pz9 = z9 + (rrk9() - .5) * 11, ph9 = height(px9, pz9);
+          const px9 = x9 + (rrk9() - .5) * 11, pz9 = z9 + (rrk9() - .5) * 11, ph9 = heightMesh(px9, pz9);
           if (ph9 < .4) continue;
           const s9 = steep9 ? 1.3 + rrk9() * 2.4 : .8 + rrk9() * 1.3;
           items9.push([px9, ph9 + s9 * .32, pz9, s9, rrk9() * 6.28, rrk9(), rrk9()]);
@@ -11646,12 +11646,12 @@ if (!MOBILE) {
     const rs9 = mulberry32(829), stk9 = [];
     for (let x9 = -1900; x9 < 1900 && stk9.length < 90; x9 += 26)
       for (let z9 = -1900; z9 < 1900 && stk9.length < 90; z9 += 26) {
-        const h9 = height(x9, z9);
+        const h9 = heightMesh(x9, z9);
         if (h9 > -1 || h9 < -6.5) continue;                     // 只在近岸浅水
-        const land9 = height(x9 + 26, z9) > .5 || height(x9 - 26, z9) > .5 || height(x9, z9 + 26) > .5 || height(x9, z9 - 26) > .5;
+        const land9 = heightMesh(x9 + 26, z9) > .5 || heightMesh(x9 - 26, z9) > .5 || heightMesh(x9, z9 + 26) > .5 || heightMesh(x9, z9 - 26) > .5;
         if (!land9) continue;                                   // 需临近陆地
         if (rs9() > .22) continue;
-        const px9 = x9 + (rs9() - .5) * 10, pz9 = z9 + (rs9() - .5) * 10, ph9 = height(px9, pz9);
+        const px9 = x9 + (rs9() - .5) * 10, pz9 = z9 + (rs9() - .5) * 10, ph9 = heightMesh(px9, pz9);
         if (ph9 > -.5 || ph9 < -7) continue;
         stk9.push([px9, ph9, pz9, 2.6 + rs9() * 4.5, rs9() * 6.28, rs9()]);
       }
