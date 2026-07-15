@@ -177,6 +177,8 @@ function capMask(x, z, ax, az, bx, bz, r0, r1) {
   const d = Math.hypot(x - (ax + abx * t), z - (az + abz * t));
   return (1 - d / (r0 + (r1 - r0) * t)) * 2.2;
 }
+/* ⚡ 圆岛掩码:平方距离早退(岛外直接 -9,免 sqrt/除法);唯一调用方 clamp(…,0,1) 故与原式等价 */
+const isleM9 = (x, z, cx, cz, r, k) => { const dx = x - cx, dz = z - cz, d2 = dx * dx + dz * dz; return d2 < r * r ? (1 - Math.sqrt(d2) / r) * k : -9; };
 function islandMask(x, z) {
   let m = -9;
   if (x > -540 && x < 850 && z > -400 && z < 540) {   // 🐋 鲸形主岛包围盒(盒外 9 组 capMask 全免)
@@ -190,30 +192,30 @@ function islandMask(x, z) {
     m = Math.max(m, capMask(x, z, -80, 330, -190, 455, 55, 22));    // 胸鳍
     m = Math.max(m, capMask(x, z, -390, -95, -390, 55, 92, 92));    // 钝圆的鲸头吻部
   }
-  m = Math.max(m, (1 - Math.hypot(x - IS2.x, z - IS2.z) / IS2.r) * 1.7);  // 灯塔屿
-  m = Math.max(m, (1 - Math.hypot(x - TRU.x, z - TRU.z) / TRU.r) * 1.8);  // 楚门的世界·桃源岛
-  m = Math.max(m, (1 - Math.hypot(x - MID.x, z - MID.z) / MID.r) * 1.8);  // 中土
-  m = Math.max(m, (1 - Math.hypot(x - HOG.x, z - HOG.z) / HOG.r) * 1.8);  // 霍格沃茨
-  m = Math.max(m, (1 - Math.hypot(x - MOB.x, z - MOB.z) / MOB.r) * 1.8);  // 南塔开特捕鲸港
-  m = Math.max(m, (1 - Math.hypot(x - SPT.x, z - SPT.z) / SPT.r) * 1.8);  // 体育岛
-  m = Math.max(m, (1 - Math.hypot(x - SHJ.x, z - SHJ.z) / SHJ.r) * 1.8);  // 山海经
-  m = Math.max(m, (1 - Math.hypot(x - THY.x, z - THY.z) / THY.r) * 1.8);  // 桃花源
-  m = Math.max(m, (1 - Math.hypot(x - ANH.x, z - ANH.z) / ANH.r) * 1.8);  // 一千零一夜
-  m = Math.max(m, (1 - Math.hypot(x - NEM.x, z - NEM.z) / NEM.r) * 1.8);  // 鹦鹉螺锚地
-  m = Math.max(m, (1 - Math.hypot(x - B612.x, z - B612.z) / B612.r) * 2.0); // B-612
-  m = Math.max(m, (1 - Math.hypot(x - JUR.x, z - JUR.z) / JUR.r) * 1.8);  // 侏罗纪
-  m = Math.max(m, (1 - Math.hypot(x - HGS.x, z - HGS.z) / HGS.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - ALC.x, z - ALC.z) / ALC.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - CBI.x, z - CBI.z) / CBI.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - LRS.x, z - LRS.z) / LRS.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - LSP.x, z - LSP.z) / LSP.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - FCY.x, z - FCY.z) / FCY.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - YFB.x, z - YFB.z) / YFB.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - MCD.x, z - MCD.z) / MCD.r) * 1.7);
-  m = Math.max(m, (1 - Math.hypot(x - RBX.x, z - RBX.z) / RBX.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - DGY.x, z - DGY.z) / DGY.r) * 1.8);
-  m = Math.max(m, (1 - Math.hypot(x - PUR.x, z - PUR.z) / PUR.r) * 2.0);  // 炼狱山
-  m = Math.max(m, (1 - Math.hypot(x - UNJ.x, z - UNJ.z) / UNJ.r) * 2.2);  // 未竟之都(人工岛)
+  m = Math.max(m, isleM9(x, z, IS2.x, IS2.z, IS2.r, 1.7));  // 灯塔屿
+  m = Math.max(m, isleM9(x, z, TRU.x, TRU.z, TRU.r, 1.8));  // 楚门的世界·桃源岛
+  m = Math.max(m, isleM9(x, z, MID.x, MID.z, MID.r, 1.8));  // 中土
+  m = Math.max(m, isleM9(x, z, HOG.x, HOG.z, HOG.r, 1.8));  // 霍格沃茨
+  m = Math.max(m, isleM9(x, z, MOB.x, MOB.z, MOB.r, 1.8));  // 南塔开特捕鲸港
+  m = Math.max(m, isleM9(x, z, SPT.x, SPT.z, SPT.r, 1.8));  // 体育岛
+  m = Math.max(m, isleM9(x, z, SHJ.x, SHJ.z, SHJ.r, 1.8));  // 山海经
+  m = Math.max(m, isleM9(x, z, THY.x, THY.z, THY.r, 1.8));  // 桃花源
+  m = Math.max(m, isleM9(x, z, ANH.x, ANH.z, ANH.r, 1.8));  // 一千零一夜
+  m = Math.max(m, isleM9(x, z, NEM.x, NEM.z, NEM.r, 1.8));  // 鹦鹉螺锚地
+  m = Math.max(m, isleM9(x, z, B612.x, B612.z, B612.r, 2.0)); // B-612
+  m = Math.max(m, isleM9(x, z, JUR.x, JUR.z, JUR.r, 1.8));  // 侏罗纪
+  m = Math.max(m, isleM9(x, z, HGS.x, HGS.z, HGS.r, 1.8));
+  m = Math.max(m, isleM9(x, z, ALC.x, ALC.z, ALC.r, 1.8));
+  m = Math.max(m, isleM9(x, z, CBI.x, CBI.z, CBI.r, 1.8));
+  m = Math.max(m, isleM9(x, z, LRS.x, LRS.z, LRS.r, 1.8));
+  m = Math.max(m, isleM9(x, z, LSP.x, LSP.z, LSP.r, 1.8));
+  m = Math.max(m, isleM9(x, z, FCY.x, FCY.z, FCY.r, 1.8));
+  m = Math.max(m, isleM9(x, z, YFB.x, YFB.z, YFB.r, 1.8));
+  m = Math.max(m, isleM9(x, z, MCD.x, MCD.z, MCD.r, 1.7));
+  m = Math.max(m, isleM9(x, z, RBX.x, RBX.z, RBX.r, 1.8));
+  m = Math.max(m, isleM9(x, z, DGY.x, DGY.z, DGY.r, 1.8));
+  m = Math.max(m, isleM9(x, z, PUR.x, PUR.z, PUR.r, 2.0));  // 炼狱山
+  m = Math.max(m, isleM9(x, z, UNJ.x, UNJ.z, UNJ.r, 2.2));  // 未竟之都(人工岛)
   for (const s of nislesNear(x, z)) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带(空间索引)
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
@@ -278,7 +280,7 @@ function islandMask(x, z) {
     }
   }
   for (const [rx2, rz2] of [[SIR.x, SIR.z], [SIR.x - 42, SIR.z + 30], [SIR.x + 36, SIR.z - 34]])
-    m = Math.max(m, (1 - Math.hypot(x - rx2, z - rz2) / 24) * 1.7);       // 塞壬礁
+    m = Math.max(m, isleM9(x, z, rx2, rz2, 24, 1.7));       // 塞壬礁
   return m;
 }
 /* 鲸的五官(用于地形与配色) */
