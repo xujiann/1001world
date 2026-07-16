@@ -1563,7 +1563,7 @@ function openCard(s) {
     if (PSTORE.getItem('w1001.peng') !== '1') { PSTORE.setItem('w1001.peng', '1'); earnSB(5); }
     closeModals();
     toast('🕊️ 抟扶摇而上者九万里!且看这一千零一个世界……');
-    blip(392); setTimeout(() => blip(523), 120); setTimeout(() => blip(659), 240); setTimeout(() => blip(784), 360);
+    pengCry9(); blip(392); setTimeout(() => blip(523), 120); setTimeout(() => blip(659), 240); setTimeout(() => blip(784), 360);
   });
   cardBody.querySelector('[data-pengsky]')?.addEventListener('click', () => {
     const first9 = PSTORE.getItem('w1001.skycity') !== '1';
@@ -1572,14 +1572,14 @@ function openCard(s) {
       y0: player.position.y, y1: SKY.y, msg: '🏯 大鹏收翼,落在云鹏哨站——欢迎来到勒皮他。' };
     closeModals();
     toast('🏯 大鹏振翅,直上云端!' + (first9 ? '(首访 ⚡+30 · ⭐+1)' : ''));
-    blip(523); setTimeout(() => blip(659), 130); setTimeout(() => blip(880), 260);
+    pengCry9(); blip(523); setTimeout(() => blip(659), 130); setTimeout(() => blip(880), 260);
   });
   cardBody.querySelector('[data-skyback]')?.addEventListener('click', () => {
     flight = { sky: 1, t: 0, dur: 24, from: [player.position.x, player.position.z], to: [PENG_X + 6, PENG_Z + 6],
       y0: player.position.y, y1: Math.max(height(PENG_X + 6, PENG_Z + 6), 0), msg: '🕊️ 大鹏俯冲而下,轻轻把你放回栖石旁。' };
     closeModals();
     toast('🕊️ 纵身一跃——大鹏接住了你,乘风归海!');
-    blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
+    pengCry9(); blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
   });
   cardBody.querySelector('[data-chainx]')?.addEventListener('click', ev => { chainStart9(ev.currentTarget.dataset.chainx); });
   cardBody.querySelector('[data-ubuild]')?.addEventListener('click', () => {   // 🏝️ 建/更新我的岛
@@ -2532,6 +2532,24 @@ function blip(freq) {
   g.gain.setValueAtTime(.12, actx.currentTime);
   g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .18);
   o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + .2);
+}
+function pengCry9() {   // 🕊️ 鹏鸣:一声长唳,先扬后落
+  try { if (!actx) return;
+    const t0 = actx.currentTime;
+    for (const [mul, type, amp] of [[1, 'sawtooth', .09], [1.5, 'triangle', .045], [.5, 'sine', .05]]) {
+      const o9 = actx.createOscillator(), g9 = actx.createGain(), f9 = actx.createBiquadFilter();
+      o9.type = type;
+      o9.frequency.setValueAtTime(430 * mul, t0);
+      o9.frequency.exponentialRampToValueAtTime(760 * mul, t0 + .16);
+      o9.frequency.exponentialRampToValueAtTime(280 * mul, t0 + .95);
+      f9.type = 'lowpass'; f9.frequency.setValueAtTime(2800, t0); f9.frequency.exponentialRampToValueAtTime(700, t0 + 1.0);
+      g9.gain.setValueAtTime(.0001, t0);
+      g9.gain.exponentialRampToValueAtTime(amp, t0 + .05);
+      g9.gain.exponentialRampToValueAtTime(amp * .6, t0 + .4);
+      g9.gain.exponentialRampToValueAtTime(.001, t0 + 1.05);
+      o9.connect(f9).connect(g9).connect(actx.destination); o9.start(t0); o9.stop(t0 + 1.1);
+    }
+  } catch (e) {}
 }
 $('btnMusic').addEventListener('click', () => {
   initAudio(); musicOn = !musicOn;
@@ -6129,7 +6147,7 @@ const boats = [];
 }
 /* —— 逍遥游 · 大鹏(可乘,扶摇直上环游诸岛) —— */
 const PENG_X = 78, PENG_Z = -52;
-let pengBird = null, pengWings = null;
+let pengBird = null, pengWings = null, pengAura9 = null, pengTrail9 = null, pengCryT9 = 0;
 {
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), lam(0x3a2a1e)); body.scale.set(1, .82, 2.3); g.add(body);
@@ -6137,13 +6155,39 @@ let pengBird = null, pengWings = null;
   const head = new THREE.Mesh(new THREE.SphereGeometry(.8, 10, 8), lam(0x4a3626)); head.position.set(0, 1.5, 3.2); g.add(head);
   const beak = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.1, 6), lam(0xe0a02a)); beak.rotation.x = Math.PI / 2 + .3; beak.position.set(0, 1.4, 4.0); g.add(beak);
   const crown = new THREE.Mesh(new THREE.ConeGeometry(.3, .9, 5), lam(0xc0392b)); crown.position.set(0, 2.2, 3.0); g.add(crown);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3.4, 6), lam(0x2e2018)); tail.rotation.x = -Math.PI / 2; tail.position.set(0, .2, -3.2); tail.scale.set(1, .32, 1); g.add(tail);
+  const cQuill9 = lam(0x43301e), cTail9 = lam(0x2e2018), cGold9 = lam(0xd9a24a);
+  for (let i9 = -2; i9 <= 2; i9++) {   // 🪶 尾羽:五片扇开
+    const tf9 = new THREE.Mesh(cong(.5, 4.8 - Math.abs(i9) * .5, 4), i9 % 2 ? cQuill9 : cTail9);
+    tf9.rotation.x = -Math.PI / 2 - .1; tf9.rotation.y = i9 * .17; tf9.position.set(0, .15, -3.4); tf9.scale.set(1, .3, 1); g.add(tf9);
+  }
   pengWings = [];
   for (const s of [-1, 1]) {
     const wing = new THREE.Group();
-    const pane = box(7.5, .3, 3.6, lam(0x43301e)); pane.position.set(s * 4.2, 0, -.2); wing.add(pane);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(1.9, 4.4, 4), lam(0x241a10)); tip.rotation.z = -s * Math.PI / 2; tip.position.set(s * 8.8, 0, -.5); tip.scale.set(1, .35, .9); wing.add(tip);
+    const arm9 = box(11, .32, 3.2, cQuill9); arm9.position.set(s * 5.6, 0, -.2); wing.add(arm9);   // 翼骨主膜
+    for (let f9 = 0; f9 < 6; f9++) {   // 🪶 分层飞羽,由内向外递减、错落张开(其翼若垂天之云)
+      const fe9 = new THREE.Mesh(cong(1.5 - f9 * .12, 5.6 - f9 * .5, 4), f9 === 5 ? cGold9 : (f9 % 2 ? cTail9 : cQuill9));   // 最外缘晨金
+      fe9.rotation.z = -s * (Math.PI / 2 - .12); fe9.rotation.x = .05 * f9;
+      fe9.position.set(s * (3.2 + f9 * 1.95), 0, -1.2 + f9 * .36); fe9.scale.set(1, .34, .92); wing.add(fe9);
+    }
+    const cov9 = box(6.4, .3, 1.5, cTail9); cov9.position.set(s * 3.8, .14, 1.4); wing.add(cov9);   // 前缘覆羽
     wing.position.set(0, .6, 0); g.add(wing); pengWings.push({ w: wing, s });
+  }
+  { // ✨ 仙气光晕(逆光暖金,飞行渐盛)
+    const ac9 = document.createElement('canvas'); ac9.width = ac9.height = 64; const axx9 = ac9.getContext('2d');
+    const ag9 = axx9.createRadialGradient(32, 32, 0, 32, 32, 32); ag9.addColorStop(0, 'rgba(255,228,156,.9)'); ag9.addColorStop(.42, 'rgba(232,182,92,.32)'); ag9.addColorStop(1, 'rgba(232,182,92,0)');
+    axx9.fillStyle = ag9; axx9.fillRect(0, 0, 64, 64);
+    pengAura9 = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ac9), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    pengAura9.scale.set(24, 24, 1); pengAura9.position.set(0, .5, -.4); g.add(pengAura9);
+    // 🌬️ 乘风流光:身后七点风痕(软精灵,飞行渐显)
+    const tc9 = document.createElement('canvas'); tc9.width = tc9.height = 32; const txx9 = tc9.getContext('2d');
+    const tg9 = txx9.createRadialGradient(16, 16, 0, 16, 16, 16); tg9.addColorStop(0, 'rgba(226,238,255,.85)'); tg9.addColorStop(1, 'rgba(210,226,255,0)');
+    txx9.fillStyle = tg9; txx9.fillRect(0, 0, 32, 32); const tTex9 = new THREE.CanvasTexture(tc9);
+    pengTrail9 = new THREE.Group();
+    for (let i9 = 0; i9 < 7; i9++) { const k9 = i9 / 6;
+      const sp9 = new THREE.Sprite(new THREE.SpriteMaterial({ map: tTex9, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      sp9.position.set(0, .3 - k9 * .5, -3 - i9 * 3.2); sp9.scale.setScalar(6 - k9 * 3.4); sp9.userData.base = .5 * (1 - k9); pengTrail9.add(sp9);
+    }
+    g.add(pengTrail9);
   }
   g.position.set(PENG_X, height(PENG_X, PENG_Z) + 2.4, PENG_Z);
   g.rotation.y = 2.2;
@@ -10907,8 +10951,13 @@ function loop() {
     }
   }
   /* 大鹏振翅(骑乘时快扇,栖息时缓扇) */
-  if (pengWings) { const fl = (flight && (flight.orbit || flight.sky)) ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
+  const pengFly9 = flight && (flight.orbit || flight.sky);
+  if (pengWings) { const fl = pengFly9 ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
     for (const { w: wg, s } of pengWings) wg.rotation.z = s * fl; }
+  if (pengAura9) pengAura9.material.opacity += ((pengFly9 ? .78 : 0) - pengAura9.material.opacity) * Math.min(1, dt * 3);   // ✨ 仙气随飞行渐显
+  if (pengTrail9) { pengTrail9.visible = pengFly9 || pengTrail9.children[0].material.opacity > .02;
+    for (const sp9 of pengTrail9.children) sp9.material.opacity += ((pengFly9 ? sp9.userData.base : 0) - sp9.material.opacity) * Math.min(1, dt * 3); }
+  if (pengFly9) { pengCryT9 -= dt; if (pengCryT9 <= 0) { pengCry9(); pengCryT9 = 6 + Math.random() * 3; } } else pengCryT9 = 4;   // 🕊️ 途中长唳
   if (skyFall) {   // 🏯 天空之城:瀑布循环 + 磁石呼吸 + 细节层距离开关
     const pd9 = Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z);
     skyDetail.visible = pd9 < 900; skyFall.visible = pd9 < 1100;
