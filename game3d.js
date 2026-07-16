@@ -518,6 +518,7 @@ const GEAR = [
   { id: 'mask',    icon: '🤿', name: '深潜面罩', en: 'Deep Mask', slot: '面部', price: 35, desc: '再生药膜循环供氧,深渊海沟的入场券。', effect: '气瓶容量翻倍——想摸到迷宫最深处的"星球之脐",没它下不去', brand: null },
   { id: 'bike',    icon: '🚲', name: '折叠自行车', en: 'Folding Bike', slot: '座驾', price: 60, desc: '车架轻得像一句口哨,后座能驮一整天的好心情。', effect: '陆上按 R 骑行/下车,速度约两倍(入水自动下车)', brand: null },
   { id: 'boat',    icon: '⛵', name: '燕鸥号小帆船', en: 'Tern Dinghy', slot: '座驾', price: 160, desc: '一片帆、一支舵、一颗想去任何岛的心。', effect: '岸边或水中按 R 扬帆/收帆,海上三倍速,可驶抵任意海岸(搁浅即上岸)', brand: null },
+  { id: 'car9',    icon: '🏎️', name: '低趴跑车',     en: 'Flat-Six Coupe', slot: '座驾', price: 120, desc: '溜背、圆头灯、宽轮拱——引擎在身后低吼。海边弧形街道为它而生。', effect: '陆上按 R 发动/熄火,陆上最速(Shift 冲刺);引擎低鸣', brand: null },
 ];
 let gear = { owned: [], on: [] };
 try { const g0 = JSON.parse(PSTORE.getItem('w1001.gear') || 'null'); if (g0 && Array.isArray(g0.owned) && Array.isArray(g0.on)) gear = g0; } catch (e) {}
@@ -1653,7 +1654,7 @@ function openCard(s) {
   cardBody.querySelector('[data-ugo]')?.addEventListener('click', () => {   // ⛵ 专船前往
     const d9 = uisleDec9(PSTORE.getItem('w1001.myisle')); if (!d9) return;
     const [ix9, iz9] = cellPos9(d9.cell);
-    vehicle = 0; bikeGrp.visible = boatGrp.visible = false; closeModals();
+    vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false; closeModals();
     flight = { sea: 1, t: 0, dur: 16, from: [player.position.x, player.position.z], wp: [(player.position.x + ix9) / 2 * 1.15, (player.position.z + iz9) / 2 * 1.15], to: [ix9, iz9 + 20], msg: '🏝️ 到了——这是你的岛。' };
     toast('⛵ 专船起航,前往你的岛');
   });
@@ -2532,6 +2533,23 @@ function blip(freq) {
   g.gain.setValueAtTime(.12, actx.currentTime);
   g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .18);
   o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + .2);
+}
+let engHum9 = null;
+function engineHum9(on, rev) {   // 🏎️ 引擎低鸣:持续音,rev(0-1)= 油门 → 推高音高与音量
+  try { if (!actx) return;
+    if (!engHum9) {
+      const o9 = actx.createOscillator(), o29 = actx.createOscillator(), gg9 = actx.createGain(), ff9 = actx.createBiquadFilter();
+      o9.type = 'sawtooth'; o29.type = 'square'; o29.detune.value = -14;
+      ff9.type = 'lowpass'; ff9.frequency.value = 600; gg9.gain.value = 0;
+      o9.connect(ff9); o29.connect(ff9); ff9.connect(gg9).connect(actx.destination); o9.start(); o29.start();
+      engHum9 = { o: o9, o2: o29, g: gg9, f: ff9 };
+    }
+    const e9 = engHum9, base9 = 46 + rev * 70, now9 = actx.currentTime;
+    e9.o.frequency.setTargetAtTime(base9, now9, .08);
+    e9.o2.frequency.setTargetAtTime(base9 * 1.5, now9, .08);
+    e9.f.frequency.setTargetAtTime(480 + rev * 950, now9, .1);
+    e9.g.gain.setTargetAtTime(on ? (.045 + rev * .06) : 0, now9, .12);
+  } catch (err) {}
 }
 function pengCry9() {   // 🕊️ 鹏鸣:一声长唳,先扬后落
   try { if (!actx) return;
@@ -6463,7 +6481,7 @@ function openAirCounter(fromKey) {
   cardBody.querySelectorAll('[data-fly]').forEach(b2 => b2.addEventListener('click', () => {
     const dest = AIRPORTS.find(a => a[0] === b2.dataset.fly); if (!dest) return;
     if (!spendSB(+b2.dataset.price)) return;
-    vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+    vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false;
     closeModals(); blip(660);
     toast('🛫 登机、滑跑、离地——舷窗外,群岛缩成了一张海图');
     const tx9 = dest[2] + 2.5, tz9 = dest[3] + 2;
@@ -6936,7 +6954,7 @@ function fireSonar() {
 function enterDive(pi) {
   if (diving) return;
   diving = true; diveEntry = pi; diveAir = gearOn('mask') ? 200 : 100; modalOpen = false;
-  vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+  vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false;
   const n = MAZE_NODES[MAZE_PORTALS[pi].n];
   player.position.set(n[0], n[1], n[2]); vy = 0;
   diveGroup.visible = true; diveLight.visible = true;
@@ -6966,7 +6984,7 @@ function surfaceDive(pi) {
 function enterFreeDive9() {
   if (diving) return;
   diving = true; freeDive9 = true; diveAir = gearOn('mask') ? 200 : 100;
-  vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+  vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false;
   player.position.y = -2.6; vy = 0;
   diveLight.visible = true;
   if (causticLight) causticLight.visible = true;
@@ -7381,7 +7399,7 @@ function ferryGo(k) {
       : k === 'pur' ? '⛰️ 炼狱山到了。七层螺旋通向山巅——每登一层,拂去一宗罪'
       : k === 'unj' ? '🏛️ 未竟之都到了。广播还在循环:"欢迎来到人类共同的首都。"——港口空无一人'
       : (NI_MSG[k] || '🐋 回到收藏之岛(主世界)'));
-    vehicle = 0; bikeGrp.visible = boatGrp.visible = false;
+    vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false;
     const dist9 = Math.hypot(dest[0] - player.position.x, dest[1] - player.position.z);
     const mx9 = (player.position.x + dest[0]) / 2, mz9 = (player.position.z + dest[1]) / 2;
     const mr9 = Math.hypot(mx9, mz9) || 1, push9 = Math.max(0, 720 - mr9);   // 航线中点外推出群岛核心,少穿岛
@@ -9451,17 +9469,43 @@ const boatGrp = new THREE.Group(); boatGrp.name = 'boat'; boatGrp.visible = fals
   const boom = cyl(.04, .04, 1.4, woodD, 5); boom.rotation.x = Math.PI / 2; boom.position.set(0, 1.15, -.05); boatGrp.add(boom);
 }
 player.add(boatGrp);
+const carGrp9 = new THREE.Group(); carGrp9.name = 'car'; carGrp9.visible = false;
+{
+  const bodyC9 = lam(0xb02a2a), bodyD9 = lam(0x8f2020), dkC9 = lam(0x1a1c20), chrC9 = lam(0xd8dce0), ambC9 = lam(0xf2d060);
+  const chassis9 = box(2.0, .5, 4.3, bodyC9); chassis9.position.set(0, .52, 0); carGrp9.add(chassis9);
+  const sill9 = box(2.14, .26, 3.4, bodyD9); sill9.position.set(0, .36, 0); carGrp9.add(sill9);                 // 侧裙
+  const hood9 = box(1.7, .32, 1.5, bodyC9); hood9.position.set(0, .74, 1.42); hood9.rotation.x = -.08; carGrp9.add(hood9);   // 前舱盖微倾
+  const rear9 = box(1.9, .6, 1.5, bodyC9); rear9.position.set(0, .84, -1.5); carGrp9.add(rear9);                // 后置引擎舱(911 尾略高)
+  const deck9 = box(1.72, .12, 1.0, bodyD9); deck9.position.set(0, 1.16, -1.6); carGrp9.add(deck9);             // 鸭尾
+  const fast9 = box(1.5, .1, 1.8, lam(0x24333c)); fast9.position.set(0, 1.14, -.55); fast9.rotation.x = .6; carGrp9.add(fast9);   // 🐸 溜背(911 招牌 fastback)
+  for (const sx9 of [-1, 1]) { const door9 = box(.16, .5, 2.0, bodyD9); door9.position.set(sx9 * .94, .8, .1); carGrp9.add(door9); }   // 座舱侧围(中间留给玩家)
+  const wsg9 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, .72), new THREE.MeshLambertMaterial({ color: 0x2a3a44, side: THREE.DoubleSide, transparent: true, opacity: .8 }));
+  wsg9.position.set(0, 1.18, .64); wsg9.rotation.x = -.7; carGrp9.add(wsg9);                                    // 前倾挡风
+  for (const sx9 of [-.68, .68]) {                                                                              // 💡 圆头灯(911 招牌)
+    const hl9 = cyl(.24, .24, .12, chrC9, 12); hl9.rotation.x = Math.PI / 2; hl9.position.set(sx9, .76, 2.2); carGrp9.add(hl9);
+    const ln9 = cyl(.16, .16, .06, ambC9, 12); ln9.rotation.x = Math.PI / 2; ln9.position.set(sx9, .76, 2.27); carGrp9.add(ln9);
+  }
+  const tl9 = box(1.7, .16, .08, lam(0xe03028)); tl9.position.set(0, .86, -2.24); carGrp9.add(tl9);             // 尾灯横条
+  for (const sx9 of [-1.04, 1.04]) for (const sz9 of [1.42, -1.42]) {                                           // 4 宽轮 + 镀铬轮毂
+    const ty9 = new THREE.Mesh(new THREE.CylinderGeometry(.44, .44, .34, 16), dkC9); ty9.rotation.z = Math.PI / 2; ty9.position.set(sx9, .42, sz9); carGrp9.add(ty9);
+    const hb9 = cyl(.2, .2, .36, chrC9, 8); hb9.rotation.z = Math.PI / 2; hb9.position.set(sx9, .42, sz9); carGrp9.add(hb9);
+  }
+}
+player.add(carGrp9);
 function toggleVehicle() {
   if (diving || flight) { toast('现在不是换座驾的时候'); return; }
-  if (vehicle) {
-    toast(vehicle === 1 ? '🚲 下车,改用十一路' : '⛵ 收帆'); blip(500);
-    vehicle = 0; bikeGrp.visible = boatGrp.visible = false; return;
-  }
+  if (vehicle === 2) { toast('⛵ 收帆'); blip(500); vehicle = 0; boatGrp.visible = false; return; }
   const h = height(player.position.x, player.position.z);
+  if (vehicle === 1) {   // 骑车中:有跑车则换跑车,否则下车
+    if (gear.owned.includes('car9')) { vehicle = 3; bikeGrp.visible = false; carGrp9.visible = true; toast('🏎️ 换上跑车——引擎轰鸣,陆上最速(再按 R 熄火)'); blip(680); return; }
+    toast('🚲 下车,改用十一路'); blip(500); vehicle = 0; bikeGrp.visible = false; return;
+  }
+  if (vehicle === 3) { toast('🏎️ 熄火下车'); blip(500); vehicle = 0; carGrp9.visible = false; return; }
   if ((swimming || h < 1.2) && gear.owned.includes('boat')) { vehicle = 2; boatGrp.visible = true; toast('⛵ 燕鸥号扬帆!任何一座岛的岸,都是码头(海上按 F 撒网捕捞)'); blip(680); return; }
-  if (!swimming && h >= .5 && gear.owned.includes('bike')) { vehicle = 1; bikeGrp.visible = true; toast('🚲 骑上自行车(再按 R 下车,Shift 冲刺)'); blip(680); return; }
-  if (!gear.owned.includes('bike') && !gear.owned.includes('boat')) toast('🛒 座驾在千岛装备行有售:🚲 折叠自行车 60 ⚡ / ⛵ 燕鸥号帆船 160 ⚡');
-  else toast(swimming || h < 1.2 ? '这里下水——帆船需在装备行购得' : '这里是陆地——自行车需在装备行购得');
+  if (!swimming && h >= .5 && gear.owned.includes('bike')) { vehicle = 1; bikeGrp.visible = true; toast('🚲 骑上自行车(再按 R ' + (gear.owned.includes('car9') ? '换跑车' : '下车') + ',Shift 冲刺)'); blip(680); return; }
+  if (!swimming && h >= .5 && gear.owned.includes('car9')) { vehicle = 3; carGrp9.visible = true; toast('🏎️ 发动跑车(再按 R 熄火,Shift 冲刺)'); blip(680); return; }
+  if (!gear.owned.includes('bike') && !gear.owned.includes('boat') && !gear.owned.includes('car9')) toast('🛒 座驾在千岛装备行有售:🚲 自行车 60⚡ / 🏎️ 跑车 120⚡ / ⛵ 帆船 160⚡');
+  else toast(swimming || h < 1.2 ? '这里下水——帆船需在装备行购得' : '这里是陆地——自行车/跑车需在装备行购得');
 }
 let joy = { on: false, vx: 0, vy: 0 }, photoMode = false;
 /* 键盘/触屏共用的功能开关(P 照片 · F 滤镜 · K 观星 · V 蓝图幻影) */
@@ -10335,6 +10379,7 @@ function loop() {
       const rx = -fz, rz = fx;
       const sp = (vehicle === 2 ? (keys.shift ? 40 : 33) * (trawlOn9 ? .5 : 1)
         : swimming ? (gearOn('swim') ? 7.5 : (chowderT > 0 ? 5.5 : 3.2))
+        : vehicle === 3 ? (keys.shift ? 60 : 40) * (BUFF.ride > 0 ? 1.15 : 1)
         : vehicle === 1 ? (keys.shift ? 35 : 29) * (BUFF.ride > 0 ? 1.15 : 1)
         : (keys.shift ? (gearOn('boots') ? 26 : 22) : 14) * (BUFF.run > 0 ? 1.12 : 1)) * dt;
       let dx = (fx * -mz + rx * mx) * sp, dz = (fz * -mz + rz * mx) * sp;
@@ -10958,6 +11003,7 @@ function loop() {
   if (pengTrail9) { pengTrail9.visible = pengFly9 || pengTrail9.children[0].material.opacity > .02;
     for (const sp9 of pengTrail9.children) sp9.material.opacity += ((pengFly9 ? sp9.userData.base : 0) - sp9.material.opacity) * Math.min(1, dt * 3); }
   if (pengFly9) { pengCryT9 -= dt; if (pengCryT9 <= 0) { pengCry9(); pengCryT9 = 6 + Math.random() * 3; } } else pengCryT9 = 4;   // 🕊️ 途中长唳
+  if (vehicle === 3) engineHum9(true, pMoving ? (keys.shift ? 1 : .55) : .12); else if (engHum9) engineHum9(false, 0);   // 🏎️ 引擎低鸣
   if (skyFall) {   // 🏯 天空之城:瀑布循环 + 磁石呼吸 + 细节层距离开关
     const pd9 = Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z);
     skyDetail.visible = pd9 < 900; skyFall.visible = pd9 < 1100;
