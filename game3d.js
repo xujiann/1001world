@@ -6565,7 +6565,7 @@ await buildStep9("天空之城", 68);
 /* 迷宫拓扑/分区/门/发现点/出入口 → w-maze.js(纯数据模块,顶部 import) */
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
 let freeDive9 = false, prevSwim9 = false, swimHint9 = 0;   // 🤿 开放水域自由潜水
-let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0;
+let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0, diveZoneLast9 = -1, mazeNear9 = 0;
 let causticLight = null, causticTex = null;
 let abyssLight = null, MAZE_FLOW = null, MAZE_DIST = null, RAPIDS = new Set(), flowPts = null, nearEdge = 0;
 /* 👣 沙滩脚印 / ⛵ 船尾迹 / 🫧 潜水气泡(小对象池) */
@@ -6867,7 +6867,7 @@ const portalBeacons = [];
 {   // 潜水 HUD:气瓶条 + 提示
   const d = document.createElement('div'); d.id = 'diveHud'; d.className = 'hidden';
   Object.assign(d.style, { position: 'fixed', left: '50%', bottom: '96px', transform: 'translateX(-50%)', zIndex: '7', textAlign: 'center', pointerEvents: 'none', font: '13px system-ui,sans-serif', color: '#cfeeff', textShadow: '0 1px 3px #000' });
-  d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveHint" style="margin-top:5px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
+  d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveNav" style="margin-top:4px;font-size:12px;color:#7fc4e8;opacity:.32;letter-spacing:.4px;min-height:15px"></div><div id="diveHint" style="margin-top:3px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
   document.body.appendChild(d);
   /* 移动端潜水:上浮/下潜按钮(触屏时随潜水显隐,驱动 joy.up/joy.down) */
   [['btnDiveUp', '⬆️', 258, 'up'], ['btnDiveDown', '⬇️', 178, 'down']].forEach(([id, sym, bottom, key]) => {
@@ -6968,7 +6968,7 @@ function enterDive(pi) {
 }
 function surfaceDive(pi) {
   const p = MAZE_PORTALS[pi], [sx, sz] = p.surf;
-  diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false;
+  diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false; diveZoneLast9 = -1;
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden');
@@ -6979,6 +6979,46 @@ function surfaceDive(pi) {
     if (PSTORE.getItem('w1001.caved') !== '1') { PSTORE.setItem('w1001.caved', '1'); earnSB(25); toast('🤿 首次穿越海底隧道 · ⚡+25 · 新称号「洞穴潜水员」'); }
   } else toast('🌊 你原路浮回了洞口。');
   blip(560);
+}
+/* 🗺️ 迷宫全图:巴别海窟所藏——找到它才读得到整张图(潜水时 M / 移动🗺️钮) */
+function openMazeMap9() {
+  if (!diving) return;
+  if (PSTORE.getItem('w1001.babel') !== '1') { toast('🗺️ 迷宫全图还锁在满月门后的巴别海窟里——你尚未读到它'); blip(300); return; }
+  const W9 = 720, H9 = 660, PAD = 46;
+  let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9;
+  for (const n of MAZE_NODES) { mnx = Math.min(mnx, n[0]); mxx = Math.max(mxx, n[0]); mnz = Math.min(mnz, n[2]); mxz = Math.max(mxz, n[2]); }
+  const sc = Math.min((W9 - 2 * PAD) / (mxx - mnx), (H9 - 2 * PAD) / (mxz - mnz));
+  const PX = x => PAD + (x - mnx) * sc, PY = z => PAD + (z - mnz) * sc;
+  const hx = c => '#' + (c >>> 0).toString(16).padStart(6, '0');
+  closeModals();
+  cardBody.innerHTML = '<div class="cardHead" style="background:#0a2436">🗺️ 迷宫全图 · 巴别海窟所藏</div>'
+    + '<div style="padding:10px;text-align:center"><canvas id="mazeMapCv" width="' + W9 + '" height="' + H9 + '" style="max-width:88vw;max-height:70vh;border-radius:10px;background:#08131c"></canvas>'
+    + '<div style="font-size:11.5px;color:#8ea6b8;padding:8px 14px 2px;line-height:1.7">● 你的位置 · ◎ 蓝洞出口(近处标岛名)· ▦ 潮汐/满月门 · 图标=已寻得的地标 · 节点越深越暗</div></div>';
+  modal.classList.remove('hidden'); modalOpen = true;
+  const cv = document.getElementById('mazeMapCv'), c = cv.getContext('2d');
+  c.fillStyle = '#08131c'; c.fillRect(0, 0, W9, H9);
+  c.lineWidth = 1.8; c.strokeStyle = 'rgba(120,180,210,.20)';   // 隧道
+  for (const [a, b] of MAZE_EDGES) { c.beginPath(); c.moveTo(PX(MAZE_NODES[a][0]), PY(MAZE_NODES[a][2])); c.lineTo(PX(MAZE_NODES[b][0]), PY(MAZE_NODES[b][2])); c.stroke(); }
+  const depth9 = i => Math.min(1, Math.max(0, (MAZE_NODES[i][1] + 70) / -98));   // 0浅~1深
+  for (let i = 0; i < MAZE_NODES.length; i++) { const n = MAZE_NODES[i];   // 节点(区色 + 深度变暗)
+    c.globalAlpha = .55 - depth9(i) * .32; c.fillStyle = hx(ZONES[NODE_ZONE[i]].col);
+    c.beginPath(); c.arc(PX(n[0]), PY(n[2]), 3.6, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+  for (const gt of GATES) { const A = MAZE_NODES[gt.a], B = MAZE_NODES[gt.b];   // 门
+    c.fillStyle = gt.kind === 'moon' ? '#9fb0f0' : '#3ad0a8'; c.font = '13px system-ui'; c.textAlign = 'center';
+    c.fillText('▦', PX((A[0] + B[0]) / 2), PY((A[2] + B[2]) / 2) + 5); }
+  const near9 = MAZE_PORTALS.map((p, i) => [i, (player.position.x - MAZE_NODES[p.n][0]) ** 2 + (player.position.z - MAZE_NODES[p.n][2]) ** 2]).sort((a, b) => a[1] - b[1]);
+  const labelSet = new Set(near9.slice(0, 9).map(x => x[0]));
+  MAZE_PORTALS.forEach((p, i) => { const n = MAZE_NODES[p.n], x = PX(n[0]), y = PY(n[2]);   // 出口浮标
+    c.strokeStyle = hx(p.col); c.lineWidth = 2; c.beginPath(); c.arc(x, y, 5, 0, 7); c.stroke();
+    if (labelSet.has(i)) { c.fillStyle = 'rgba(206,224,232,.7)'; c.font = '10px system-ui'; c.textAlign = 'center'; c.fillText(p.isle, x, y - 8); } });
+  const icons9 = { d_mural: '🖼️', wreck: '⚓', wreck2: '⚓', pearl9: '🦪', d_heart: '🫀', babel: '📖', abyss: '🕳️' };   // 地标
+  for (const ni in DISC) { const d = DISC[ni], n = MAZE_NODES[+ni], got = PSTORE.getItem('w1001.' + d.flag) === '1';
+    c.font = got ? '15px system-ui' : '12px system-ui'; c.fillStyle = got ? '#fff' : 'rgba(150,168,178,.45)'; c.textAlign = 'center';
+    c.fillText(got ? (icons9[d.flag] || '✦') : '·', PX(n[0]), PY(n[2]) + 6); }
+  const yx = PX(player.position.x), yz = PY(player.position.z);   // 你在这里
+  c.fillStyle = '#ffd76a'; c.beginPath(); c.arc(yx, yz, 6, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(255,215,106,.5)'; c.lineWidth = 2.4; c.beginPath(); c.arc(yx, yz, 12, 0, 7); c.stroke();
 }
 /* 🤿 开放水域自由潜水:游泳时 C 键下潜,自由探索海底(不入隧道迷宫) */
 function enterFreeDive9() {
@@ -9556,7 +9596,7 @@ addEventListener('keydown', e => {
     toast(restState9 === 1 ? '🪑 坐下了——转身面朝大海,听听潮声(动一下即起身)' : restState9 === 2 ? '🛌 躺平了——看云走、看鸟飞、看飞机划过(动一下即起身)' : '🧍 起身');
     return;
   }
-  if (k === 'm') { mapKey(false); return; }
+  if (k === 'm') { if (diving) { openMazeMap9(); return; } mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
   if (k === 'v') { tryPhantom(); return; }   // 蓝图幻影(未竟之都)
@@ -9663,6 +9703,7 @@ function syncMobMenu() {
   mobBtns.phantom.style.display = Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) < 175 ? '' : 'none';
   if (mobBtns.home) mobBtns.home.style.display = PSTORE.getItem('w1001.home') === '1' ? '' : 'none';
   mobBtns.sonar.style.display = diving ? '' : 'none';
+  if (mobBtns.map) mobBtns.map.style.display = (diving && PSTORE.getItem('w1001.babel') === '1') ? '' : 'none';
   if (mobBtns.stroke) mobBtns.stroke.style.display = (swimming && !diving) ? '' : 'none';
   if (mobBtns.trawl) mobBtns.trawl.style.display = (vehicle === 2 && !diving) ? '' : 'none';
 }
@@ -9687,13 +9728,16 @@ if (isTouch) {
   const bSonar = mk('📡', '声呐探路');
   Object.assign(bSonar.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bSonar);
+  const bMazeMap = mk('🗺️', '迷宫图');
+  Object.assign(bMazeMap.style, { position: 'fixed', right: '100px', bottom: '338px', zIndex: '30', display: 'none' });
+  document.body.appendChild(bMazeMap); bMazeMap.addEventListener('click', () => openMazeMap9());
   const bStroke = mk('🏊', '换泳姿');   // 🏊 游泳时循环四种泳姿(对应桌面 Z)
   Object.assign(bStroke.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bStroke);
   const bTrawl = mk('🕸️', '撒网');   // 🕸️ 帆船撒/收拖网(对应桌面 F)
   Object.assign(bTrawl.style, { position: 'fixed', right: '100px', bottom: '258px', zIndex: '30', display: 'none' });
   document.body.appendChild(bTrawl);
-  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome, stroke: bStroke, trawl: bTrawl };
+  mobBtns = { wrap, pane, filter: bFilm, phantom: bPh, sonar: bSonar, home: bHome, stroke: bStroke, trawl: bTrawl, map: bMazeMap };
   bSonar.addEventListener('click', () => fireSonar());
   bStroke.addEventListener('click', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'z' })));
   bTrawl.addEventListener('click', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'f' })));
@@ -10357,11 +10401,27 @@ function loop() {
     if (sonarT > 0) { sonarT -= dt; sonarRing.scale.setScalar(1 + (1.4 - sonarT) * 30); sonarRing.material.opacity = Math.max(0, sonarT / 1.4) * .5; if (sonarT <= 0) sonarRing.visible = false; }
     if (sonarCD > 0) sonarCD -= dt;
     // 所在主题区(最近节点)→ 雾色渐变 + HUD 区名
-    { let zd = 1e9; for (let i = 0; i < MAZE_NODES.length; i++) { const n = MAZE_NODES[i], d = (player.position.x - n[0]) ** 2 + (player.position.y - n[1]) ** 2 + (player.position.z - n[2]) ** 2; if (d < zd) { zd = d; diveZone = NODE_ZONE[i]; } } }
+    { let zd = 1e9; for (let i = 0; i < MAZE_NODES.length; i++) { const n = MAZE_NODES[i], d = (player.position.x - n[0]) ** 2 + (player.position.y - n[1]) ** 2 + (player.position.z - n[2]) ** 2; if (d < zd) { zd = d; diveZone = NODE_ZONE[i]; mazeNear9 = i; } } }
+    if (diveZone !== diveZoneLast9) { if (diveZoneLast9 !== -1) { toast('🌊 进入 ' + ZONES[diveZone].name); blip(600); } diveZoneLast9 = diveZone; }   // 🌊 区界过场
     scene.fog.color.lerp(_zfog.setHex(ZONES[diveZone].fog), Math.min(1, dt * .5));
     // 出口检测
     nearPortal = -1;
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
+    { const nv9 = $('diveNav');   // 🧭 常亮方位微光 + 深度感(越缺氧越亮;复用声呐八向公式)
+      if (nv9) {
+        let bx9 = 0, bz9 = 0, bd9 = 1e9, bi9 = -1;
+        for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const nn = MAZE_NODES[MAZE_PORTALS[i].n]; const dd = (player.position.x - nn[0]) ** 2 + (player.position.z - nn[2]) ** 2; if (dd < bd9) { bd9 = dd; bx9 = nn[0]; bz9 = nn[2]; bi9 = i; } }
+        if (nearPortal >= 0 || bi9 < 0) nv9.textContent = '';
+        else {
+          const ang9 = Math.atan2(bx9 - player.position.x, bz9 - player.position.z) * 180 / Math.PI;
+          const dir9 = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'][((Math.round(ang9 / 45) + 8) % 8)];
+          const hop9 = (MAZE_FLOW && MAZE_DIST && MAZE_DIST[mazeNear9] != null) ? MAZE_DIST[mazeNear9] : '?';
+          nv9.textContent = '🧭 最近出口 · ' + MAZE_PORTALS[bi9].isle + ' 在' + dir9 + '方 · 距 ' + hop9 + ' 段隧道';
+          const af9 = diveAir / (gearOn('mask') ? 200 : 100);
+          nv9.style.opacity = String(Math.min(.85, .28 + (1 - af9) * .95));
+        }
+      }
+    }
     const dh = $('diveHint');
     if (dh) dh.textContent = nearPortal >= 0
       ? (isTouch ? `⬆️ 点 👀 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面`)
