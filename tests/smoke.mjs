@@ -46,6 +46,7 @@ await page.route('**://*.supabase.co/**', r => r.abort());
 const expectVer = (fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/game3d\.js\?v=(\d+)/) || [])[1];
 
 let W = null;
+let robotLoaded = false;
 try {
   await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded', timeout: 90000 });
   // 世界构建是同步的重活,给足时间(线上 ~11s,CI 机器更慢);但页面一抛异常就立刻失败
@@ -56,12 +57,19 @@ try {
       setTimeout(() => clearInterval(iv), 92000).unref?.();
     }),
   ]);
+  // 玩家 glTF 模型是异步从 CDN 拉的:必须等它落位再数网格,否则网格数会随网络竞态漂移(曾误报 8089 vs 8108)
+  try {
+    await page.waitForFunction(() => window.__w3d.usingGLTF && window.__w3d.usingGLTF(), null, { timeout: 25000 });
+    robotLoaded = true;
+  } catch { robotLoaded = false; }   // CDN 挂了会降级为程序化模型 —— 单独报,不算致命
+
   W = await page.evaluate(() => {
     const w = window.__w3d;
     let meshes = 0, instanced = 0;
     w.scene.traverse(o => { if (o.isMesh) meshes++; if (o.isInstancedMesh) instanced++; });
     return {
       ver: window.__ver9,
+      robotActs: w.playerActs ? w.playerActs().length : 0,
       meshes, instanced,
       spots: (w.spots || []).length,
       npcs: (w.allNpcs || []).length,
@@ -85,7 +93,8 @@ if (W) {
   check(String(W.ver) === String(expectVer), `版本号自洽 (index.html=${expectVer})`, `游戏内=${W.ver}`);
   check(W.hasPlayer, '玩家已创建');
   check(W.hasHeight, '地形函数在位');
-  check(W.meshes > 7000, '场景网格充足', W.meshes);
+  check(robotLoaded && W.robotActs === 14, '玩家 glTF 模型已落位', robotLoaded ? W.robotActs + ' 个动画' : 'CDN 未响应,降级为程序化模型');
+  check(W.meshes > 8000, '场景网格充足', W.meshes);
   check(W.instanced > 0, '实例化景物在位', W.instanced);
   check(W.spots > 200, '互动点充足', W.spots);
   check(W.npcs > 150, 'NPC 充足', W.npcs);

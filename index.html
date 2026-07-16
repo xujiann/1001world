@@ -70,6 +70,9 @@
 #btnWheel9{position:fixed;right:14px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:60;width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(16,24,36,.72);font-size:22px;color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #wheel9{position:fixed;right:14px;bottom:calc(210px + env(safe-area-inset-bottom));z-index:60;display:flex;flex-direction:column;gap:9px}
 #wheel9 button{width:50px;height:50px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(16,24,36,.72);font-size:21px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  /* ⏳ 建造进度:构建期让步后可见的真实进度(建好即移除) */
+  #buildProg { position: relative; margin: 10px auto 0; max-width: 300px; font-size: 12px; color: #a4ad91; letter-spacing: .5px; padding-bottom: 7px; }
+  #buildProg::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: var(--p, 2%); background: linear-gradient(90deg, #d9a62e, #ffd76a); border-radius: 2px; transition: width .25s ease-out; }
 </style>
 </head>
 <body>
@@ -204,6 +207,7 @@
 
     <div style="font-size:10px;color:#7a8570;margin:8px 0 2px">十六处真实街区与水岸(端岛/威尼斯/恶魔岛/圣托里尼/圣赫勒拿/赫马岛/加拉帕戈斯/萨摩亚/斯特龙博利/科莫多村/Seaside/南塔开特/大观园/老特拉福德/青丘/雾港)及金门大桥、威尼斯运河与桥梁、多岛海岸线与街道图层 © OpenStreetMap contributors(ODbL)</div>
     <button id="btnStart">⛵ 登上海岛</button>
+    <div id="buildProg">⏳ 正在建造世界…</div>
   </div>
 </div>
 
@@ -226,7 +230,7 @@
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
 } }
 </script>
-<script type="module" src="game3d.js?v=254"></script>
+<script type="module" src="game3d.js?v=256"></script>
 <!-- hub-nav: back to 1001×1001 -->
 <a id="hub-link" href="https://xujiann.github.io/" title="返回 1001 × 1001 · 万物收藏" aria-label="返回 1001×1001 万物收藏">1001 × 1001</a>
 <style>#hub-link{position:fixed;left:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:120;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:100px;background:rgba(18,15,28,.85);border:1px solid rgba(255,255,255,.14);color:#e8e8f0;font:600 12.5px/1 system-ui,-apple-system,"Segoe UI","Noto Sans SC",sans-serif;text-decoration:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.35);transition:transform .2s,border-color .2s,background .2s}#hub-link::before{content:"\2756";color:#d9b26a;font-size:13px}#hub-link:hover{transform:translateY(-2px);border-color:rgba(217,178,106,.6);background:rgba(28,22,42,.95)}@media(max-width:640px){#hub-link{font-size:11.5px;padding:6px 11px;left:10px}}</style>
