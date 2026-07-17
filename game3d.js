@@ -114,6 +114,7 @@ SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   /
 SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
 SAVE_FIELDS.push('mt', 'mtn');   // 💎 每日迷宫沉宝
 SAVE_FIELDS.push('tidevault');   // 🔱 潮汐密室(一次性)
+SAVE_FIELDS.push('divedex', 'divedexall');   // 🐚 深海摄影图鉴
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -2042,6 +2043,7 @@ function titleList() {
     { id: 'trawler', name: '🕸️ 远洋渔夫', got: PSTORE.getItem('w1001.trawler') === '1', note: '一网拖起四尾以上' },
     { id: 'seasonfish', name: '🎏 四季渔人', got: PSTORE.getItem('w1001.seasonfish4') === '1', note: '春夏秋冬的当季限定鱼都钓过' },
     { id: 'quizace', name: '🎓 藏品鉴赏家', got: PSTORE.getItem('w1001.quizace') === '1', note: '鉴赏挑战答出满分' },
+    { id: 'seaphoto', name: '📷 深海摄影家', got: PSTORE.getItem('w1001.divedexall') === '1', note: '拍全海底迷宫十景' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -6995,8 +6997,10 @@ function openMazeMap9() {
   closeModals();
   cardBody.innerHTML = '<div class="cardHead" style="background:#0a2436">🗺️ 迷宫全图 · 巴别海窟所藏</div>'
     + '<div style="padding:10px;text-align:center"><canvas id="mazeMapCv" width="' + W9 + '" height="' + H9 + '" style="max-width:88vw;max-height:70vh;border-radius:10px;background:#08131c"></canvas>'
-    + '<div style="font-size:11.5px;color:#8ea6b8;padding:8px 14px 2px;line-height:1.7">● 你的位置 · ◎ 蓝洞出口(近处标岛名)· ▦ 潮汐/满月门 · 图标=已寻得的地标 · 节点越深越暗</div></div>';
+    + '<div style="font-size:11.5px;color:#8ea6b8;padding:8px 14px 2px;line-height:1.7">● 你的位置 · ◎ 蓝洞出口(近处标岛名)· ▦ 潮汐/满月门 · 图标=已寻得的地标 · 节点越深越暗</div>'
+    + '<div style="text-align:center;padding:0 0 12px"><button id="mazeDexBtn9" class="again">🐚 深海图鉴 ' + dexGot9.size + '/' + DIVE_SUBJECTS9.length + '</button></div></div>';
   modal.classList.remove('hidden'); modalOpen = true;
+  document.getElementById('mazeDexBtn9')?.addEventListener('click', openDiveDex9);
   const cv = document.getElementById('mazeMapCv'), c = cv.getContext('2d');
   c.fillStyle = '#08131c'; c.fillRect(0, 0, W9, H9);
   c.lineWidth = 1.8; c.strokeStyle = 'rgba(120,180,210,.20)';   // 隧道
@@ -8266,6 +8270,33 @@ function grabTideVault9() {
   earnSB(40); stars++; saveQuest(); updateQuestHUD(); fireworks();
   toast('🔱 潮汐密室!门后悬着一具古文明的「稳潮仪」——原来两千年的潮汐,是有人在替这颗星球数着拍子。⚡+40 · ⭐+1');
   blip(680); setTimeout(() => blip(900), 130); setTimeout(() => blip(1100), 260);
+}
+/* 🐚 深海摄影图鉴:海底迷宫十景,潜水时拍下即收录 */
+const DIVE_SUBJECTS9 = [
+  { id: 'whale', icon: '🐋', name: '掠影巨鲸', pos: [(MAZE_NODES[0][0] + MAZE_NODES[1][0]) / 2, (MAZE_NODES[0][1] + MAZE_NODES[1][1]) / 2, (MAZE_NODES[0][2] + MAZE_NODES[1][2]) / 2], hint: '玻璃观景廊外,巨鲸周期掠过' },
+  { id: 'heart', icon: '🫀', name: '潮汐之心', pos: MAZE_NODES[9], hint: '迷宫正中,搏动的巨核' },
+  { id: 'coral', icon: '🪸', name: '珊瑚回廊', pos: MAZE_NODES[3], hint: '珊瑚回廊分区的彩珊瑚' },
+  { id: 'jelly', icon: '🪼', name: '荧光水母', pos: MAZE_NODES[0], hint: '珊瑚回廊里漂浮的水母' },
+  { id: 'wreck', icon: '⚓', name: '沉船残骸', pos: MAZE_NODES[13], hint: '沉船墓地的残骸与铁箱' },
+  { id: 'mural', icon: '🖼️', name: '鲸与灯塔壁画', pos: MAZE_NODES[11], hint: '某条死路尽头的壁画' },
+  { id: 'babel', icon: '📖', name: '巴别书房', pos: MAZE_NODES[14], hint: '满月门后的六边形密室' },
+  { id: 'navel', icon: '🕳️', name: '星球之脐', pos: MAZE_NODES[43], hint: '潮汐之心正下方的竖井尽头' },
+  { id: 'air', icon: '🫧', name: '气室水镜', pos: MAZE_NODES[12], hint: '开阔洞室顶部的明亮水镜' },
+  { id: 'gate', icon: '🚪', name: '潮汐闸门', pos: (() => { const gg = GATES.find(x => x.kind === 'tide'); const A = MAZE_NODES[gg.a], B = MAZE_NODES[gg.b]; return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2]; })(), hint: '铜绿闸栅,随潮汐升降' },
+];
+const dexGot9 = new Set((() => { try { return (PSTORE.getItem('w1001.divedex') || '').split(',').filter(Boolean); } catch (e) { return []; } })());
+function openDiveDex9() {
+  closeModals();
+  const grid9 = DIVE_SUBJECTS9.map(s9 => { const got9 = dexGot9.has(s9.id);
+    return '<div style="background:' + (got9 ? 'rgba(127,252,224,.08)' : 'rgba(255,255,255,.03)') + ';border:1px solid ' + (got9 ? 'rgba(127,252,224,.32)' : 'rgba(255,255,255,.08)') + ';border-radius:11px;padding:10px 8px;text-align:center">'
+      + '<div style="font-size:26px;line-height:1">' + (got9 ? s9.icon : '❓') + '</div>'
+      + '<div style="font-size:12px;color:' + (got9 ? '#cfeeff' : '#7a8a94') + ';font-weight:700;margin-top:4px">' + (got9 ? esc(s9.name) : '？？？') + '</div>'
+      + '<div style="font-size:10.5px;color:#8ea6b8;margin-top:3px;line-height:1.4">' + (got9 ? '✓ 已收录' : esc(s9.hint)) + '</div></div>';
+  }).join('');
+  cardBody.innerHTML = '<div class="cardHead" style="background:#0a2a36">🐚 深海图鉴 · ' + dexGot9.size + '/' + DIVE_SUBJECTS9.length + '</div>'
+    + '<div style="padding:10px 14px 4px;font-size:12px;color:#8ea6b8;line-height:1.6">潜水时按 <b>P</b> 进照片模式,把镜头对准深海奇观按 <b>C</b> 拍下——收齐十景得称号「深海摄影家」。</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:8px 14px 18px">' + grid9 + '</div>';
+  modal.classList.remove('hidden'); modalOpen = true;
 }
 function grabMazeTreasure9() {
   if (!mtGrp9 || !mtGrp9.visible) return;
@@ -11372,6 +11403,26 @@ function loop() {
       toast('📸 今日摄影题达成:「' + PH_TODAY9.name + '」 ⚡+15');
       blip(760); setTimeout(() => blip(880), 120);
     }
+    if (diving) {   // 🐚 深海摄影图鉴:镜头对准深海奇观即收录
+      camera.getWorldDirection(_camFwd);
+      let bestS9 = null, bestD9 = 1e9;
+      for (const s9 of DIVE_SUBJECTS9) {
+        if (dexGot9.has(s9.id)) continue;
+        const dx9 = s9.pos[0] - player.position.x, dy9 = s9.pos[1] - player.position.y, dz9 = s9.pos[2] - player.position.z, d9 = Math.hypot(dx9, dy9, dz9);
+        if (d9 > 28) continue;
+        if ((_camFwd.x * dx9 + _camFwd.y * dy9 + _camFwd.z * dz9) / (d9 || 1) < .2) continue;   // 大致在镜头前方
+        if (d9 < bestD9) { bestD9 = d9; bestS9 = s9; }
+      }
+      if (bestS9) {
+        dexGot9.add(bestS9.id); try { PSTORE.setItem('w1001.divedex', [...dexGot9].join(',')); } catch (e) {}
+        earnSB(12); blip(820);
+        toast('📸 深海图鉴 +1:' + bestS9.icon + ' ' + bestS9.name + '(' + dexGot9.size + '/' + DIVE_SUBJECTS9.length + ')');
+        if (dexGot9.size >= DIVE_SUBJECTS9.length && PSTORE.getItem('w1001.divedexall') !== '1') {
+          PSTORE.setItem('w1001.divedexall', '1'); stars++; saveQuest(); updateQuestHUD(); fireworks();
+          setTimeout(() => toast('📷 深海十景收齐——新称号「深海摄影家」 ⭐+1'), 1200);
+        }
+      }
+    }
   }
 }
 await buildStep9("未竟之都", 80);
@@ -11970,7 +12021,7 @@ if (!MOBILE) {
 loop();
 
 try { const bp9 = document.getElementById('buildProg'); if (bp9) bp9.remove(); } catch (e) {}   // ⏳ 建好了,撤进度条
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList,
+window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList, openDiveDex9, openMazeMap9, diveDex: () => ({ got: [...dexGot9], total: DIVE_SUBJECTS9.length }),
   enterDive, surfaceDive, enterFreeDive9, exitFreeDive9, freeDiving: () => freeDive9, wreck9: () => wreck9, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9, makeBldg,
