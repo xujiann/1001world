@@ -94,7 +94,7 @@ if (W) {
   check(W.hasPlayer, '玩家已创建');
   check(W.hasHeight, '地形函数在位');
   check(robotLoaded && W.robotActs === 14, '玩家 glTF 模型已落位', robotLoaded ? W.robotActs + ' 个动画' : 'CDN 未响应,降级为程序化模型');
-  check(W.meshes > 8000, '场景网格充足', W.meshes);
+  check(W.meshes > 6500, '场景网格充足', W.meshes);   // 岛/建筑/NPC 恒定 >6500;植被按日期/季节浮动(7784~8146),阈值放宽避免误报
   check(W.instanced > 0, '实例化景物在位', W.instanced);
   check(W.spots > 200, '互动点充足', W.spots);
   check(W.npcs > 150, 'NPC 充足', W.npcs);

@@ -1,2 +1,5 @@
 ﻿node_modules/
 _pantheon_sample.html
+
+# 探针/临时脚本(勿入库)
+_*.mjs

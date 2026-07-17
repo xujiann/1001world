@@ -10339,7 +10339,14 @@ function loop() {
       const sb9 = heightMesh(player.position.x, player.position.z);
       if (player.position.y < sb9 + .9) player.position.y = sb9 + .9;   // 海床
       if (player.position.y > -1) { exitFreeDive9(); toast('🌊 浮出水面'); }
-    } else clampToMaze(player.position);
+    } else {
+      clampToMaze(player.position);
+      // 深渊洋流:所有隧道朝「星球之脐」(节点43)汇聚,水便向那口缓缓牵引——温柔的漩涡,越近越急;松手随波沉入,划水(WASD 更快)可克服
+      { const ab9 = MAZE_NODES[43];
+        const dx9 = ab9[0] - player.position.x, dy9 = ab9[1] - player.position.y, dz9 = ab9[2] - player.position.z, dl9 = Math.hypot(dx9, dy9, dz9) || 1;
+        const pull9 = (dl9 < 90 ? (1 - dl9 / 90) * 6 : 0) * dt;
+        player.position.x += dx9 / dl9 * pull9; player.position.y += dy9 / dl9 * pull9; player.position.z += dz9 / dl9 * pull9; }
+    }
     player.rotation.x += ((-1.2 - camPitch * .25) - player.rotation.x) * Math.min(1, dt * 6);   // 潜水俯身姿态
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
     diveLight.intensity = 2.4;
