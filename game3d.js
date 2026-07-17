@@ -7010,7 +7010,7 @@ function openMazeMap9() {
   closeModals();
   cardBody.innerHTML = '<div class="cardHead" style="background:#0a2436">🗺️ 迷宫全图 · 巴别海窟所藏</div>'
     + '<div style="padding:10px;text-align:center"><canvas id="mazeMapCv" width="' + W9 + '" height="' + H9 + '" style="max-width:88vw;max-height:70vh;border-radius:10px;background:#08131c"></canvas>'
-    + '<div style="font-size:11.5px;color:#8ea6b8;padding:8px 14px 2px;line-height:1.7">● 你的位置 · ◎ 蓝洞出口(近处标岛名)· ▦ 潮汐/满月门 · 图标=已寻得的地标 · 节点越深越暗</div>'
+    + '<div style="font-size:11.5px;color:#8ea6b8;padding:8px 14px 2px;line-height:1.7">● 你的位置 · ◎ 蓝洞出口(近处标岛名)· ▦ 潮汐/满月门 · 🫧 气室补氧 · 图标=已寻得的地标 · 节点越深越暗</div>'
     + '<div style="text-align:center;padding:0 0 12px"><button id="mazeDexBtn9" class="again">🐚 深海图鉴 ' + dexGot9.size + '/' + DIVE_SUBJECTS9.length + '</button></div></div>';
   modal.classList.remove('hidden'); modalOpen = true;
   document.getElementById('mazeDexBtn9')?.addEventListener('click', openDiveDex9);
@@ -7037,6 +7037,7 @@ function openMazeMap9() {
     c.fillText(got ? (icons9[d.flag] || '✦') : '·', PX(n[0]), PY(n[2]) + 6); }
   if (mtGrp9 && mtGrp9.visible) { const nt9 = MAZE_NODES[mtNode9]; c.font = '15px system-ui'; c.fillStyle = '#ffe9a8'; c.textAlign = 'center'; c.fillText('💎', PX(nt9[0]), PY(nt9[2]) + 6); }   // 今日沉宝
   if (tvGrp9 && tvGrp9.visible) { c.font = '14px system-ui'; c.fillStyle = '#8ffce0'; c.textAlign = 'center'; c.fillText('🔱', PX(tvGrp9.position.x), PY(tvGrp9.position.z) + 5); }   // 潮汐密室
+  for (const ai9 of AIR_NODES) { const na9 = MAZE_NODES[ai9]; c.font = '14px system-ui'; c.fillStyle = '#bfeeff'; c.textAlign = 'center'; c.fillText('🫧', PX(na9[0]), PY(na9[2]) + 5); }   // 🫧 气室:潜水补氧的安全屋
   const yx = PX(player.position.x), yz = PY(player.position.z);   // 你在这里
   c.fillStyle = '#ffd76a'; c.beginPath(); c.arc(yx, yz, 6, 0, 7); c.fill();
   c.strokeStyle = 'rgba(255,215,106,.5)'; c.lineWidth = 2.4; c.beginPath(); c.arc(yx, yz, 12, 0, 7); c.stroke();
