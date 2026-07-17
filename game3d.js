@@ -6578,11 +6578,20 @@ let stepT9 = 0, stepSide9 = 1;
 const wakes9 = [], wakeGeo9 = new THREE.CircleGeometry(.5, 8), wakeMat9 = new THREE.MeshBasicMaterial({ color: 0xeef6f4, transparent: true, opacity: .3, depthWrite: false });
 let wakeT9 = 0;
 let bubPts9 = null, bubY09 = null, bubI9 = 0, smokePts9 = null, smokeSeed9 = null;
+let msPts9 = null, msOff9 = null;   // 🌨️ 海雪(悬浮微粒场,潜水时笼罩玩家)
 {
   const NB9 = 48, ba9 = new Float32Array(NB9 * 3).fill(-999); bubY09 = new Float32Array(NB9);
   const bg9 = new THREE.BufferGeometry(); bg9.setAttribute('position', new THREE.BufferAttribute(ba9, 3));
   bubPts9 = new THREE.Points(bg9, new THREE.PointsMaterial({ color: 0xcfeefc, size: 1.4, transparent: true, opacity: .55, sizeAttenuation: false, depthWrite: false }));
   bubPts9.frustumCulled = false; bubPts9.visible = false; scene.add(bubPts9);
+}
+{   // 🌨️ 海雪:潜水时始终环绕玩家的悬浮微粒,缓缓下沉+侧移——给漆黑隧道以纵深与流动感(相对偏移+回卷=无尽粒子场)
+  const NS9 = MOBILE ? 70 : 170, R9 = 26;
+  msOff9 = new Float32Array(NS9 * 3);
+  for (let i = 0; i < NS9 * 3; i++) msOff9[i] = (Math.random() * 2 - 1) * R9;
+  const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NS9 * 3), 3));
+  msPts9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xbfe2ef, size: MOBILE ? 1.5 : 1.1, transparent: true, opacity: .5, depthWrite: false }));
+  msPts9.frustumCulled = false; msPts9.visible = false; msPts9.userData = { R: R9, n: NS9 }; scene.add(msPts9);
 }
 let babelBook = null, babelDust = null;
 const babelLamps = [];
@@ -10399,6 +10408,7 @@ function loop() {
   const dt = Math.min(clock.getDelta(), .05);
   const t = clock.elapsedTime;
   let pMoving = false;
+  if (msPts9) msPts9.visible = diving;   // 🌨️ 海雪仅潜水时可见
 
   /* 海底潜水:自由 3D 游动 + 隧道约束 + 气瓶 + 出口检测 */
   if (diving) {
@@ -10428,11 +10438,13 @@ function loop() {
     }
     player.rotation.x += ((-1.2 - camPitch * .25) - player.rotation.x) * Math.min(1, dt * 6);   // 潜水俯身姿态
     diveLight.position.set(player.position.x - Math.sin(camYaw) * 3, player.position.y + 1, player.position.z - Math.cos(camYaw) * 3);
-    diveLight.intensity = 2.4;
-    if (causticLight) {   // 焦散光斑自上而下,贴图缓慢漂移
+    diveLight.intensity = 2.4 + Math.sin(t * 5.2) * .12;
+    if (causticLight) {   // 焦散光斑自上而下,贴图缓慢漂移 + 强度/尺度呼吸(水面波动透光)
       causticLight.position.set(player.position.x, player.position.y + 34, player.position.z);
       causticLight.target.position.set(player.position.x, player.position.y - 6, player.position.z);
-      causticLight.intensity = 2.6; causticTex.offset.x = t * .035; causticTex.offset.y = t * .022;
+      causticLight.intensity = 2.2 + Math.sin(t * 1.3) * .8 + Math.sin(t * 2.7) * .35;
+      causticTex.offset.x = t * .035; causticTex.offset.y = t * .022;
+      const rp9 = 2.2 + Math.sin(t * .6) * .3; causticTex.repeat.set(rp9, rp9);
     }
     /* 海流:粒子顺流漂 + 对玩家的轻推(跟着水流走=朝出口走) */
     if (flowPts && MAZE_FLOW) {
@@ -10451,6 +10463,19 @@ function loop() {
       if (fdir) { const [a3, b3] = MAZE_EDGES[nearEdge], A3 = MAZE_NODES[a3], B3 = MAZE_NODES[b3];
         const dl = Math.hypot(B3[0] - A3[0], B3[1] - A3[1], B3[2] - A3[2]) || 1, pw = (RAPIDS.has(nearEdge) ? 1.6 : .45) * fdir * dt / dl;
         player.position.x += (B3[0] - A3[0]) * pw; player.position.y += (B3[1] - A3[1]) * pw; player.position.z += (B3[2] - A3[2]) * pw; }
+    }
+    if (msPts9) {   // 🌨️ 海雪随玩家飘沉:偏移缓沉+侧移,越界回卷,始终环绕
+      const R9 = msPts9.userData.R, n9 = msPts9.userData.n, pa9 = msPts9.geometry.attributes.position.array;
+      const px9 = player.position.x, py9 = player.position.y, pz9 = player.position.z;
+      for (let i = 0; i < n9; i++) {
+        let ox = msOff9[i * 3], oy = msOff9[i * 3 + 1];
+        oy -= dt * (1.2 + (i % 5) * .25); ox += Math.sin(t * .5 + i) * dt * .5;
+        if (oy < -R9) oy += R9 * 2; else if (oy > R9) oy -= R9 * 2;
+        if (ox < -R9) ox += R9 * 2; else if (ox > R9) ox -= R9 * 2;
+        msOff9[i * 3] = ox; msOff9[i * 3 + 1] = oy;
+        pa9[i * 3] = px9 + ox; pa9[i * 3 + 1] = py9 + oy; pa9[i * 3 + 2] = pz9 + msOff9[i * 3 + 2];
+      }
+      msPts9.geometry.attributes.position.needsUpdate = true;
     }
     for (const jf of jellies) { jf.position.y = jf.userData.by + Math.sin(t * .9 + jf.userData.ph) * 1.4; const ps = 1 + Math.sin(t * 2.2 + jf.userData.ph) * .18; jf.children[0].scale.set(ps, 1, ps); }
     if (abyssLight) abyssLight.intensity = 1 + Math.sin(t * 1.1) * .6;
@@ -10490,6 +10515,12 @@ function loop() {
     { let zd = 1e9; for (let i = 0; i < MAZE_NODES.length; i++) { const n = MAZE_NODES[i], d = (player.position.x - n[0]) ** 2 + (player.position.y - n[1]) ** 2 + (player.position.z - n[2]) ** 2; if (d < zd) { zd = d; diveZone = NODE_ZONE[i]; mazeNear9 = i; } } }
     if (diveZone !== diveZoneLast9) { if (diveZoneLast9 !== -1) { toast('🌊 进入 ' + ZONES[diveZone].name); blip(600); } diveZoneLast9 = diveZone; }   // 🌊 区界过场
     scene.fog.color.lerp(_zfog.setHex(ZONES[diveZone].fog), Math.min(1, dt * .5));
+    if (!freeDive9) {   // 🌑 深度压强:y 从 -70(浅)到 -168(星球之脐)越沉越暗、雾越紧
+      const depthT9 = Math.max(0, Math.min(1, (-player.position.y - 70) / 98));
+      scene.fog.far = (gearOn('rope') ? 90 : 46) * (1 - depthT9 * .34);
+      if (depthT9 > 0) scene.fog.color.multiplyScalar(1 - depthT9 * .42);
+      scene.background.copy(scene.fog.color);
+    }
     // 出口检测
     nearPortal = -1;
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
