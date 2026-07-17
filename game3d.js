@@ -112,6 +112,7 @@ SAVE_FIELDS.push('trawler');   // 🕸️ 远洋渔夫
 SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
 SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
+SAVE_FIELDS.push('mt', 'mtn');   // 💎 每日迷宫沉宝
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -7016,6 +7017,7 @@ function openMazeMap9() {
   for (const ni in DISC) { const d = DISC[ni], n = MAZE_NODES[+ni], got = PSTORE.getItem('w1001.' + d.flag) === '1';
     c.font = got ? '15px system-ui' : '12px system-ui'; c.fillStyle = got ? '#fff' : 'rgba(150,168,178,.45)'; c.textAlign = 'center';
     c.fillText(got ? (icons9[d.flag] || '✦') : '·', PX(n[0]), PY(n[2]) + 6); }
+  if (mtGrp9 && mtGrp9.visible) { const nt9 = MAZE_NODES[mtNode9]; c.font = '15px system-ui'; c.fillStyle = '#ffe9a8'; c.textAlign = 'center'; c.fillText('💎', PX(nt9[0]), PY(nt9[2]) + 6); }   // 今日沉宝
   const yx = PX(player.position.x), yz = PY(player.position.z);   // 你在这里
   c.fillStyle = '#ffd76a'; c.beginPath(); c.arc(yx, yz, 6, 0, 7); c.fill();
   c.strokeStyle = 'rgba(255,215,106,.5)'; c.lineWidth = 2.4; c.beginPath(); c.arc(yx, yz, 12, 0, 7); c.stroke();
@@ -8226,6 +8228,29 @@ let chestGrp9 = null, nearChest9 = false, chestHintT9 = 0;
   chestGrp9.position.set(sp9[0], Math.min(height(sp9[0], sp9[1]), -2) + .1, sp9[1]);
   chestGrp9.visible = PSTORE.getItem('w1001.chest') !== todayStr();
   scene.add(chestGrp9);
+}
+/* 💎 每日迷宫沉宝:按日在某个隧道节点沉一件宝物,潜进迷宫打捞(每日一件,位置每日一换) */
+const MT_NODES9 = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 16, 17, 18, 20, 22, 24, 26, 28, 30, 33, 35, 37, 40];   // 中段节点(避开出入口/深渊43/巴别14/壁画11/中心9)
+let mtGrp9 = null, nearMT9 = false, mtNode9 = 0;
+{
+  const seed9 = [...todayStr()].reduce((a9, c9) => (a9 * 53 + c9.charCodeAt(0)) | 0, 11);
+  mtNode9 = MT_NODES9[((seed9 % MT_NODES9.length) + MT_NODES9.length) % MT_NODES9.length];
+  const n9 = MAZE_NODES[mtNode9];
+  mtGrp9 = new THREE.Group(); mtGrp9.position.set(n9[0], n9[1] - TUBE_R + 1.6, n9[2]);
+  mtGrp9.add(new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), new THREE.MeshBasicMaterial({ color: 0xffe9a8, fog: false })));
+  const ring9 = new THREE.Mesh(new THREE.TorusGeometry(1.9, .12, 6, 16), new THREE.MeshBasicMaterial({ color: 0xffd76a, fog: false })); ring9.rotation.x = Math.PI / 2; mtGrp9.add(ring9);
+  mtGrp9.add(new THREE.Mesh(sphg(3, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: .14, depthWrite: false, fog: false })));
+  mtGrp9.add(new THREE.PointLight(0xffe0a0, 1.0, 30, 2));
+  mtGrp9.visible = PSTORE.getItem('w1001.mt') !== todayStr();
+  diveGroup.add(mtGrp9);
+}
+function grabMazeTreasure9() {
+  if (!mtGrp9 || !mtGrp9.visible) return;
+  PSTORE.setItem('w1001.mt', todayStr()); mtGrp9.visible = false; nearMT9 = false;
+  const n9 = (parseInt(PSTORE.getItem('w1001.mtn') || '0', 10) || 0) + 1; PSTORE.setItem('w1001.mtn', String(n9));
+  const rw9 = 28 + (n9 * 9) % 27; earnSB(rw9);
+  toast('💎 迷宫沉宝到手——' + ['一枚古文明的发光贝壳', '半卷刻在珊瑚上的星图', '一颗潮汐之心的碎片', '鲸骨王朝的一枚玉扣', '沉船船长的黄铜罗盘'][n9 % 5] + '!⚡+' + rw9 + '(累计打捞 ' + n9 + ' 件)');
+  blip(760); setTimeout(() => blip(980), 130);
 }
 /* ⛈️ 风暴悬赏:仅风暴日,远海一只黑旗浮标——顶着浪开到它那儿(自愿式挑战) */
 let stormBuoy9 = null;
@@ -9619,7 +9644,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 let nearSpot = null, nearFspot = null, nearNpc = null, talkNpc = null;
 function tryInteract() {
-  if (diving) { if (nearPortal >= 0) surfaceDive(nearPortal); return; }
+  if (diving) { if (nearMT9) { grabMazeTreasure9(); return; } if (nearPortal >= 0) surfaceDive(nearPortal); return; }
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
   if (nearChest9) {
@@ -10414,6 +10439,8 @@ function loop() {
     // 出口检测
     nearPortal = -1;
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
+    nearMT9 = false;
+    if (mtGrp9 && mtGrp9.visible) { mtGrp9.rotation.y += dt * .8; if (Math.hypot(player.position.x - mtGrp9.position.x, player.position.y - mtGrp9.position.y, player.position.z - mtGrp9.position.z) < 6) nearMT9 = true; }
     { const nv9 = $('diveNav');   // 🧭 常亮方位微光 + 深度感(越缺氧越亮;复用声呐八向公式)
       if (nv9) {
         let bx9 = 0, bz9 = 0, bd9 = 1e9, bi9 = -1;
@@ -10433,6 +10460,7 @@ function loop() {
     if (dh) dh.textContent = nearPortal >= 0
       ? (isTouch ? `⬆️ 点 👀 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面`)
       : (isTouch ? `${ZONES[diveZone].name} · ⬆️⬇️钮浮潜 · 📡 声呐 · 找浮标点 👀 出水` : `${ZONES[diveZone].name} · 空格上浮 Shift下潜 · Q 声呐 · 找浮标按 E 出水`);
+    if (dh && nearMT9) dh.textContent = isTouch ? '💎 点 👀 打捞今日迷宫沉宝' : '💎 按 E 打捞今日迷宫沉宝';
   }
   /* 移动 */
   if (!modalOpen && !flight && !diving) {
