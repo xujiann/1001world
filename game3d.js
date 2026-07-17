@@ -6985,6 +6985,7 @@ function enterDive(pi) {
 }
 function surfaceDive(pi) {
   const p = MAZE_PORTALS[pi], [sx, sz] = p.surf;
+  const closeCall9 = diveAir > 0 && diveAir < (gearOn('mask') ? 200 : 100) * .15;   // 😮‍💨 低氧自主出水=死里逃生
   diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false; diveZoneLast9 = -1;
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
@@ -6995,6 +6996,7 @@ function surfaceDive(pi) {
     toast(`🌊 你从${p.isle}的蓝洞浮出水面!`);
     if (PSTORE.getItem('w1001.caved') !== '1') { PSTORE.setItem('w1001.caved', '1'); earnSB(25); toast('🤿 首次穿越海底隧道 · ⚡+25 · 新称号「洞穴潜水员」'); }
   } else toast('🌊 你原路浮回了洞口。');
+  if (closeCall9) setTimeout(() => { toast('😮‍💨 呼——就差那一口气,你险些没能浮上来。' + (gearOn('rope') ? '' : '(装条导绳吧,别再拿命赌。)')); blip(500); setTimeout(() => blip(600), 160); }, 950);
   blip(560);
 }
 /* 🗺️ 迷宫全图:巴别海窟所藏——找到它才读得到整张图(潜水时 M / 移动🗺️钮) */
