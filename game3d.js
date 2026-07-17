@@ -113,6 +113,7 @@ SAVE_FIELDS.push('seasonfish', 'seasonfish4');   // 🌸 季节限定鱼
 SAVE_FIELDS.push('bikerace', 'bikebest', 'swimrace', 'swimbest', 'quizace');   // 🏁 竞速家族 + 🎓 鉴赏
 SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
 SAVE_FIELDS.push('mt', 'mtn');   // 💎 每日迷宫沉宝
+SAVE_FIELDS.push('tidevault');   // 🔱 潮汐密室(一次性)
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -7018,6 +7019,7 @@ function openMazeMap9() {
     c.font = got ? '15px system-ui' : '12px system-ui'; c.fillStyle = got ? '#fff' : 'rgba(150,168,178,.45)'; c.textAlign = 'center';
     c.fillText(got ? (icons9[d.flag] || '✦') : '·', PX(n[0]), PY(n[2]) + 6); }
   if (mtGrp9 && mtGrp9.visible) { const nt9 = MAZE_NODES[mtNode9]; c.font = '15px system-ui'; c.fillStyle = '#ffe9a8'; c.textAlign = 'center'; c.fillText('💎', PX(nt9[0]), PY(nt9[2]) + 6); }   // 今日沉宝
+  if (tvGrp9 && tvGrp9.visible) { c.font = '14px system-ui'; c.fillStyle = '#8ffce0'; c.textAlign = 'center'; c.fillText('🔱', PX(tvGrp9.position.x), PY(tvGrp9.position.z) + 5); }   // 潮汐密室
   const yx = PX(player.position.x), yz = PY(player.position.z);   // 你在这里
   c.fillStyle = '#ffd76a'; c.beginPath(); c.arc(yx, yz, 6, 0, 7); c.fill();
   c.strokeStyle = 'rgba(255,215,106,.5)'; c.lineWidth = 2.4; c.beginPath(); c.arc(yx, yz, 12, 0, 7); c.stroke();
@@ -8243,6 +8245,27 @@ let mtGrp9 = null, nearMT9 = false, mtNode9 = 0;
   mtGrp9.add(new THREE.PointLight(0xffe0a0, 1.0, 30, 2));
   mtGrp9.visible = PSTORE.getItem('w1001.mt') !== todayStr();
   diveGroup.add(mtGrp9);
+}
+/* 🔱 潮汐密室:守在一道潮汐门正中的一件古宝,唯潮起门开时可靠近领取(一次性) */
+let tvGrp9 = null, nearTV9 = false, tvGate9 = null;
+{
+  tvGate9 = GATES.find(g9 => g9.kind === 'tide');   // 选第一道潮汐门
+  const A9 = MAZE_NODES[tvGate9.a], B9 = MAZE_NODES[tvGate9.b];
+  const mx9 = (A9[0] + B9[0]) / 2, my9 = (A9[1] + B9[1]) / 2 - 1.4, mz9 = (A9[2] + B9[2]) / 2;
+  tvGrp9 = new THREE.Group(); tvGrp9.position.set(mx9, my9, mz9);
+  const core9 = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), new THREE.MeshBasicMaterial({ color: 0x8ffce0, fog: false })); tvGrp9.add(core9);
+  const cage9 = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 0), new THREE.MeshBasicMaterial({ color: 0x2ec0a0, wireframe: true, fog: false })); tvGrp9.add(cage9);
+  tvGrp9.add(new THREE.Mesh(sphg(3.4, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8ffce0, transparent: true, opacity: .12, depthWrite: false, fog: false })));
+  tvGrp9.add(new THREE.PointLight(0x7ffce0, 1.1, 32, 2));
+  tvGrp9.visible = PSTORE.getItem('w1001.tidevault') !== '1';
+  diveGroup.add(tvGrp9);
+}
+function grabTideVault9() {
+  if (!tvGrp9 || !tvGrp9.visible) return;
+  PSTORE.setItem('w1001.tidevault', '1'); tvGrp9.visible = false; nearTV9 = false;
+  earnSB(40); stars++; saveQuest(); updateQuestHUD(); fireworks();
+  toast('🔱 潮汐密室!门后悬着一具古文明的「稳潮仪」——原来两千年的潮汐,是有人在替这颗星球数着拍子。⚡+40 · ⭐+1');
+  blip(680); setTimeout(() => blip(900), 130); setTimeout(() => blip(1100), 260);
 }
 function grabMazeTreasure9() {
   if (!mtGrp9 || !mtGrp9.visible) return;
@@ -9644,7 +9667,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 let nearSpot = null, nearFspot = null, nearNpc = null, talkNpc = null;
 function tryInteract() {
-  if (diving) { if (nearMT9) { grabMazeTreasure9(); return; } if (nearPortal >= 0) surfaceDive(nearPortal); return; }
+  if (diving) { if (nearTV9) { grabTideVault9(); return; } if (nearMT9) { grabMazeTreasure9(); return; } if (nearPortal >= 0) surfaceDive(nearPortal); return; }
   if (fishing.state === 'bite') { catchFish(); return; }
   if (fishing.state === 'wait') { toast('收竿了,今天鱼不咬钩'); endFishing(); return; }
   if (nearChest9) {
@@ -10441,6 +10464,8 @@ function loop() {
     for (let i = 0; i < MAZE_PORTALS.length; i++) { if (i === diveEntry) continue; const n = MAZE_NODES[MAZE_PORTALS[i].n]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < 9) { nearPortal = i; break; } }
     nearMT9 = false;
     if (mtGrp9 && mtGrp9.visible) { mtGrp9.rotation.y += dt * .8; if (Math.hypot(player.position.x - mtGrp9.position.x, player.position.y - mtGrp9.position.y, player.position.z - mtGrp9.position.z) < 6) nearMT9 = true; }
+    nearTV9 = false;
+    if (tvGrp9 && tvGrp9.visible) { tvGrp9.rotation.y += dt * 1.1; tvGrp9.children[1].rotation.x += dt * .7; if (Math.hypot(player.position.x - tvGrp9.position.x, player.position.y - tvGrp9.position.y, player.position.z - tvGrp9.position.z) < 4.5) nearTV9 = true; }
     { const nv9 = $('diveNav');   // 🧭 常亮方位微光 + 深度感(越缺氧越亮;复用声呐八向公式)
       if (nv9) {
         let bx9 = 0, bz9 = 0, bd9 = 1e9, bi9 = -1;
@@ -10461,6 +10486,7 @@ function loop() {
       ? (isTouch ? `⬆️ 点 👀 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面` : `⬆️ 按 E 从「${MAZE_PORTALS[nearPortal].isle}」的蓝洞浮出水面`)
       : (isTouch ? `${ZONES[diveZone].name} · ⬆️⬇️钮浮潜 · 📡 声呐 · 找浮标点 👀 出水` : `${ZONES[diveZone].name} · 空格上浮 Shift下潜 · Q 声呐 · 找浮标按 E 出水`);
     if (dh && nearMT9) dh.textContent = isTouch ? '💎 点 👀 打捞今日迷宫沉宝' : '💎 按 E 打捞今日迷宫沉宝';
+    if (dh && nearTV9) dh.textContent = isTouch ? '🔱 点 👀 取走潮汐密室之宝' : '🔱 按 E 取走潮汐密室之宝';
   }
   /* 移动 */
   if (!modalOpen && !flight && !diving) {
