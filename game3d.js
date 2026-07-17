@@ -6568,6 +6568,7 @@ await buildStep9("天空之城", 68);
 /* ===== 海底隧道迷宫 · 洞穴潜水(导绳=关键装备)===== */
 /* 迷宫拓扑/分区/门/发现点/出入口 → w-maze.js(纯数据模块,顶部 import) */
 let diving = false, diveEntry = 0, diveAir = 100, nearPortal = -1, diveLight = null;
+let heartT9 = 0, dangerEl9 = null;   // 🆘 低氧心跳计时 + 红色暗角叠层
 let freeDive9 = false, prevSwim9 = false, swimHint9 = 0;   // 🤿 开放水域自由潜水
 let mazeWhale = null, tidalHeart = null, sonarRing = null, sonarT = 0, sonarCD = 0, airChamberT = 0, gateHintT = 0, diveZone = 0, diveZoneLast9 = -1, mazeNear9 = 0;
 let causticLight = null, causticTex = null;
@@ -6882,6 +6883,9 @@ const portalBeacons = [];
   Object.assign(d.style, { position: 'fixed', left: '50%', bottom: '96px', transform: 'translateX(-50%)', zIndex: '7', textAlign: 'center', pointerEvents: 'none', font: '13px system-ui,sans-serif', color: '#cfeeff', textShadow: '0 1px 3px #000' });
   d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveNav" style="margin-top:4px;font-size:12px;color:#7fc4e8;opacity:.32;letter-spacing:.4px;min-height:15px"></div><div id="diveHint" style="margin-top:3px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
   document.body.appendChild(d);
+  { const dg9 = document.createElement('div'); dg9.id = 'diveDanger9';   // 🆘 低氧红色暗角(中心透空,只压边缘,不挡视野)
+    dg9.style.cssText = 'position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 42%,rgba(182,14,14,.9) 100%)';
+    document.body.appendChild(dg9); dangerEl9 = dg9; }
   /* 移动端潜水:上浮/下潜按钮(触屏时随潜水显隐,驱动 joy.up/joy.down) */
   [['btnDiveUp', '⬆️', 258, 'up'], ['btnDiveDown', '⬇️', 178, 'down']].forEach(([id, sym, bottom, key]) => {
     const b = document.createElement('button'); b.id = id; b.textContent = sym; b.className = 'hidden';
@@ -6984,7 +6988,7 @@ function surfaceDive(pi) {
   diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false; diveZoneLast9 = -1;
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
-  $('diveHud').classList.add('hidden');
+  $('diveHud').classList.add('hidden'); if (dangerEl9) dangerEl9.style.opacity = '0';
   $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
   player.position.set(sx, Math.max(height(sx, sz), pierHeight(sx, sz) || 0, 0) + 1.2, sz); vy = 0;
   if (pi !== diveEntry) {
@@ -7054,7 +7058,7 @@ function exitFreeDive9() {
   diving = false; freeDive9 = false; diveLight.visible = false;
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
-  $('diveHud').classList.add('hidden');
+  $('diveHud').classList.add('hidden'); if (dangerEl9) dangerEl9.style.opacity = '0';
   $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
   player.position.y = -.55 + tideY; vy = 0;
   blip(560);
@@ -10490,6 +10494,14 @@ function loop() {
     if (inAir && airChamberT <= 0) { airChamberT = 6; toast('🫧 气室——氧气回满,喘口气再走'); }
     airChamberT -= dt;
     const fill = $('diveAirFill'); if (fill) { fill.style.width = Math.max(0, diveAir / (gearOn('mask') ? 2 : 1)) + '%'; fill.style.background = diveAir < 25 ? '#ff5a4a' : 'linear-gradient(90deg,#2ad0ff,#7affd0)'; }
+    { const airFrac9 = diveAir / (gearOn('mask') ? 200 : 100);   // 🆘 低氧窒息:暗角脉动+加速心跳(无导绳耗氧快=更早触发)
+      if (airFrac9 < .28) {
+        const di9 = (.28 - airFrac9) / .28;   // 0→1 越缺氧越强
+        if (dangerEl9) dangerEl9.style.opacity = (di9 * (.34 + .34 * (.5 + .5 * Math.sin(t * (6 + di9 * 12))))).toFixed(3);
+        heartT9 -= dt;
+        if (heartT9 <= 0) { blip(92); setTimeout(() => blip(70), 125); heartT9 = .34 + airFrac9 * 1.5; }   // 间隔随缺氧缩短
+      } else if (dangerEl9) dangerEl9.style.opacity = '0';
+    }
     if (diveAir <= 0) {
       if (freeDive9) { toast('🫧 憋不住了——你猛地浮出水面'); exitFreeDive9(); }
       else if (gearOn('rope')) { toast('🫧 憋不住了——顺着导绳,你勉强摸回了洞口'); surfaceDive(diveEntry); }
