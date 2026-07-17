@@ -2124,7 +2124,7 @@ function mainQuest() {
   }
   if (caved || clues > 0) return { st: `第四章 · 世界骨架 · 线索 ${clues}/3`, tip: '海底迷宫并非天然。潜入深处集齐三线索:🫀 潮汐之心(迷宫正中)· 🖼️ 海底壁画(某条死路尽头)· 📖 巴别海窟(满月夜穿过潮汐门)。' };
   if (hasRope) return { st: '第三章 · 潜入海底', tip: '带上导绳,从主岛西岸「牛首回廊」海蚀洞、或各岛蓝洞潜入海底隧道迷宫,顺着发光导绳穿行到别的岛。' };
-  if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,或按 M 在海图上点岛直航——五十八座岛任你逛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——那是海底迷宫的钥匙。' };
+  if (seenAny) return { st: '第二章 · 扬帆出海', tip: '去东滩渡口坐船,或按 M 在海图上点岛直航——五十八座岛任你逛(每岛藏着一条故事线)。顺路到千岛装备行买一条「导绳」——没它也能潜,但海底暗道漆黑迷乱、耗氧极快,九死一生;有了它,暗道被点亮、直通各岛出口。' };
   return { st: '第一章 · 初来乍到', tip: '在收藏之岛四处走走:走近按 E 看藏品、和 NPC 说话、做支线,攒算力币 ⚡。' };
 }
 function worldCompletion() {   // 🌏 九维聚合完成度(wc100 称号自身不计入,避免循环)
@@ -6977,7 +6977,7 @@ function enterDive(pi) {
   scene.background.setHex(0x04121c);
   $('diveHud').classList.remove('hidden');
   if (matchMedia('(pointer: coarse)').matches) { $('btnDiveUp').classList.remove('hidden'); $('btnDiveDown').classList.remove('hidden'); }
-  toast(gearOn('rope') ? '🤿 潜入蓝洞——顺着发光导绳,游向任意海岛的出口' : '🤿 潜入蓝洞……四下漆黑,没有导绳,当心迷路和憋气!');
+  toast(gearOn('rope') ? '🤿 潜入蓝洞——顺着发光导绳,游向任意海岛的出口' : '☠️ 没有导绳,你潜进漆黑蓝洞——看不清路、耗氧更快,一旦在深处憋死就再难生还。想活着穿到别的岛,先去装备行买条导绳。');
 }
 function surfaceDive(pi) {
   const p = MAZE_PORTALS[pi], [sx, sz] = p.surf;
@@ -10485,11 +10485,22 @@ function loop() {
     // 气瓶(气室内回充)
     let inAir = false;
     for (const ni of AIR_NODES) { const n = MAZE_NODES[ni]; if (Math.hypot(player.position.x - n[0], player.position.y - n[1], player.position.z - n[2]) < TUBE_R + 3) { inAir = true; break; } }
-    diveAir = inAir ? Math.min(gearOn('mask') ? 200 : 100, diveAir + dt * 28) : diveAir - dt * 1.4;
+    const drainRate9 = (gearOn('rope') ? 1.4 : 2.3) * (1 + Math.max(0, Math.min(1, (-player.position.y - 70) / 98)) * .6);   // 无导绳慌乱耗氧快、越深压强越大越费气
+    diveAir = inAir ? Math.min(gearOn('mask') ? 200 : 100, diveAir + dt * 28) : diveAir - dt * drainRate9;
     if (inAir && airChamberT <= 0) { airChamberT = 6; toast('🫧 气室——氧气回满,喘口气再走'); }
     airChamberT -= dt;
     const fill = $('diveAirFill'); if (fill) { fill.style.width = Math.max(0, diveAir / (gearOn('mask') ? 2 : 1)) + '%'; fill.style.background = diveAir < 25 ? '#ff5a4a' : 'linear-gradient(90deg,#2ad0ff,#7affd0)'; }
-    if (diveAir <= 0) { if (freeDive9) { toast('🫧 憋不住了——你猛地浮出水面'); exitFreeDive9(); } else { toast('🫧 憋不住了——你勉强浮回了洞口'); surfaceDive(diveEntry); } }
+    if (diveAir <= 0) {
+      if (freeDive9) { toast('🫧 憋不住了——你猛地浮出水面'); exitFreeDive9(); }
+      else if (gearOn('rope')) { toast('🫧 憋不住了——顺着导绳,你勉强摸回了洞口'); surfaceDive(diveEntry); }
+      else {   // ☠️ 无导绳深潜、氧气耗尽——「致命危险」成真:昏厥 + 散落算力
+        const pen9 = Math.min(sb, 40);
+        if (pen9 > 0) { sb -= pen9; saveSB(); updateSB(); }
+        toast('☠️ 黑暗里氧气耗尽,你昏死过去……醒来洋流已把你冲回洞口' + (pen9 > 0 ? ',挣扎中散落了 ' + pen9 + ' ⚡' : '') + '。没有导绳,海底真会要命——去装备行买一条吧。');
+        blip(170); setTimeout(() => blip(130), 220);
+        surfaceDive(diveEntry);
+      }
+    }
     // 潮汐门 / 满月门:升降开合 + 关闭时挡路
     for (const gm of gateMeshes) {
       const open = gateOpen(gm.cfg, t);
@@ -11340,7 +11351,7 @@ function loop() {
   let hintTxt = null, hx = 0, hy = 0, hz = 0;
   if (fishing.state === 'bite') { hintTxt = '❗收竿!'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
   else if (fishing.state === 'wait') { hintTxt = '…等鱼上钩(E 收竿)'; hx = bobber.position.x; hy = 2.4; hz = bobber.position.z; }
-  else if (nearSpot) { hintTxt = HINTS[nearSpot.type] || '看看'; hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
+  else if (nearSpot) { hintTxt = (nearSpot.cat === 'dive' && !gearOn('rope')) ? '🤿 按 E 潜入 · ⚠️ 无导绳:漆黑迷路 · 耗氧极快 · 恐葬身海底' : (HINTS[nearSpot.type] || '看看'); hx = nearSpot.x; hy = (nearSpot.y ?? height(nearSpot.x, nearSpot.z)) + 5.2; hz = nearSpot.z; }
   else if (nearFspot) { hintTxt = '🎣 抛竿钓鱼'; hx = nearFspot.bx; hy = 3; hz = nearFspot.bz; }
   else if (nearNpc) { hintTxt = '💬 交谈'; hx = nearNpc.g.position.x; hy = nearNpc.g.position.y + 3.6; hz = nearNpc.g.position.z; }
   else if (nearChest9 && chestGrp9) { hintTxt = '⚓ 打捞沉箱'; hx = chestGrp9.position.x; hy = chestGrp9.position.y + 3; hz = chestGrp9.position.z; }
