@@ -3049,6 +3049,13 @@ function thunder9() {
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
 /* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
+const softDot9 = (() => {   // ⚪ 共享软圆点贴图:无贴图的 Points 会渲成硬边方块,凡「近大远小」的氛围粒子都该用它
+  const c9 = document.createElement('canvas'); c9.width = c9.height = 32;
+  const x9 = c9.getContext('2d'), g9 = x9.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g9.addColorStop(0, 'rgba(255,255,255,1)'); g9.addColorStop(.55, 'rgba(255,255,255,.6)'); g9.addColorStop(1, 'rgba(255,255,255,0)');
+  x9.fillStyle = g9; x9.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c9);
+})();
 let festPts = null;
 if (FESTIVAL) {
   const N5 = 420, arr3 = new Float32Array(N5 * 3);
@@ -3057,7 +3064,7 @@ if (FESTIVAL) {
   const g5 = new THREE.BufferGeometry();
   g5.setAttribute('position', new THREE.BufferAttribute(arr3, 3));
   const snowy = FESTIVAL.hue === 'snow';
-  festPts = new THREE.Points(g5, new THREE.PointsMaterial({ color: FESTIVAL.color, size: snowy ? 2.4 : 2, transparent: true, opacity: snowy ? .85 : .7, sizeAttenuation: false }));
+  festPts = new THREE.Points(g5, new THREE.PointsMaterial({ map: softDot9, color: FESTIVAL.color, size: snowy ? 3.2 : 2.8, transparent: true, opacity: snowy ? .85 : .7, sizeAttenuation: false, depthWrite: false }));
   festPts.userData = { fall: snowy ? 10 : 16, sway: snowy ? 1 : .3 };
   scene.add(festPts);
 }
@@ -7883,7 +7890,7 @@ let seasonPts = null;
   const N9 = 90, arr9 = new Float32Array(N9 * 3);
   for (let i9 = 0; i9 < N9; i9++) { arr9[i9 * 3] = (Math.random() - .5) * 46; arr9[i9 * 3 + 1] = Math.random() * 22; arr9[i9 * 3 + 2] = (Math.random() - .5) * 46; }
   const gg9 = new THREE.BufferGeometry(); gg9.setAttribute('position', new THREE.Float32BufferAttribute(arr9, 3));
-  seasonPts = new THREE.Points(gg9, new THREE.PointsMaterial({ color: CFG[0], size: CFG[1], transparent: true, opacity: .8, sizeAttenuation: true, depthWrite: false }));
+  seasonPts = new THREE.Points(gg9, new THREE.PointsMaterial({ map: softDot9, color: CFG[0], size: CFG[1] * 1.4, transparent: true, opacity: .8, sizeAttenuation: true, depthWrite: false }));
   seasonPts.userData.fall = CFG[2];
   scene.add(seasonPts);
 })();
@@ -11645,7 +11652,7 @@ if (!MOBILE && CHIM9.length) {
   smokeSeed9 = new Float32Array(NS9);
   for (let i9 = 0; i9 < NS9; i9++) { const c9 = CHIM9[i9 % CHIM9.length]; sa9[i9 * 3] = c9[0]; sa9[i9 * 3 + 1] = c9[1] + (i9 / NS9) * 4; sa9[i9 * 3 + 2] = c9[2]; smokeSeed9[i9] = i9 * 1.37 % 6; }
   const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(sa9, 3));
-  smokePts9 = new THREE.Points(sg9, new THREE.PointsMaterial({ color: 0xd8dade, size: 1.5, transparent: true, opacity: .25, depthWrite: false }));
+  smokePts9 = new THREE.Points(sg9, new THREE.PointsMaterial({ map: softDot9, color: 0xd8dade, size: 2.1, transparent: true, opacity: .25, depthWrite: false }));
   smokePts9.frustumCulled = false; scene.add(smokePts9);
 }
 await buildStep9("合并网格", 86);
