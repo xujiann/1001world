@@ -2750,6 +2750,13 @@ function bakeEnv9() {
   if (old9) old9.dispose();
 }
 /* --- 星空(夜晚可见:软圆星点 + 亮度/色温变化 + 银河带) --- */
+const softDot9 = (() => {   // ⚪ 共享软圆点贴图:无贴图的 Points 会渲成硬边方块,凡「近大远小」的氛围粒子都该用它
+  const c9 = document.createElement('canvas'); c9.width = c9.height = 32;
+  const x9 = c9.getContext('2d'), g9 = x9.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g9.addColorStop(0, 'rgba(255,255,255,1)'); g9.addColorStop(.55, 'rgba(255,255,255,.6)'); g9.addColorStop(1, 'rgba(255,255,255,0)');
+  x9.fillStyle = g9; x9.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c9);
+})();
 let starField;
 {
   // 软圆星点贴图(径向渐变)
@@ -2806,7 +2813,7 @@ let constStars = null, constLines = null, constDirs = [];
     constDirs.push({ name: cst.name, c });
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-  constStars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xeaf4ff, size: 6, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
+  constStars = new THREE.Points(sg, new THREE.PointsMaterial({ map: softDot9, color: 0xeaf4ff, size: 7, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
   constLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x5f86bf, transparent: true, opacity: 0, fog: false, depthWrite: false }));
   starField.add(constStars, constLines);
@@ -3049,13 +3056,6 @@ function thunder9() {
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
 /* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
-const softDot9 = (() => {   // ⚪ 共享软圆点贴图:无贴图的 Points 会渲成硬边方块,凡「近大远小」的氛围粒子都该用它
-  const c9 = document.createElement('canvas'); c9.width = c9.height = 32;
-  const x9 = c9.getContext('2d'), g9 = x9.createRadialGradient(16, 16, 0, 16, 16, 16);
-  g9.addColorStop(0, 'rgba(255,255,255,1)'); g9.addColorStop(.55, 'rgba(255,255,255,.6)'); g9.addColorStop(1, 'rgba(255,255,255,0)');
-  x9.fillStyle = g9; x9.fillRect(0, 0, 32, 32);
-  return new THREE.CanvasTexture(c9);
-})();
 let festPts = null;
 if (FESTIVAL) {
   const N5 = 420, arr3 = new Float32Array(N5 * 3);
@@ -3222,6 +3222,13 @@ function updateDayNight(t) {
   const wxMul = WEATHER === 'storm' ? .38 : WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
   sun.intensity = (.06 + 2.7 * da) * wxMul;
   hemi.intensity = (.16 + .62 * da) * (WEATHER === 'clear' ? 1 : .85);
+  { // ☁️ 云随昼夜染色:建云时是定死的白,夜里像贴上去的纸片——现随时段沉暗/染暖(~180 个 sprite,setRGB 开销可忽略)
+    const dk9 = Math.min(dusk, 1);
+    let cr9 = .15 + .85 * da + dk9 * .55 * (1 - da * .5), cg9 = .18 + .82 * da + dk9 * .12 * (1 - da * .5), cb9 = .26 + .74 * da - dk9 * .1;
+    const cwx9 = WEATHER === 'clear' ? 1 : (WEATHER === 'fog' ? .8 : .62);
+    cr9 *= cwx9; cg9 *= cwx9; cb9 *= cwx9;
+    for (const cg2 of clouds) for (const s2 of cg2.children) { const sh2 = s2.userData.sh || 1; s2.material.color.setRGB(cr9 * sh2, cg9 * sh2, cb9 * sh2); }
+  }
   if (WEATHER === 'rain') skyCol.lerp(new THREE.Color(0x6a7480), .4);
   if (WEATHER === 'storm') skyCol.lerp(new THREE.Color(0x424a56), .62);
   const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
@@ -3628,7 +3635,7 @@ const clouds = [];
     else { puffs = 4 + (rnd() * 3 | 0); size = 62 + rnd() * 26; spX = size * 2.8; spY = size * .16; spZ = size * .5; alt = 390 + rnd() * 90; op = .5; flat = .42; }
     for (let j = 0; j < puffs; j++) {
       const py = (rnd() - .5) * spY, shade = py < 0 ? .8 : 1;   // 底部略压暗 → 体积感
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: false, color: new THREE.Color(shade, shade, shade) }));
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: false, color: new THREE.Color(shade, shade, shade) })); sp.userData.sh = shade;
       const s = size * (.8 + rnd() * .5); sp.scale.set(s, s * flat, 1);
       sp.position.set((rnd() - .5) * spX, py, (rnd() - .5) * spZ);
       grp.add(sp);
