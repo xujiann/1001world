@@ -2602,11 +2602,11 @@ if (!THREE.ShaderChunk.fog_pars_vertex.includes('vFogY9')) {
     'gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( dot( gl_FragColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), fogFactor * 0.32 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
 }
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .68;
+renderer.toneMappingExposure = .73;
 if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
-scene.fog = new THREE.Fog(0x9fd4ee, 320, 1850);
+scene.fog = new THREE.Fog(0x86c3e8, 560, 2600);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
 let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 const REDUCE9 = matchMedia('(prefers-reduced-motion: reduce)').matches;   // ♿ 系统"减少动态"→ 关掉氛围粒子/光柱/运镜
@@ -2635,7 +2635,7 @@ if (!MOBILE) {
     };
     composer.addPass(gtaoPass);
   } catch (e) {}
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .25, .55, .85));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .22, .55, .90));
   godPass9 = new ShaderPass({   // 🌤️ 空中光柱:朝太阳屏幕位置径向累积亮像素(穷人版体积光散射)
     uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(.5, .5) }, uStr: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
@@ -2661,7 +2661,7 @@ if (!MOBILE) {
   composer.addPass(godPass9);
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
-    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.04 }, uVig: { value: .26 }, uCon: { value: .12 }, uSplit: { value: .4 } },
+    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .4 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
     fragmentShader: [
       'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig; uniform float uCon; uniform float uSplit;',
@@ -2732,8 +2732,8 @@ const sky = new Sky();
 sky.scale.setScalar(2100);
 scene.add(sky);
 const skyUni = sky.material.uniforms;
-skyUni.turbidity.value = 7;
-skyUni.rayleigh.value = 1.6;
+skyUni.turbidity.value = 5;
+skyUni.rayleigh.value = 2.4;
 skyUni.mieCoefficient.value = .004;
 skyUni.mieDirectionalG.value = .8;
 /* 🌇 IBL:把物理天空烘成环境贴图喂给全部 Standard 材质(天光漫射+反射,昼夜随烘随变) */
@@ -3203,7 +3203,7 @@ const dolphins9 = [];   // 🐬
 const FLYF9 = []; let flyfT9 = 5;   // 🐟 船头飞鱼池
 let prevMV9 = false, shellT9 = 0;   // 🌠 流星许愿沿 / 🐚 拾贝节流
 const DAY_LEN = 480, DAY_START = .12;
-const cDaySky = new THREE.Color(0x9fd4ee), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
+const cDaySky = new THREE.Color(0x86c3e8), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
 function dayAmount(p) { if (p < .58) return 1; if (p < .7) return 1 - (p - .58) / .12; if (p < .9) return 0; return (p - .9) / .1; }
 function updateDayNight(t) {
@@ -3331,9 +3331,9 @@ function updateDayNight(t) {
     let gfk9 = 0;
     if (greenFlashT9 > 0) { greenFlashT9 = Math.max(0, greenFlashT9 - .016); gfk9 = Math.sin(Math.min(1, greenFlashT9 / 1.8) * Math.PI) * .22; }
     gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
-    gradePass9.uniforms.uSat.value = 1.04 + dusk * .08 - (1 - da) * .12;
+    gradePass9.uniforms.uSat.value = 1.12 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
-    gradePass9.uniforms.uCon.value = .11 + dusk * .06;                       // 黄昏对比更强
+    gradePass9.uniforms.uCon.value = .14 + dusk * .06;                       // 黄昏对比更强
     gradePass9.uniforms.uSplit.value = clamp(.34 + dusk * .34 - (1 - da) * .12, 0, .72);   // 黄昏分离调色浓,深夜收敛
   }
   const wOp9 = clamp((1 - da) * 1.2, 0, 1) * .92;   // 🪟 夜窗灯
@@ -6988,7 +6988,7 @@ function surfaceDive(pi) {
   const closeCall9 = diveAir > 0 && diveAir < (gearOn('mask') ? 200 : 100) * .15;   // 😮‍💨 低氧自主出水=死里逃生
   diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false; diveZoneLast9 = -1;
   if (causticLight) causticLight.visible = false;
-  scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
+  scene.fog.near = 560; scene.fog.far = 2600; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden'); if (dangerEl9) dangerEl9.style.opacity = '0';
   $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
   player.position.set(sx, Math.max(height(sx, sz), pierHeight(sx, sz) || 0, 0) + 1.2, sz); vy = 0;
@@ -7060,7 +7060,7 @@ function enterFreeDive9() {
 function exitFreeDive9() {
   diving = false; freeDive9 = false; diveLight.visible = false;
   if (causticLight) causticLight.visible = false;
-  scene.fog.near = 320; scene.fog.far = 1850; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
+  scene.fog.near = 560; scene.fog.far = 2600; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden'); if (dangerEl9) dangerEl9.style.opacity = '0';
   $('btnDiveUp').classList.add('hidden'); $('btnDiveDown').classList.add('hidden'); joy.up = joy.down = false;
   player.position.y = -.55 + tideY; vy = 0;
