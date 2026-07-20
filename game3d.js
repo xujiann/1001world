@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=22';
+import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=23';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -23,7 +23,7 @@ import { THEMES, NI_QUESTS } from './w-config.js?v=17';
 import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=11';
-import { makeLORE } from './w-lore.js?v=1';
+import { makeLORE } from './w-lore.js?v=2';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
 import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim, netWho, netRegister, netLogin, netLogout } from './w-net.js?v=7';
@@ -6383,6 +6383,7 @@ for (const s of NISLES) {
   const c = NI_CONTENT[s.key]; if (!c) continue;
   const gx = s.x, gz = s.z;
   Object.assign(LORE, c.lore);
+  /* (故事线扩充落点见下方 EXP_LORE9) */
   WORLDS.push({ key: s.key, icon: c.icon, name: c.name, en: c.en, open: true, desc: c.desc || '' });
   SG_LIST.push([s.key, c.icon + ' ' + c.name]);
   ISLES.push({ c: { x: gx, z: gz, r: s.r }, name: c.name, icon: c.icon, theme: c.theme });
@@ -6423,6 +6424,32 @@ for (const s of NISLES) {
   }
 }
 /* ===== 🛂 环球护照:踏上一座岛,自动盖一枚章 ===== */
+/* —— 📖 故事线扩充 · 主群岛落点(Batch A:43 处;坐标=岛心近旁,经落陆验证)—— */
+{
+  const EXP_LORE9 = [
+    [IS2.x + 14, IS2.z - 14, 'lhwindow'], [IS2.x - 16, IS2.z + 16, 'lhtime'], [IS2.x + 22, IS2.z + 10, 'lhlily'], [IS2.x - 12, IS2.z - 20, 'lhboat'],
+    [TRU.x + 14, TRU.z - 12, 'trumoon'], [TRU.x - 12, TRU.z + 14, 'truexit'], [TRU.x + 6, TRU.z - 18, 'trulight'], [TRU.x + 22, TRU.z - 4, 'truradio'],
+    [MID.x + 14, MID.z - 14, 'midbagend'], [MID.x - 14, MID.z + 14, 'middoom'], [MID.x + 8, MID.z + 12, 'midgollum'], [MID.x - 22, MID.z - 12, 'mideagle'],
+    [HOG.x + 12, HOG.z + 12, 'hoghat'], [HOG.x - 14, HOG.z - 10, 'hoghall'], [HOG.x + 16, HOG.z - 16, 'hogforest'], [HOG.x - 8, HOG.z + 16, 'hogmap'],
+    [SPT.x + 12, SPT.z + 12, 'spttunnel'], [SPT.x - 12, SPT.z - 12, 'sptfergie'], [SPT.x + 8, SPT.z - 16, 'sptstretford'], [SPT.x - 16, SPT.z + 14, 'sptball'],
+    [MOB.x + 14, MOB.z + 12, 'mobahab'], [MOB.x - 16, MOB.z - 10, 'mobtry'], [MOB.x + 10, MOB.z - 14, 'mobchart'],
+    [NEM.x - 12, NEM.z + 12, 'nemsalon'], [NEM.x + 14, NEM.z - 8, 'nemmotto'],
+    [CBI.x - 12, CBI.z + 14, 'cbizhe'], [CBI.x + 16, CBI.z - 14, 'cbige'],
+    [LSP.x + 14, LSP.z - 12, 'lspflag'], [LSP.x - 16, LSP.z + 12, 'lspwillow'],
+    [FCY.x + 14, FCY.z - 12, 'fcyhelmet'], [FCY.x - 16, FCY.z + 14, 'fcydonkey'],
+    [DGY.x - 12, DGY.z - 12, 'dgyzhu'], [DGY.x + 14, DGY.z + 14, 'dgytaixu'],
+    [SIR.x - 12, SIR.z + 12, 'sirwax'], [SIR.x - 14, SIR.z - 10, 'sirsong'],
+    [SHJ.x - 14, SHJ.z + 14, 'shjxingtian'],
+    [ANH.x + 14, ANH.z + 12, 'anhsesame'],
+    [JUR.x + 14, JUR.z - 12, 'jurdna'],
+    [ALC.x + 12, ALC.z - 12, 'alctea'],
+    [HGS.x + 14, HGS.z + 12, 'hgsyou'],
+    [B612.x - 12, B612.z + 12, 'b612fox'],
+    [LRS.x + 14, LRS.z + 12, 'lrsxiaoqian'],
+    [THY.x + 14, THY.z + 12, 'thyji'],
+  ];
+  for (const [ex9, ez9, ek9] of EXP_LORE9) addSpot(ex9, ez9, 'lore', ek9, { r: 6.5 });
+}
 const PASSPORT = [
   ['收藏之岛', '🐋'], ['灯塔屿', '🗼'], ['楚门的世界', '📺'], ['中土', '💍'],
   ['霍格沃茨', '⚡'], ['南塔开特', '🐳'], ['体育岛', '⚽'],
@@ -12092,7 +12119,7 @@ if (!MOBILE) {
 loop();
 
 try { const bp9 = document.getElementById('buildProg'); if (bp9) bp9.remove(); } catch (e) {}   // ⏳ 建好了,撤进度条
-window.__w3d = { player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList, openDiveDex9, openMazeMap9, diveDex: () => ({ got: [...dexGot9], total: DIVE_SUBJECTS9.length }),
+window.__w3d = { MAP_LABELS, player, spots, TRAVEL3D, openCard, openJournal, seen, height, camera, scene, allNpcs, shards, collectShard, boats, bridgeHeight, islandMask, spendSB, earnSB, sb: () => sb, paperHTML, fishing, startCast, catchFish, FSPOTS, pierHeight, GEAR, gear, gearOn, openBag, parsePantheon, pantheonHTML, openPantheon, openAccount, profileList, PROFILE_ID: () => PROFILE_ID, talkTo, constDirs, updateStarGaze, setGaze: v => { starGaze = v; }, skyLabels, constSeen, recognizeConst, openJournal, titleList, openDiveDex9, openMazeMap9, diveDex: () => ({ got: [...dexGot9], total: DIVE_SUBJECTS9.length }),
   enterDive, surfaceDive, enterFreeDive9, exitFreeDive9, freeDiving: () => freeDive9, wreck9: () => wreck9, clampToMaze, MAZE_PORTALS, MAZE_NODES, MAZE_EDGES, AIR_NODES, DISC, GATES, gateOpen, fireSonar, diving: () => diving, diveAir: () => diveAir, setAir: v => { diveAir = v; }, gear, GEAR,
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9, makeBldg,
