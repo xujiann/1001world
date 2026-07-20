@@ -2274,7 +2274,7 @@ function openBottleDrop9() {   // 🍾 扔漂流瓶:预设句选一,落在当前
 }
 let bottleShown9 = false;
 async function fishBottle9() {   // 🍾 捡瓶:踏上新岛/今日一岛时尝试打捞一只别人的瓶子(每会话最多一次)
-  if (bottleShown9) return;
+  if (bottleShown9 || !worldStarted9) return;   // 未登岛不打扰(也免 CI 期误发请求)
   const isle9 = nearIsle9();
   const b9 = await netBottleFish(isle9, cidOf9());
   if (!b9 || modalOpen) return;
