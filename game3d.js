@@ -2235,6 +2235,25 @@ function openQuiz9() {
     setTimeout(openQuiz9, 650);
   }));
 }
+function dailyItems9() {   // 📋 今日岛报:散落各岛的每日小事(委托/鉴赏挑战另有专块)
+  const td9 = todayStr(), on9 = k9 => PSTORE.getItem('w1001.' + k9) === td9;
+  const it9 = [
+    ['🏝️', '今日一岛 · ' + featuredIsle9().name, featDone9, '海图点它直航 +40⚡'],
+    ['📸', '摄影题「' + PH_TODAY9.name + '」', on9('photodo'), 'P 照片模式拍到 +15⚡'],
+    ['⚓', '海底沉箱', on9('chest'), '游泳按 C 下潜寻箱'],
+    ['💎', '迷宫沉宝', on9('mt'), '蓝洞迷宫里打捞'],
+    ['🪔', '神灯许愿', on9('lamp'), '一千零一夜·巴格达'],
+    ['🍑', '蟠桃一颗', on9('pantao'), '花果山蟠桃园'],
+    ['🌹', '给玫瑰浇水', on9('rose'), 'B-612 小行星'],
+    ['📜', '对今日楹联', on9('poem'), '兰若寺门前'],
+  ];
+  if (WEATHER === 'storm') it9.push(['⛈️', '风暴悬赏', on9('storm1d'), '帆船驶抵黑旗浮标 +60⚡']);
+  return it9;
+}
+function dailyBoardHTML9() {
+  const it9 = dailyItems9(), left9 = it9.filter(x9 => !x9[2]).length;
+  return `<div class="qBox" style="border:1px solid rgba(140,220,180,.4);background:rgba(50,140,100,.08)"><div class="qTitle"><span>📋 今日岛报</span><span>${left9 ? '剩 ' + left9 + ' 件' : '✅ 全清'}</span></div>${it9.map(([ic9, nm9, ok9, hint9]) => `<div class="qRow${ok9 ? ' ok' : ''}"><span>${ok9 ? '✅' : ic9} ${nm9}</span><span class="qn">${ok9 ? '已办' : hint9}</span></div>`).join('')}</div>`;
+}
 function openJournal() {
   if (ob9 === 3) { obSet9(9); setTimeout(() => toast(isTouch ? '🗺️ 引导完成:菜单里点 🗺️ 海图,点岛直航——58 座岛都在等你!' : '🗺️ 引导完成:按 M 开海图点岛直航——58 座岛都在等你!'), 900); }
   const list = $('journalList');
@@ -2250,7 +2269,7 @@ function openJournal() {
     <div style="height:10px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden;margin:4px 0 8px"><div style="height:100%;width:${pct9}%;background:linear-gradient(90deg,#d9a62e,#ffd76a);border-radius:6px"></div></div>
     ${pct9 >= 75 && pct9 < 100 ? '<div style="font-size:12px;color:#d8ceb0;margin-bottom:4px">距离圆满:' + wc9.parts.filter(x9 => x9[1] < x9[2]).map(x9 => x9[0] + ' ' + Math.min(x9[1], x9[2]) + '/' + x9[2]).join(' · ') + '</div>' : ''}
     ${pct9 >= 100 ? '<div style="font-size:12.5px;color:#ffd76a">🎇 圆满。你是「1001 世界的居民」</div>' : ''}</div>`;
-  const mHtml = wcHtml + dqHtml + quizHtml9() + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
+  const mHtml = dailyBoardHTML9() + wcHtml + dqHtml + quizHtml9() + evHtml + `<div class="qBox" style="border:1px solid rgba(120,200,255,.4);background:rgba(60,140,220,.09)"><div class="qTitle"><span>🧭 主线 · 追查海底真相</span><span>${mq.done ? '✅ 通关' : ''}</span></div>
     <div style="font-size:13.5px;color:#8fd0ff;font-weight:700;padding:2px 2px 5px">${mq.st}</div>
     <div style="font-size:12.5px;color:#c4d2c0;padding:0 2px 4px;line-height:1.6">👉 ${mq.tip}</div></div>`;
   const qHtml = quest ? `<div class="qBox"><div class="qTitle"><span>📜 今日委托</span><span>⭐ ×${stars}</span></div>
@@ -2442,7 +2461,7 @@ function startWorld9() {
   }, 2600);
   // 节日彩蛋播报
   if (LOWTIDE9 && !obFresh9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
-  if (!obFresh9) setTimeout(() => { toast('📸 今日摄影题:「' + PH_TODAY9.name + '」——照片模式拍到即得 ⚡15'); }, 12000);
+  if (!obFresh9) setTimeout(() => { const left9 = dailyItems9().filter(x9 => !x9[2]).length; if (left9) toast('📋 今日岛报:还有 ' + left9 + ' 件今日事——按 J 查看清单'); }, 12000);
   if (FESTIVAL && !obFresh9) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 7000);
 }
 $('btnStart').addEventListener('click', startWorld9);
