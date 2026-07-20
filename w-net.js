@@ -70,6 +70,32 @@ export function netEvent(type, meta) {
   } catch (e) {}
 }
 
+/* 🏆 每日排行榜 + 🍾 漂流瓶:REST 轻写读(不加载 SDK);无表/断网一律静默,游戏照常 */
+const rest9 = (path, opt) => fetch(NET_URL + '/rest/v1/' + path, Object.assign({ headers: { apikey: NET_KEY, Authorization: 'Bearer ' + NET_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' } }, opt));
+export function netLbUp(kind, score, cid, alias) {
+  try { if (!netOn()) return; rest9('lb', { method: 'POST', keepalive: true, body: JSON.stringify({ kind, score, cid, alias }) }).catch(() => {}); } catch (e) {}
+}
+export async function netLbTop(kind) {
+  try {
+    if (!netOn()) return null;
+    const d9 = new Date().toISOString().slice(0, 10);
+    const r9 = await rest9('lb?select=cid,alias,score&kind=eq.' + kind + '&day=eq.' + d9 + '&limit=200', { method: 'GET' });
+    return r9.ok ? await r9.json() : null;
+  } catch (e) { return null; }
+}
+export function netBottleDrop(isle, phrase, cid, alias) {
+  try { if (!netOn()) return; rest9('bottles', { method: 'POST', body: JSON.stringify({ isle, phrase, cid, alias }) }).catch(() => {}); } catch (e) {}
+}
+export async function netBottleFish(isle, cid) {
+  try {
+    if (!netOn()) return null;
+    const r9 = await rest9('bottles?select=phrase,alias,created_at&isle=eq.' + encodeURIComponent(isle) + '&cid=neq.' + encodeURIComponent(cid) + '&order=created_at.desc&limit=24', { method: 'GET' });
+    if (!r9.ok) return null;
+    const a9 = await r9.json();
+    return a9 && a9.length ? a9[Math.floor(Math.random() * a9.length)] : null;
+  } catch (e) { return null; }
+}
+
 /* ☁️ 云存档:data = 与本地「导出存档码」同格式的文本,每匿名身份一行(见 cloud.sql)。
    安全:RLS 只许本人读写自己那行;跨设备取档走 claim_save RPC(凭绑定码只读复制)。
    健壮性:长挂页面的缓存会话可能掉成匿名态(后台节流耽误刷新)——写前先验真身份,失败刷新重试一次。 */
