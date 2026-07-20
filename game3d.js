@@ -2351,7 +2351,7 @@ function openJournal() {
         <img src="${cd.d}" style="width:100%;border-radius:3px;display:block">
         <div style="font-size:11px;color:#3a3226;padding:5px 2px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(cd.nm)}</div>
         <div style="display:flex;gap:5px">${cd.sent ? '<span style="font-size:10.5px;color:#2c7a4b;padding:3px 2px">✅ 已寄出</span>' : `<button class="gBtn" data-sendc="${i9}" style="padding:3px 9px;font-size:11px">寄出</button>`}
-        <a class="gBtn off" style="padding:3px 9px;font-size:11px;text-decoration:none" href="${cd.d}" download="postcard-${i9 + 1}.jpg">下载</a></div>
+        <a class="gBtn off" style="padding:3px 9px;font-size:11px;text-decoration:none" href="${cd.d}" download="postcard-${i9 + 1}.jpg">下载</a>${navigator.canShare ? `<button class="gBtn off" data-sharec="${i9}" style="padding:3px 9px;font-size:11px">分享</button>` : ''}</div>
       </div>`).reverse().join('')}</div>`;
   const J_TABS = [['over', '🧭 总览'], ['log', '📜 日志'], ['pass', '🛂 护照'], ['cards', '💌 集邮册'], ['title', '🎖️ 称号'], ['star', '✨ 星图'], ['coll', '🏛️ 馆藏']];
   const tabBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;position:sticky;top:0;z-index:2;padding:4px 0;background:inherit">${J_TABS.map(([id2, nm2]) => `<button data-jtab="${id2}" class="gBtn${journalTab === id2 ? '' : ' off'}" style="padding:6px 13px;font-size:12.5px">${nm2}</button>`).join('')}</div>`;
@@ -2363,6 +2363,18 @@ function openJournal() {
   list.querySelector('#btnQuiz9')?.addEventListener('click', openQuiz9);
   list.querySelectorAll('[data-eqtitle]').forEach(b => b.addEventListener('click', () => equipTitle(b.dataset.eqtitle)));
   list.querySelectorAll('[data-jtab]').forEach(b => b.addEventListener('click', () => { journalTab = b.dataset.jtab; openJournal(); blip(600); }));
+  list.querySelectorAll('[data-sharec]').forEach(b => b.addEventListener('click', async () => {
+    try {
+      const i9 = +b.dataset.sharec;
+      let cs9 = []; try { cs9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
+      if (!cs9[i9]) return;
+      const bl9 = await (await fetch(cs9[i9].d)).blob();
+      const f9 = new File([bl9], 'postcard.jpg', { type: 'image/jpeg' });
+      const pay9 = { files: [f9], title: '1001 世界', text: '来自「1001 世界」的明信片 · ' + cs9[i9].nm + ' — https://xujiann.github.io/1001world/' };
+      if (navigator.canShare && navigator.canShare(pay9)) await navigator.share(pay9);
+      else await navigator.share({ title: '1001 世界', text: pay9.text, url: 'https://xujiann.github.io/1001world/' });
+    } catch (e) { if (e && e.name !== 'AbortError') toast('分享未成功——可以用「下载」保存后手动分享'); }
+  }));
   list.querySelectorAll('[data-sendc]').forEach(b => b.addEventListener('click', () => {
     const i9 = +b.dataset.sendc;
     let cs9 = []; try { cs9 = JSON.parse(PSTORE.getItem('w1001.cards') || '[]'); } catch (e) {}
@@ -8023,7 +8035,7 @@ function makePostcard() {
     c.fillStyle = '#3a3226'; c.font = 'bold 17px Georgia, "Noto Serif SC", serif'; c.textAlign = 'left';
     c.fillText(nm, m9 + 2, ch - 30);
     c.font = '12px Georgia, serif'; c.fillStyle = '#8a7c62';
-    c.fillText('1001 世界 · ' + new Date().toLocaleDateString('zh-CN'), m9 + 2, ch - 12);
+    c.fillText('1001 世界 · xujiann.github.io/1001world · ' + new Date().toLocaleDateString('zh-CN'), m9 + 2, ch - 12);
     c.fillStyle = '#fff'; c.fillRect(cw - 66, m9 + 5, 46, 56);
     c.strokeStyle = '#b9ae98'; c.setLineDash([3, 3]); c.strokeRect(cw - 66, m9 + 5, 46, 56); c.setLineDash([]);
     c.font = '26px serif'; c.textAlign = 'center'; c.fillText($('zoneIcon').textContent, cw - 43, m9 + 43);
