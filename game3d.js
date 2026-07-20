@@ -497,6 +497,12 @@ function updateQuestHUD() {
 }
 initQuest();
 /* --- 算力币(SB)钱包 --- */
+/* 🧭 渐进式新手引导:仅全新存档(未看过指南+零藏品)触发;四步各由真实行为解锁;老档 ob9=9 全程静默 */
+const obFresh9 = (() => { try { if (PSTORE.getItem('w1001.guide') === '1') return false; return Object.values(seen).every(a9 => !a9 || !a9.length); } catch (e) { return false; } })();
+let ob9 = obFresh9 ? (parseInt(PSTORE.getItem('w1001.ob9') || '0', 10) || 0) : 9;
+let obMove9 = 0;
+const obSet9 = n9 => { ob9 = n9; try { PSTORE.setItem('w1001.ob9', String(n9)); } catch (e) {} };
+const obSeen9 = () => { try { return Object.values(seen).some(a9 => a9 && a9.length); } catch (e) { return true; } };
 let sb = parseInt(PSTORE.getItem('w1001.sb') ?? 'x', 10);
 if (!Number.isFinite(sb)) sb = 101;   // 新玩家启动资金
 let drinks = parseInt(PSTORE.getItem('w1001.drinks') || '0', 10) || 0;
@@ -2230,6 +2236,7 @@ function openQuiz9() {
   }));
 }
 function openJournal() {
+  if (ob9 === 3) { obSet9(9); setTimeout(() => toast(isTouch ? '🗺️ 引导完成:菜单里点 🗺️ 海图,点岛直航——58 座岛都在等你!' : '🗺️ 引导完成:按 M 开海图点岛直航——58 座岛都在等你!'), 900); }
   const list = $('journalList');
   const mq = mainQuest();
   const evHtml = EVENT === 'none' ? '' : `<div class="qBox" style="border:1px dashed rgba(255,215,106,.5)"><div class="qTitle"><span>${EVENTS[EVENT].icon} 今日事件 · ${EVENTS[EVENT].name}</span><span>限今日</span></div><div style="font-size:12.5px;color:#d8ceb0;padding:2px 2px 4px">${EVENTS[EVENT].note}</div></div>`;
@@ -2411,7 +2418,7 @@ function startWorld9() {
   initAudio();
   dailyStreak9();
   try { if (netOn() && RAWLS.getItem('w1001.cloudday') !== todayStr()) setTimeout(async () => { try { const r9 = await cloudUp9(); if (r9.ok) RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} }, 15000); } catch (e) {}   // ☁️ 每日静默云备份
-  setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
+  if (!obFresh9) setTimeout(() => { const fi9 = featuredIsle9(); toast('🏝️ 今日一岛:' + fi9.icon + ' ' + fi9.name + '——今天到访有 ⚡ 奖励(M 海图点它直航)'); }, 9200);
   try {   // 📊 匿名埋点:会话快照 + 心跳(留存/时长/进度分布;无 events 表则静默降级)
     const cid9 = cidOf9();
     const seenN9 = Object.values(seen).reduce((a9, b9) => a9 + (b9 && b9.length ? b9.length : 0), 0);
@@ -2425,8 +2432,8 @@ function startWorld9() {
       setTimeout(openGuide, 700);
     }
   } catch (e) {}
-  // 今日天气播报(雨天提示渔汛)
-  setTimeout(() => {
+  // 今日天气播报(雨天提示渔汛;新档首日静默,专心引导)
+  if (!obFresh9) setTimeout(() => {
     if (WEATHER === 'rain') toast('🌧️ 今日有雨——渔汛正旺!钓鱼上钩快、售价翻倍');
     else if (WEATHER === 'storm') toast('⛈️ 今日风暴!半数航班延误,帆船颠簸——但远海挂出了黑旗悬赏浮标,敢开船去的人有赏(M 海图外缘方向)');
     else if (WEATHER === 'fog') toast('🌫️ 今日大雾,能见度低,塞壬海域尤请谨慎');
@@ -2434,9 +2441,9 @@ function startWorld9() {
     else toast('☀️ 今日晴,傍晚有物理正确的晚霞');
   }, 2600);
   // 节日彩蛋播报
-  if (LOWTIDE9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
-  setTimeout(() => { toast('📸 今日摄影题:「' + PH_TODAY9.name + '」——照片模式拍到即得 ⚡15'); }, 12000);
-  if (FESTIVAL) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 4800);
+  if (LOWTIDE9 && !obFresh9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
+  if (!obFresh9) setTimeout(() => { toast('📸 今日摄影题:「' + PH_TODAY9.name + '」——照片模式拍到即得 ⚡15'); }, 12000);
+  if (FESTIVAL && !obFresh9) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 7000);
 }
 $('btnStart').addEventListener('click', startWorld9);
 /* 🎬 首次加载:任意键/点按钮即启程;闲置则按钮读秒自动进场(展开「岛屿一览」= 想细看 → 取消倒计时) */
@@ -10451,6 +10458,21 @@ function worldFx9(dt, t, pMoving, bh) {
     }
   }
 }
+let obGuideSeen9 = false, obWait9 = 0;   // 指南弹窗「开过再关」才开始第一课(否则第一步会被 0.7s 后弹出的指南盖掉)
+function obTick9(dt9, moving9) {   // 🧭 四步引导:走路→看藏品→开日志→(openJournal 里收尾教海图)
+  if (ob9 >= 3) return;
+  if (!worldStarted9) return;
+  if (modalOpen) { obGuideSeen9 = true; return; }   // 指南/弹窗开着不打扰,关掉才继续
+  obWait9 += dt9;
+  if (ob9 === 0 && !obGuideSeen9 && obWait9 < 12) return;   // 等指南先出场(12s 兜底)
+  if (ob9 === 0) { obSet9(1); toast(isTouch ? '🧭 第一步:用左下角摇杆走走看' : '🧭 第一步:用 WASD / 方向键 走走看'); blip(620); return; }
+  if (ob9 === 1) {
+    if (moving9) obMove9 += dt9;
+    if (obMove9 > 1.2) { obSet9(2); toast(isTouch ? '✨ 会走了!走近发亮的藏品,点 👀 欣赏——每件 +2 ⚡' : '✨ 会走了!走近发亮的藏品,按 E 欣赏——每件 +2 ⚡'); blip(660); }
+    return;
+  }
+  if (ob9 === 2 && obSeen9()) { obSet9(3); setTimeout(() => { toast(isTouch ? '⚡ 到手!接着点 📔 看旅程指引与主线' : '⚡ 到手!接着按 J 看旅程指引与主线'); blip(700); }, 1600); }
+}
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05);
@@ -11491,6 +11513,7 @@ function loop() {
       setPR();
     }
   }
+  obTick9(dt, pMoving);
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
   if (pcPending) {
     pcPending = false; makePostcard();
