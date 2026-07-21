@@ -2457,7 +2457,7 @@ function openGuide() {
     <b>1. 看藏品赚算力币(⚡)</b>——名画、飞鸟、草木、美酒……走近按 E,每件 +2。钓鱼来钱最快(栈桥尽头)。<br><br>
     <b>2. 花钱变强</b>——千岛装备行买泳衣才好下海;酒馆、报亭都收算力币。<br><br>
     <b>3. 出海远行</b>——六十一座岛铺成一颗按真实经纬布局的「文学地球」:名著长成的岛、现实与文学融合的组合群岛(加拉帕戈斯×博物学、威尼斯×卡尔维诺……),还有从未竟之都出发的群岛考据学。每座岛都藏着一条故事线,<b>按 J 打开图鉴看「航海日志」</b>逐一点亮;<b>按 M 看航海图、N 转地球仪——点岛即可直航</b>。<br><br>
-    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;游泳时按 <b>C</b> 自由下潜,开放水域的海底有海藻林、珊瑚园、热泉与一艘沉船;主岛另有大鹏环游与开往霍格沃茨的列车;青丘的百年轨车到站按 E 可搭一程。按 <b>X</b> 开启导航:流光点一路铺到最近的机场/渡口/蓝洞。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
+    <b>4. 出行九式</b>——步行、游泳、潜水之外:装备行有 <b>🚲 折叠自行车</b>(60⚡,按 R 上下车)与 <b>⛵ 燕鸥号帆船</b>(160⚡,任何海岸都是码头);十九座设有机场的岛之间可乘 <b>✈️ 鲸航</b> 付费飞行(全按现实设台:复活节岛马塔维里、圣托里尼、帕果帕果……中土和霍格沃茨依旧婉拒跑道;楚门的机场是布景,航班永远取消);机场可达的岛不再停靠渡口;游泳时按 <b>C</b> 自由下潜,开放水域的海底有海藻林、珊瑚园、热泉与一艘沉船;主岛另有大鹏环游、开往霍格沃茨的列车,以及绕岛一圈的 <b>🚂 千岛环线</b>小火车(五站任意上下,靠近按 E 上车);青丘的百年轨车到站按 E 可搭一程。按 <b>X</b> 开启导航:流光点一路铺到最近的机场/渡口/蓝洞。每踏上一座新岛,<b>🛂 环球护照</b>自动盖章——盖满全部岛屿,便是「环球旅行家」。<br><br>
     <b>5. 安顿下来(衣食住)</b>——集市街的 <b>👘 千帆裁缝铺</b>置办披风与帽子(买过随时免费换穿);九座岛各有一个 <b>🍜 小吃摊</b>,地方味自带增益(左上角出徽章倒计时),吃遍九道得称号「环球食客」;攒够 200⚡ 到<b>主岛东滩</b>买下那块挂牌空地,🏠 小屋即时落成——门牌、明信片墙、小憩床,⋯菜单一键回家,住下后还能扩阁楼、修花园。<br><br>
     <b>6. 和居民混熟</b>——全岛 209 位居民人人可聊(交谈 +1 ❤,寄明信片 +2);混熟了有私房话,交情够深会收到小礼物。夜里大多数人睡了,守夜人和灯塔管理员例外。每天还有两位居民发出 🤝 <b>委托</b>(带一份吃食/寄一张明信片,+10⚡)——按 J 在总览页查看。<br><br>
     <b>7. 抬头与起飞</b>——夜里按 <b>K</b> 观星,认全 88 星座;主岛栖石上有一只大鹏,按 <b>E</b> 乘它扶摇直上环游诸岛,或直上<b>天空之城勒皮他</b>——云端有云端的配乐。<br><br>
@@ -9625,6 +9625,97 @@ function obstNear(x, z) {
 /* ===== 🚋 青丘轨车:广场站 ⇄ 海岸站(70° 净空走廊,可搭乘) ===== */
 const TRAM_A = [1764.1, 251.3], TRAM_B = [1781.9, 300.1];
 const TRAM_LEN = Math.hypot(TRAM_B[0] - TRAM_A[0], TRAM_B[1] - TRAM_A[1]);
+/* ===== 🚂 千岛环线:主岛环岛铁路 ===== */
+const RAIL_WP9 = [[12, -34], [90, 60], [60, 150], [26, 208], [-120, 230], [-295, 175], [-300, 40], [-250, -120], [-120, -230], [60, -250], [200, -200], [428, -62], [374, 24], [200, 90]];   // 闭环航点(逐段验陆,东段爬鲸背)
+const RAIL_STOPS9 = [[0, '中央广场'], [3, '千岛装备行'], [5, '牛首回廊'], [11, '鲸背机场'], [12, '东滩渡口']];   // [航点序号, 站名]
+let railPts9 = [], railLen9 = 0, trainGrp9 = null, trainS9 = 0, trainWait9 = 5, trainRiding9 = false, railNextStop9 = 1, railStopS9 = [];
+{
+  // 弧长表
+  let acc9 = 0;
+  for (let i = 0; i < RAIL_WP9.length; i++) {
+    const [x1, z1] = RAIL_WP9[i], [x2, z2] = RAIL_WP9[(i + 1) % RAIL_WP9.length];
+    railPts9.push({ x: x1, z: z1, s: acc9 });
+    acc9 += Math.hypot(x2 - x1, z2 - z1);
+  }
+  railLen9 = acc9;
+  railStopS9 = RAIL_STOPS9.map(([wi9, nm9]) => ({ s: railPts9[wi9].s, nm: nm9, x: railPts9[wi9].x, z: railPts9[wi9].z }));
+  // 轨道几何:每 2.4m 一枕木 + 双钢轨短节,贴地合并(2 个网格)
+  const slG9 = [], rlG9 = [], step9 = 2.4;
+  for (let s9 = 0; s9 < railLen9; s9 += step9) {
+    const a9 = railAt9(s9), b9 = railAt9(Math.min(s9 + step9, railLen9 - .01));
+    const yaw9 = Math.atan2(b9.x - a9.x, b9.z - a9.z);
+    const mid9 = { x: (a9.x + b9.x) / 2, y: (a9.y + b9.y) / 2, z: (a9.z + b9.z) / 2 };
+    const seg9 = Math.hypot(b9.x - a9.x, b9.z - a9.z) || step9;
+    const pitch9 = Math.atan2(b9.y - a9.y, seg9);
+    const sl9 = new THREE.BoxGeometry(2.0, .12, .6);
+    sl9.applyMatrix4(new THREE.Matrix4().makeRotationY(yaw9)).translate(a9.x, a9.y + .06, a9.z);
+    slG9.push(sl9);
+    for (const side9 of [-0.72, 0.72]) {
+      const rl9 = new THREE.BoxGeometry(.1, .12, seg9 + .25);
+      const m9 = new THREE.Matrix4().makeRotationY(yaw9).multiply(new THREE.Matrix4().makeRotationX(-pitch9));
+      rl9.applyMatrix4(m9);
+      rl9.translate(mid9.x + Math.cos(yaw9) * side9, mid9.y + .17, mid9.z - Math.sin(yaw9) * side9);
+      rlG9.push(rl9);
+    }
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(slG9, false), lam(0x5a4630)));
+  const railMesh9 = new THREE.Mesh(mergeGeometries(rlG9, false), MOBILE ? new THREE.MeshLambertMaterial({ color: 0x9aa2ab }) : new THREE.MeshStandardMaterial({ color: 0x9aa2ab, roughness: .45, metalness: .7 }));
+  scene.add(railMesh9);
+  // 车站:站台 + 站牌 + 夜灯
+  for (const st9 of railStopS9) {
+    const a9 = railAt9(st9.s + .1), b9 = railAt9(st9.s + 2);
+    const yaw9 = Math.atan2(b9.x - a9.x, b9.z - a9.z);
+    const px9 = a9.x + Math.cos(yaw9) * 2.4, pz9 = a9.z - Math.sin(yaw9) * 2.4;
+    const pf9 = box(7, .5, 2.6, lam(0x8a8478)); pf9.position.set(px9, a9.y + .25, pz9); pf9.rotation.y = yaw9; scene.add(pf9);
+    const sg9 = makeSign('🚂 ' + st9.nm + '站', 5.2, '#2a3a2e', '#bfe8c8'); sg9.position.set(px9, a9.y + 3.1, pz9); sg9.rotation.y = yaw9 + Math.PI / 2; scene.add(sg9);
+    const lp9 = new THREE.PointLight(0xffd9a0, 0, 16, 2); lp9.position.set(px9, a9.y + 3.4, pz9); lp9.userData.pow = 6; nightLamps.push(lp9); scene.add(lp9);
+  }
+  // 小火车:红机车(烟囱/驾驶室/轮)+ 绿客车
+  trainGrp9 = new THREE.Group();
+  const loco9 = box(1.9, 1.3, 3.4, lam(0x9c2f2a)); loco9.position.y = 1.05; trainGrp9.add(loco9);
+  const cab9 = box(1.7, 1.1, 1.2, lam(0x6a1f1c)); cab9.position.set(0, 2.0, -1.0); trainGrp9.add(cab9);
+  const chim9 = cyl(.18, .26, .9, lam(0x2a2a2e), 8); chim9.position.set(0, 2.15, 1.15); trainGrp9.add(chim9);
+  for (const [wx9, wz9] of [[-.85, 1.05], [.85, 1.05], [-.85, -1.05], [.85, -1.05]]) {
+    const wh9 = cyl(.42, .42, .22, lam(0x1c1c20), 10); wh9.rotation.z = Math.PI / 2; wh9.position.set(wx9, .42, wz9); trainGrp9.add(wh9);
+  }
+  const car9 = box(1.8, 1.5, 3.0, lam(0x2e6a4a)); car9.position.set(0, 1.15, -3.9); trainGrp9.add(car9);
+  const roof9 = box(2.0, .16, 3.3, lam(0x1e4a34)); roof9.position.set(0, 1.98, -3.9); trainGrp9.add(roof9);
+  for (const [wx9, wz9] of [[-.8, -3.0], [.8, -3.0], [-.8, -4.8], [.8, -4.8]]) {
+    const wh9 = cyl(.36, .36, .2, lam(0x1c1c20), 10); wh9.rotation.z = Math.PI / 2; wh9.position.set(wx9, .36, wz9); trainGrp9.add(wh9);
+  }
+  const hl9 = new THREE.PointLight(0xffe8b0, .9, 20, 2); hl9.position.set(0, 1.5, 1.9); trainGrp9.add(hl9);
+  scene.add(trainGrp9);
+}
+function railAt9(s9) {   // 弧长 → 世界坐标(贴地)
+  s9 = ((s9 % railLen9) + railLen9) % railLen9;
+  let i9 = railPts9.length - 1;
+  for (let k9 = 0; k9 < railPts9.length; k9++) { const nx9 = railPts9[(k9 + 1) % railPts9.length]; if (s9 >= railPts9[k9].s && (k9 === railPts9.length - 1 || s9 < nx9.s)) { i9 = k9; break; } }
+  const A9 = railPts9[i9], B9 = railPts9[(i9 + 1) % railPts9.length];
+  const segL9 = (i9 === railPts9.length - 1 ? railLen9 : B9.s) - A9.s;
+  const t9 = segL9 > 0 ? (s9 - A9.s) / segL9 : 0;
+  const x9 = A9.x + (B9.x - A9.x) * t9, z9 = A9.z + (B9.z - A9.z) * t9;
+  return { x: x9, z: z9, y: Math.max(heightMesh(x9, z9), .3) };
+}
+function railStep9(dt) {
+  window.__rs9 = (window.__rs9 || 0) + 1;
+  if (!trainGrp9) return;
+  if (trainWait9 > 0) { trainWait9 -= dt; }
+  else {
+    trainS9 += dt * 7;
+    const ns9 = railStopS9[railNextStop9];
+    const dist9 = ((ns9.s - trainS9) % railLen9 + railLen9) % railLen9;
+    if (dist9 > railLen9 - 14) {   // 越过站点(取模回绕)→ 停站
+      trainS9 = ns9.s; trainWait9 = 5; blip(720); setTimeout(() => blip(560), 200);
+      if (trainRiding9) toast('🚂 到站:' + ns9.nm + '(按 E 下车,坐着不动继续兜风)');
+      railNextStop9 = (railNextStop9 + 1) % railStopS9.length;
+    }
+    if (trainS9 >= railLen9) trainS9 -= railLen9;
+  }
+  const a9 = railAt9(trainS9), b9 = railAt9(trainS9 + 2.2);
+  trainGrp9.position.set(a9.x, a9.y + .18, a9.z);
+  trainGrp9.rotation.y = Math.atan2(b9.x - a9.x, b9.z - a9.z);
+  if (trainRiding9) { player.position.set(a9.x, a9.y + 1.6, a9.z); vy = 0; }
+}
 let qqTram = null, tramPos = 0, tramDir = 1, tramWait = 4, tramRiding = false;
 function tramStep(dt) {
   zoneAudioTick(dt);
@@ -9879,6 +9970,11 @@ function tryInteract() {
   if (nearSpot && nearSpot.cat === 'food') { openFood(nearSpot.fid); return; }
   if (nearSpot && nearSpot.cat === 'tailor') { openTailor(); return; }
   if (nearSpot && nearSpot.cat === 'home') { openHome(); return; }
+  if (!nearSpot && trainGrp9 && Math.hypot(player.position.x - trainGrp9.position.x, player.position.z - trainGrp9.position.z) < 6) {
+    if (!trainRiding9) { trainRiding9 = true; toast('🚂 上车!千岛环线顺时针发车——五站一圈,约四分钟'); blip(700); }
+    else { trainRiding9 = false; const a9 = railAt9(trainS9), b9 = railAt9(trainS9 + 2); const yaw9 = Math.atan2(b9.x - a9.x, b9.z - a9.z); player.position.set(a9.x + Math.cos(yaw9) * 2.6, a9.y + 1, a9.z - Math.sin(yaw9) * 2.6); toast('🚂 你跳下了火车'); }
+    return;
+  }
   if (!nearSpot && qqTram && Math.hypot(player.position.x - qqTram.position.x, player.position.z - qqTram.position.z) < 5.5) {
     if (!tramRiding) { tramRiding = true; toast('🚋 上车!一百年,就跑这一条线'); blip(700); }
     else { tramRiding = false; player.position.x += 2.6; toast('🚋 你跳下了轨车'); }
@@ -11567,6 +11663,7 @@ function loop() {
   if (BUFF.ride > 0) BUFF.ride -= dt;
   syncBuffs(dt);
   tramStep(dt);   // 🚋 轨车 + 雾笛
+  railStep9(dt);   // 🚂 千岛环线
   seasonTick(dt, t);   // 🍂 四季粒子
   syncFarView();   // 🔭 远景降载
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
@@ -12246,7 +12343,8 @@ window.__w3d = { MAP_LABELS, player, spots, TRAVEL3D, openCard, openJournal, see
   usingGLTF: () => usingGLTF, playerRobot: () => playerRobot, playerActs: () => Object.keys(playerActions), playerAct: () => playerAct,
   quality: () => quality, setQuality: q => { quality = q; applyQuality(); }, gtaoEnabled: () => gtaoPass ? gtaoPass.enabled : null, bakeEnv9, makeBldg,
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
-  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep,
+  railInfo9: () => ({ s: +trainS9.toFixed(1), len: +railLen9.toFixed(0), wait: +trainWait9.toFixed(1), riding: trainRiding9, next: railStopS9[railNextStop9].nm, x: +trainGrp9.position.x.toFixed(0), z: +trainGrp9.position.z.toFixed(0) }), railBoard9: v9 => { trainRiding9 = v9; }, railStep9, railSetS9: v9 => { trainS9 = v9; trainWait9 = 0; let bi9 = 0, bd9 = 1e9; for (let k9 = 0; k9 < railStopS9.length; k9++) { const d9 = ((railStopS9[k9].s - v9) % railLen9 + railLen9) % railLen9; if (d9 > 1 && d9 < bd9) { bd9 = d9; bi9 = k9; } } railNextStop9 = bi9; }, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
 
 /* ⏳ 若玩家在建造期间就点过「登上海岛」,此刻兑现 */
 try { if (wantStart9) startWorld9(); else { const b9 = document.getElementById('btnStart'); if (b9 && b9.textContent.includes('就快好了')) b9.textContent = START_LABEL9; } } catch (e) {}
