@@ -2310,7 +2310,7 @@ function dailyItems9() {   // 📋 今日岛报:散落各岛的每日小事(委�
 function dailyBoardHTML9() {
   const it9 = dailyItems9(), left9 = it9.filter(x9 => !x9[2]).length;
   const nf9 = nextFest9();
-  return `<div class="qBox" style="border:1px solid rgba(140,220,180,.4);background:rgba(50,140,100,.08)"><div class="qTitle"><span>📋 今日岛报</span><span>${left9 ? '剩 ' + left9 + ' 件' : '✅ 全清'}</span></div>${it9.map(([ic9, nm9, ok9, hint9]) => `<div class="qRow${ok9 ? ' ok' : ''}"><span>${ok9 ? '✅' : ic9} ${nm9}</span><span class="qn">${ok9 ? '已办' : hint9}</span></div>`).join('')}${nf9 ? `<div style="font-size:11.5px;color:#8ea6b8;padding:5px 2px 0">🗓️ ${nf9.d === 0 ? '今天就是 ' + nf9.emoji + nf9.name + '!' : '距 ' + nf9.emoji + nf9.name + ' 还有 ' + nf9.d + ' 天'}</div>` : ''}${netOn() ? '<div style="display:flex;gap:8px;padding:8px 0 0"><button class="gBtn off" data-lb9 style="padding:4px 13px;font-size:12px">🏆 今日榜</button><button class="gBtn off" data-bottle9 style="padding:4px 13px;font-size:12px">🍾 扔漂流瓶</button></div>' : ''}</div>`;
+  return `<div class="qBox" style="border:1px solid rgba(140,220,180,.4);background:rgba(50,140,100,.08)"><div class="qTitle"><span>📋 今日岛报</span><span>${left9 ? '剩 ' + left9 + ' 件' : '✅ 全清'}</span></div>${it9.map(([ic9, nm9, ok9, hint9]) => `<div class="qRow${ok9 ? ' ok' : ''}"><span>${ok9 ? '✅' : ic9} ${nm9}</span><span class="qn">${ok9 ? '已办' : hint9}</span></div>`).join('')}${nf9 ? `<div style="font-size:11.5px;color:#8ea6b8;padding:5px 2px 0">🗓️ ${nf9.d === 0 ? '今天就是 ' + nf9.emoji + nf9.name + '!' : '距 ' + nf9.emoji + nf9.name + ' 还有 ' + nf9.d + ' 天'}</div>` : ''}${SHOWER9 ? '<div style="font-size:11.5px;color:#bfd0ff;padding:4px 2px 0">🌠 今夜 ' + SHOWER9 + '流星雨极大——入夜抬头,按 K 观星更佳</div>' : ''}${netOn() ? '<div style="display:flex;gap:8px;padding:8px 0 0"><button class="gBtn off" data-lb9 style="padding:4px 13px;font-size:12px">🏆 今日榜</button><button class="gBtn off" data-bottle9 style="padding:4px 13px;font-size:12px">🍾 扔漂流瓶</button></div>' : ''}</div>`;
 }
 function openJournal() {
   if (ob9 === 3) { obSet9(9); setTimeout(() => toast(isTouch ? '🗺️ 引导完成:菜单里点 🗺️ 海图,点岛直航——58 座岛都在等你!' : '🗺️ 引导完成:按 M 开海图点岛直航——58 座岛都在等你!'), 900); }
@@ -2535,6 +2535,7 @@ function startWorld9() {
   // 节日彩蛋播报
   if (LOWTIDE9 && !obFresh9) setTimeout(() => { toast('🌊 今日大退潮——滩涂尽显,贝壳海星都露出来了,去海边捡漏!'); }, 7200);
   if (!obFresh9) setTimeout(() => { const left9 = dailyItems9().filter(x9 => !x9[2]).length; if (left9) toast('📋 今日岛报:还有 ' + left9 + ' 件今日事——按 J 查看清单'); }, 12000);
+  if (!obFresh9 && SHOWER9) setTimeout(() => toast('🌠 今夜' + SHOWER9 + '流星雨极大——天黑后抬头,流星会比平日密五倍'), 15500);
   if (FESTIVAL && !obFresh9) setTimeout(() => { toast(`${FESTIVAL.emoji} ${FESTIVAL.name}快乐!${FESTIVAL.flavor}`); blip(660); setTimeout(() => blip(880), 120); }, 7000);
 }
 $('btnStart').addEventListener('click', startWorld9);
@@ -2856,7 +2857,7 @@ const softDot9 = (() => {   // ⚪ 共享软圆点贴图:无贴图的 Points 会
   x9.fillStyle = g9; x9.fillRect(0, 0, 32, 32);
   return new THREE.CanvasTexture(c9);
 })();
-let starField;
+let starField, milkyWay9 = null;
 {
   // 软圆星点贴图(径向渐变)
   const sc0 = document.createElement('canvas'); sc0.width = sc0.height = 32;
@@ -2893,6 +2894,29 @@ let starField;
     vertexColors: true, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
   scene.add(starField);
+  {   // 🌌 银河:斜跨天球的柔光带(canvas 纹理),挂在星场下随天旋
+    const mcv9 = document.createElement('canvas'); mcv9.width = 1024; mcv9.height = 512;
+    const mc9 = mcv9.getContext('2d');
+    const mr9 = mulberry32(31);
+    for (let i = 0; i < 260; i++) {   // 沿中带的模糊光斑(云雾状)
+      const mx9 = mr9() * 1024, my9 = 256 + (mr9() + mr9() + mr9() - 1.5) * 92, rr9 = 8 + mr9() * 46;
+      const hue9 = mr9();
+      const col9 = hue9 < .6 ? '235,238,255' : hue9 < .85 ? '210,200,255' : '255,236,214';
+      const gg9 = mc9.createRadialGradient(mx9, my9, 0, mx9, my9, rr9);
+      gg9.addColorStop(0, `rgba(${col9},${.05 + mr9() * .07})`); gg9.addColorStop(1, `rgba(${col9},0)`);
+      mc9.fillStyle = gg9; mc9.beginPath(); mc9.arc(mx9, my9, rr9, 0, 7); mc9.fill();
+    }
+    for (let i = 0; i < 420; i++) {   // 带内细星尘
+      const my9 = 256 + (mr9() + mr9() + mr9() - 1.5) * 100;
+      mc9.fillStyle = `rgba(255,255,255,${.12 + mr9() * .3})`;
+      mc9.fillRect(mr9() * 1024, my9, mr9() < .12 ? 2 : 1, 1);
+    }
+    const mtex9 = new THREE.CanvasTexture(mcv9);
+    milkyWay9 = new THREE.Mesh(new THREE.SphereGeometry(1480, 24, 16),
+      new THREE.MeshBasicMaterial({ map: mtex9, transparent: true, opacity: 0, side: THREE.BackSide, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+    milkyWay9.rotation.z = .95; milkyWay9.rotation.x = .3; milkyWay9.name = 'milkyWay9';
+    starField.add(milkyWay9);
+  }
 }
 /* --- 星座系统:全 88 IAU 星座 → constellations.js;连线成图,夜间显现,随天旋 --- */
 let constStars = null, constLines = null, constDirs = [];
@@ -2993,6 +3017,7 @@ Object.assign(HINTS, { trader: '🧺 行商摊 · 岛际买卖特产', pioneer: 
 const { paperHTML, parsePantheon, pantheonHTML, pantheonFallback } = makeCards({ D, esc, todayStr, mulberry32, WEATHER, shards: () => shardsGot });   // getter:声明在后+会重赋值   // 📦 w-cards.js
 const gearPrice = g9 => EVENT === 'fair' ? Math.max(1, Math.round(g9.price * .9)) : g9.price;
 /* 真实月相近似:距 2000-01-06 新月的天数 mod 29.53,满月≈14.77 天 */
+const SHOWER9 = ({ '01-03': '象限仪座', '01-04': '象限仪座', '04-22': '天琴座', '05-06': '宝瓶座η', '08-12': '英仙座', '08-13': '英仙座', '10-21': '猎户座', '11-17': '狮子座', '12-13': '双子座', '12-14': '双子座' })[new Date().toISOString().slice(5, 10)] || null;   // 🌠 真实流星雨极大期
 const FULLMOON = (() => {
   const days = (Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
   const phase = ((days % 29.53059) + 29.53059) % 29.53059;
@@ -3160,6 +3185,29 @@ function thunder9() {
     }
   } catch (e) {}
 }
+let boltLine9 = null;
+if (WEATHER === 'storm') {   // ⚡ 可见电光:天际一道折线,随 boltV9 亮灭
+  const bg9 = new THREE.BufferGeometry();
+  bg9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(14 * 3), 3));
+  boltLine9 = new THREE.Line(bg9, new THREE.LineBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+  boltLine9.frustumCulled = false; boltLine9.name = 'boltLine9'; scene.add(boltLine9);
+}
+function strike9() {
+  boltV9 = 1;
+  const az9 = Math.random() * 6.2832, ds9 = 520 + Math.random() * 420;
+  const bx9 = player.position.x + Math.cos(az9) * ds9, bz9 = player.position.z + Math.sin(az9) * ds9;
+  if (boltLine9) {
+    const pa9 = boltLine9.geometry.attributes.position;
+    let x9 = bx9, z9 = bz9;
+    for (let i9 = 0; i9 < 14; i9++) {
+      const y9 = 340 - i9 * (340 / 13);
+      pa9.setXYZ(i9, x9, y9, z9);
+      x9 += (Math.random() - .5) * 34; z9 += (Math.random() - .5) * 34;
+    }
+    pa9.needsUpdate = true;
+  }
+  setTimeout(thunder9, 350 + (ds9 / 340) * 1000 * (0.7 + Math.random() * 0.6));   // 雷按距离延迟(声速~340m/s,加散差)
+}
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
 /* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
@@ -3178,19 +3226,38 @@ if (FESTIVAL) {
 /* --- 月亮(夜间升起,月光洒海) --- */
 let moonMesh = null, moonGlow = null, moonLight = null, tideY = 0, springTideToldT = 0;
 const moonDirN = new THREE.Vector3(0, 1, 0);
+function moonPhase9() {   // 与 FULLMOON 同一历元:J2000 新月起算朔望月
+  const d9 = (Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
+  const ph9 = ((d9 % 29.53059) + 29.53059) % 29.53059;
+  return { illum: (1 - Math.cos(ph9 / 29.53059 * Math.PI * 2)) / 2, waxing: ph9 < 14.765, day: +ph9.toFixed(1) };
+}
 {
+  const mp9 = (FESTIVAL && FESTIVAL.key === 'midautumn') ? { illum: 1, waxing: true } : moonPhase9();
   const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128;
-  const c = cv2.getContext('2d');
-  c.fillStyle = '#efeadb'; c.fillRect(0, 0, 128, 128);
+  const c = cv2.getContext('2d'), R9 = 56;
+  const gd9 = c.createRadialGradient(64, 64, R9 * .2, 64, 64, R9);
+  gd9.addColorStop(0, '#f2eddc'); gd9.addColorStop(.85, '#e8e2cf'); gd9.addColorStop(1, '#cfc9b6');
+  c.fillStyle = gd9; c.beginPath(); c.arc(64, 64, R9, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.arc(64, 64, R9, 0, 7); c.clip();
   const r0 = mulberry32(77);
-  for (let i = 0; i < 26; i++) {   // 月海与环形山
-    c.fillStyle = `rgba(150,148,138,${.18 + r0() * .3})`;
-    c.beginPath(); c.arc(r0() * 128, r0() * 128, 3 + r0() * 14, 0, 7); c.fill();
+  for (let i = 0; i < 22; i++) {   // 月海与环形山
+    c.fillStyle = `rgba(150,148,138,${.15 + r0() * .28})`;
+    c.beginPath(); c.arc(r0() * 128, r0() * 128, 3 + r0() * 13, 0, 7); c.fill();
+  }
+  c.restore();
+  if (mp9.illum < .995) {   // 相位阴影(已单测:盈亮在右,亏亮在左)
+    const k9 = Math.cos(Math.PI * mp9.illum);
+    c.fillStyle = 'rgba(9,13,23,.95)';
+    c.beginPath();
+    c.arc(64, 64, R9 + .5, -Math.PI / 2, Math.PI / 2, mp9.waxing);
+    c.ellipse(64, 64, (R9 + .5) * Math.abs(k9), R9 + .5, 0, Math.PI / 2, -Math.PI / 2, k9 > 0 ? mp9.waxing : !mp9.waxing);
+    c.closePath(); c.fill();
   }
   const tex = new THREE.CanvasTexture(cv2); tex.colorSpace = THREE.SRGBColorSpace;
-  moonMesh = new THREE.Mesh(new THREE.SphereGeometry(26, 24, 18), new THREE.MeshBasicMaterial({ map: tex, fog: false }));
+  moonMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false, depthWrite: false }));
+  moonMesh.scale.set(56, 56, 1);
   moonGlow = new THREE.Mesh(new THREE.SphereGeometry(38, 20, 14),
-    new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: .16, fog: false, depthWrite: false }));
+    new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: .10 + mp9.illum * .08, fog: false, depthWrite: false }));
   scene.add(moonMesh, moonGlow);
   moonLight = new THREE.DirectionalLight(0xa8c0e8, 0);
   scene.add(moonLight, moonLight.target);
@@ -3431,6 +3498,7 @@ function updateDayNight(t) {
     seaSparkle.visible = !diving && u9.uOpacity.value > .04 && quality > 0 && !REDUCE9;
   }
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
+  if (milkyWay9) milkyWay9.material.opacity = night * (WEATHER === 'clear' ? .5 : .18);   // 🌌 银河夜显,阴雨天淡
   starField.rotation.y = t * .006;                                        // 缓慢天旋
   if (constStars) { constStars.material.opacity = night * .95; constLines.material.opacity = night * .32; }   // 星座随夜显现
   if (!MOBILE && Math.abs(da - lastEnvDA9) > .14) { lastEnvDA9 = da; bakeEnv9(); }   // 🌇 环境贴图随昼夜重烘
@@ -3732,7 +3800,9 @@ const clouds = [];
   for (let i = 0; i < 5; i++) blob(42 + i * 29, 64, 40, .74);        // 中层
   blob(66, 50, 30, .66); blob(108, 44, 37, .72); blob(150, 52, 28, .66);   // 顶部鼓包
   const cloudTex = new THREE.CanvasTexture(cc);
-  const NC = MOBILE ? 18 : 30;
+  const wAlt9 = WEATHER === 'storm' ? .52 : WEATHER === 'rain' ? .72 : WEATHER === 'fog' ? .55 : 1;   // ☁️ 天气压云高
+  const wCnt9 = WEATHER === 'storm' ? 1.3 : WEATHER === 'fog' ? .7 : 1;
+  const NC = Math.round((MOBILE ? 18 : 30) * wCnt9);
   for (let i = 0; i < NC; i++) {
     const grp = new THREE.Group();
     const tp = rnd();   // 云型:<.5 积云(少而大) / <.82 层云(扁平铺展) / 其余 卷云(高·稀薄)
@@ -3740,6 +3810,8 @@ const clouds = [];
     if (tp < .5) { puffs = 5 + (rnd() * 3 | 0); size = 88 + rnd() * 46; spX = size * 1.05; spY = size * .24; spZ = size * .8; alt = 265 + rnd() * 100; op = .92; flat = .62; }
     else if (tp < .82) { puffs = 6 + (rnd() * 3 | 0); size = 110 + rnd() * 40; spX = size * 1.8; spY = size * .12; spZ = size * 1.2; alt = 235 + rnd() * 60; op = .82; flat = .42; }
     else { puffs = 4 + (rnd() * 3 | 0); size = 62 + rnd() * 26; spX = size * 2.8; spY = size * .16; spZ = size * .5; alt = 390 + rnd() * 90; op = .5; flat = .42; }
+    alt *= wAlt9;
+    if (WEATHER === 'storm') { size *= 1.24; op = Math.min(.96, op + .05); }
     for (let j = 0; j < puffs; j++) {
       const py = (rnd() - .5) * spY, shade = py < 0 ? .8 : 1;   // 底部略压暗 → 体积感
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: op, depthWrite: false, fog: false, color: new THREE.Color(shade, shade, shade) })); sp.userData.sh = shade;
@@ -6588,6 +6660,31 @@ function bxFeast9() {
   earnSB(30); stars++; saveQuest(); updateQuestHUD(); fireworks();
   toast('🍑 八仙宴开——第九副杯箸是你的!新称号「🌊 渡海人」 ⚡+30 · ⭐+1');
   blip(680); setTimeout(() => blip(880), 130); setTimeout(() => blip(1100), 260);
+}
+/* —— 🌌 冰火萨迦岛极光:夜里岛域上空的绿紫光带(兑现 sgaurora 故事卡) —— */
+let sagaAurora9 = null;
+{
+  const am9 = new THREE.ShaderMaterial({
+    uniforms: { uT: { value: 0 } },
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; vec3 p = position; p.y += sin(uv.x * 9.0) * 9.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform float uT;',
+      'void main(){',
+      '  float b = 0.0;',
+      '  b += smoothstep(.42, .0, abs(fract(vUv.x * 5.0 + sin(uT * .21) * .8 + vUv.y * .5) - .5));',
+      '  b += smoothstep(.46, .0, abs(fract(vUv.x * 3.0 - uT * .05) - .5)) * .7;',
+      '  float col = vUv.y;',
+      '  vec3 c = mix(vec3(.22, 1.0, .55), vec3(.6, .35, 1.0), col);',
+      '  float edge = smoothstep(.0, .12, vUv.x) * smoothstep(1.0, .88, vUv.x) * smoothstep(.0, .18, vUv.y) * smoothstep(1.0, .7, vUv.y);',
+      '  gl_FragColor = vec4(c * 1.35, b * edge * .9);',
+      '}',
+    ].join('\n'),
+  });
+  sagaAurora9 = new THREE.Mesh(new THREE.PlaneGeometry(820, 250, 48, 10), am9);
+  sagaAurora9.position.set(-700, 330, 1560); sagaAurora9.rotation.x = -.22;
+  sagaAurora9.visible = false; sagaAurora9.name = 'sagaAurora9'; sagaAurora9.frustumCulled = false;
+  scene.add(sagaAurora9);
 }
 const PASSPORT = [
   ['收藏之岛', '🐋'], ['灯塔屿', '🗼'], ['楚门的世界', '📺'], ['中土', '💍'],
@@ -11484,8 +11581,9 @@ function loop() {
   }
   if (WEATHER === 'storm') {   // ⛈️ 闪电与远雷
     boltT9 -= dt;
-    if (boltT9 <= 0) { boltT9 = 7 + Math.random() * 15; boltV9 = 1; thunder9(); }
-    if (boltV9 > .01) { hemi.intensity *= 1 + boltV9 * 2.4; sun.intensity *= 1 + boltV9 * 1.2; boltV9 *= Math.exp(-dt * 7); }
+    if (boltT9 <= 0) { boltT9 = 7 + Math.random() * 15; strike9(); }
+    if (boltV9 > .01) { hemi.intensity *= 1 + boltV9 * 2.4; sun.intensity *= 1 + boltV9 * 1.2; if (boltLine9) boltLine9.material.opacity = boltV9 * (boltV9 > .35 ? 1 : .5); boltV9 *= Math.exp(-dt * 7); }
+    else if (boltLine9 && boltLine9.material.opacity > 0) boltLine9.material.opacity = 0;
   }
   if (festPts) {
     festPts.position.copy(player.position);
@@ -11712,7 +11810,7 @@ function loop() {
     } else {
       meteorT -= dt;
       if (meteorT <= 0) {
-        meteorT = 12 + Math.random() * 28;
+        meteorT = SHOWER9 ? 2.6 + Math.random() * 5 : 12 + Math.random() * 28;   // 🌠 流星雨极大期:约五倍频
         if (nite > .4) {
           const u = meteor.userData, az = Math.random() * 6.2832, el = .55 + Math.random() * .6;
           u.head.set(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)).multiplyScalar(950).add(player.position);
@@ -11812,6 +11910,11 @@ function loop() {
   tramStep(dt);   // 🚋 轨车 + 雾笛
   railStep9(dt);   // 🚂 千岛环线
   subStep9(dt);   // 🚇 深蓝线
+  if (sagaAurora9) {   // 🌌 萨迦极光:夜幕 + 岛域内才显(冬季全局极光另有其物)
+    const near9 = Math.hypot(player.position.x + 700, player.position.z - 1560) < 780;
+    sagaAurora9.visible = near9 && curDA < .3 && !diving;
+    if (sagaAurora9.visible) sagaAurora9.material.uniforms.uT.value = t;
+  }
   seasonTick(dt, t);   // 🍂 四季粒子
   syncFarView();   // 🔭 远景降载
   stampT -= dt;   // 🛂 护照盖章(1s 节流)
@@ -12493,7 +12596,7 @@ window.__w3d = { MAP_LABELS, player, spots, TRAVEL3D, openCard, openJournal, see
   maybeRevealSkeleton, showSkeletonCard, startUnjGames, showUnjNews, unjTowerHeight, globeTick, globeArc: () => ({ t: arcT, pending: arcPending }), addStamp, stamps, PASSPORT, AIRPORTS, openAirCounter, toggleVehicle, vehicle: () => vehicle,
   weather: () => WEATHER, event: () => EVENT, openFund, affOf, affAdd, npcCtxLine, openFood, openTailor, openHome, applyOutfit, WD: () => WD, BUFF, eaten, SEASON, worldCompletion, fireworks, openMail, unreadMail, tramInfo: () => ({ pos: +tramPos.toFixed(3), dir: tramDir, wait: +tramWait.toFixed(1), riding: tramRiding, found: !!qqTram }), tramStep,
   railInfo9: () => ({ s: +trainS9.toFixed(1), len: +railLen9.toFixed(0), wait: +trainWait9.toFixed(1), riding: trainRiding9, next: railStopS9[railNextStop9].nm, x: +trainGrp9.position.x.toFixed(0), z: +trainGrp9.position.z.toFixed(0) }), railBoard9: v9 => { trainRiding9 = v9; }, railStep9,
-  subInfo9: () => ({ s: +subS9.toFixed(1), len: +subLen9.toFixed(0), dir: subDir9, wait: +subWait9.toFixed(1), riding: subRiding9, x: +subGrp9.position.x.toFixed(0), y: +subGrp9.position.y.toFixed(1), z: +subGrp9.position.z.toFixed(0) }), subBoard9: v9 => { subRiding9 = v9; }, subAlight9, subSetS9: v9 => { subS9 = v9; subWait9 = 0; }, railSetS9: v9 => { trainS9 = v9; trainWait9 = 0; let bi9 = 0, bd9 = 1e9; for (let k9 = 0; k9 < railStopS9.length; k9++) { const d9 = ((railStopS9[k9].s - v9) % railLen9 + railLen9) % railLen9; if (d9 > 1 && d9 < bd9) { bd9 = d9; bi9 = k9; } } railNextStop9 = bi9; }, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
+  subInfo9: () => ({ s: +subS9.toFixed(1), len: +subLen9.toFixed(0), dir: subDir9, wait: +subWait9.toFixed(1), riding: subRiding9, x: +subGrp9.position.x.toFixed(0), y: +subGrp9.position.y.toFixed(1), z: +subGrp9.position.z.toFixed(0) }), subBoard9: v9 => { subRiding9 = v9; }, subAlight9, subSetS9: v9 => { subS9 = v9; subWait9 = 0; }, boltNow9: () => { boltT9 = 0; }, moonPhase9, railSetS9: v9 => { trainS9 = v9; trainWait9 = 0; let bi9 = 0, bd9 = 1e9; for (let k9 = 0; k9 < railStopS9.length; k9++) { const d9 = ((railStopS9[k9].s - v9) % railLen9 + railLen9) % railLen9; if (d9 > 1 && d9 < bd9) { bd9 = d9; bi9 = k9; } } railNextStop9 = bi9; }, tramBoard: v9 => { tramRiding = v9; }, dqState: () => DQ, foghorn, snapNow: () => { if (composer && quality > 0) composer.render(); else renderer.render(scene, camera); makePostcard(); }, gearPrice, cullLights, renderInfo: () => { renderer.render(scene, camera); const r9 = renderer.info.render; return { calls: r9.calls, triangles: r9.triangles, lightsVisible: ALL_LIGHTS.filter(l => l.visible).length, lightsTotal: ALL_LIGHTS.length }; } };
 
 /* ⏳ 若玩家在建造期间就点过「登上海岛」,此刻兑现 */
 try { if (wantStart9) startWorld9(); else { const b9 = document.getElementById('btnStart'); if (b9 && b9.textContent.includes('就快好了')) b9.textContent = START_LABEL9; } } catch (e) {}
