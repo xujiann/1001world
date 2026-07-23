@@ -2555,7 +2555,7 @@ $('btnStart').addEventListener('click', startWorld9);
 }
 
 /* --- 音效与音乐(与 2D 相同引擎) --- */
-let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null, windGain = null;
+let actx = null, musicGain = null, musicOn = true, waveGain = null, crowdGain = null, windGain = null, brookGain9 = null;
 let musicZone = 'street', nextBeat = 0, beatCount = 0, melIdx = 3;
 /* THEMES(分区配乐参数)→ w-config.js */
 function note(freq, t, dur, wave, vol) {
@@ -2607,6 +2607,12 @@ function initAudio() {
     waveGain = actx.createGain(); waveGain.gain.value = 0;
     src.connect(filt).connect(waveGain).connect(actx.destination);
     src.start();
+    // 🏞️ 溪声:同缓冲高通(哗哗高频),近溪渐强、瀑布最盛
+    const srcB = actx.createBufferSource(); srcB.buffer = buf; srcB.loop = true;
+    const hpB = actx.createBiquadFilter(); hpB.type = 'highpass'; hpB.frequency.value = 1400;
+    brookGain9 = actx.createGain(); brookGain9.gain.value = 0;
+    srcB.connect(hpB).connect(brookGain9).connect(actx.destination);
+    srcB.start();
     // 球场人声:带通噪声,靠近梦剧场渐强,进球时爆发
     const src2 = actx.createBufferSource(); src2.buffer = buf; src2.loop = true;
     const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = .8;
@@ -9764,6 +9770,268 @@ function obstNear(x, z) {
 /* ===== 🚋 青丘轨车:广场站 ⇄ 海岸站(70° 净空走廊,可搭乘) ===== */
 const TRAM_A = [1764.1, 251.3], TRAM_B = [1781.9, 300.1];
 const TRAM_LEN = Math.hypot(TRAM_B[0] - TRAM_A[0], TRAM_B[1] - TRAM_A[1]);
+/* ===== 🏔️ 地貌群:梯田/花海/温泉/竹海/溶洞/冰川/芦苇荡/一线天/天池(全部探针选址)===== */
+let springSteam9 = null, lakeSteam9 = null, bambooCl9 = [], wormMat9 = null, spaT9 = 0;
+{
+  const mr9 = mulberry32(99);
+  /* —— 🌾 青丘梯田(1816,200 坡度.44):沿坡向六级弧田,贴地降阶,水光+稻茬 —— */
+  {
+    const cx9 = 1816, cz9 = 200;
+    const gx9 = (heightMesh(cx9 + 6, cz9) - heightMesh(cx9 - 6, cz9)) / 12, gz9 = (heightMesh(cx9, cz9 + 6) - heightMesh(cx9, cz9 - 6)) / 12;
+    const gl9 = Math.hypot(gx9, gz9) || 1, ux9 = gx9 / gl9, uz9 = gz9 / gl9;   // 上坡单位向量(梯田上山)
+    const yaw9 = Math.atan2(ux9, uz9);   // 条带垂直于坡向
+    const riceG9 = [], wallM9 = lam(0x7a6a52);
+    const bandM9 = new THREE.MeshPhongMaterial({ color: 0x6fae8f, shininess: 90, specular: 0xbfe8dc, transparent: true, opacity: .93 });
+    let yPrev9 = heightMesh(cx9, cz9) - .1;
+    for (let i9 = 0; i9 < 6; i9++) {
+      const px9 = cx9 + ux9 * i9 * 4.4, pz9 = cz9 + uz9 * i9 * 4.4;
+      if (heightMesh(px9, pz9) < 1.2) continue;   // 只在陆地落台
+      const y9 = Math.max(yPrev9 + .5, Math.max(heightMesh(px9, pz9), 0) + .42);
+      yPrev9 = y9;
+      const wField9 = 17 - i9 * 1.4;
+      const band9 = new THREE.Mesh(new THREE.BoxGeometry(wField9, .26, 4.2), bandM9);
+      band9.position.set(px9, y9, pz9); band9.rotation.y = yaw9; scene.add(band9);
+      const wall9 = new THREE.Mesh(new THREE.BoxGeometry(wField9 + .6, 1.1, .6), wallM9);
+      wall9.position.set(px9 - ux9 * 2.3, y9 - .55, pz9 - uz9 * 2.3); wall9.rotation.y = yaw9; scene.add(wall9);
+      const sx9 = Math.cos(yaw9), sz9 = -Math.sin(yaw9);   // 条带横向
+      for (let k9 = 0; k9 < 12; k9++) {
+        const off9 = (k9 / 11 - .5) * (wField9 - 2), row9 = (k9 % 2) * 1.4 - .7;
+        const t9 = new THREE.ConeGeometry(.16, .8, 4);
+        t9.translate(px9 + sz9 * off9 + ux9 * row9, y9 + .5, pz9 + sx9 * off9 + uz9 * row9);
+        riceG9.push(t9);
+      }
+    }
+    if (riceG9.length) scene.add(new THREE.Mesh(mergeGeometries(riceG9, false), lam(0x9ab04a)));
+  }
+  /* —— 🌸 主岛花海(-88,-272 平缓无物):七百株双色花毯 + 穿行土径 —— */
+  {
+    const FN9 = MOBILE ? 320 : 700, fx9 = -88, fz9 = -272;
+    const fInst9 = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.3, 0), new THREE.MeshLambertMaterial({}), FN9);
+    const fm9 = new THREE.Matrix4(), fcA9 = new THREE.Color(0x9a6ae0), fcB9 = new THREE.Color(0xffd76a), fc39 = new THREE.Color(0xe8709a);
+    for (let i9 = 0; i9 < FN9; i9++) {
+      const a9 = mr9() * 6.283, rr9 = Math.sqrt(mr9()) * 26;
+      const x9 = fx9 + Math.cos(a9) * rr9, z9 = fz9 + Math.sin(a9) * rr9 * .72;
+      if (Math.abs(x9 - fx9 + (z9 - fz9) * .3) < 1.6) { fm9.makeScale(0, 0, 0); fInst9.setMatrixAt(i9, fm9); continue; }   // 让出土径
+      fm9.makeTranslation(x9, Math.max(heightMesh(x9, z9), 0) + .34 + mr9() * .25, z9);
+      fInst9.setMatrixAt(i9, fm9);
+      fInst9.setColorAt(i9, mr9() < .5 ? fcA9 : (mr9() < .7 ? fcB9 : fc39));
+    }
+    fInst9.instanceMatrix.needsUpdate = true; scene.add(fInst9);
+  }
+  /* —— ♨️ 萨迦温泉(-748,1552 平地):翠池+石环+蒸汽,泡汤得暖身buff —— */
+  {
+    const sx9 = -748, sz9 = 1552, sy9 = Math.max(heightMesh(sx9, sz9), 0);
+    const pool9 = new THREE.Mesh(new THREE.CircleGeometry(4.4, 20), new THREE.MeshPhongMaterial({ color: 0x3ec8c0, emissive: 0x0a4a46, shininess: 130, specular: 0xd8fff8, transparent: true, opacity: .92 }));
+    pool9.rotation.x = -Math.PI / 2; pool9.position.set(sx9, sy9 + .28, sz9); scene.add(pool9);
+    for (let i9 = 0; i9 < 11; i9++) { const a9 = i9 / 11 * 6.283; const rk9 = new THREE.Mesh(new THREE.IcosahedronGeometry(.6 + mr9() * .5, 0), lam(0x77706a)); rk9.position.set(sx9 + Math.cos(a9) * 5.1, sy9 + .32, sz9 + Math.sin(a9) * 5.1); scene.add(rk9); }
+    const sl9 = new THREE.PointLight(0x5ae8d8, .9, 22, 2); sl9.position.set(sx9, sy9 + 2, sz9); scene.add(sl9);
+    const NS9 = 16, sa9 = new Float32Array(NS9 * 3), sp9 = new Float32Array(NS9);
+    for (let i9 = 0; i9 < NS9; i9++) { sa9[i9 * 3] = sx9 + (mr9() - .5) * 6; sa9[i9 * 3 + 1] = sy9 + mr9() * 4; sa9[i9 * 3 + 2] = sz9 + (mr9() - .5) * 6; sp9[i9] = mr9() * 6.28; }
+    const sg9 = new THREE.BufferGeometry(); sg9.setAttribute('position', new THREE.BufferAttribute(sa9, 3));
+    springSteam9 = new THREE.Points(sg9, new THREE.PointsMaterial({ map: softDot9, color: 0xeafff8, size: 3.4, transparent: true, opacity: .4, depthWrite: false }));
+    springSteam9.userData = { ph: sp9, x: sx9, y: sy9, z: sz9 }; springSteam9.frustumCulled = false; scene.add(springSteam9);
+  }
+  /* —— 🎋 大观园竹海(1336,-620):三丛六十竿,轻摆 —— */
+  {
+    const bx9 = 1336, bz9 = -620;
+    for (let c9 = 0; c9 < 3; c9++) {
+      const ccx9 = bx9 + (c9 - 1) * 14 + (mr9() - .5) * 6, ccz9 = bz9 + (mr9() - .5) * 16;
+      const cy9 = Math.max(heightMesh(ccx9, ccz9), 0);
+      const canes9 = [], leaves9 = [];
+      for (let i9 = 0; i9 < 20; i9++) {
+        const ox9 = (mr9() - .5) * 11, oz9 = (mr9() - .5) * 11, hh9 = 5.5 + mr9() * 3.5;
+        const cg9 = new THREE.CylinderGeometry(.1, .13, hh9, 5);
+        cg9.translate(ox9, hh9 / 2, oz9); canes9.push(cg9);
+        const lg9 = new THREE.ConeGeometry(.9 + mr9() * .5, 2.2, 5);
+        lg9.translate(ox9, hh9 + .8, oz9); leaves9.push(lg9);
+      }
+      const cl9 = new THREE.Group();
+      cl9.add(new THREE.Mesh(mergeGeometries(canes9, false), lam(0x5a9a4a)));
+      cl9.add(new THREE.Mesh(mergeGeometries(leaves9, false), lam(0x3a7a34)));
+      cl9.position.set(ccx9, cy9, ccz9); cl9.userData = { ph: mr9() * 6.28 };
+      scene.add(cl9); bambooCl9.push(cl9);
+    }
+  }
+  /* —— 🕳️ 泰皮荧光溶洞(-1484,-156 山坡):石拱门+穹室+钟乳石+蓝荧虫 —— */
+  {
+    const vx9 = -1484, vz9 = -156, vy9 = Math.max(heightMesh(vx9, vz9), 0);
+    const shell9 = new THREE.Mesh(new THREE.SphereGeometry(13, 14, 10, 0, Math.PI * 2, 0, Math.PI * .62), new THREE.MeshLambertMaterial({ color: 0x2e2a26, side: THREE.BackSide }));
+    shell9.position.set(vx9, vy9 + .2, vz9); scene.add(shell9);
+    const floor9 = new THREE.Mesh(new THREE.CircleGeometry(12.4, 16), lam(0x3a352e));
+    floor9.rotation.x = -Math.PI / 2; floor9.position.set(vx9, vy9 + .24, vz9); scene.add(floor9);
+    const arch9 = new THREE.Mesh(new THREE.TorusGeometry(3.4, 1.0, 6, 10, Math.PI), lam(0x4a443c));
+    arch9.position.set(vx9, vy9 + .3, vz9 + 12.6); scene.add(arch9);
+    const stal9 = [];
+    for (let i9 = 0; i9 < 14; i9++) {
+      const a9 = mr9() * 6.283, rr9 = mr9() * 9;
+      const down9 = i9 < 8;
+      const s9 = new THREE.ConeGeometry(.4 + mr9() * .4, 1.6 + mr9() * 2.4, 5);
+      if (down9) s9.rotateX(Math.PI);
+      s9.translate(vx9 + Math.cos(a9) * rr9, down9 ? vy9 + 9.5 - rr9 * .3 : vy9 + .9, vz9 + Math.sin(a9) * rr9);
+      stal9.push(s9);
+    }
+    scene.add(new THREE.Mesh(mergeGeometries(stal9, false), lam(0x57504a)));
+    const NW9 = 44, wa9 = new Float32Array(NW9 * 3);
+    for (let i9 = 0; i9 < NW9; i9++) { const a9 = mr9() * 6.283, rr9 = mr9() * 8.6; wa9[i9 * 3] = vx9 + Math.cos(a9) * rr9; wa9[i9 * 3 + 1] = vy9 + 7.5 + mr9() * 3 - rr9 * .22; wa9[i9 * 3 + 2] = vz9 + Math.sin(a9) * rr9; }
+    const wg9 = new THREE.BufferGeometry(); wg9.setAttribute('position', new THREE.BufferAttribute(wa9, 3));
+    wormMat9 = new THREE.PointsMaterial({ map: softDot9, color: 0x6fe8ff, size: 1.5, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+    const worms9 = new THREE.Points(wg9, wormMat9); worms9.frustumCulled = false; scene.add(worms9);
+    const wl9 = new THREE.PointLight(0x4ad0e8, 1.1, 22, 2); wl9.position.set(vx9, vy9 + 6, vz9); scene.add(wl9);
+    const wl29 = new THREE.PointLight(0xffb070, .5, 16, 2); wl29.position.set(vx9 + 3, vy9 + 1.2, vz9 + 4); scene.add(wl29);
+  }
+  /* —— 🧊 萨迦冰川+冰洞(-714,1614 北坡):五阶冰舌+冰洞拱+冰柱 —— */
+  {
+    const ix9 = -714, iz9 = 1614;
+    const iceM9 = new THREE.MeshPhongMaterial({ color: 0xbfe4f4, shininess: 140, specular: 0xffffff, transparent: true, opacity: .88 });
+    const gx9 = (heightMesh(ix9 + 6, iz9) - heightMesh(ix9 - 6, iz9)) / 12, gz9 = (heightMesh(ix9, iz9 + 6) - heightMesh(ix9, iz9 - 6)) / 12;
+    const gl9 = Math.hypot(gx9, gz9) || 1, ddx9 = -gx9 / gl9, ddz9 = -gz9 / gl9;
+    for (let i9 = 0; i9 < 5; i9++) {
+      const px9 = ix9 + ddx9 * i9 * 6.5, pz9 = iz9 + ddz9 * i9 * 6.5;
+      const blk9 = new THREE.Mesh(new THREE.IcosahedronGeometry(4.6 - i9 * .45, 0), iceM9);
+      blk9.scale.set(1.5, .55, 1.2); blk9.rotation.y = mr9() * 3;
+      blk9.position.set(px9, Math.max(heightMesh(px9, pz9), 0) + 1.1, pz9); scene.add(blk9);
+    }
+    const tx9 = ix9 + ddx9 * 30, tz9 = iz9 + ddz9 * 30, ty9 = Math.max(heightMesh(tx9, tz9), 0);
+    const iarch9 = new THREE.Mesh(new THREE.TorusGeometry(3.0, 1.1, 6, 10, Math.PI), iceM9);
+    iarch9.position.set(tx9, ty9 + .2, tz9); iarch9.rotation.y = Math.atan2(ddx9, ddz9); scene.add(iarch9);
+    const ic9 = [];
+    for (let i9 = 0; i9 < 6; i9++) { const s9 = new THREE.ConeGeometry(.22, 1.2 + mr9() * 1.2, 5); s9.rotateX(Math.PI); s9.translate(tx9 + (mr9() - .5) * 4, ty9 + 2.9, tz9 + (mr9() - .5) * 2); ic9.push(s9); }
+    scene.add(new THREE.Mesh(mergeGeometries(ic9, false), iceM9));
+    const il9 = new THREE.PointLight(0x8fd8ff, .8, 18, 2); il9.position.set(tx9, ty9 + 1.6, tz9); scene.add(il9);
+  }
+  /* —— 🌿 梁山泊芦苇荡:环泊自寻水线(h∈[-.5,.45])插苇丛 —— */
+  {
+    const reeds9 = [], heads9 = [];
+    let nR9 = 0;
+    for (let a9 = 0; a9 < 6.283 && nR9 < 80; a9 += .09) {
+      for (let rr9 = 34; rr9 <= 112; rr9 += 7) {
+        const x9 = -1250 + Math.cos(a9) * rr9, z9 = -300 + Math.sin(a9) * rr9;
+        const h9 = heightMesh(x9, z9);
+        if (h9 > -.5 && h9 < .45 && mr9() < .5) {
+          for (let k9 = 0; k9 < 3; k9++) {
+            const ox9 = x9 + (mr9() - .5) * 1.6, oz9 = z9 + (mr9() - .5) * 1.6, hh9 = 2.0 + mr9() * 1.3;
+            const c9 = new THREE.CylinderGeometry(.045, .06, hh9, 4);
+            c9.rotateZ((mr9() - .5) * .16); c9.translate(ox9, Math.max(h9, -.2) + hh9 / 2, oz9);
+            reeds9.push(c9);
+            const hd9 = new THREE.ConeGeometry(.14, .7, 4); hd9.translate(ox9, Math.max(h9, -.2) + hh9 + .3, oz9); heads9.push(hd9);
+          }
+          nR9++; break;
+        }
+      }
+    }
+    if (reeds9.length) { scene.add(new THREE.Mesh(mergeGeometries(reeds9, false), lam(0x8a8c5a))); scene.add(new THREE.Mesh(mergeGeometries(heads9, false), lam(0xd8cfae))); }
+  }
+  /* —— ⛰️ 石刻武学岛一线天(660,-1498 陡坡):双壁夹道+顶缝天光 —— */
+  {
+    const qx9 = 660, qz9 = -1498, qy9 = Math.max(heightMesh(qx9, qz9), 0);
+    const rockM9 = lam(0x6a655c);
+    for (const s9 of [-1, 1]) {
+      const wall9 = box(3.2, 15, 24, rockM9);
+      wall9.position.set(qx9 + s9 * 3.1, qy9 + 6.6, qz9); wall9.rotation.z = s9 * -.05; scene.add(wall9);
+      boxObs.push({ x1: qx9 + s9 * 3.1 - 1.8, z1: qz9 - 12, x2: qx9 + s9 * 3.1 + 1.8, z2: qz9 + 12 });
+    }
+    const beam9 = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 13.6), new THREE.MeshBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    beam9.position.set(qx9, qy9 + 7.4, qz9); scene.add(beam9);
+  }
+  /* —— 🌋 神秘岛火山口天池(-1500,-1400 顶 h37.6):环唇+翠湖+汽雾 —— */
+  {
+    const lx9 = -1500, lz9 = -1400, ly9 = Math.max(heightMesh(lx9, lz9), 0);
+    const rim9 = new THREE.Mesh(new THREE.TorusGeometry(14.5, 2.4, 8, 22), lam(0x5a4a3e));
+    rim9.rotation.x = Math.PI / 2; rim9.position.set(lx9, ly9 + .8, lz9); scene.add(rim9);
+    const lake9 = new THREE.Mesh(new THREE.CircleGeometry(13.4, 22), new THREE.MeshPhongMaterial({ color: 0x2a7a80, emissive: 0x06282c, shininess: 150, specular: 0xd0f4ff, transparent: true, opacity: .94 }));
+    lake9.rotation.x = -Math.PI / 2; lake9.position.set(lx9, ly9 + .55, lz9); scene.add(lake9);
+    const NL9 = 10, la9 = new Float32Array(NL9 * 3), lp9 = new Float32Array(NL9);
+    for (let i9 = 0; i9 < NL9; i9++) { la9[i9 * 3] = lx9 + (mr9() - .5) * 16; la9[i9 * 3 + 1] = ly9 + 1 + mr9() * 4; la9[i9 * 3 + 2] = lz9 + (mr9() - .5) * 16; lp9[i9] = mr9() * 6.28; }
+    const lg9 = new THREE.BufferGeometry(); lg9.setAttribute('position', new THREE.BufferAttribute(la9, 3));
+    lakeSteam9 = new THREE.Points(lg9, new THREE.PointsMaterial({ map: softDot9, color: 0xeafcf8, size: 3.8, transparent: true, opacity: .3, depthWrite: false }));
+    lakeSteam9.userData = { ph: lp9, y: ly9 }; lakeSteam9.frustumCulled = false; scene.add(lakeSteam9);
+  }
+}
+/* ===== 🏞️ 落鲸溪:高地涌泉东绕酒馆入海,二级叠瀑,临海飞瀑 ===== */
+const RIVER_WP9 = [[272, 8], [269, 22], [268, 36], [268, 48], [263, 57], [259, 68], [258, 80], [258, 92], [263, 104], [267, 117], [272, 128], [277, 139]];
+let riverTex9 = null, fallTex9 = null, fallMist9 = null, riverMouth9 = [277, 139];
+{
+  // 水纹贴图:纵向浅色拉丝(uv.y 沿流向滚动)
+  const wc9 = document.createElement('canvas'); wc9.width = 64; wc9.height = 256;
+  const wx9 = wc9.getContext('2d');
+  wx9.fillStyle = 'rgba(140,196,220,.9)'; wx9.fillRect(0, 0, 64, 256);
+  const wr9 = mulberry32(55);
+  for (let i = 0; i < 46; i++) { wx9.fillStyle = 'rgba(226,244,252,' + (.12 + wr9() * .22) + ')'; const sx9 = wr9() * 64, sy9 = wr9() * 256, ln9 = 12 + wr9() * 42; wx9.fillRect(sx9, sy9, 1.6 + wr9() * 2, ln9); }
+  riverTex9 = new THREE.CanvasTexture(wc9); riverTex9.wrapS = riverTex9.wrapT = THREE.RepeatWrapping;
+  // 溪带:沿航点每 3m 插值,宽度渐增,水面单调不升(小反坡处轻切河槽)
+  const pts9 = [];
+  for (let i = 0; i < RIVER_WP9.length - 1; i++) {
+    const [x1, z1] = RIVER_WP9[i], [x2, z2] = RIVER_WP9[i + 1];
+    const L9 = Math.hypot(x2 - x1, z2 - z1), n9 = Math.max(2, Math.round(L9 / 3));
+    for (let k9 = 0; k9 < n9; k9++) pts9.push([x1 + (x2 - x1) * k9 / n9, z1 + (z2 - z1) * k9 / n9]);
+  }
+  pts9.push(RIVER_WP9[RIVER_WP9.length - 1]);
+  let yPrev9 = Infinity;
+  const seg9 = pts9.map(([x9, z9], i9) => {
+    const t9 = i9 / (pts9.length - 1);
+    let y9 = Math.min(yPrev9, Math.max(heightMesh(x9, z9), 0) + .13);
+    yPrev9 = y9;
+    return { x: x9, z: z9, y: y9, w: 1.3 + t9 * 1.1 };
+  });
+  const pos9 = [], uv9 = [];
+  for (let i9 = 0; i9 < seg9.length - 1; i9++) {
+    const a9 = seg9[i9], b9 = seg9[i9 + 1];
+    const dx9 = b9.x - a9.x, dz9 = b9.z - a9.z, l9 = Math.hypot(dx9, dz9) || 1;
+    const nx9 = -dz9 / l9, nz9 = dx9 / l9;
+    const v09 = i9 * .12, v19 = (i9 + 1) * .12;
+    pos9.push(
+      a9.x + nx9 * a9.w, a9.y, a9.z + nz9 * a9.w, a9.x - nx9 * a9.w, a9.y, a9.z - nz9 * a9.w, b9.x + nx9 * b9.w, b9.y, b9.z + nz9 * b9.w,
+      a9.x - nx9 * a9.w, a9.y, a9.z - nz9 * a9.w, b9.x - nx9 * b9.w, b9.y, b9.z - nz9 * b9.w, b9.x + nx9 * b9.w, b9.y, b9.z + nz9 * b9.w);
+    uv9.push(0, v09, 1, v09, 0, v19, 1, v09, 1, v19, 0, v19);
+  }
+  const rg9 = new THREE.BufferGeometry();
+  rg9.setAttribute('position', new THREE.Float32BufferAttribute(pos9, 3));
+  rg9.setAttribute('uv', new THREE.Float32BufferAttribute(uv9, 2));
+  rg9.computeVertexNormals();
+  const riverMesh9 = new THREE.Mesh(rg9, new THREE.MeshPhongMaterial({ map: riverTex9, transparent: true, opacity: .85, shininess: 110, specular: 0xbfe8ff, side: THREE.DoubleSide, depthWrite: false }));
+  riverMesh9.renderOrder = 1; riverMesh9.name = 'river9'; scene.add(riverMesh9);
+  // 二级叠瀑(263,104→267,117 段 2.7m):两阶白水短带
+  const cascade9 = (x19, z19, y19, x29, z29, y29, w9) => {
+    const dx9 = x29 - x19, dz9 = z29 - z19, l9 = Math.hypot(dx9, dz9) || 1, nx9 = -dz9 / l9, nz9 = dx9 / l9;
+    const cg9 = new THREE.BufferGeometry();
+    cg9.setAttribute('position', new THREE.Float32BufferAttribute([
+      x19 + nx9 * w9, y19, z19 + nz9 * w9, x19 - nx9 * w9, y19, z19 - nz9 * w9, x29 + nx9 * w9, y29, z29 + nz9 * w9,
+      x19 - nx9 * w9, y19, z19 - nz9 * w9, x29 - nx9 * w9, y29, z29 - nz9 * w9, x29 + nx9 * w9, y29, z29 + nz9 * w9], 3));
+    cg9.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1], 2));
+    return cg9;
+  };
+  // 瀑布贴图:白色拉丝(共享,流速更快)
+  const fc9 = document.createElement('canvas'); fc9.width = 64; fc9.height = 128;
+  const fx9 = fc9.getContext('2d'); fx9.fillStyle = 'rgba(215,238,248,.55)'; fx9.fillRect(0, 0, 64, 128);
+  const fr9 = mulberry32(66);
+  for (let i = 0; i < 40; i++) { fx9.fillStyle = 'rgba(255,255,255,' + (.3 + fr9() * .5) + ')'; fx9.fillRect(fr9() * 64, fr9() * 128, 1.4 + fr9() * 2.2, 10 + fr9() * 30); }
+  fallTex9 = new THREE.CanvasTexture(fc9); fallTex9.wrapS = fallTex9.wrapT = THREE.RepeatWrapping;
+  const fallMat9 = new THREE.MeshBasicMaterial({ map: fallTex9, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  scene.add(new THREE.Mesh(cascade9(263, 104, 6.15, 267, 117, 3.45, 1.9), fallMat9));
+  // 临海飞瀑:河口(272,128,y~1.2)跌落海面,垂直白幕 + 底部溅雾 + 海面泡沫环
+  const my9 = Math.max(heightMesh(272, 128), 0) + .1;
+  scene.add(new THREE.Mesh(cascade9(272, 128, Math.min(my9, 1.35), 277.5, 140, .05, 2.6), fallMat9));
+  const foam9 = new THREE.Mesh(new THREE.CircleGeometry(4.6, 18), new THREE.MeshBasicMaterial({ color: 0xeaf6fa, transparent: true, opacity: .4, depthWrite: false }));
+  foam9.rotation.x = -Math.PI / 2; foam9.position.set(278.5, .32, 142); scene.add(foam9);
+  { // 溅雾粒子:瀑底喷薄
+    const N9 = 40, pa9 = new Float32Array(N9 * 3), ph9 = new Float32Array(N9);
+    for (let i = 0; i < N9; i++) { pa9[i * 3] = 277 + (Math.random() - .5) * 4; pa9[i * 3 + 1] = Math.random() * 3; pa9[i * 3 + 2] = 140.5 + (Math.random() - .5) * 3; ph9[i] = Math.random() * 6.28; }
+    const mg9 = new THREE.BufferGeometry(); mg9.setAttribute('position', new THREE.BufferAttribute(pa9, 3));
+    fallMist9 = new THREE.Points(mg9, new THREE.PointsMaterial({ map: softDot9, color: 0xeaf6ff, size: 2.6, transparent: true, opacity: .5, depthWrite: false }));
+    fallMist9.userData = { ph: ph9 }; fallMist9.frustumCulled = false; scene.add(fallMist9);
+  }
+  // 汀步石(z≈74 过河)+ 溪畔石
+  for (const [sx9, sz9] of [[256.4, 71], [258.2, 74], [260, 77]]) {
+    const st9 = cyl(.7, .85, .5, lam(0x8d8577), 7); st9.position.set(sx9, Math.max(heightMesh(sx9, sz9), 0) + .32, sz9); scene.add(st9);
+  }
+  const br9 = mulberry32(21);
+  for (let i = 0; i < 9; i++) {
+    const t9 = i / 9, wi9 = RIVER_WP9[Math.floor(t9 * (RIVER_WP9.length - 1))];
+    const side9 = i % 2 ? 1 : -1, ox9 = wi9[0] + side9 * (2.6 + br9() * 1.4), oz9 = wi9[1] + (br9() - .5) * 4;
+    const rk9 = new THREE.Mesh(new THREE.IcosahedronGeometry(.5 + br9() * .5, 0), lam(0x84806f));
+    rk9.position.set(ox9, Math.max(heightMesh(ox9, oz9), 0) + .3, oz9); rk9.rotation.y = br9() * 3; scene.add(rk9);
+  }
+}
 /* ===== 🚂 千岛环线:主岛环岛铁路 ===== */
 const RAIL_WP9 = [[12, -34], [90, 60], [60, 150], [26, 208], [-120, 230], [-295, 175], [-300, 40], [-250, -120], [-120, -230], [60, -250], [200, -200], [428, -62], [374, 24], [200, 90]];   // 闭环航点(逐段验陆,东段爬鲸背)
 const RAIL_STOPS9 = [[0, '中央广场'], [3, '千岛装备行'], [5, '牛首回廊'], [11, '鲸背机场'], [12, '东滩渡口']];   // [航点序号, 站名]
@@ -11909,6 +12177,39 @@ function loop() {
   syncBuffs(dt);
   tramStep(dt);   // 🚋 轨车 + 雾笛
   railStep9(dt);   // 🚂 千岛环线
+  if (springSteam9) {   // 🏔️ 地貌群氛围
+    for (const st9 of [springSteam9, lakeSteam9]) {
+      if (!st9) continue;
+      const pa9 = st9.geometry.attributes.position, ph9 = st9.userData.ph, by9 = st9.userData.y ?? st9.userData.y;
+      for (let i9 = 0; i9 < ph9.length; i9++) { let y9 = pa9.getY(i9) + dt * .9; const base9 = (st9.userData.y || 0); if (y9 > base9 + 6) y9 = base9 + .8; pa9.setY(i9, y9); }
+      pa9.needsUpdate = true;
+    }
+    for (const cl9 of bambooCl9) cl9.rotation.z = Math.sin(t * .7 + cl9.userData.ph) * .022;
+    if (wormMat9) wormMat9.opacity = .55 + Math.sin(t * 1.3) * .3;
+    { // ♨️ 泡汤:在温泉池内累计 4 秒 → 疾跑 buff + 每日首次 ⚡
+      const inSpa9 = Math.hypot(player.position.x + 748, player.position.z - 1552) < 4.6 && !diving;
+      spaT9 = inSpa9 ? spaT9 + dt : 0;
+      if (spaT9 > 4) {
+        spaT9 = -26;   // 冷却
+        BUFF.run = Math.max(BUFF.run, 45); syncBuffs(0);
+        if (PSTORE.getItem('w1001.spa') !== todayStr()) { PSTORE.setItem('w1001.spa', todayStr()); earnSB(6); toast('♨️ 泡透了!浑身酥暖,腿脚生风(疾跑 45 秒)⚡+6'); }
+        else toast('♨️ 又泡了一轮——腿脚生风(疾跑 45 秒)');
+        blip(700);
+      }
+    }
+  }
+  if (riverTex9) {   // 🏞️ 溪流:水纹下行,瀑布快滚,溅雾浮动,溪声近强
+    riverTex9.offset.y -= dt * .55;
+    fallTex9.offset.y -= dt * 2.2;
+    if (fallMist9) { const mp9 = fallMist9.geometry.attributes.position, mh9 = fallMist9.userData.ph; for (let i9 = 0; i9 < mh9.length; i9++) { mp9.setY(i9, 1.5 + Math.sin(t * 2.2 + mh9[i9]) * 1.3); } mp9.needsUpdate = true; }
+    if (brookGain9) {
+      let bd9 = 1e9;
+      for (const [rx9, rz9] of RIVER_WP9) { const d9 = Math.hypot(player.position.x - rx9, player.position.z - rz9); if (d9 < bd9) bd9 = d9; }
+      const dm9 = Math.hypot(player.position.x - riverMouth9[0], player.position.z - riverMouth9[1]);
+      const tar9 = Math.max(0, 1 - bd9 / 42) * .028 + Math.max(0, 1 - dm9 / 34) * .05;
+      brookGain9.gain.value += (tar9 - brookGain9.gain.value) * Math.min(1, dt * 3);
+    }
+  }
   subStep9(dt);   // 🚇 深蓝线
   if (sagaAurora9) {   // 🌌 萨迦极光:夜幕 + 岛域内才显(冬季全局极光另有其物)
     const near9 = Math.hypot(player.position.x + 700, player.position.z - 1560) < 780;
