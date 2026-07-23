@@ -3305,7 +3305,7 @@ function updateRainFx9() {
   }
   cx9.globalAlpha = 1;
 }
-/* --- 昼夜循环(约 8 分钟一天,从清晨开始) --- */
+/* --- 昼夜循环(24 分钟一天 = 60:1,与荒野之息同速;从清晨开始) --- */
 let fireLight = null, lantern = null; const flames9 = []; let sparks9 = null, FIRE_POS9 = null;
 const rings9 = []; let ringT9 = 0;   // 🌧️ 雨落水面涟漪池
 const bio9 = []; let bioT9 = 0;      // ✨ 荧光海泳迹池
@@ -3316,7 +3316,7 @@ const ringGeo9 = new THREE.RingGeometry(.35, .5, 12), ringMat9 = new THREE.MeshB
 const dolphins9 = [];   // 🐬
 const FLYF9 = []; let flyfT9 = 5;   // 🐟 船头飞鱼池
 let prevMV9 = false, shellT9 = 0;   // 🌠 流星许愿沿 / 🐚 拾贝节流
-const DAY_LEN = 480, DAY_START = .12;
+const DAY_LEN = 1440, DAY_START = .12;
 const cDaySky = new THREE.Color(0x86c3e8), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
 function dayAmount(p) { if (p < .58) return 1; if (p < .7) return 1 - (p - .58) / .12; if (p < .9) return 0; return (p - .9) / .1; }
