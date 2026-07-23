@@ -23,7 +23,7 @@ import { THEMES, NI_QUESTS } from './w-config.js?v=18';
 import { AIRPORTS, FOODS, FOOD_SPOTS, CAPES, HATS, LETTER_TXT, LETTER_TPL, DQ_FOODS } from './w-data.js?v=1';
 import { CONSTELLATIONS } from './constellations.js?v=1';
 import { MAZE_NODES, ZONES, NODE_ZONE, MAZE_EDGES, AIR_NODES, GATES, DISC, MAZE_PORTALS, TUBE_R } from './w-maze.js?v=11';
-import { makeLORE } from './w-lore.js?v=2';
+import { makeLORE } from './w-lore.js?v=3';
 import { CATS, ZONES3D, EVENTS, BSTYLES, NIGHT_OWLS, AUTHORS, EVE_SPOTS9, FISH_PRICE, HINTS } from './w-data2.js?v=1';
 import { makeCards } from './w-cards.js?v=1';
 import { netOn, netPublish, netList, netLike, netReport, netEvent, netVisit, netSaveUp, netSaveDown, netSaveClaim, netWho, netRegister, netLogin, netLogout, netLbUp, netLbTop, netBottleDrop, netBottleFish } from './w-net.js?v=8';
@@ -115,6 +115,7 @@ SAVE_FIELDS.push('chest', 'chestn');   // ⚓ 每日沉箱
 SAVE_FIELDS.push('mt', 'mtn');   // 💎 每日迷宫沉宝
 SAVE_FIELDS.push('tidevault');   // 🔱 潮汐密室(一次性)
 SAVE_FIELDS.push('divedex', 'divedexall');   // 🐚 深海摄影图鉴
+SAVE_FIELDS.push('bx', 'bxfeast');   // 🌊 八仙过海(法器 CSV + 赴宴旗)
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -1423,6 +1424,8 @@ function buildCard(s) {
 let modalOpen = false;
 function openCard(s) {
   cardBody.innerHTML = buildCard(s);
+  if (s.cat === 'lore' && BX_SET9.has(s.type)) bxCollect9(s.type);   // 🌊 八仙法器:读卡即收
+  if (s.cat === 'lore' && s.type === 'bxyan') bxFeast9();            // 🍑 集齐后开宴
   modal.classList.remove('hidden'); modalOpen = true;
   cardBody.querySelectorAll('img').forEach(im => {
     im.onerror = () => { im.outerHTML = `<div class="medallion"><div class="g">${CATS[s.cat]?.icon || '✦'}</div><div class="e">图片加载中断</div></div>`; };
@@ -2053,6 +2056,7 @@ function titleList() {
     { id: 'seasonfish', name: '🎏 四季渔人', got: PSTORE.getItem('w1001.seasonfish4') === '1', note: '春夏秋冬的当季限定鱼都钓过' },
     { id: 'quizace', name: '🎓 藏品鉴赏家', got: PSTORE.getItem('w1001.quizace') === '1', note: '鉴赏挑战答出满分' },
     { id: 'seaphoto', name: '📷 深海摄影家', got: PSTORE.getItem('w1001.divedexall') === '1', note: '拍全海底迷宫十景' },
+    { id: 'duhai', name: '🌊 渡海人', got: PSTORE.getItem('w1001.bxfeast') === '1', note: '集齐八仙渡海法器,赴蓬莱之宴' },
     { id: 'wc100', name: '🌏 1001 世界的居民', got: PSTORE.getItem('w1001.wc100') === '1', note: '群岛完成度 100%' },
     { id: 'babel',  name: '📖 巴别读者',   got: PSTORE.getItem('w1001.babel') === '1', note: '满月夜入海底巴别海窟' },
     { id: 'skeleton', name: '🕸️ 世界骨架 · 见证者', got: PSTORE.getItem('w1001.skeleton') === '1', note: '窥破星球真正的结构' },
@@ -2365,6 +2369,7 @@ function openJournal() {
     ['📚 群岛互文考(考据学会)', PSTORE.getItem('w1001.kaodone') === '1' ? '✅ 已付印' : `⏳ 考据 ${[1, 2, 3, 4, 5, 6].filter(i => PSTORE.getItem('w1001.kao' + i) === '1').length}/6`],
     ['🕳️ 星球之脐(深渊海沟)', PSTORE.getItem('w1001.abyss') === '1' ? '✅ 已触及' : '⏳ 戴深潜面罩下竖井'],
     ['🕸️ 世界骨架(终局)', PSTORE.getItem('w1001.skeleton') === '1' ? '✅ 已窥全貌' : `⏳ 集齐三线索(${['d_heart', 'd_mural', 'babel'].filter(f => PSTORE.getItem('w1001.' + f) === '1').length}/3)`],
+    ['🌊 八仙过海(三仙岛海域)', PSTORE.getItem('w1001.bxfeast') === '1' ? '✅ 已赴蓬莱宴' : `⏳ 渡海法器 ${(PSTORE.getItem('w1001.bx') || '').split(',').filter(Boolean).length}/8`],
   ];
   for (const k in NI_QUESTS) { const q = NI_QUESTS[k]; LOGROWS.push([q.log, PSTORE.getItem('w1001.nq_' + k) === '1' ? q.done : q.pend]); }   // 海洋文学带 16 条故事线
   const logHtml = `<div class="qBox"><div class="qTitle"><span>🧭 航海日志 · 成就</span><span>${LOGROWS.filter(r2 => r2[1].includes('✅')).length}/${LOGROWS.length}</span></div>
@@ -6552,6 +6557,38 @@ for (const s of NISLES) {
   ];
   for (const [ex9, ez9, ek9] of EXP_LORE9) addSpot(ex9, ez9, 'lore', ek9, { r: 6.5 });
 }
+/* —— 🌊 八仙过海:海上七法器(莲台)+ 龙宫玉板 + 三仙岛八仙宴 —— */
+const BX_SEA9 = [
+  ['bxhulu', 1310, 870, 0xd9a54a], ['bxshan', 1460, 850, 0xc8b878], ['bxlvzi', 1400, 810, 0xcfc8b8],
+  ['bxjian', 1520, 950, 0x8fb0e8], ['bxhe', 1470, 1040, 0xf0a0c0], ['bxlan', 1360, 1050, 0x6fd8a8], ['bxdi', 1280, 970, 0x8fd0e8],
+];
+const BX_SET9 = new Set(['bxhulu', 'bxshan', 'bxlvzi', 'bxjian', 'bxhe', 'bxlan', 'bxdi', 'bxyu']);
+let bxGot9 = new Set();
+try { bxGot9 = new Set((PSTORE.getItem('w1001.bx') || '').split(',').filter(Boolean)); } catch (e) {}
+for (const [bk9, bx9, bz9, bc9] of BX_SEA9) {
+  addSpot(bx9, bz9, 'lore', bk9, { r: 7, y: .6 });
+  const lot9 = cyl(1.5, 1.7, .3, lam(0xc98aa8), 8); lot9.position.set(bx9, .5, bz9); scene.add(lot9);   // 莲台
+  const orb9 = new THREE.Mesh(sphg(.5, 10, 8), new THREE.MeshBasicMaterial({ color: bc9, fog: false })); orb9.position.set(bx9, 1.5, bz9); scene.add(orb9);
+  const gl9 = new THREE.Mesh(sphg(.95, 10, 8), new THREE.MeshBasicMaterial({ color: bc9, transparent: true, opacity: .18, depthWrite: false, fog: false })); gl9.position.set(bx9, 1.5, bz9); scene.add(gl9);
+  const bl9 = new THREE.PointLight(bc9, 0, 22, 2); bl9.position.set(bx9, 2.2, bz9); bl9.userData.pow = 7; nightLamps.push(bl9); scene.add(bl9);
+}
+addSpot(145, 10, 'lore', 'bxyu', { r: 7, y: -92 });   // 玉板点位(视觉在迷宫段建,diveGroup 彼时才存在)
+addSpot(1385, 950, 'lore', 'bxyan', { r: 7 });   // 三仙岛 · 八仙宴石桌
+function bxCollect9(k9) {
+  if (bxGot9.has(k9)) return;
+  bxGot9.add(k9);
+  try { PSTORE.setItem('w1001.bx', [...bxGot9].join(',')); } catch (e) {}
+  earnSB(8); blip(700);
+  if (bxGot9.size >= 8) setTimeout(() => { toast('🌊 八件渡海法器集齐——蓬莱的宴席开了,去三仙岛入席!'); blip(760); setTimeout(() => blip(920), 130); }, 1200);
+  else toast('🌊 渡海法器 ' + bxGot9.size + '/8 · ⚡+8' + (k9 === 'bxyu' ? '(龙宫那件到手了)' : ''));
+}
+function bxFeast9() {
+  if (bxGot9.size < 8 || PSTORE.getItem('w1001.bxfeast') === '1') return;
+  PSTORE.setItem('w1001.bxfeast', '1');
+  earnSB(30); stars++; saveQuest(); updateQuestHUD(); fireworks();
+  toast('🍑 八仙宴开——第九副杯箸是你的!新称号「🌊 渡海人」 ⚡+30 · ⭐+1');
+  blip(680); setTimeout(() => blip(880), 130); setTimeout(() => blip(1100), 260);
+}
 const PASSPORT = [
   ['收藏之岛', '🐋'], ['灯塔屿', '🗼'], ['楚门的世界', '📺'], ['中土', '💍'],
   ['霍格沃茨', '⚡'], ['南塔开特', '🐳'], ['体育岛', '⚽'],
@@ -6778,6 +6815,11 @@ const portalBeacons = [];
     shaft.position.y = 24; g.add(shaft);
     const pl = new THREE.PointLight(p.col, 1.4, 40, 2); pl.position.y = 4; g.add(pl);
     ropeGroup.add(g); portalBeacons.push(g);
+  }
+  { // 🀄 曹国舅的玉板(八仙过海):沉在 node37,翠玉微光
+    const jd9 = box(2.2, .22, 1.4, new THREE.MeshBasicMaterial({ color: 0x9fe8c8, fog: false })); jd9.position.set(145, -95, 10); jd9.rotation.z = .3; diveGroup.add(jd9);
+    const jg9 = new THREE.Mesh(sphg(2.4, 10, 8), new THREE.MeshBasicMaterial({ color: 0x9fe8c8, transparent: true, opacity: .12, depthWrite: false, fog: false })); jg9.position.set(145, -94, 10); diveGroup.add(jg9);
+    const jl9 = new THREE.PointLight(0x9fe8c8, 1.0, 26, 2); jl9.position.set(145, -93, 10); diveGroup.add(jl9);
   }
   diveLight = new THREE.PointLight(0xbfeaff, 0, 70, 1.6); diveLight.visible = false; scene.add(diveLight);
   /* 水下焦散:自上而下投影一张晃动的光斑贴图(桌面) */
