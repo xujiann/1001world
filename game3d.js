@@ -116,6 +116,7 @@ SAVE_FIELDS.push('mt', 'mtn');   // 💎 每日迷宫沉宝
 SAVE_FIELDS.push('tidevault');   // 🔱 潮汐密室(一次性)
 SAVE_FIELDS.push('divedex', 'divedexall');   // 🐚 深海摄影图鉴
 SAVE_FIELDS.push('bx', 'bxfeast');   // 🌊 八仙过海(法器 CSV + 赴宴旗)
+SAVE_FIELDS.push('spa');   // ♨️ 温泉每日首泡
 SAVE_FIELDS.push('storm1');   // ⛈️ 风暴水手
 SAVE_FIELDS.push('lastseen', 'streak', 'streakbest', 'streak7', 'featvisit', 'dq', 'quiz', 'storm1d');   // 🔁 留存/每日态(审阅补:换号不丢 streak)
 SAVE_FIELDS.push('eaten', 'foodie', 'home', 'wardrobe', 'homelv', 'wc100', 'mail', 'maildate');   // 衣食住·食客·完成度·家书
@@ -2974,7 +2975,7 @@ function updateStarGaze() {
   if (skyLabels.style.display === 'none') skyLabels.style.display = 'block';
   const ry = starField.rotation.y, W = innerWidth, H = innerHeight, fade = Math.min(1, (.32 - curDA) / .2);
   for (let i = 0; i < constDirs.length; i++) {
-    sgV.copy(constDirs[i].c).applyAxisAngle(sgY, ry).project(camera);
+    sgV.copy(constDirs[i].c).applyAxisAngle(sgY, ry).add(player.position).project(camera);   // 与星场平移同源
     const on = sgV.z < 1 && Math.abs(sgV.x) < 1 && sgV.y > -.9 && sgV.y < 1;
     const lab = constLabels[i];
     if (!on) { if (lab.style.opacity !== '0') lab.style.opacity = '0'; continue; }
@@ -3506,6 +3507,7 @@ function updateDayNight(t) {
   starField.material.opacity = night * (.9 + Math.sin(t * 1.7) * .06);   // 整体微闪
   if (milkyWay9) milkyWay9.material.opacity = night * (WEATHER === 'clear' ? .5 : .18);   // 🌌 银河夜显,阴雨天淡
   starField.rotation.y = t * .006;                                        // 缓慢天旋
+  starField.position.copy(player.position);                               // 🌌 星穹以玩家为心(远岛夜空不偏斜;银河/星座随之)
   if (constStars) { constStars.material.opacity = night * .95; constLines.material.opacity = night * .32; }   // 星座随夜显现
   if (!MOBILE && Math.abs(da - lastEnvDA9) > .14) { lastEnvDA9 = da; bakeEnv9(); }   // 🌇 环境贴图随昼夜重烘
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
@@ -12243,7 +12245,7 @@ function loop() {
     for (const z9 of MICRO9) { const d9 = Math.hypot(player.position.x - z9.x, player.position.z - z9.z); if (d9 < z9.r) { mz9 = z9; md9 = d9; break; } }
     const act9 = !!mz9 && !diving && (mz9.k !== 'storm' || md9 > mz9.core);
     if (act9 && !microOn9) { microFogSave9 = [scene.fog.near, scene.fog.far]; microOn9 = true; }
-    if (!act9 && microOn9) { scene.fog.near = microFogSave9[0]; scene.fog.far = microFogSave9[1]; microOn9 = false; microWind9 = 0; microRain9.visible = false; microGust9.visible = false; mcBolt9.material.opacity = 0; }
+    if (!act9 && microOn9) { if (!diving) { scene.fog.near = microFogSave9[0]; scene.fog.far = microFogSave9[1]; } microOn9 = false; microWind9 = 0; microRain9.visible = false; microGust9.visible = false; mcBolt9.material.opacity = 0; }   // 潜水时雾归潜水系统管,只清状态不还原
     if (act9) {
       const k9 = mz9.k;
       if (k9 === 'rain') {
