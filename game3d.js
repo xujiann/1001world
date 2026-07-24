@@ -2715,7 +2715,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x86c3e8, 560, 2600);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, bloomPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 const REDUCE9 = matchMedia('(prefers-reduced-motion: reduce)').matches;   // ♿ 系统"减少动态"→ 关掉氛围粒子/光柱/运镜
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
@@ -2742,7 +2742,8 @@ if (!MOBILE) {
     };
     composer.addPass(gtaoPass);
   } catch (e) {}
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .22, .55, .90));
+  bloomPass9 = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .22, .55, .90);
+  composer.addPass(bloomPass9);
   godPass9 = new ShaderPass({   // 🌤️ 空中光柱:朝太阳屏幕位置径向累积亮像素(穷人版体积光散射)
     uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(.5, .5) }, uStr: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
@@ -2767,8 +2768,9 @@ if (!MOBILE) {
   godPass9.enabled = false;
   composer.addPass(godPass9);
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
+  composer.addPass(new OutputPass());   // 🎛️ 色调映射在此:其后的调色/照片通道工作在显示域(LDR),clamp 与 S 曲线才是安全数学
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
-    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .4 } },
+    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .22 } },   // uSplit .4→.22:暖高光原在洗蓝天空
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
     fragmentShader: [
       'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig; uniform float uCon; uniform float uSplit;',
@@ -2810,7 +2812,6 @@ if (!MOBILE) {
   });
   photoPass9.enabled = false;
   composer.addPass(photoPass9);
-  composer.addPass(new OutputPass());
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
 }
 function applyQuality() {
@@ -2839,8 +2840,8 @@ const sky = new Sky();
 sky.scale.setScalar(2100);
 scene.add(sky);
 const skyUni = sky.material.uniforms;
-skyUni.turbidity.value = 5;
-skyUni.rayleigh.value = 2.4;
+skyUni.turbidity.value = 2.6;
+skyUni.rayleigh.value = 1.8;
 skyUni.mieCoefficient.value = .004;
 skyUni.mieDirectionalG.value = .8;
 /* 🌇 IBL:把物理天空烘成环境贴图喂给全部 Standard 材质(天光漫射+反射,昼夜随烘随变) */
@@ -2851,8 +2852,10 @@ function bakeEnv9() {
   if (!envScene9) envScene9 = new THREE.Scene();
   const old9 = envRT9;
   envScene9.add(sky);                      // 借走天空烘一帧
+  sky.position.set(0, 0, 0);               // 烘焙相机在原点:穹盒归位再烘
   envRT9 = pmrem9.fromScene(envScene9);
   scene.add(sky);                          // 归还
+  sky.position.set(player.position.x, 0, player.position.z);   // 随行位复原,防烘焙帧天空闪缝
   scene.environment = envRT9.texture;
   if (old9) old9.dispose();
 }
@@ -3400,14 +3403,20 @@ function updateDayNight(t) {
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
+  sky.position.set(player.position.x, 0, player.position.z);   // 🌐 穹盒随行:半径 1050,外圈岛出穹=天空撕成穹内/裸背景两截
+  if (!MOBILE) {
+    renderer.toneMappingExposure = .73 - da * .18;             // ☀️ 白日收曝光(Sky 穹顶是 HDR 亮度),夜保 .73 灯火氛围
+    if (bloomPass9) bloomPass9.threshold = .85 + da * 2.15;    // 🌸 泛光昼高夜低(昼 3.0):物理天空线性辐亮度>1.35,阈值低于它=整帧白纱;3 与 9 已无肉眼差,留 3 给日轮辉光
+  }
   const wxMul = WEATHER === 'storm' ? .38 : WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
   sun.intensity = (.06 + 2.7 * da) * wxMul;
-  hemi.intensity = (.16 + .62 * da) * (WEATHER === 'clear' ? 1 : .85);
+  hemi.intensity = (.16 + .62 * da + Math.min(dusk, 1) * .12) * (WEATHER === 'clear' ? 1 : .85);   // 黄昏垫底光:背光面留出层次
   { // ☁️ 云随昼夜染色:建云时是定死的白,夜里像贴上去的纸片——现随时段沉暗/染暖(~180 个 sprite,setRGB 开销可忽略)
     const dk9 = Math.min(dusk, 1);
     let cr9 = .15 + .85 * da + dk9 * .55 * (1 - da * .5), cg9 = .18 + .82 * da + dk9 * .12 * (1 - da * .5), cb9 = .26 + .74 * da - dk9 * .1;
     const cwx9 = WEATHER === 'clear' ? 1 : (WEATHER === 'fog' ? .8 : .62);
     cr9 *= cwx9; cg9 *= cwx9; cb9 *= cwx9;
+    const cbst9 = 1 + da * .16; cr9 *= cbst9; cg9 *= cbst9; cb9 *= cbst9;   // ☀️ 白日云提亮(sprite 色值可>1)
     for (const cg2 of clouds) for (const s2 of cg2.children) { const sh2 = s2.userData.sh || 1; s2.material.color.setRGB(cr9 * sh2, cg9 * sh2, cb9 * sh2); }
   }
   if (WEATHER === 'rain') skyCol.lerp(new THREE.Color(0x6a7480), .4);
@@ -10073,13 +10082,19 @@ let riverTex9 = null, fallTex9 = null, fallMist9 = null, riverMouth9 = [277, 139
   // 临海飞瀑:河口(272,128,y~1.2)跌落海面,垂直白幕 + 底部溅雾 + 海面泡沫环
   const my9 = Math.max(heightMesh(272, 128), 0) + .1;
   scene.add(new THREE.Mesh(cascade9(272, 128, Math.min(my9, 1.35), 277.5, 140, .05, 2.6), fallMat9));
+  const pool9 = new THREE.Mesh(new THREE.CircleGeometry(6.4, 20), new THREE.MeshBasicMaterial({ color: 0x1d4a56, transparent: true, opacity: .32, depthWrite: false }));
+  pool9.rotation.x = -Math.PI / 2; pool9.position.set(278.5, .26, 142); scene.add(pool9);   // 深潭:落水点海色深染
   const foam9 = new THREE.Mesh(new THREE.CircleGeometry(4.6, 18), new THREE.MeshBasicMaterial({ color: 0xeaf6fa, transparent: true, opacity: .4, depthWrite: false }));
   foam9.rotation.x = -Math.PI / 2; foam9.position.set(278.5, .32, 142); scene.add(foam9);
+  const froth9 = new THREE.Mesh(new THREE.RingGeometry(2.1, 4.9, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .5, depthWrite: false }));
+  froth9.rotation.x = -Math.PI / 2; froth9.position.set(278.5, .38, 142); scene.add(froth9);   // 白沫环:落水翻涌比泡沫圈亮一档
+  const lip9 = new THREE.Mesh(new THREE.BoxGeometry(6.8, .5, .9), new THREE.MeshBasicMaterial({ color: 0xf2fbff }));
+  lip9.rotation.y = .43; lip9.position.set(272.6, Math.max(heightMesh(272, 128), 0) + .22, 128.5); scene.add(lip9);   // 崖唇白脊:跌落起点翻白(垂直于流向)
   { // 溅雾粒子:瀑底喷薄
-    const N9 = 40, pa9 = new Float32Array(N9 * 3), ph9 = new Float32Array(N9);
+    const N9 = 60, pa9 = new Float32Array(N9 * 3), ph9 = new Float32Array(N9);
     for (let i = 0; i < N9; i++) { pa9[i * 3] = 277 + (Math.random() - .5) * 4; pa9[i * 3 + 1] = Math.random() * 3; pa9[i * 3 + 2] = 140.5 + (Math.random() - .5) * 3; ph9[i] = Math.random() * 6.28; }
     const mg9 = new THREE.BufferGeometry(); mg9.setAttribute('position', new THREE.BufferAttribute(pa9, 3));
-    fallMist9 = new THREE.Points(mg9, new THREE.PointsMaterial({ map: softDot9, color: 0xeaf6ff, size: 2.6, transparent: true, opacity: .5, depthWrite: false }));
+    fallMist9 = new THREE.Points(mg9, new THREE.PointsMaterial({ map: softDot9, color: 0xeaf6ff, size: 3.4, transparent: true, opacity: .62, depthWrite: false }));
     fallMist9.userData = { ph: ph9 }; fallMist9.frustumCulled = false; scene.add(fallMist9);
   }
   // 汀步石(z≈74 过河)+ 溪畔石
