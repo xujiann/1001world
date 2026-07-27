@@ -4354,6 +4354,7 @@ function makeTree(x, z, scale, birdCol) {
   }
 }
 const pigeons9 = [];   // 🕊️ 广场鸽群(Group 不入静态合并,桶组无位移故本地=世界坐标)
+let unjCrane9 = null;   // 🏗️ 未竟之都塔吊吊臂组(缓摆)
 /* --- 中央广场 --- */
 {
   const zn = ZONES3D[0];
@@ -9230,6 +9231,46 @@ let unjLangLight = null;
     const kroof = box(9, .8, 9, marble); kroof.position.set(kx, G + 6.6, kz); scene.add(kroof);
     const ksign = makeSign('地下交流网 · 万国隧道', 7, '#2a3040', '#c8d8e8'); ksign.position.set(kx + 7, G + 4.2, kz + 5); scene.add(ksign);
   }
+  { const cx9 = gx + 8, cz9 = gz + 56, ch9 = 30;   // —— 🏗️ 巨型塔吊(南带):天际线签名,钩下悬着一块永远没砌上去的石板 ——
+    const steel9 = lam(0xd07a2e), steelD9 = lam(0x8a5220);
+    for (const [ox9, oz9] of [[-.9, -.9], [.9, -.9], [-.9, .9], [.9, .9]]) {
+      const leg9 = box(.26, ch9, .26, steel9); leg9.position.set(cx9 + ox9, G + ch9 / 2, cz9 + oz9); scene.add(leg9);
+    }
+    for (let i9 = 1; i9 <= 7; i9++) {   // 层间横箍(四边细杆)
+      const by9 = G + i9 * 4;
+      for (const [w9, d9, ox9, oz9] of [[2.1, .14, 0, -.9], [2.1, .14, 0, .9], [.14, 2.1, -.9, 0], [.14, 2.1, .9, 0]]) {
+        const bar9 = box(w9, .14, d9, steelD9); bar9.position.set(cx9 + ox9, by9, cz9 + oz9); scene.add(bar9);
+      }
+    }
+    const jib9 = new THREE.Group(); jib9.position.set(cx9, G + ch9 + .5, cz9);
+    const cab9 = box(1.7, 1.5, 1.7, steelD9); cab9.position.y = .75; jib9.add(cab9);
+    const arm9 = box(19, .55, .75, steel9); arm9.position.set(8.2, 1.95, 0); jib9.add(arm9);        // 主臂
+    const carm9 = box(6.5, .55, .75, steel9); carm9.position.set(-4.6, 1.95, 0); jib9.add(carm9);   // 配重臂
+    const cwt9 = box(1.9, 1.7, 1.5, lam(0x707078)); cwt9.position.set(-7.2, 1.15, 0); jib9.add(cwt9);
+    const apex9 = box(.24, 3.6, .24, steel9); apex9.position.set(0, 3.9, 0); jib9.add(apex9);
+    const tie19 = box(14.6, .1, .1, steelD9); tie19.rotation.z = -.27; tie19.position.set(7.6, 4.2, 0); jib9.add(tie19);   // 前拉杆
+    const tie29 = box(7.2, .1, .1, steelD9); tie29.rotation.z = .48; tie29.position.set(-3.6, 4.4, 0); jib9.add(tie29);    // 后拉杆
+    const cable9 = cyl(.05, .05, 9.5, lam(0x2a2a2a), 4); cable9.position.set(14.2, -3.2, 0); jib9.add(cable9);
+    const hang9 = box(3.2, .55, 2.1, marbleDim); hang9.position.set(14.2, -8.2, 0); jib9.add(hang9);   // 悬石:永远差最后一块
+    scene.add(jib9); unjCrane9 = jib9;
+    cirObs.push({ x: cx9, z: cz9, r: 1.9 });
+  }
+  for (const [fx9, fz9, fw9, fd9, fl9] of [[gx - 22, gz + 70, 14, 10, 3], [gx + 30, gz + 70, 11, 9, 4]]) {   // —— 🏚️ 骨架楼×2(港口来向的"施工门廊"):只有柱与楼板 ——
+    for (let l9 = 0; l9 <= fl9; l9++) {
+      if (l9) { const fs9 = box(fw9, .5, fd9, marbleDim); fs9.position.set(fx9, G + l9 * 3.6, fz9); scene.add(fs9); }
+      if (l9 < fl9) for (const [px9, pz9] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) {
+        const fc9 = box(.5, 3.6, .5, marbleDim); fc9.position.set(fx9 + px9 * (fw9 / 2 - .5), G + l9 * 3.6 + 2.05, fz9 + pz9 * (fd9 / 2 - .5)); scene.add(fc9);
+      }
+    }
+    cirObs.push({ x: fx9, z: fz9, r: Math.max(fw9, fd9) / 2 + .5 });
+  }
+  { const wx9 = gx + 62, wz9 = gz - 6;   // —— 🪟 法庭夜窗:入夜亮起两排长明窗(winMat9 昼灭夜亮) ——
+    for (const sg9 of [-1, 1]) for (let r9 = 0; r9 < 2; r9++) for (let c9 = 0; c9 < 5; c9++) {
+      const w9 = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.7), winMat9());
+      w9.position.set(wx9 - 6 + c9 * 3, G + 4.2 + r9 * 4.2, wz9 + sg9 * 8.06);
+      scene.add(w9);
+    }
+  }
   { const dz = gz + UNJ.r + 12; const dk = height(gx, dz);   // —— 渡口 + 岛名牌 ——
     const plank = box(5, .5, 9, M.wood); plank.position.set(gx, dk + .9, dz); scene.add(plank);
     addSpot(gx, dz - 3, 'ferry', 'ferry', { r: 8 });
@@ -12420,6 +12461,7 @@ function loop() {
     }
   }
   pigeonStep9(dt);   // 🕊️ 广场鸽群
+  if (unjCrane9) unjCrane9.rotation.y = Math.sin(t * .045) * 1.15 + .55;   // 🏗️ 未竟塔吊缓摆(全周期约 2.3 分钟)
   subStep9(dt);   // 🚇 深蓝线
   if (sagaAurora9) {   // 🌌 萨迦极光:夜幕 + 岛域内才显(冬季全局极光另有其物)
     const near9 = Math.hypot(player.position.x + 700, player.position.z - 1560) < 780;
