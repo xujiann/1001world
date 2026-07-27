@@ -3397,7 +3397,7 @@ const DAY_LEN = 1440, DAY_START = .12;
 const cDaySky = new THREE.Color(0x86c3e8), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
 const skyCol = new THREE.Color();
 function dayAmount(p) { if (p < .58) return 1; if (p < .7) return 1 - (p - .58) / .12; if (p < .9) return 0; return (p - .9) / .1; }
-function updateDayNight(t) {
+function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真实帧时长(捕捉/外部调用省参时按 60fps 兜底)
   const p = (t / DAY_LEN + DAY_START) % 1;
   const da = dayAmount(p);
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
@@ -3535,7 +3535,7 @@ function updateDayNight(t) {
   } else if (da > .8) moonRoadTold9 = false;
   if (gradePass9) {   // 🎨 分级随时段:黄昏推橙金降蓝,夜里降饱和加暗角
     let gfk9 = 0;
-    if (greenFlashT9 > 0) { greenFlashT9 = Math.max(0, greenFlashT9 - .016); gfk9 = Math.sin(Math.min(1, greenFlashT9 / 1.8) * Math.PI) * .22; }
+    if (greenFlashT9 > 0) { greenFlashT9 = Math.max(0, greenFlashT9 - dt9v); gfk9 = Math.sin(Math.min(1, greenFlashT9 / 1.8) * Math.PI) * .22; }   // 绿闪按 dt 衰减:高刷屏不再缩短
     gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
     gradePass9.uniforms.uSat.value = 1.12 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
@@ -12232,7 +12232,7 @@ function loop() {
     }
   }
   updateNpcs3(dt);
-  curDA = updateDayNight(t);
+  curDA = updateDayNight(t, dt);
   /* 萤火虫 + 流星(夜间氛围) */
   const nite = 1 - curDA;
   if (fireflies) {
