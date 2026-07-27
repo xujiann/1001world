@@ -4355,6 +4355,10 @@ function makeTree(x, z, scale, birdCol) {
 }
 const pigeons9 = [];   // 🕊️ 广场鸽群(Group 不入静态合并,桶组无位移故本地=世界坐标)
 let unjCrane9 = null;   // 🏗️ 未竟之都塔吊吊臂组(缓摆)
+const lotusDra9 = [];   // 🜻 沁芳湖蜻蜓(昼间盘旋)
+let geese9 = null, geeseT9 = 80, geeseTold9 = false;   // 🪿 雁阵(不定时掠空)
+let dandel9 = null, dandelB9 = null;   // 🌬️ 蒲公英飘絮(花海)
+let natT9 = 0;
 /* --- 中央广场 --- */
 {
   const zn = ZONES3D[0];
@@ -9776,6 +9780,47 @@ function redistributeMist(cx, cz) {
       gg9.translate(DGY.x - 28, Math.max(height(DGY.x - 28, DGY.z - 32), .3) + .22, DGY.z - 32);
       scene.add(new THREE.Mesh(gg9, lkm));
     } }
+  { /* 🪷 沁芳湖荷塘:莲叶浮水、莲花点缀、蜻蜓昼间盘旋(湖面实测 y≈10.1,内陆湖不随潮) */
+    const lcx9 = 1204.7, lcz9 = -731.7, lwy9 = 10.14;
+    const lr9 = mulberry32(53);
+    const padCols9 = [0x2e6b34, 0x3a7a3e, 0x27592c];
+    for (let i9 = 0; i9 < 16; i9++) {
+      const pa9 = lr9() * 6.2832, prr9 = Math.sqrt(lr9());
+      const px9 = lcx9 + Math.cos(pa9) * prr9 * 5.2, pz9 = lcz9 + Math.sin(pa9) * prr9 * 4.2;
+      const pad9 = new THREE.Mesh(new THREE.CircleGeometry(.38 + lr9() * .4, 9), lam(padCols9[i9 % 3]));
+      pad9.rotation.x = -Math.PI / 2; pad9.rotation.z = lr9() * 6.28;
+      pad9.position.set(px9, lwy9 + (i9 % 4) * .004, pz9);
+      scene.add(pad9);
+      if (i9 % 3 === 0 && i9 < 15) {   // 六株莲花:短茎 + 花苞
+        const stem9 = cyl(.03, .03, .5, lam(0x3a7a3e), 5); stem9.position.set(px9, lwy9 + .25, pz9); scene.add(stem9);
+        const blm9 = new THREE.Mesh(new THREE.IcosahedronGeometry(.17, 0), lam(i9 % 2 ? 0xef8fb0 : 0xf2e6ec));
+        blm9.position.set(px9, lwy9 + .56, pz9); scene.add(blm9);
+      }
+    }
+    for (let i9 = 0; i9 < 3; i9++) {   // 🜻 蜻蜓:各绕自己的小椭圆盘旋
+      const d9 = new THREE.Group();
+      const bd9 = cyl(.018, .028, .5, lam(0x2ea8c8), 5); bd9.rotation.z = Math.PI / 2; d9.add(bd9);
+      const wm9 = new THREE.MeshBasicMaterial({ color: 0xeef6fa, transparent: true, opacity: .42, side: THREE.DoubleSide, depthWrite: false });
+      for (const sg9 of [-1, 1]) { const wg9 = new THREE.Mesh(new THREE.PlaneGeometry(.4, .13), wm9); wg9.rotation.x = -Math.PI / 2; wg9.position.set(.04, .03, sg9 * .2); d9.add(wg9); }
+      d9.userData.dr9 = { cx: lcx9 + (lr9() - .5) * 6, cz: lcz9 + (lr9() - .5) * 4.5, r: .8 + lr9() * 1.4, sp: .7 + lr9() * .8, ph: lr9() * 6.28 };
+      d9.position.set(d9.userData.dr9.cx, lwy9 + .8, d9.userData.dr9.cz);
+      scene.add(d9); lotusDra9.push(d9);
+    }
+  }
+  { /* 🌬️ 蒲公英飘絮:花海上空的白色种子,随风缓行,雨天歇 */
+    const dcx9 = -88, dcz9 = -272, DN9 = 34;
+    const da9 = new Float32Array(DN9 * 3); dandelB9 = new Float32Array(DN9);
+    const dr9 = mulberry32(59);
+    for (let i9 = 0; i9 < DN9; i9++) {
+      const px9 = dcx9 + (dr9() - .5) * 64, pz9 = dcz9 + (dr9() - .5) * 50;
+      const bh9 = Math.max(height(px9, pz9), 0);
+      dandelB9[i9] = bh9;
+      da9[i9 * 3] = px9; da9[i9 * 3 + 1] = bh9 + .6 + dr9() * 5; da9[i9 * 3 + 2] = pz9;
+    }
+    const dg9 = new THREE.BufferGeometry(); dg9.setAttribute('position', new THREE.BufferAttribute(da9, 3));
+    dandel9 = new THREE.Points(dg9, new THREE.PointsMaterial({ map: softDot9, color: 0xffffff, size: 1.05, transparent: true, opacity: .5, depthWrite: false }));
+    dandel9.frustumCulled = false; scene.add(dandel9);
+  }
   osmCity(C9, OSM_SPTT, SPT.x + 64, SPT.z, -40, [lam(0xc03a3a), lam(0x8a8a92)]);    // 老特拉福德(梦剧场原型)
   osmRoads(C9, OSM_ROADS.TRUMAN, TRU.x + 30, TRU.z, 32, new THREE.MeshLambertMaterial({ color: 0xd8cfc0, side: THREE.DoubleSide }), 1.8, .12);   // Seaside 放射街网
   osmRoads(C9, OSM_ROADS.MOBT, MOB.x - 24, MOB.z, 34, new THREE.MeshLambertMaterial({ color: 0xa89878, side: THREE.DoubleSide }), 1.7, .12);   // 南塔开特鹅卵石街
@@ -12462,6 +12507,7 @@ function loop() {
   }
   pigeonStep9(dt);   // 🕊️ 广场鸽群
   if (unjCrane9) unjCrane9.rotation.y = Math.sin(t * .045) * 1.15 + .55;   // 🏗️ 未竟塔吊缓摆(全周期约 2.3 分钟)
+  natureStep9(dt);   // 🌿 自然三景
   subStep9(dt);   // 🚇 深蓝线
   if (sagaAurora9) {   // 🌌 萨迦极光:夜幕 + 岛域内才显(冬季全局极光另有其物)
     const near9 = Math.hypot(player.position.x + 700, player.position.z - 1560) < 780;
@@ -12582,6 +12628,65 @@ function pigeonStep9(dt9) {
       g9.children[3].scale.y = .3 + Math.abs(Math.sin(u9.t * 34 + u9.ph)) * 1.5;   // 急扇翅
       g9.rotation.x = -Math.sin(k9 * Math.PI) * .28;
       if (k9 >= 1) { u9.st = 0; u9.t = 1 + Math.random() * 2; g9.rotation.x = 0; g9.children[3].scale.y = .3; }
+    }
+  }
+}
+/* 🌿 自然三景 tick:蜻蜓盘旋(昼)· 雁阵生灭(昼,不定时)· 蒲公英随风(雨歇) */
+function natureStep9(dt9) {
+  natT9 += dt9;
+  const px9 = player.position.x, pz9 = player.position.z;
+  if (Math.hypot(px9 - 1204.7, pz9 + 731.7) < 220) {   // 🜻 蜻蜓:湖域内才动
+    for (const d9 of lotusDra9) {
+      const u9 = d9.userData.dr9;
+      d9.visible = curDA > .25;
+      if (!d9.visible) continue;
+      const a9 = natT9 * u9.sp + u9.ph;
+      d9.position.set(u9.cx + Math.cos(a9) * u9.r, 10.94 + Math.sin(natT9 * 2.3 + u9.ph) * .22, u9.cz + Math.sin(a9) * u9.r * .7);
+      d9.rotation.y = -a9 - Math.PI / 2;
+      d9.children[1].rotation.z = Math.sin(natT9 * 46 + u9.ph) * .5;   // 翅颤
+      d9.children[2].rotation.z = -Math.sin(natT9 * 46 + u9.ph) * .5;
+    }
+  }
+  if (!geese9) {   // 🪿 雁阵:白天不定时起飞
+    geeseT9 -= dt9;
+    if (geeseT9 <= 0 && curDA > .3 && WEATHER !== 'storm' && !REDUCE9) {
+      geese9 = new THREE.Group();
+      const ga9 = Math.random() * 6.2832;
+      geese9.position.set(px9 + Math.cos(ga9) * 620, 96 + Math.random() * 30, pz9 + Math.sin(ga9) * 620);
+      const hd9 = ga9 + Math.PI + (Math.random() - .5) * .5;
+      geese9.userData.g9 = { dx: Math.cos(hd9), dz: Math.sin(hd9), gone: 0, wg: [] };
+      geese9.rotation.y = -hd9;
+      for (let i9 = 0; i9 < 9; i9++) {
+        const rk9 = Math.ceil(i9 / 2), sd9 = i9 === 0 ? 0 : (i9 % 2 ? 1 : -1);
+        const bd9 = new THREE.Mesh(sphg(.16, 6, 5), lam(0x3c4148));
+        bd9.scale.set(2.2, .7, .7); bd9.position.set(-rk9 * 4.2, (Math.random() - .5) * .8, sd9 * rk9 * 3);
+        const wg9 = new THREE.Mesh(geoc('gw9', () => new THREE.BoxGeometry(.55, .04, 2.3)), lam(0x4a505a));
+        wg9.position.copy(bd9.position); wg9.position.y += .06;
+        wg9.userData.ph9 = i9 * .7;
+        geese9.add(bd9, wg9); geese9.userData.g9.wg.push(wg9);
+      }
+      scene.add(geese9);
+      if (!geeseTold9) { geeseTold9 = true; toast('🪿 雁阵掠空——去南方的队伍从不迷路'); }
+    }
+  } else {
+    const u9 = geese9.userData.g9;
+    geese9.position.x += u9.dx * 24 * dt9; geese9.position.z += u9.dz * 24 * dt9;
+    u9.gone += 24 * dt9;
+    for (const wg9 of u9.wg) wg9.rotation.x = Math.sin(natT9 * 8.5 + wg9.userData.ph9) * .5;
+    if (u9.gone > 1300) { scene.remove(geese9); geese9 = null; geeseT9 = 150 + Math.random() * 170; }   // 几何/材质均共享缓存,勿 dispose
+  }
+  if (dandel9) {   // 🌬️ 蒲公英
+    const on9 = curDA > .15 && WEATHER !== 'rain' && WEATHER !== 'storm';
+    dandel9.visible = on9;
+    if (on9 && Math.hypot(px9 + 88, pz9 + 272) < 180) {
+      const pa9 = dandel9.geometry.attributes.position, ar9 = pa9.array;
+      for (let i9 = 0; i9 < dandelB9.length; i9++) {
+        ar9[i9 * 3] += (.55 + Math.sin(natT9 * .7 + i9) * .25) * dt9;
+        ar9[i9 * 3 + 1] += (.14 + Math.sin(natT9 * .9 + i9 * 2.1) * .3) * dt9;
+        if (ar9[i9 * 3] > -88 + 36) ar9[i9 * 3] = -88 - 36;
+        if (ar9[i9 * 3 + 1] > dandelB9[i9] + 8.5) ar9[i9 * 3 + 1] = dandelB9[i9] + .5;
+      }
+      pa9.needsUpdate = true;
     }
   }
 }
