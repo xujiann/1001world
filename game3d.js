@@ -2816,6 +2816,11 @@ if (!MOBILE) {
 }
 function applyQuality() {
   if (gtaoPass) gtaoPass.enabled = quality >= 2;
+  if (!MOBILE && typeof sun !== 'undefined') {   // 🌓 阴影入画质阶梯:Q2=2048 / Q1=1024 / Q0=关(阴影是仅次于水反射的整场景重渲)
+    const smw9 = quality >= 2 ? 2048 : 1024;
+    if (sun.shadow.mapSize.x !== smw9) { sun.shadow.mapSize.set(smw9, smw9); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+    sun.castShadow = quality > 0;
+  }
   const fx9 = quality > 0 && !REDUCE9;
   if (typeof seaSparkle !== 'undefined' && seaSparkle) seaSparkle.visible = seaSparkle.visible && fx9;
   if (typeof dustMotes !== 'undefined' && dustMotes) dustMotes.visible = dustMotes.visible && fx9;
@@ -3752,6 +3757,15 @@ if (!MOBILE) {
   oceanWater.rotation.x = -Math.PI / 2;
   oceanWater.position.y = .15;
   scene.add(oceanWater);
+  { /* 💧 反射降频:水反射=每帧全场景重渲,Q1 隔帧、Q0 四帧一次、潜水停更(跳过帧复用上帧反射纹理,无视觉断裂) */
+    const obr9 = oceanWater.onBeforeRender;
+    let rskip9 = 0;
+    oceanWater.onBeforeRender = function (...a9) {
+      rskip9++;
+      if (diving) return;
+      if (quality >= 2 || rskip9 % (quality === 1 ? 2 : 4) === 0) obr9.apply(this, a9);
+    };
+  }
   /* ✨ 海面波光:跟随玩家的一片闪烁点云,朝光向密、成"海上月道/日照金鳞" */
   {
     const NG = 1700, R = 640, pos = new Float32Array(NG * 3), pha = new Float32Array(NG), rg = mulberry32(4271);
