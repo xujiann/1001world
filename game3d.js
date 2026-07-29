@@ -2770,15 +2770,17 @@ if (!MOBILE) {
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
   composer.addPass(new OutputPass());   // 🎛️ 色调映射在此:其后的调色/照片通道工作在显示域(LDR),clamp 与 S 曲线才是安全数学
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
-    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .22 } },   // uSplit .4→.22:暖高光原在洗蓝天空
+    uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .22 }, uVib: { value: .5 } },   // uSplit .4→.22:暖高光原在洗蓝天空
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
     fragmentShader: [
-      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig; uniform float uCon; uniform float uSplit;',
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform vec3 uTint; uniform float uSat; uniform float uVig; uniform float uCon; uniform float uSplit; uniform float uVib;',
       'void main(){',
       '  vec4 c = texture2D( tDiffuse, vUv );',
       '  c.rgb *= uTint;',
       '  float l = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
       '  c.rgb = mix( vec3( l ), c.rgb, uSat );',
+      '  float mx = max( c.r, max( c.g, c.b ) ), mn = min( c.r, min( c.g, c.b ) );',
+      '  c.rgb = mix( vec3( l ), c.rgb, 1.0 + uVib * ( 1.0 - ( mx - mn ) ) );',   // 自然饱和度:ACES 把高亮天空的蓝抽干了,低饱和处补得多、浓郁处几乎不动、纯白仍中性
       '  c.rgb = clamp( c.rgb, 0.0, 1.0 );',
       '  c.rgb = mix( c.rgb, c.rgb * c.rgb * ( 3.0 - 2.0 * c.rgb ), uCon );',    // 柔和 filmic 对比 S 曲线
       '  float l2 = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
@@ -2845,10 +2847,20 @@ const sky = new Sky();
 sky.scale.setScalar(2100);
 scene.add(sky);
 const skyUni = sky.material.uniforms;
-skyUni.turbidity.value = 2.6;
-skyUni.rayleigh.value = 1.8;
+skyUni.turbidity.value = 2.2;
+skyUni.rayleigh.value = 3.0;   // 瑞利 1.8→3.0:v292 压低是为了压白纱,但真凶是泛光+clamp;管线扶正后须调回,否则 ACES 把天顶推成灰白(实测饱和度仅 .04)
 skyUni.mieCoefficient.value = .004;
 skyUni.mieDirectionalG.value = .8;
+/* 🔆 天穹调光:Sky 输出亮度太高,ACES 在高亮区把色度压平(天顶实测饱和度仅 .04,后期再补也无蓝可放大)——
+   把穹顶压到色调曲线的保色区间,蓝色自然回来;地面曝光不动(真实天空本就比阳光地面暗) */
+const skyDim9 = { value: 1 };
+sky.material.onBeforeCompile = sh9 => {
+  sh9.uniforms.uDim9 = skyDim9;
+  const before9 = sh9.fragmentShader;
+  sh9.fragmentShader = 'uniform float uDim9;\n' + before9.replace(/gl_FragColor\s*=\s*vec4\(\s*retColor\s*,\s*1\.0\s*\)\s*;/, 'gl_FragColor = vec4( retColor * uDim9, 1.0 );');
+  if (sh9.fragmentShader.indexOf('uDim9, 1.0') < 0) console.warn('⚠️ 天穹调光注入失败(Sky.js 着色器结构变了)');
+};
+sky.material.needsUpdate = true;
 /* 🌇 IBL:把物理天空烘成环境贴图喂给全部 Standard 材质(天光漫射+反射,昼夜随烘随变) */
 let pmrem9 = null, envRT9 = null, envScene9 = null, lastEnvDA9 = -9;
 function bakeEnv9() {
@@ -3408,6 +3420,7 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
+  skyDim9.value = 1 - .46 * da;   // 🔆 白日压穹顶(保色),夜里不压
   sky.position.set(player.position.x, 0, player.position.z);   // 🌐 穹盒随行:半径 1050,外圈岛出穹=天空撕成穹内/裸背景两截
   if (!MOBILE) {
     renderer.toneMappingExposure = .73 - da * .18;             // ☀️ 白日收曝光(Sky 穹顶是 HDR 亮度),夜保 .73 灯火氛围
@@ -3544,6 +3557,7 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
     gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
     gradePass9.uniforms.uSat.value = 1.12 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
+    gradePass9.uniforms.uVib.value = .18 + da * .42 - Math.min(dusk, 1) * .22;   // 白日补最多(天空最被抽色),黄昏本就浓郁少补
     gradePass9.uniforms.uCon.value = .14 + dusk * .06;                       // 黄昏对比更强
     gradePass9.uniforms.uSplit.value = clamp(.34 + dusk * .34 - (1 - da) * .12, 0, .72);   // 黄昏分离调色浓,深夜收敛
   }
@@ -3625,9 +3639,9 @@ function heightMesh(x, z) {
       const jit = (gj - .5) * 1.6;
       c = cSand.clone().lerp(grass.lerp(cGrassDry, smooth01(clamp((h - 12) / 16, 0, 1)) * .4), smooth01(clamp((h - 1) / 2.6, 0, 1)));
       c.lerp(cRock, smooth01(clamp((h - 22 + jit) / 8, 0, 1)));
-      c.lerp(cSnow, smooth01(clamp((h - 33 + jit) / 5, 0, 1)));
-      // 坡度露岩(碎石带)
+      // 坡度露岩(碎石带):必须排在雪线之前——否则峰顶陡坡被刷回灰岩,雪山成灰丘
       c.lerp(cRock, clamp((sl - 2 + jit * .8) / 3.2, 0, 1) * .75);
+      c.lerp(cSnow, smooth01(clamp((h - 33 + jit) / 5, 0, 1)));   // 雪覆一切:高处陡坡照样积雪
       // —— 侵蚀观感:曲率明暗 ——
       if (lap > .12) c.multiplyScalar(clamp(1 - lap * .22, .62, 1));      // 凹处汇水/背阴 → 压暗成沟
       else if (lap < -.12) c.lerp(cRock, clamp(-lap * .32, 0, .5));       // 凸处山脊/棱线 → 露岩
@@ -3751,7 +3765,7 @@ if (!MOBILE) {
     textureWidth: 512, textureHeight: 512,
     waterNormals: makeWaterNormals(),
     sunDirection: new THREE.Vector3(.5, .6, .3).normalize(),
-    sunColor: 0xffffff, waterColor: 0x0e3a52,
+    sunColor: 0xffffff, waterColor: 0x0d4a66,   // 水体色提亮半档:配合天空转蓝,中角度不再一味反白
     distortionScale: 2.6, fog: true,
   });
   oceanWater.rotation.x = -Math.PI / 2;
