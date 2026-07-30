@@ -2715,7 +2715,18 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x86c3e8, 560, 2600);
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
-let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, bloomPass9 = null, quality = 2;   // 画质:2 高(GTAO)/1 中/0 低(无后期)
+let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, bloomPass9 = null, quality = 2;
+let sceneRT9 = null, depthTex9 = null, airPass9 = null, blitScene9 = null, blitCam9 = null;   // 🌫️ 深度管线
+let stylePass9 = null;
+/* 🎨 三套视觉风格:同一管线,不同作者取向(U 键切换,存档持久) */
+const STYLES9 = {
+  ink:   { nm: '🖋️ 绘本插画', ink: .9,  inkW: 1.15, band: .5,  rim: .34, paper: .05, sat: 1.2,  con: .16, split: .2,  vib: 1,   vig: .26, air: 1,   expo: 0 },
+  cine:  { nm: '🎬 电影黄昏', ink: .16, inkW: .8,   band: .12, rim: .24, paper: .02, sat: 1.05, con: .32, split: .58, vib: .78, vig: .44, air: 2.1, expo: -.05 },
+  clean: { nm: '💎 写实低模', ink: .3,  inkW: .7,   band: 0,   rim: .16, paper: 0,   sat: 1.1,  con: .12, split: .16, vib: .9,  vig: .2,  air: .75, expo: .03 },
+};
+const STYLE_ORD9 = ['ink', 'cine', 'clean'];
+let style9 = STYLES9[PSTORE.getItem('w1001.style') || 'ink'] ? (PSTORE.getItem('w1001.style') || 'ink') : 'ink';
+const ST9 = () => STYLES9[style9];   // 画质:2 高(GTAO)/1 中/0 低(无后期)
 const REDUCE9 = matchMedia('(prefers-reduced-motion: reduce)').matches;   // ♿ 系统"减少动态"→ 关掉氛围粒子/光柱/运镜
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
@@ -2726,7 +2737,23 @@ addEventListener('resize', resize); resize();
 /* --- 后期处理:泛光 + ACES 输出(桌面) --- */
 if (!MOBILE) {
   composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
+  {   // 🌫️ 场景 pass:自带深度贴图,后续所有 pass 都能读深度
+    depthTex9 = new THREE.DepthTexture(innerWidth, innerHeight);
+    depthTex9.type = THREE.UnsignedIntType;
+    sceneRT9 = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, depthTexture: depthTex9, depthBuffer: true });
+    blitCam9 = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    blitScene9 = new THREE.Scene();
+    blitScene9.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: sceneRT9.texture, depthTest: false, depthWrite: false })));
+    composer.addPass({
+      enabled: true, needsSwap: false, renderToScreen: false, clear: false,
+      setSize(w9, h9) { sceneRT9.setSize(w9, h9); depthTex9.image.width = w9; depthTex9.image.height = h9; depthTex9.needsUpdate = true; },
+      dispose() { sceneRT9.dispose(); },
+      render(rd9, writeBuffer, readBuffer) {
+        rd9.setRenderTarget(sceneRT9); rd9.clear(true, true, true); rd9.render(scene, camera);
+        rd9.setRenderTarget(this.renderToScreen ? null : readBuffer); rd9.clear(true, true, true); rd9.render(blitScene9, blitCam9);
+      },
+    });
+  }
   try {   // GTAO 环境光遮蔽:接触/凹陷阴影,增强落地感
     gtaoPass = new GTAOPass(scene, camera, innerWidth, innerHeight);
     gtaoPass.output = GTAOPass.OUTPUT.Default;
@@ -2742,6 +2769,40 @@ if (!MOBILE) {
     };
     composer.addPass(gtaoPass);
   } catch (e) {}
+  airPass9 = new ShaderPass({   // 🌫️ 空气透视:远景按距离/高度/日向分层染色——线性雾是一刀切,真实大气是分层且有方向的
+    uniforms: {
+      tDiffuse: { value: null }, tDepth: { value: depthTex9 },
+      uNear: { value: .1 }, uFar: { value: 5200 },
+      uInvProj: { value: new THREE.Matrix4() }, uCamMat: { value: new THREE.Matrix4() },
+      uSunW: { value: new THREE.Vector3(0, 1, 0) }, uCamY: { value: 0 },
+      uHaze: { value: new THREE.Color(0x9fc4dc) }, uSunHaze: { value: new THREE.Color(0xffdca8) },
+      uDens: { value: .00042 }, uHFall: { value: .022 }, uAmt: { value: .78 },
+    },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform sampler2D tDepth;',
+      'uniform float uNear; uniform float uFar; uniform mat4 uInvProj; uniform mat4 uCamMat;',
+      'uniform vec3 uSunW; uniform float uCamY; uniform vec3 uHaze; uniform vec3 uSunHaze;',
+      'uniform float uDens; uniform float uHFall; uniform float uAmt;',
+      'void main(){',
+      '  vec4 c = texture2D( tDiffuse, vUv );',
+      '  float dRaw = texture2D( tDepth, vUv ).x;',
+      '  if ( dRaw >= 0.9999 ) { gl_FragColor = c; return; }',            // 天空归 Sky 自己管
+      '  float z = dRaw * 2.0 - 1.0;',
+      '  float dist = ( 2.0 * uNear * uFar ) / ( uFar + uNear - z * ( uFar - uNear ) );',
+      '  vec4 clip = uInvProj * vec4( vUv * 2.0 - 1.0, -1.0, 1.0 );',
+      '  vec3 vDir = normalize( clip.xyz / clip.w );',
+      '  vec3 wDir = normalize( ( uCamMat * vec4( vDir, 0.0 ) ).xyz );',
+      '  float wy = uCamY + wDir.y * dist;',                              // 该像素的世界高度
+      '  float hFac = exp( -max( wy, 0.0 ) * uHFall );',                  // 低处积雾、高处通透
+      '  float fog = ( 1.0 - exp( -dist * uDens ) ) * hFac;',
+      '  float sunAmt = pow( max( dot( wDir, uSunW ), 0.0 ), 5.0 );',     // 朝太阳暖、背光冷
+      '  vec3 hazeCol = mix( uHaze, uSunHaze, sunAmt * 0.8 );',
+      '  gl_FragColor = vec4( mix( c.rgb, hazeCol, clamp( fog * uAmt, 0.0, 1.0 ) ), c.a );',
+      '}',
+    ].join('\n'),
+  });
+  composer.addPass(airPass9);
   bloomPass9 = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .22, .55, .90);
   composer.addPass(bloomPass9);
   godPass9 = new ShaderPass({   // 🌤️ 空中光柱:朝太阳屏幕位置径向累积亮像素(穷人版体积光散射)
@@ -2768,7 +2829,52 @@ if (!MOBILE) {
   godPass9.enabled = false;
   composer.addPass(godPass9);
   try { bokehPass = new BokehPass(scene, camera, { focus: 18, aperture: .0006, maxblur: .008 }); bokehPass.enabled = false; composer.addPass(bokehPass); } catch (e) {}   // 景深:仅照片模式
+  stylePass9 = new ShaderPass({   // 🖋️ 风格化:深度重建法线 → 墨线描边 + 边缘光 + 明暗分档 + 纸纹
+    uniforms: {
+      tDiffuse: { value: null }, tDepth: { value: depthTex9 },
+      uTexel: { value: new THREE.Vector2(1 / innerWidth, 1 / innerHeight) },
+      uNear: { value: .1 }, uFar: { value: 5200 }, uInvProj: { value: new THREE.Matrix4() },
+      uInk: { value: .9 }, uInkW: { value: 1.15 }, uInkCol: { value: new THREE.Color(0x2b3038) },
+      uBand: { value: .5 }, uRim: { value: .34 }, uRimCol: { value: new THREE.Color(0xdcecff) },
+      uPaper: { value: .07 }, uT: { value: 0 },
+    },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
+    fragmentShader: [
+      'varying vec2 vUv; uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform vec2 uTexel;',
+      'uniform float uNear; uniform float uFar; uniform mat4 uInvProj;',
+      'uniform float uInk; uniform float uInkW; uniform vec3 uInkCol;',
+      'uniform float uBand; uniform float uRim; uniform vec3 uRimCol; uniform float uPaper; uniform float uT;',
+      'float lin9( float d ){ float z = d * 2.0 - 1.0; return ( 2.0 * uNear * uFar ) / ( uFar + uNear - z * ( uFar - uNear ) ); }',
+      'vec3 vp9( vec2 uv, float d ){ vec4 c = uInvProj * vec4( uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0 ); return c.xyz / c.w; }',
+      'float h9( vec2 p ){ return fract( sin( dot( p, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ); }',
+      'void main(){',
+      '  vec4 c = texture2D( tDiffuse, vUv );',
+      '  float d0 = texture2D( tDepth, vUv ).x;',
+      '  if ( d0 < 0.9999 ) {',
+      '    vec2 e = uTexel * uInkW;',
+      '    float z0 = lin9( d0 );',
+      '    float zl = lin9( texture2D( tDepth, vUv - vec2( e.x, 0.0 ) ).x ), zr = lin9( texture2D( tDepth, vUv + vec2( e.x, 0.0 ) ).x );',
+      '    float zd = lin9( texture2D( tDepth, vUv - vec2( 0.0, e.y ) ).x ), zu = lin9( texture2D( tDepth, vUv + vec2( 0.0, e.y ) ).x );',
+      '    float grad = ( abs( zl - z0 ) + abs( zr - z0 ) + abs( zd - z0 ) + abs( zu - z0 ) ) / max( z0, 1.0 );',   // 相对深度差:远处不炸线
+      '    float edge = smoothstep( 0.013, 0.062, grad ) * ( 1.0 - smoothstep( 90.0, 340.0, z0 ) * 0.85 );',
+      '    vec3 Pc = vp9( vUv, d0 );',                                                                              // 由深度重建视空间法线
+      '    vec3 Px = vp9( vUv + vec2( e.x, 0.0 ), texture2D( tDepth, vUv + vec2( e.x, 0.0 ) ).x );',
+      '    vec3 Py = vp9( vUv + vec2( 0.0, e.y ), texture2D( tDepth, vUv + vec2( 0.0, e.y ) ).x );',
+      '    vec3 N = normalize( cross( Px - Pc, Py - Pc ) );',
+      '    float fres = pow( 1.0 - abs( dot( N, normalize( -Pc ) ) ), 3.0 );',
+      '    c.rgb += uRimCol * fres * uRim * ( 1.0 - edge );',                                                       // 边缘光:逆光描边,把低模轮廓提出来
+      '    float l = dot( c.rgb, vec3( .2126, .7152, .0722 ) );',
+      '    float b = floor( l * 4.0 + 0.5 ) / 4.0;',                                                                 // 明暗分档:连续光照压成四档
+      '    c.rgb *= mix( 1.0, b / max( l, 0.001 ), uBand );',
+      '    c.rgb = mix( c.rgb, uInkCol, clamp( edge * uInk, 0.0, 1.0 ) );',                                          // 墨线
+      '  }',
+      '  if ( uPaper > 0.001 ) c.rgb *= 1.0 - uPaper * ( h9( floor( vUv * vec2( 900.0, 520.0 ) ) ) * 0.9 );',        // 纸纹颗粒
+      '  gl_FragColor = c;',
+      '}',
+    ].join('\n'),
+  });
   composer.addPass(new OutputPass());   // 🎛️ 色调映射在此:其后的调色/照片通道工作在显示域(LDR),clamp 与 S 曲线才是安全数学
+  composer.addPass(stylePass9);
   gradePass9 = new ShaderPass({   // 🎨 时段色彩分级 + 暗角(黄昏橙金/夜蓝调/白日微暖)
     uniforms: { tDiffuse: { value: null }, uTint: { value: new THREE.Color(1, 1, 1) }, uSat: { value: 1.12 }, uVig: { value: .26 }, uCon: { value: .14 }, uSplit: { value: .22 }, uVib: { value: .5 } },   // uSplit .4→.22:暖高光原在洗蓝天空
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
@@ -2815,6 +2921,18 @@ if (!MOBILE) {
   photoPass9.enabled = false;
   composer.addPass(photoPass9);
   composer.addPass(new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()));   // 抗锯齿(合成后)
+  applyStyle9();   // 🎨 载入存档里的视觉风格
+}
+function applyStyle9() {   // 🎨 一处切换,全链跟随
+  const s9 = ST9();
+  if (stylePass9) {
+    const u9 = stylePass9.uniforms;
+    u9.uInk.value = s9.ink; u9.uInkW.value = s9.inkW; u9.uBand.value = s9.band;
+    u9.uRim.value = s9.rim; u9.uPaper.value = s9.paper;
+    stylePass9.enabled = quality > 0 && (s9.ink > .01 || s9.band > .01 || s9.rim > .01 || s9.paper > .001);
+  }
+  if (gradePass9) { gradePass9.uniforms.uCon.value = s9.con; gradePass9.uniforms.uSplit.value = s9.split; }
+  PSTORE.setItem('w1001.style', style9);
 }
 function applyQuality() {
   if (gtaoPass) gtaoPass.enabled = quality >= 2;
@@ -3412,7 +3530,7 @@ const FLYF9 = []; let flyfT9 = 5;   // 🐟 船头飞鱼池
 let prevMV9 = false, shellT9 = 0;   // 🌠 流星许愿沿 / 🐚 拾贝节流
 const DAY_LEN = 1440, DAY_START = .12;
 const cDaySky = new THREE.Color(0x86c3e8), cNightSky = new THREE.Color(0x101a30), cDuskSky = new THREE.Color(0xf5915e);
-const skyCol = new THREE.Color();
+const skyCol = new THREE.Color(), _air9 = new THREE.Color();
 function dayAmount(p) { if (p < .58) return 1; if (p < .7) return 1 - (p - .58) / .12; if (p < .9) return 0; return (p - .9) / .1; }
 function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真实帧时长(捕捉/外部调用省参时按 60fps 兜底)
   const p = (t / DAY_LEN + DAY_START) % 1;
@@ -3421,9 +3539,23 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
   scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
   skyDim9.value = 1 - .46 * da;   // 🔆 白日压穹顶(保色),夜里不压
+  if (airPass9) {   // 🌫️ 空气透视:随天色/日向/天气变
+    const u9 = airPass9.uniforms;
+    u9.uNear.value = camera.near; u9.uFar.value = camera.far;
+    u9.uInvProj.value.copy(camera.projectionMatrixInverse);
+    u9.uCamMat.value.copy(camera.matrixWorld);
+    u9.uSunW.value.copy(sunDirN);
+    u9.uCamY.value = camera.position.y;
+    u9.uHaze.value.copy(skyCol).lerp(_air9.setRGB(.62, .74, .86), .45);              // 雾底色偏天青
+    u9.uSunHaze.value.setRGB(1, .86 - (1 - da) * .3, .66 - (1 - da) * .34);
+    u9.uDens.value = (WEATHER === 'fog' ? .0016 : WEATHER === 'storm' ? .0011 : WEATHER === 'rain' ? .0008 : .00042) * (.35 + da * .65);
+    u9.uAmt.value = diving ? 0 : .78 * Math.min(ST9().air, 1.35);                     // 水下归潜水雾管
+    u9.uDens.value *= ST9().air;
+    airPass9.enabled = !diving && quality > 0;
+  }
   sky.position.set(player.position.x, 0, player.position.z);   // 🌐 穹盒随行:半径 1050,外圈岛出穹=天空撕成穹内/裸背景两截
   if (!MOBILE) {
-    renderer.toneMappingExposure = .73 - da * .18;             // ☀️ 白日收曝光(Sky 穹顶是 HDR 亮度),夜保 .73 灯火氛围
+    renderer.toneMappingExposure = .73 - da * .18 + ST9().expo;             // ☀️ 白日收曝光(Sky 穹顶是 HDR 亮度),夜保 .73 灯火氛围
     if (bloomPass9) bloomPass9.threshold = .85 + da * 2.15;    // 🌸 泛光昼高夜低(昼 3.0):物理天空线性辐亮度>1.35,阈值低于它=整帧白纱;3 与 9 已无肉眼差,留 3 给日轮辉光
   }
   const wxMul = WEATHER === 'storm' ? .38 : WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
@@ -3557,7 +3689,11 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
     gradePass9.uniforms.uTint.value.setRGB(1 + dusk * .10 + da * .02 - gfk9 * .5, 1 + dusk * .02 + gfk9, 1 - dusk * .08 + (1 - da) * .06 - gfk9 * .3);
     gradePass9.uniforms.uSat.value = 1.12 + dusk * .08 - (1 - da) * .12;
     gradePass9.uniforms.uVig.value = .26 + (1 - da) * .10;
-    gradePass9.uniforms.uVib.value = .18 + da * .42 - Math.min(dusk, 1) * .22;   // 白日补最多(天空最被抽色),黄昏本就浓郁少补
+    gradePass9.uniforms.uVib.value = (.18 + da * .42 - Math.min(dusk, 1) * .22) * ST9().vib;
+    gradePass9.uniforms.uSat.value *= ST9().sat / 1.12;
+    gradePass9.uniforms.uVig.value = gradePass9.uniforms.uVig.value - .26 + ST9().vig;
+    gradePass9.uniforms.uCon.value = ST9().con; gradePass9.uniforms.uSplit.value = ST9().split;
+    if (stylePass9) { stylePass9.uniforms.uNear.value = camera.near; stylePass9.uniforms.uFar.value = camera.far; stylePass9.uniforms.uInvProj.value.copy(camera.projectionMatrixInverse); stylePass9.uniforms.uTexel.value.set(1 / innerWidth, 1 / innerHeight); }   // 白日补最多(天空最被抽色),黄昏本就浓郁少补
     gradePass9.uniforms.uCon.value = .14 + dusk * .06;                       // 黄昏对比更强
     gradePass9.uniforms.uSplit.value = clamp(.34 + dusk * .34 - (1 - da) * .12, 0, .72);   // 黄昏分离调色浓,深夜收敛
   }
@@ -10705,6 +10841,7 @@ addEventListener('keydown', e => {
   if (k === 'm') { if (diving) { openMazeMap9(); return; } mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
+  if (k === 'u' && !MOBILE) { style9 = STYLE_ORD9[(STYLE_ORD9.indexOf(style9) + 1) % STYLE_ORD9.length]; applyStyle9(); toast('🎨 视觉风格:' + ST9().nm + '(U 键继续切换)'); return; }
   if (k === 'v') { tryPhantom(); return; }   // 蓝图幻影(未竟之都)
   if (k === 'q' && diving) { fireSonar(); return; }   // 声呐探路
   if (k === 'r' && !modalOpen) { toggleVehicle(); return; }   // 🚲⛵ 座驾
