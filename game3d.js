@@ -13963,6 +13963,8 @@ function loop() {
     if (joy.on) { mx = joy.vx; mz = joy.vy; }
     const len = Math.hypot(mx, mz);
     const curGh9 = surfaceGround9(player.position.x, player.position.z, player.position.y);
+    const waterLine9 = .35 + tideY;
+    const safeX9 = player.position.x, safeZ9 = player.position.z;
     const onSwamp9 = vehicle === 0 && inSwamp9(player.position.x, player.position.z, curGh9);
     if (onSwamp9 && len > .15 && swampWarnT9 <= 0) { swampWarnT9 = 4.5; toast('🥾 踏入泥沼湿地——脚步微陷,行动变缓'); }
     let targetVx = 0, targetVz = 0;
@@ -13991,7 +13993,7 @@ function loop() {
       const canMoveTo9 = (nx, nz) => {
         if (vehicle === 2 || swimming || gliding9) return true;
         const ng = surfaceGround9(nx, nz, player.position.y);
-        if (ng < .12 + tideY && curGh9 >= .12 + tideY) {
+        if (ng < waterLine9 && ng <= curGh9 + .02) {
           if (shoreWarnT9 <= 0) { shoreWarnT9 = 3.2; toast('🌊 岸边水深——不可直接涉水,请乘帆船(R)或走栈桥/桥梁'); }
           return false;
         }
@@ -14005,7 +14007,7 @@ function loop() {
       } else if (canMoveTo9(prevX, prevZ + stepZ)) {
         player.position.z = prevZ + stepZ;
       } else {
-        moveVx9 *= .2; moveVz9 *= .2;
+        moveVx9 *= .1; moveVz9 *= .1;
       }
     }
     // 边界
@@ -14027,6 +14029,13 @@ function loop() {
         const m = Math.min(dl, drr, dtp, db);
         if (m === dl) player.position.x = o.x1 - pr; else if (m === drr) player.position.x = o.x2 + pr;
         else if (m === dtp) player.position.z = o.z1 - pr; else player.position.z = o.z2 + pr;
+      }
+    }
+    // 岸线兜底:障碍推离后若被挤入海里,退回岸上安全点
+    if (vehicle !== 2 && !swimming && !gliding9 && curGh9 >= waterLine9) {
+      if (surfaceGround9(player.position.x, player.position.z, player.position.y) < waterLine9) {
+        player.position.x = safeX9; player.position.z = safeZ9;
+        moveVx9 = 0; moveVz9 = 0;
       }
     }
     // 梦剧场外墙:低处不可穿越,只能走四座大门(顶层可越沿跳下)

@@ -1,7 +1,7 @@
 /* 1001 世界 Service Worker:网络优先 + 缓存兜底(首玩之后离线可玩)
    策略:同源与 jsdelivr CDN 的 GET 成功即入运行时缓存;断网时取缓存;
    导航请求兜底 index.html。无版本清单可维护——线上永远拿最新。 */
-const RT = 'w1001-rt-v17';
+const RT = 'w1001-rt-v18';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
