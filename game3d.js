@@ -9669,15 +9669,18 @@ for (let i9 = 0; i9 < 2; i9++) {
   d9.userData = { ph: i9 * 2.4 };
   scene.add(d9); dolphins9.push(d9);
 }
-/* 🪧 多臂指路牌:广场 / 主码头 / 鲸背机场 */
+/* 🪧 真实市政/公路多臂指路牌(镀锌钢柱+混凝土基座+公路绿底白字+自动测距) */
 function fingerpost9(x9, z9, arms9) {
   const h09 = Math.max(height(x9, z9), 0);
-  const po9 = cyl(.16, .22, 4.6, M.woodDark); po9.position.set(x9, h09 + 2.3, z9); scene.add(po9);
+  const base9 = cyl(.34, .4, .36, M.concrete || M.stone, 8); base9.position.set(x9, h09 + .18, z9); scene.add(base9);
+  const po9 = cyl(.11, .13, 4.8, M.metal || lam(0x9aa2ab), 10); po9.position.set(x9, h09 + 2.4, z9); scene.add(po9);
+  const cap9 = new THREE.Mesh(new THREE.SphereGeometry(.15, 8, 6), M.metal || lam(0x9aa2ab)); cap9.position.set(x9, h09 + 4.85, z9); scene.add(cap9);
   arms9.forEach(([txt9, tx9, tz9], i9) => {
-    const sg9 = makeSign(txt9, 5);
-    sg9.position.set(x9, h09 + 3.6 - i9 * .72, z9);
-    sg9.rotation.y = Math.atan2(tx9 - x9, tz9 - z9) + Math.PI / 2;   // 牌面顺臂指向目标
-    const off9 = 1.55, ay9 = sg9.rotation.y - Math.PI / 2;
+    const distM = Math.round(Math.hypot(tx9 - x9, tz9 - z9));
+    const sg9 = makeSign(`${txt9} ${distM}m`, 5.4, '#135e3c', '#ffffff');
+    sg9.position.set(x9, h09 + 3.85 - i9 * .72, z9);
+    sg9.rotation.y = Math.atan2(tx9 - x9, tz9 - z9) + Math.PI / 2;
+    const off9 = 1.6, ay9 = sg9.rotation.y - Math.PI / 2;
     sg9.position.x += Math.sin(ay9) * off9; sg9.position.z += Math.cos(ay9) * off9;
     scene.add(sg9);
   });
@@ -9688,6 +9691,12 @@ function fingerpost9(x9, z9, arms9) {
   fingerpost9(14, -4, [['✈️ 鲸背机场', apM9[2], apM9[3]], ['⛴️ 渡口码头', 0, 410], ['🕊️ 大鹏栖石', PENG_X, PENG_Z]]);
   fingerpost9(6, 402, [['🏛️ 圆枢广场', 0, 0], ['✈️ 鲸背机场', apM9[2], apM9[3]]]);
   fingerpost9(apM9[2] - 10, apM9[3] + 8, [['🏛️ 圆枢广场', 0, 0], ['⛴️ 渡口码头', 0, 410]]);
+  const zArt = ZONES3D.find(z => z.key === 'art'), zBook = ZONES3D.find(z => z.key === 'books');
+  const zBeer = ZONES3D.find(z => z.key === 'beers'), zClas = ZONES3D.find(z => z.key === 'classical');
+  const zJazz = ZONES3D.find(z => z.key === 'jazz'), zPlnt = ZONES3D.find(z => z.key === 'plants');
+  if (zArt && zBook) fingerpost9(100, -120, [['🎨 美术馆', zArt.x, zArt.z], ['📚 图书馆', zBook.x, zBook.z], ['🏛️ 圆枢广场', 0, 0]]);
+  if (zBeer && zClas) fingerpost9(175, 190, [['🍺 酒馆', zBeer.x, zBeer.z], ['🎻 音乐厅', zClas.x, zClas.z], ['🐠 水族馆', 0, 300]]);
+  if (zJazz && zPlnt) fingerpost9(-150, 150, [['🎷 爵士厅', zJazz.x, zJazz.z], ['🌿 植物园', zPlnt.x, zPlnt.z], ['🏛️ 圆枢广场', 0, 0]]);
 }
 /* ===== 🧭 导航系统:X 键循环「最近机场→渡口→蓝洞→关」,流光点引路 ===== */
 const NAV9 = { mode: 0, x: 0, z: 0, label: '' };
@@ -12060,7 +12069,7 @@ let railPts9 = [], railLen9 = 0, trainGrp9 = null, trainS9 = 0, trainWait9 = 5, 
   scene.add(new THREE.Mesh(mergeGeometries(slG9, false), lam(0x5a4630)));
   const railMesh9 = new THREE.Mesh(mergeGeometries(rlG9, false), MOBILE ? new THREE.MeshLambertMaterial({ color: 0x9aa2ab }) : new THREE.MeshStandardMaterial({ color: 0x9aa2ab, roughness: .45, metalness: .7 }));
   scene.add(railMesh9);
-  // 车站:站台 + 站牌 + 夜灯
+  // 车站:站台 + 站牌 + 夜灯 + 铁路道口警示柱(交叉牌与红白栏杆)
   for (const st9 of railStopS9) {
     const a9 = railAt9(st9.s + .1), b9 = railAt9(st9.s + 2);
     const yaw9 = Math.atan2(b9.x - a9.x, b9.z - a9.z);
@@ -12068,6 +12077,12 @@ let railPts9 = [], railLen9 = 0, trainGrp9 = null, trainS9 = 0, trainWait9 = 5, 
     const pf9 = box(7, .5, 2.6, lam(0x8a8478)); pf9.position.set(px9, a9.y + .25, pz9); pf9.rotation.y = yaw9; scene.add(pf9);
     const sg9 = makeSign('🚂 ' + st9.nm + '站', 5.2, '#2a3a2e', '#bfe8c8'); sg9.position.set(px9, a9.y + 3.1, pz9); sg9.rotation.y = yaw9 + Math.PI / 2; scene.add(sg9);
     const lp9 = new THREE.PointLight(0xffd9a0, 0, 16, 2); lp9.position.set(px9, a9.y + 3.4, pz9); lp9.userData.pow = 6; nightLamps.push(lp9); scene.add(lp9);
+    const xPole9 = cyl(.08, .1, 3.0, lam(0x282c32), 8); xPole9.position.set(px9 - Math.sin(yaw9) * 3.8, a9.y + 1.5, pz9 - Math.cos(yaw9) * 3.8); scene.add(xPole9);
+    for (const sgn of [-1, 1]) {
+      const xBar = box(1.3, .16, .08, lam(0xf4f0e8)); xBar.rotation.z = sgn * .72; xBar.position.set(xPole9.position.x, a9.y + 2.7, xPole9.position.z); scene.add(xBar);
+    }
+    const rLamp = new THREE.Mesh(new THREE.SphereGeometry(.14, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff3028 }));
+    rLamp.position.set(xPole9.position.x, a9.y + 2.25, xPole9.position.z); scene.add(rLamp);
   }
   // 写实蒸汽小火车:圆柱铜箍锅炉+排障器+玻璃驾驶室+连杆动轮+天窗绿皮客车
   trainGrp9 = new THREE.Group();
@@ -13868,6 +13883,17 @@ function loop() {
       cloudMat9.color.setRGB(.98 - (1 - curDA) * .68 + duskC * .08, .99 - (1 - curDA) * .72 - duskC * .12, 1 - (1 - curDA) * .62 - duskC * .22);
       cloudMat9.opacity = clamp(.28 + curDA * .46, .22, .74) * (WEATHER === 'clear' ? .85 : 1);
     }
+    // 🚦 CBD 三色交通信号灯实时切换(绿→黄→红)
+    if (typeof trafficSignals9 !== 'undefined' && trafficSignals9.length) {
+      const cyc9 = t % 10;
+      const st9 = cyc9 < 4.5 ? 0 : cyc9 < 5.8 ? 1 : 2;
+      for (const ts of trafficSignals9) {
+        const cur = (ts.phase + st9) % 3;
+        ts.g.material.color.setHex(cur === 0 ? 0x22e568 : 0x183020);
+        ts.y.material.color.setHex(cur === 1 ? 0xfacc15 : 0x332c10);
+        ts.r.material.color.setHex(cur === 2 ? 0xff2c2c : 0x381414);
+      }
+    }
     // 🚗 未竟之都 CBD 环城车流巡航
     if (typeof cityCars9 !== 'undefined' && cityCars9.length) {
       for (const cc of cityCars9) {
@@ -15114,8 +15140,8 @@ if (LATE_TREES9.length) {
   console.log('🌳 全群岛植物学分叉真树实例化:', LATE_TREES9.length, '棵 → 8 draw(含 1K PBR 树皮与叶片风摆)');
 }
 
-/* 🏙️ Gemini 4 3D 升级:未竟之都 (UNJ) 现代摩天都会 CBD (室内视差玻璃幕墙 + 都市路灯 + 环城行驶车流) */
-const cityCars9 = [];
+/* 🏙️ Gemini 4 3D 升级:未竟之都 (UNJ) 现代摩天都会 CBD (室内视差玻璃幕墙 + 都市路灯 + 道路标线/红绿灯/龙门架 + 环城车流) */
+const cityCars9 = [], trafficSignals9 = [];
 {
   const makeFacadeTex9 = (accentHex, warmRatio) => {
     const w = 128, h = 256, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -15192,10 +15218,42 @@ const cityCars9 = [];
     }
     cirObs.push({ x: tx, z: tz, r: Math.max(w, d) * 0.52 });
   }
-  // 🛣️ 环城沥青大道 + 8 盏都市路灯 + 6 辆行驶车流(带夜间大灯)
-  const roadMat9 = lam(0x282c34);
-  for (const rz of [-54, 54]) { const r = box(114, .08, 6.2, roadMat9); r.position.set(gx9, G9 + .05, gz9 + rz); scene.add(r); }
-  for (const rx of [-54, 54]) { const r = box(6.2, .08, 114, roadMat9); r.position.set(gx9 + rx, G9 + .05, gz9); scene.add(r); }
+  // 🛣️ 环城沥青大道 + 车道虚线/斑马线 + 4 组三色交通信号灯 + 公路龙门架指路牌 + 8 盏都市路灯 + 6 辆行驶车流
+  const roadMat9 = lam(0x282c34), dashMat9 = new THREE.MeshBasicMaterial({ color: 0xf0f2f5 });
+  for (const rz of [-54, 54]) {
+    const r = box(114, .08, 6.2, roadMat9); r.position.set(gx9, G9 + .05, gz9 + rz); scene.add(r);
+    for (let dx = -46; dx <= 46; dx += 6) {
+      const dash = box(2.8, .02, .18, dashMat9); dash.position.set(gx9 + dx, G9 + .1, gz9 + rz); scene.add(dash);
+    }
+  }
+  for (const rx of [-54, 54]) {
+    const r = box(6.2, .08, 114, roadMat9); r.position.set(gx9 + rx, G9 + .05, gz9); scene.add(r);
+    for (let dz = -46; dz <= 46; dz += 6) {
+      const dash = box(.18, .02, 2.8, dashMat9); dash.position.set(gx9 + rx, G9 + .1, gz9 + dz); scene.add(dash);
+    }
+  }
+  // 4 个十字路口斑马线 + 三色红绿灯
+  for (let qi = 0; qi < 4; qi++) {
+    const sx = qi % 2 === 0 ? -54 : 54, sz = qi < 2 ? -54 : 54;
+    for (let z = -2.2; z <= 2.2; z += 1.1) {
+      const zb = box(1.8, .025, .45, dashMat9); zb.position.set(gx9 + sx + (sx > 0 ? -4.5 : 4.5), G9 + .105, gz9 + sz + z); scene.add(zb);
+    }
+    const post = cyl(.1, .12, 4.4, M.metal || lam(0x3a4048), 8); post.position.set(gx9 + sx * 1.07, G9 + 2.2, gz9 + sz * 1.07); scene.add(post);
+    const boxH = box(.48, 1.35, .44, lam(0x181a1e)); boxH.position.set(gx9 + sx * 1.07, G9 + 4.1, gz9 + sz * 1.07); scene.add(boxH);
+    const mkLed = (dy, hex) => {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(.14, 8, 6), new THREE.MeshBasicMaterial({ color: hex }));
+      m.position.set(gx9 + sx * 1.07, G9 + 4.1 + dy, gz9 + sz * 1.07 + (sz > 0 ? -.22 : .22)); scene.add(m); return m;
+    };
+    trafficSignals9.push({ r: mkLed(.38, 0xff2c2c), y: mkLed(0, 0x332c10), g: mkLed(-.38, 0x183020), phase: qi % 2 });
+  }
+  // 2 座公路龙门架指路牌(南北大道)
+  for (const [gzO, txt] of [[-54, '🏙️ 环城北路 · 人类之塔 ↑ · 自由湾 ↔'], [54, '🏙️ 环城南路 · 渡口码头 ↓ · 都会中心 ↑']]) {
+    for (const px of [-3.6, 3.6]) {
+      const gp = cyl(.12, .14, 5.8, M.metal || lam(0x88929c), 8); gp.position.set(gx9 + px, G9 + 2.9, gz9 + gzO); scene.add(gp);
+    }
+    const beam = box(7.6, .24, .24, M.metal || lam(0x88929c)); beam.position.set(gx9, G9 + 5.7, gz9 + gzO); scene.add(beam);
+    const gSign = makeSign(txt, 6.8, '#0e4f8a', '#ffffff'); gSign.position.set(gx9, G9 + 5.7, gz9 + gzO + .18); scene.add(gSign);
+  }
   for (const [lx, lz] of [[-58, -58], [0, -58], [58, -58], [58, 0], [58, 58], [0, 58], [-58, 58], [-58, 0]]) {
     const pole = cyl(.1, .14, 5.2, M.metal || lam(0x4a5058), 6); pole.position.set(gx9 + lx, G9 + 2.6, gz9 + lz); scene.add(pole);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(.26, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffe8a8 }));
