@@ -6010,6 +6010,12 @@ function updateScoreboard(minute) {
       c.fillRect(20 + i * 87.5, 0, 87.5, 720);
     }
     c.fillStyle = '#2f7a3c'; c.fillRect(0, 0, 20, 720); c.fillRect(1070, 0, 20, 720);
+    // 真实草坪磨损(禁区门前与中圈泥土踩踏斑块)
+    for (const [wx, wy, wr] of [[75, 360, 78], [1015, 360, 78], [545, 360, 52]]) {
+      const wg = c.createRadialGradient(wx, wy, 6, wx, wy, wr);
+      wg.addColorStop(0, 'rgba(116,92,52,.36)'); wg.addColorStop(1, 'rgba(116,92,52,0)');
+      c.fillStyle = wg; c.beginPath(); c.arc(wx, wy, wr, 0, 7); c.fill();
+    }
     c.strokeStyle = '#ffffff'; c.fillStyle = '#ffffff'; c.lineWidth = 10;
     c.strokeRect(20, 20, 1050, 680);                                   // 边线与底线
     c.beginPath(); c.moveTo(545, 20); c.lineTo(545, 700); c.stroke();  // 中线
@@ -6077,6 +6083,9 @@ function updateScoreboard(minute) {
       const netMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0, wireframe: true, transparent: true, opacity: .55 });
       const backNet = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.4, 16, 7), netMat);
       backNet.rotation.y = Math.PI / 2; backNet.position.set(gx2 + sgn * 1.4, baseH + 1.7, cz3); scene.add(backNet);
+      backNet.userData = { sgn, baseZ: new Float32Array(backNet.geometry.attributes.position.array), ripple: 0 };
+      if (!window.__goalNets9) window.__goalNets9 = [];
+      window.__goalNets9.push(backNet);
       const topNet = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 8, 3, 16), netMat);
       topNet.rotation.x = -Math.PI / 2;   // 水平顶网:x 向纵深 1.5,z 向跨度 8
       topNet.position.set(gx2 + sgn * .7, baseH + 3.42, cz3); scene.add(topNet);
@@ -6160,6 +6169,25 @@ function updateScoreboard(minute) {
   for (const [fx, fz] of [[-21.2, -13.7], [21.2, -13.7], [-21.2, 13.7], [21.2, 13.7]]) {
     const fp = cyl(.04, .04, 1.4, M.white, 6); fp.position.set(cx3 + fx, baseH + .7, cz3 + fz); scene.add(fp);
     const fl = box(.45, .3, .04, lam(0xffd76a)); fl.position.set(cx3 + fx + .22, baseH + 1.25, cz3 + fz); scene.add(fl);
+    if (!window.__cornerFlags9) window.__cornerFlags9 = [];
+    window.__cornerFlags9.push(fl);
+  }
+  // 场边摄影记者三脚架 + 进球彩带烟花粒子池
+  for (const [px, pz, ry] of [[-23.6, -7, Math.PI / 2], [23.6, 7, -Math.PI / 2]]) {
+    const tri = cyl(.05, .28, 1.1, lam(0x202226), 6); tri.position.set(cx3 + px, baseH + .55, cz3 + pz); scene.add(tri);
+    const camB = box(.38, .28, .5, lam(0x14161a)); camB.position.set(cx3 + px, baseH + 1.18, cz3 + pz); camB.rotation.y = ry; scene.add(camB);
+  }
+  {
+    const CN = 80, cp = new Float32Array(CN * 3).fill(-999), cc = new Float32Array(CN * 3), cv = [];
+    const cPal = [[.9, .15, .2], [1, .84, .3], [.4, .7, .95], [1, 1, 1]];
+    for (let i = 0; i < CN; i++) {
+      const col = cPal[i % cPal.length]; cc[i * 3] = col[0]; cc[i * 3 + 1] = col[1]; cc[i * 3 + 2] = col[2];
+      cv.push({ vx: 0, vy: 0, vz: 0 });
+    }
+    const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.BufferAttribute(cp, 3)); cg.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    const cm = new THREE.Points(cg, new THREE.PointsMaterial({ size: .55, vertexColors: true, transparent: true, opacity: .95 }));
+    cm.frustumCulled = false; scene.add(cm);
+    window.__goalConfetti9 = { pts: cm, v: cv, life: 0 };
   }
   for (const ox of [-7, 7]) {
     const dg = box(5.5, 1.6, 1.4, M.glass); dg.position.set(cx3 + ox, baseH + .9, cz3 + 16.4); scene.add(dg);
@@ -13914,12 +13942,17 @@ function loop() {
     const minute = Math.floor(t / 4) % 90;
     for (const p2 of matchPlayers) {
       const u = p2.userData;
-      if (u.gk) {   // 门将:守在门线,小幅横移
-        p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * .5;
-        p2.position.z = u.az + Math.sin(t * u.sp * 1.3 + u.ph) * 2.6;
-      } else {
-        p2.position.x = u.ax + Math.sin(t * u.sp + u.ph) * 3.2;
-        p2.position.z = u.az + Math.cos(t * u.sp * .8 + u.ph) * 2.6;
+      if (u.gk) {   // 门将:跟踪皮球 Z 轴走位 + 飞身扑救倾身
+        const tgtZ = SPT.z + clamp(matchBall.position.z - SPT.z, -3.4, 3.4);
+        p2.position.x = u.ax;
+        p2.position.z += (tgtZ - p2.position.z) * Math.min(1, dt * 4.5);
+        p2.rotation.z *= .88;
+      } else {   // 11v11 阵型随球动态压上/回防
+        const shiftX = clamp((matchBall.position.x - SPT.x) * .35, -6, 6);
+        const tx = clamp(u.ax + shiftX + Math.sin(t * u.sp + u.ph) * 2.8, SPT.x - 19, SPT.x + 19);
+        const tz = clamp(u.az + (matchBall.position.z - SPT.z) * .18 + Math.cos(t * u.sp * .8 + u.ph) * 2.2, SPT.z - 12, SPT.z + 12);
+        p2.position.x += (tx - p2.position.x) * Math.min(1, dt * 2.5);
+        p2.position.z += (tz - p2.position.z) * Math.min(1, dt * 2.5);
       }
       p2.lookAt(matchBall.position.x, p2.position.y, matchBall.position.z);
     }
@@ -13929,23 +13962,46 @@ function loop() {
       matchRef.lookAt(matchBall.position.x, matchRef.position.y, matchBall.position.z);
     }
     ballSwapT -= dt;
-    if (typeof window.__ballPhys9 === 'undefined') window.__ballPhys9 = { vx: 0, vy: 0, vz: 0, kick: 0 };
+    if (typeof window.__ballPhys9 === 'undefined') window.__ballPhys9 = { vx: 0, vy: 0, vz: 0, spin: 0, kick: 0, charge: 0 };
     const bp9 = window.__ballPhys9;
     const dPlayerBall9 = Math.hypot(player.position.x - matchBall.position.x, player.position.z - matchBall.position.z);
-    if (dPlayerBall9 < 2.4 && pMoving && bp9.kick <= 0) {
+    const inPitch9 = Math.abs(player.position.x - SPT.x) < 24 && Math.abs(player.position.z - SPT.z) < 16;
+    if (inPitch9 && dPlayerBall9 < 4.5 && keys.f) {
+      bp9.charge = Math.min(1, bp9.charge + dt * 1.4);
+      if (Math.random() < .2) toast(`⚡ 射门蓄力 ${Math.round(bp9.charge * 100)}% (松开 F 射门)`);
+    } else if (bp9.charge > .05) {
+      const kx = Math.sin(faceYaw), kz = Math.cos(faceYaw), pwr = 16 + bp9.charge * 22;
+      bp9.vx = kx * pwr; bp9.vz = kz * pwr; bp9.vy = 5.5 + bp9.charge * 6.5;
+      bp9.spin = (keys.a ? 1 : keys.d ? -1 : .45) * bp9.charge * 14;
+      bp9.kick = 3.8; bp9.charge = 0; blip(380);
+    } else if (dPlayerBall9 < 2.2 && pMoving && bp9.kick <= 0) {
       const kx = matchBall.position.x - player.position.x, kz = matchBall.position.z - player.position.z, kl = Math.max(.1, Math.hypot(kx, kz));
       const pwr = keys.shift ? 24 : 15;
-      bp9.vx = kx / kl * pwr; bp9.vz = kz / kl * pwr; bp9.vy = keys.shift ? 8.5 : 5.2; bp9.kick = 3.2;
+      bp9.vx = kx / kl * pwr; bp9.vz = kz / kl * pwr; bp9.vy = keys.shift ? 8.5 : 5.2; bp9.spin = 0; bp9.kick = 3.2;
       blip(440);
     }
     if (bp9.kick > 0) {
       bp9.kick -= dt;
       bp9.vy -= 24 * dt;
+      if (bp9.spin) { bp9.vx += -bp9.vz * bp9.spin * .018 * dt; bp9.vz += bp9.vx * bp9.spin * .018 * dt; }
       matchBall.position.x += bp9.vx * dt; matchBall.position.z += bp9.vz * dt; matchBall.position.y += bp9.vy * dt;
-      if (matchBall.position.y <= 6.66) { matchBall.position.y = 6.66; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; }
+      if (matchBall.position.y <= 6.66) { matchBall.position.y = 6.66; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; bp9.spin *= .8; }
+      for (const gk of matchPlayers) {
+        if (!gk.userData.gk) continue;
+        if (Math.hypot(matchBall.position.x - gk.position.x, matchBall.position.z - gk.position.z) < 2.1 && Math.abs(bp9.vx) > 6 && matchBall.position.y < 9.2) {
+          gk.rotation.z = (matchBall.position.z > gk.position.z ? 1 : -1) * .9;
+          if (Math.random() < .55) { bp9.vx *= -.68; bp9.vz += (Math.random() - .5) * 10; toast('🧤 门将飞身神勇扑出!'); blip(540); }
+        }
+      }
       if (Math.abs(matchBall.position.x - SPT.x) > 20.6 && Math.abs(matchBall.position.z - SPT.z) < 4.0 && matchBall.position.y < 9.6) {
         const gIdx = matchBall.position.x > SPT.x ? 0 : 1;
-        score[gIdx]++; updateScoreboard(minute); crowdBoost = 2.8;
+        score[gIdx]++; updateScoreboard(minute); crowdBoost = 3.0;
+        if (window.__goalNets9) window.__goalNets9.forEach(n => { if ((gIdx === 0 && n.userData.sgn > 0) || (gIdx === 1 && n.userData.sgn < 0)) n.userData.ripple = 1.6; });
+        if (window.__goalConfetti9) {
+          const gc = window.__goalConfetti9, arr = gc.pts.geometry.attributes.position.array, gx0 = SPT.x + (gIdx === 0 ? 22 : -22);
+          for (let i = 0; i < gc.v.length; i++) { arr[i * 3] = gx0; arr[i * 3 + 1] = 7.5; arr[i * 3 + 2] = SPT.z + (Math.random() - .5) * 8; gc.v[i] = { vx: (Math.random() - .5) * 12, vy: 8 + Math.random() * 10, vz: (Math.random() - .5) * 12 }; }
+          gc.pts.geometry.attributes.position.needsUpdate = true; gc.life = 2.8;
+        }
         bp9.kick = 0; matchBall.position.set(SPT.x, 6.7, SPT.z);
         toast(`⚽ GOOOAL!! 你破门得分!曼联 ${score[0]} - ${score[1]} 曼城`);
         blip(2400); setTimeout(() => blip(2650), 140); setTimeout(() => blip(1100), 280);
@@ -13958,7 +14014,26 @@ function loop() {
       const tp = matchPlayers[ballTarget];
       matchBall.position.x += (tp.position.x - matchBall.position.x) * Math.min(1, dt * 3);
       matchBall.position.z += (tp.position.z - matchBall.position.z) * Math.min(1, dt * 3);
-      matchBall.position.y = 6.5 + Math.abs(Math.sin(t * 6)) * .5;
+      matchBall.position.y = 6.66 + Math.abs(Math.sin(t * 6)) * .45;
+    }
+    if (window.__cornerFlags9) window.__cornerFlags9.forEach((f, fi) => { f.rotation.y = Math.sin(t * 4.5 + fi) * .35; });
+    if (window.__goalNets9) for (const n of window.__goalNets9) {
+      if (n.userData.ripple > 0) {
+        n.userData.ripple = Math.max(0, n.userData.ripple - dt * 1.4);
+        const pos = n.geometry.attributes.position, b = n.userData.baseZ;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, b[i * 3 + 2] + Math.sin(t * 18 + b[i * 3] * .8) * n.userData.ripple * .38);
+        pos.needsUpdate = true;
+      }
+    }
+    if (window.__goalConfetti9 && window.__goalConfetti9.life > 0) {
+      const gc = window.__goalConfetti9; gc.life -= dt;
+      const arr = gc.pts.geometry.attributes.position.array;
+      for (let i = 0; i < gc.v.length; i++) {
+        gc.v[i].vy -= 14 * dt; arr[i * 3] += gc.v[i].vx * dt; arr[i * 3 + 1] += gc.v[i].vy * dt; arr[i * 3 + 2] += gc.v[i].vz * dt;
+        if (arr[i * 3 + 1] < 6.4) arr[i * 3 + 1] = 6.4;
+      }
+      gc.pts.geometry.attributes.position.needsUpdate = true;
+      gc.pts.visible = gc.life > 0;
     }
     nextGoalT -= dt;
     if (nextGoalT <= 0) {
