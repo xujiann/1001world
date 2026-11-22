@@ -6082,60 +6082,58 @@ function updateScoreboard(minute) {
       }
     }
   }
-  // —— 4 面近场直边看台(贴合 44x29 球场四边)+ 球员通道 + 教练技术区 + 角柱大屏 ——
-  for (const [sx, sz, w, d, rotY] of [[0, -17.6, 44, 4.4, 0], [0, 17.6, 44, 4.4, 0], [-25.6, 0, 4.4, 30, 0], [25.6, 0, 4.4, 30, 0]]) {
-    for (let st = 0; st < 4; st++) {
-      const step = box(w + st * 1.4, .55, d === 4.4 ? 1.1 : d + st * 1.4, st % 2 ? lam(0xc8102e) : lam(0xe8e4dc));
-      if (d === 4.4) step.position.set(cx3 + sx, baseH + .35 + st * .55, cz3 + sz + Math.sign(sz) * st * 1.05);
-      else step.position.set(cx3 + sx + Math.sign(sx) * st * 1.05, baseH + .35 + st * .55, cz3 + sz);
-      if (d !== 4.4) { step.scale.x = 1.1 / (w + st * 1.4); }
-      scene.add(step);
+  // —— 球场草坪缓冲区 + 真实矩形四面阶梯看台(北/南/东/西 + 四角看台) ——
+  const apron9 = box(52, .12, 37, lam(0x276233)); apron9.position.set(cx3, baseH + .05, cz3); scene.add(apron9);
+  const redA = lam(0xc8102e), redB = lam(0x9c0c24), stairM = M.concrete || M.stone;
+  for (let i = 0; i < 14; i++) {
+    const sy = baseH + .55 + i * 1.0, stM = i % 2 ? redA : redB;
+    const nOff = 19.2 + i * 1.25, eOff = 26.2 + i * 1.25;
+    for (const sgn of [-1, 1]) {
+      const ns = box(52, 1.0, 1.25, stM); ns.position.set(cx3, sy, cz3 + sgn * nOff); scene.add(ns);
+      const ew = box(1.25, 1.0, 38, stM); ew.position.set(cx3 + sgn * eOff, sy, cz3); scene.add(ew);
+      for (const ax of [-16, 0, 16]) {
+        const aisle = box(1.4, 1.04, 1.28, stairM); aisle.position.set(cx3 + ax, sy + .02, cz3 + sgn * nOff); scene.add(aisle);
+      }
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const crn = box(1.3 + i * .1, 1.0, 1.3 + i * .1, stM);
+      crn.position.set(cx3 + sx * eOff, sy, cz3 + sz * nOff); scene.add(crn);
     }
   }
   // 球员入场红砖拱门通道(北侧中线)
-  const tun = box(4.6, 3.2, 4.0, M.brick || lam(0x7c1820)); tun.position.set(cx3, baseH + 1.6, cz3 - 16.5); scene.add(tun);
-  const tunVoid = box(2.8, 2.4, 4.2, lam(0x111014)); tunVoid.position.set(cx3, baseH + 1.2, cz3 - 16.5); scene.add(tunVoid);
+  const tun = box(4.6, 3.2, 4.0, M.brick || lam(0x7c1820)); tun.position.set(cx3, baseH + 1.6, cz3 - 17.5); scene.add(tun);
+  const tunVoid = box(2.8, 2.4, 4.2, lam(0x111014)); tunVoid.position.set(cx3, baseH + 1.2, cz3 - 17.5); scene.add(tunVoid);
   // 角区巨型高清大屏(东北 & 西南)
   for (const [vx, vz] of [[31, -24], [-31, 24]]) {
-    const scr = box(10, 5.2, .6, lam(0x161a22)); scr.position.set(cx3 + vx, baseH + 18, cz3 + vz); scr.lookAt(cx3, baseH + 10, cz3); scene.add(scr);
+    const scr = box(10, 5.2, .6, lam(0x161a22)); scr.position.set(cx3 + vx, baseH + 17.5, cz3 + vz); scr.lookAt(cx3, baseH + 10, cz3); scene.add(scr);
     const scrFace = new THREE.Mesh(new THREE.PlaneGeometry(9.2, 4.4), new THREE.MeshBasicMaterial({ color: 0x1c3a6e }));
     scrFace.position.set(0, 0, .32); scr.add(scrFace);
   }
-  // —— 20 层红色看台(碗状) + 曼联红砖玻璃外立面 + 悬挑钢桁架顶棚 ——
-  const redA = lam(0xc8102e), redB = lam(0x9c0c24);
-  redA.side = THREE.DoubleSide; redB.side = THREE.DoubleSide;
-  for (let i = 0; i < 20; i++) {
-    const r = 27 + i * 1.05;
-    const tier = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.0, 36, 1, true), i % 2 ? redA : redB);
-    tier.position.set(cx3, baseH + 1 + i * 1.02, cz3);
-    scene.add(tier);
+  // 曼彻斯特红砖矩形外立面 + 玻璃幕墙柱廊 + 悬挑钢桁架顶棚
+  const brickM9 = M.brick || lam(0x8c2428);
+  for (const sgn of [-1, 1]) {
+    const ewWall = box(1.2, 18.5, 74, brickM9); ewWall.position.set(cx3 + sgn * 44.5, baseH + 9.25, cz3); scene.add(ewWall);
+    const nsWall = box(90, 18.5, 1.2, brickM9); nsWall.position.set(cx3, baseH + 9.25, cz3 + sgn * 37.5); scene.add(nsWall);
+    const ewGlass = box(1.35, 3.8, 72, M.glass); ewGlass.position.set(cx3 + sgn * 44.5, baseH + 13.5, cz3); scene.add(ewGlass);
+    const nsGlass = box(88, 3.8, 1.35, M.glass); nsGlass.position.set(cx3, baseH + 13.5, cz3 + sgn * 37.5); scene.add(nsGlass);
+    // 悬挑白色顶棚 + 前缘玻璃采光天窗
+    const nsRoof = box(90, .5, 16, lam(0xe6e2da)); nsRoof.rotation.x = sgn * .08; nsRoof.position.set(cx3, baseH + 19.2, cz3 + sgn * 30.5); scene.add(nsRoof);
+    const nsSky = box(88, .22, 4.5, M.glass); nsSky.rotation.x = sgn * .08; nsSky.position.set(cx3, baseH + 18.5, cz3 + sgn * 20.5); scene.add(nsSky);
+    const ewRoof = box(16, .5, 74, lam(0xe6e2da)); ewRoof.rotation.z = -sgn * .08; ewRoof.position.set(cx3 + sgn * 37.5, baseH + 19.2, cz3); scene.add(ewRoof);
+    const ewSky = box(4.5, .22, 72, M.glass); ewSky.rotation.z = -sgn * .08; ewSky.position.set(cx3 + sgn * 27.5, baseH + 18.5, cz3); scene.add(ewSky);
   }
-  // 曼彻斯特红砖外墙 + 玻璃幕墙柱廊
-  const outerWall = new THREE.Mesh(new THREE.CylinderGeometry(49.2, 49.6, 21.5, 36, 1, true), M.brick || lam(0x8c2428));
-  outerWall.position.set(cx3, baseH + 10.75, cz3); scene.add(outerWall);
-  const glassBand = new THREE.Mesh(new THREE.CylinderGeometry(49.35, 49.35, 4.2, 36, 1, true), M.glass);
-  glassBand.position.set(cx3, baseH + 15.6, cz3); scene.add(glassBand);
-  for (let i = 0; i < 18; i++) {
-    const a = i / 18 * Math.PI * 2;
-    const px = cx3 + Math.cos(a) * 49.5, pz = cz3 + Math.sin(a) * 49.5;
-    const pil = box(1.1, 22, 1.1, M.concrete || M.stone);
-    pil.position.set(px, baseH + 11, pz); pil.rotation.y = -a; scene.add(pil);
-    // 悬挑钢结构屋顶桁架
-    const truss = box(20, .65, .6, M.metal || lam(0xc8ccd0));
-    truss.position.set(cx3 + Math.cos(a) * 39.5, baseH + 22.8, cz3 + Math.sin(a) * 39.5);
-    truss.rotation.y = -a; truss.rotation.z = .08; scene.add(truss);
+  for (let rx = -36; rx <= 36; rx += 12) for (const sgn of [-1, 1]) {
+    const truss = box(.55, .7, 21, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + rx, baseH + 19.6, cz3 + sgn * 28.5); scene.add(truss);
   }
-  // 悬挑球场顶棚与内圈采光玻璃天窗
-  const roofCanopy = new THREE.Mesh(new THREE.RingGeometry(33.5, 50.2, 36), new THREE.MeshStandardMaterial({ color: 0xe6e2da, roughness: .55, metalness: .2, side: THREE.DoubleSide }));
-  roofCanopy.rotation.x = -Math.PI / 2; roofCanopy.position.set(cx3, baseH + 22.3, cz3); scene.add(roofCanopy);
-  const roofSkylight = new THREE.Mesh(new THREE.RingGeometry(29.2, 33.5, 36), M.glass);
-  roofSkylight.rotation.x = -Math.PI / 2; roofSkylight.position.set(cx3, baseH + 22.1, cz3); scene.add(roofSkylight);
+  for (let rz = -30; rz <= 30; rz += 12) for (const sgn of [-1, 1]) {
+    const truss = box(21, .7, .55, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + sgn * 35.5, baseH + 19.6, cz3 + rz); scene.add(truss);
+  }
   // 场边 LED 广告围栏 + 4 面角旗 + 主客队玻璃替补席
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xc8102e });
-  for (const sz of [-14.8, 14.8]) {
+  for (const sz of [-15.2, 15.2]) {
     const ad = box(44, .75, .25, ledMat); ad.position.set(cx3, baseH + .45, cz3 + sz); scene.add(ad);
   }
-  for (const sx of [-22.6, 22.6]) {
+  for (const sx of [-23.0, 23.0]) {
     const ad = box(.25, .75, 29, ledMat); ad.position.set(cx3 + sx, baseH + .45, cz3); scene.add(ad);
   }
   for (const [fx, fz] of [[-21.2, -13.7], [21.2, -13.7], [-21.2, 13.7], [21.2, 13.7]]) {
@@ -6143,56 +6141,41 @@ function updateScoreboard(minute) {
     const fl = box(.45, .3, .04, lam(0xffd76a)); fl.position.set(cx3 + fx + .22, baseH + 1.25, cz3 + fz); scene.add(fl);
   }
   for (const ox of [-7, 7]) {
-    const dg = box(5.5, 1.6, 1.4, M.glass); dg.position.set(cx3 + ox, baseH + .9, cz3 + 15.9); scene.add(dg);
-    const dRoof = box(5.8, .12, 1.8, M.metal || lam(0xd8dce0)); dRoof.position.set(cx3 + ox, baseH + 1.76, cz3 + 15.8); scene.add(dRoof);
+    const dg = box(5.5, 1.6, 1.4, M.glass); dg.position.set(cx3 + ox, baseH + .9, cz3 + 16.4); scene.add(dg);
+    const dRoof = box(5.8, .12, 1.8, M.metal || lam(0xd8dce0)); dRoof.position.set(cx3 + ox, baseH + 1.76, cz3 + 16.3); scene.add(dRoof);
   }
-  // 顶檐与 4 座桁架探照灯塔
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(48.5, 48.5, .8, 36, 1, true),
-    new THREE.MeshLambertMaterial({ color: 0xe8e4dc, side: THREE.DoubleSide }));
-  rim.position.set(cx3, baseH + 21.6, cz3); scene.add(rim);
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI * 2 + Math.PI / 4;
-    const fx = cx3 + Math.cos(a) * 54, fz = cz3 + Math.sin(a) * 54;
-    const pole = cyl(.55, .85, 34, M.metal || M.stone, 8); pole.position.set(fx, baseH + 17, fz); scene.add(pole);
-    const rack = box(6.4, 3.8, .5, lam(0x282c32)); rack.position.set(fx, baseH + 34, fz); rack.lookAt(cx3, baseH + 10, cz3); scene.add(rack);
+  // 4 座角柱桁架探照灯塔
+  for (const [fx, fz] of [[cx3 - 43, cz3 - 36], [cx3 + 43, cz3 - 36], [cx3 + 43, cz3 + 36], [cx3 - 43, cz3 + 36]]) {
+    const pole = cyl(.55, .85, 32, M.metal || M.stone, 8); pole.position.set(fx, baseH + 16, fz); scene.add(pole);
+    const rack = box(6.4, 3.8, .5, lam(0x282c32)); rack.position.set(fx, baseH + 32, fz); rack.lookAt(cx3, baseH + 8, cz3); scene.add(rack);
     for (let li = 0; li < 6; li++) {
       const bulb = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, .18), new THREE.MeshBasicMaterial({ color: 0xfff8e8 }));
       bulb.position.set(((li % 3) - 1) * 1.9, (li < 3 ? .85 : -.85), .3); rack.add(bulb);
     }
     cirObs.push({ x: fx, z: fz, r: 1.2 });
   }
-  // —— 螺旋上升的外坡道(缠绕两圈) ——
-  for (let i = 0; i < 72; i++) {
-    const tt = i / 72;
-    const a = tt * Math.PI * 4;
-    const rr = 51.6;
-    const seg = box(4.6, .5, 2.4, lam(0xc82438));
-    seg.position.set(cx3 + Math.cos(a) * rr, baseH + 1.5 + tt * 19, cz3 + Math.sin(a) * rr);
-    seg.rotation.y = -a;
-    scene.add(seg);
+  // 四座凯旋门式红砖玻璃入场大门(东南西北)
+  for (const [gx, gz, rotY, nm] of [
+    [cx3, cz3 - 37.5, 0, '北门 · 出口1'],
+    [cx3 + 44.5, cz3, Math.PI / 2, '东门 · 出口2'],
+    [cx3, cz3 + 37.5, Math.PI, '南门 · 出口3'],
+    [cx3 - 44.5, cz3, -Math.PI / 2, '西门 · 出口4']
+  ]) {
+    const gate = box(10.5, 7.6, 4.2, M.brick || lam(0x6b0a18)); gate.position.set(gx, baseH + 3.8, gz); gate.rotation.y = rotY; scene.add(gate);
+    const arch = box(5.0, 5.2, 4.5, lam(0x161216)); arch.position.set(gx, baseH + 2.6, gz); arch.rotation.y = rotY; scene.add(arch);
+    const gs2 = makeSign(nm, 4.6, '#6b0a18', '#ffd76a');
+    gs2.position.set(gx, baseH + 8.8, gz); gs2.rotation.y = rotY; scene.add(gs2);
   }
-  // —— 四座凯旋门式红砖玻璃入场大门(东南西北) ——
-  const gateNames = ['北门 · 出口1', '东门 · 出口2', '南门 · 出口3', '西门 · 出口4'];
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI * 2 - Math.PI / 2;   // 北/东/南/西
-    const gx = cx3 + Math.cos(a) * 49.5, gz = cz3 + Math.sin(a) * 49.5;
-    const gate = box(10.5, 7.6, 5.2, M.brick || lam(0x6b0a18)); gate.position.set(gx, baseH + 3.8, gz); gate.rotation.y = -a; scene.add(gate);
-    const arch = box(5.0, 5.2, 5.5, lam(0x161216)); arch.position.set(gx, baseH + 2.6, gz); arch.rotation.y = -a; scene.add(arch);
-    const gCanopy = box(11.4, .4, 3.2, M.glass); gCanopy.position.set(cx3 + Math.cos(a) * 52, baseH + 6.4, cz3 + Math.sin(a) * 52); gCanopy.rotation.y = -a; scene.add(gCanopy);
-    const gs2 = makeSign(gateNames[i], 4.6, '#6b0a18', '#ffd76a');
-    gs2.position.set(gx, baseH + 8.8, gz); gs2.rotation.y = -a + Math.PI / 2; scene.add(gs2);
-  }
-  // (看台不设碰撞墙:可从任意方向拾级而上——见 stadiumHeight)
-  // —— 记分牌(北侧高悬) ——
+  // 记分牌(北看台上沿高悬)
   {
     const sc2 = document.createElement('canvas'); sc2.width = 512; sc2.height = 150;
     scoreCtx = sc2.getContext('2d');
     scoreTex = new THREE.CanvasTexture(sc2); scoreTex.colorSpace = THREE.SRGBColorSpace;
     const boardGeo = new THREE.PlaneGeometry(17, 5), boardMat = new THREE.MeshBasicMaterial({ map: scoreTex });
     const board = new THREE.Mesh(boardGeo, boardMat);
-    const boardBack = new THREE.Mesh(boardGeo, boardMat);   // 背面另挂一块正面朝后(共享 scoreTex,比分同步),避免记分牌背面镜像
+    const boardBack = new THREE.Mesh(boardGeo, boardMat);
     boardBack.rotation.y = Math.PI; boardBack.position.z = -0.05; board.add(boardBack);
-    board.position.set(cx3, baseH + 27, cz3 - 46); scene.add(board);
+    board.position.set(cx3, baseH + 21.5, cz3 - 36.5); scene.add(board);
     updateScoreboard(0);
   }
   // —— 场上 22 名球员(与玩家同比例)+ 门将异色 + 裁判 + 皮球 ——
@@ -6234,27 +6217,28 @@ function updateScoreboard(minute) {
   matchBall = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   matchBall.position.set(cx3, baseH + .5, cz3);
   scene.add(matchBall);
-  // —— 看台上的球迷(实例化,主场红海 + 东北角客队蓝区) ——
+  // —— 矩形四面看台上的球迷(实例化,主场红海 + 客队蓝区) ——
   {
     const fanGeo = new THREE.ConeGeometry(.38, 1.05, 5);
     const spotsF = [];
-    for (let i = 0; i < 20; i++) {
-      const rr = 27.5 + i * 1.05;
-      const n = Math.floor(rr * Math.PI * 2 / 1.35);
-      for (let k = 0; k < n; k++) {
-        if (Math.random() > .88) continue;   // 少量空座
-        spotsF.push([rr, k / n * Math.PI * 2, i]);
+    for (let i = 0; i < 14; i++) {
+      const yF = baseH + 1.05 + i * 1.0;
+      const nOff = 19.2 + i * 1.25, eOff = 26.2 + i * 1.25;
+      for (let x = -24; x <= 24; x += 2.0) for (const sgn of [-1, 1]) {
+        if (Math.random() > .25) spotsF.push([cx3 + x, yF, cz3 + sgn * nOff, sgn > 0 && x > 10]);
+      }
+      for (let z = -17; z <= 17; z += 2.0) for (const sgn of [-1, 1]) {
+        if (Math.random() > .25) spotsF.push([cx3 + sgn * eOff, yF, cz3 + z, sgn > 0 && z < 0]);
       }
     }
     const fans = new THREE.InstancedMesh(fanGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), spotsF.length);
     const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3();
     const cRed = new THREE.Color(0xc8102e), cRed2 = new THREE.Color(0x8c1c2c), cBlue = new THREE.Color(0x6cabdd), cWhite = new THREE.Color(0xe8e4dc);
-    spotsF.forEach(([rr, a, tier], idx) => {
-      pf.set(cx3 + Math.cos(a) * rr, baseH + 1.02 * (tier + 1) + .5, cz3 + Math.sin(a) * rr);
-      sf.setScalar(.9 + Math.random() * .25);
+    spotsF.forEach(([fx, fy, fz, away], idx) => {
+      pf.set(fx, fy, fz);
+      sf.setScalar(.9 + Math.random() * .22);
       m4f.compose(pf, qf, sf);
       fans.setMatrixAt(idx, m4f);
-      const away = a > .55 && a < 1.25;   // 东北角客队区
       const r0 = Math.random();
       fans.setColorAt(idx, away ? (r0 < .85 ? cBlue : cWhite) : (r0 < .7 ? cRed : (r0 < .88 ? cRed2 : cWhite)));
     });
@@ -10308,12 +10292,15 @@ const deckY = t => 3 + Math.sin(t * Math.PI) * 6;
 function pierHeight(x, z) {
   return (Math.abs(x) < 3.2 && z > 346 && z < 427) ? 1.85 : null;
 }
-/* 梦剧场看台台阶(可拾级而上,20 层) */
+/* 梦剧场矩形四面看台台阶(可拾级而上,14 层) */
 function stadiumHeight(x, z) {
-  const d = Math.hypot(x - SPT.x, z - SPT.z);
-  if (d < 26.8 || d > 48.4) return null;
-  const i = Math.min(19, Math.floor((d - 26.8) / 1.05));
-  return 6 + 1.02 * (i + 1);
+  const dx = Math.abs(x - SPT.x), dz = Math.abs(z - SPT.z);
+  if (dx > 44 || dz > 37) return null;
+  const rx = dx - 25.6, rz = dz - 18.6;
+  const r = Math.max(rx, rz);
+  if (r < 0) return null;
+  const i = Math.min(13, Math.floor(r / 1.25));
+  return 6.0 + 1.0 * (i + 1);
 }
 /* 进步之塔螺旋坡道 + 断口平台(可拾级登顶,cirObs 的 top 字段放行高处) */
 function unjTowerHeight(x, z) {
@@ -11293,7 +11280,7 @@ const NO_GRASS = [
   { x: 120, z: 800, r: 150 },     // 南塔开特(石铺捕鲸港)
   { x: 350, z: 620, r: 125 },     // 未竟之都(白石之城)
 ];
-function grassOK(x, z) { for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
+function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
 /* 世界锚定的抖动网格散布:位置由世界格坐标 hash 决定 → 随玩家移动只在圆盘边缘增减,
    圈内格保持原位不动 = 草地平滑铺开、不再整体重洗;颜色也按格 hash 稳定(免闪) */
 const _sgM4 = new THREE.Matrix4(), _sgQ = new THREE.Quaternion(), _sgS = new THREE.Vector3(), _sgP = new THREE.Vector3(), _sgE = new THREE.Euler();
@@ -11334,7 +11321,7 @@ function redistributeGrass(cx, cz) {
     (x, z, h) => h > 2.8 && h < 17 && grassOK(x, z) && fbm(x * .07 + 3, z * .07) > .46,
     (x, z, h, gx, gz, m, q, s, p, e) => { q.setFromEuler(e.set(0, hash2(gx + 4, gz + 1) * 6.2832, 0)); s.setScalar(0.68); m.compose(p.set(x, h + .16, z), q, s); }); }
   if (rockInst) { const ku = rockInst.userData; scatterGrid9(rockInst, ku.KN, ku.R, cx, cz, 4.4, ROCK_COL9,
-    (x, z, h) => h > 2 && h < 26 && fbm(x * .05 + 8, z * .05) > .6,   // 🪨 噪声成簇:石头只落在少数石砾斑块,不再满地颗粒
+    (x, z, h) => h > 2 && h < 26 && !inStadium9(x, z) && fbm(x * .05 + 8, z * .05) > .6,   // 🪨 噪声成簇:石头只落在少数石砾斑块,不再满地颗粒
     (x, z, h, gx, gz, m, q, s, p, e) => {
       q.setFromEuler(e.set(hash2(gx, gz + 5) * 3, hash2(gx + 6, gz) * 6.28, hash2(gx + 2, gz + 2) * 3));
       const sc = .5 + hash2(gx + 1, gz + 9) * 1.1; s.set(sc, sc * .7, sc);
