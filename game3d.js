@@ -5297,50 +5297,112 @@ let fieldGrassInst9 = null, fieldGrassMat9 = null;
 function makePerson(bodyCol, hatCol, opts = {}) {
   const g = new THREE.Group();
   const wide = opts.wide || 1, tall = opts.tall || 1;
-  const skinTones = [0xf2c9a0, 0xe8ba8e, 0xd8a373, 0xf6d5b2];
-  const skin = skinTones[Math.abs(bodyCol || 0) % skinTones.length];
-  const skinM = new THREE.MeshStandardMaterial({ color: skin, roughness: .62, metalness: .02 });
-  const clothM = new THREE.MeshStandardMaterial({ color: bodyCol, roughness: .78, metalness: .03 });
+  const seed = Math.abs((bodyCol || 0) + (hatCol || 0) * 7);
+  const skinTones = [0xf2c9a0, 0xe8ba8e, 0xd8a373, 0xf6d5b2, 0xc68e62];
+  const skin = skinTones[seed % skinTones.length];
+  const skinM = new THREE.MeshStandardMaterial({ color: skin, roughness: .54, metalness: .02 });
+  const clothM = new THREE.MeshStandardMaterial({ color: bodyCol, roughness: .76, metalness: .03 });
+  const clothTrimM = new THREE.MeshStandardMaterial({ color: ((bodyCol & 0xfefefe) >> 1) | 0x20242c, roughness: .7, metalness: .04 });
   const pantCol = ((bodyCol & 0xfefefe) >> 1) | 0x181c24;
   const pantM = new THREE.MeshStandardMaterial({ color: pantCol, roughness: .82, metalness: .02 });
-  const hairM = lam(0x282018), shoeM = lam(0x1c1a18), beltM = lam(0x3a2818);
+  const hairPalette = opts.cane ? [0xd8dde2, 0xbec5cc, 0x8a929a] : [0x1e1814, 0x2c2018, 0x4a3121, 0x6b4428, 0x9b7648];
+  const hairCol = opts.hairCol ?? hairPalette[seed % hairPalette.length];
+  const hairM = new THREE.MeshStandardMaterial({ color: hairCol, roughness: .42, metalness: .06 });
+  const shoeM = new THREE.MeshStandardMaterial({ color: 0x1c1a18, roughness: .48, metalness: .08 });
+  const beltM = new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: .52, metalness: .1 });
+  const buckleM = new THREE.MeshStandardMaterial({ color: 0xc8b278, roughness: .28, metalness: .75 });
 
-  // children[0]: 真实比例上衣躯干(供 bob/换色沿用)
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(.28 * wide, .52 * tall, 6, 10), clothM);
-  torso.scale.set(1.18, 1, .76); torso.position.y = 1.38 * tall; g.add(torso);
-  const collar = cyl(.15 * wide, .18 * wide, .12, lam(0xf0ece0), 8); collar.position.y = 1.72 * tall; g.add(collar);
-  const belt = cyl(.31 * wide, .31 * wide, .1, beltM, 10); belt.scale.set(1.14, 1, .76); belt.position.y = 1.04 * tall; g.add(belt);
-  const neck = cyl(.1, .12, .22 * tall, skinM, 8); neck.position.y = 1.82 * tall; g.add(neck);
+  // children[0]: 分层躯干组(供呼吸/bob沿用,含肩胸/收腰/领口/腰带金属扣)
+  const torsoGrp = new THREE.Group();
+  const chest = new THREE.Mesh(new THREE.CapsuleGeometry(.27 * wide, .34 * tall, 6, 12), clothM);
+  chest.scale.set(1.22, 1, .76); chest.position.y = 1.48 * tall; torsoGrp.add(chest);
+  const waist = cyl(.24 * wide, .27 * wide, .30 * tall, clothM, 10);
+  waist.scale.set(1.12, 1, .74); waist.position.y = 1.18 * tall; torsoGrp.add(waist);
+  const pelvis = new THREE.Mesh(new THREE.CapsuleGeometry(.24 * wide, .16 * tall, 5, 10), pantM);
+  pelvis.scale.set(1.14, 1, .76); pelvis.position.y = .97 * tall; torsoGrp.add(pelvis);
+  const collar = cyl(.14 * wide, .19 * wide, .12, lam(0xf0ece0), 10);
+  collar.position.y = 1.72 * tall; torsoGrp.add(collar);
+  const lapelL = box(.06 * wide, .22 * tall, .04, clothTrimM);
+  lapelL.position.set(-.09 * wide, 1.56 * tall, .20); lapelL.rotation.z = .22; torsoGrp.add(lapelL);
+  const lapelR = box(.06 * wide, .22 * tall, .04, clothTrimM);
+  lapelR.position.set(.09 * wide, 1.56 * tall, .20); lapelR.rotation.z = -.22; torsoGrp.add(lapelR);
+  const belt = cyl(.28 * wide, .28 * wide, .085, beltM, 12);
+  belt.scale.set(1.14, 1, .76); belt.position.y = 1.04 * tall; torsoGrp.add(belt);
+  const buckle = box(.08, .07, .03, buckleM);
+  buckle.position.set(0, 1.04 * tall, .215); torsoGrp.add(buckle);
+  const neck = cyl(.092, .115, .22 * tall, skinM, 10);
+  neck.position.y = 1.82 * tall; torsoGrp.add(neck);
+  g.add(torsoGrp);
 
   const limbs = {};
-  for (const s of [-1, 1]) {   // 双腿(独立裤装+皮鞋)
-    const hip = new THREE.Group(); hip.position.set(.15 * wide * s, .96 * tall, 0);
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.11 * wide, .66 * tall, 5, 8), pantM);
-    leg.position.y = -.42 * tall; hip.add(leg);
-    const foot = box(.17 * wide, .12, .34, shoeM); foot.position.set(0, -.88 * tall, .07); hip.add(foot);
-    g.add(hip); limbs[s < 0 ? 'legL' : 'legR'] = hip;
+  for (const s of [-1, 1]) {   // 双腿(大腿+膝关节+小腿+鞋底/鞋头)
+    const hip = new THREE.Group(); hip.position.set(.145 * wide * s, .96 * tall, 0);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(.108 * wide, .30 * tall, 5, 8), pantM);
+    thigh.position.y = -.21 * tall; hip.add(thigh);
+    const knee = new THREE.Group(); knee.position.set(0, -.43 * tall, 0);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(.088 * wide, .30 * tall, 5, 8), pantM);
+    shin.position.y = -.21 * tall; knee.add(shin);
+    const shoe = box(.155 * wide, .10, .30, shoeM); shoe.position.set(0, -.44 * tall, .055); knee.add(shoe);
+    const toe = new THREE.Mesh(sphg(.078 * wide, 7, 5), shoeM);
+    toe.scale.set(1, .62, 1.15); toe.position.set(0, -.445 * tall, .19); knee.add(toe);
+    hip.add(knee); g.add(hip);
+    limbs[s < 0 ? 'legL' : 'legR'] = hip;
+    limbs[s < 0 ? 'kneeL' : 'kneeR'] = knee;
   }
-  for (const s of [-1, 1]) {   // 双臂(肩头+袖管+手掌)
-    const sh = new THREE.Group(); sh.position.set(.40 * wide * s, 1.66 * tall, 0);
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(.09 * wide, .58 * tall, 5, 8), clothM);
-    arm.position.y = -.35 * tall; sh.add(arm);
-    const hand = new THREE.Mesh(sphg(.095, 7, 6), skinM); hand.position.y = -.72 * tall; sh.add(hand);
-    g.add(sh); limbs[s < 0 ? 'armL' : 'armR'] = sh;
+  for (const s of [-1, 1]) {   // 双臂(肩关节+上臂+肘关节+前臂+手掌)
+    const sh = new THREE.Group(); sh.position.set(.40 * wide * s, 1.64 * tall, 0);
+    const uArm = new THREE.Mesh(new THREE.CapsuleGeometry(.085 * wide, .25 * tall, 5, 8), clothM);
+    uArm.position.y = -.17 * tall; sh.add(uArm);
+    const elbow = new THREE.Group(); elbow.position.set(0, -.34 * tall, 0);
+    const fArm = new THREE.Mesh(new THREE.CapsuleGeometry(.072 * wide, .24 * tall, 5, 8), clothM);
+    fArm.position.y = -.16 * tall; elbow.add(fArm);
+    const cuff = cyl(.076 * wide, .076 * wide, .04, lam(0xf0ece0), 8);
+    cuff.position.y = -.30 * tall; elbow.add(cuff);
+    const hand = new THREE.Mesh(sphg(.082, 7, 6), skinM);
+    hand.scale.set(.85, 1.18, .72); hand.position.y = -.36 * tall; elbow.add(hand);
+    sh.add(elbow); g.add(sh);
+    limbs[s < 0 ? 'armL' : 'armR'] = sh;
+    limbs[s < 0 ? 'elbowL' : 'elbowR'] = elbow;
   }
 
-  // 头部组(写实头身比 + 耳/眉/眼白瞳孔/鼻/唇/发丝/帽檐)
+  // 头部组(写实头身比 + 耳/眉/眼白虹膜瞳孔/可眨眼睑/鼻梁/动态唇/多样发型/学者眼镜)
   const headGrp = new THREE.Group(); headGrp.position.y = 2.08 * tall;
-  const head = new THREE.Mesh(sphg(.25, 14, 10), skinM); head.scale.set(.92, 1.08, .96); headGrp.add(head);
-  const hair = new THREE.Mesh(sphg(.258, 12, 8, 0, Math.PI * 2, 0, Math.PI * .56), hairM);
-  hair.scale.set(.94, 1.06, .98); hair.position.y = .02; headGrp.add(hair);
-  for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(sphg(.05, 6, 5), skinM); ear.scale.set(.45, 1, .7); ear.position.set(.23 * s, -.01, 0); headGrp.add(ear);
-    const sclera = new THREE.Mesh(sphg(.04, 6, 5), lam(0xfafafa)); sclera.position.set(.09 * s, .03, .21); headGrp.add(sclera);
-    const iris = new THREE.Mesh(sphg(.024, 6, 5), lam(0x1f1b18)); iris.position.set(.09 * s, .03, .235); headGrp.add(iris);
-    const brow = box(.08, .018, .02, hairM); brow.position.set(.09 * s, .085, .225); headGrp.add(brow);
+  const head = new THREE.Mesh(sphg(.245, 16, 12), skinM); head.scale.set(.90, 1.09, .95); headGrp.add(head);
+  const hairStyle = opts.hairStyle ?? (seed % 5);
+  const hairTop = new THREE.Mesh(sphg(.256, 14, 10, 0, Math.PI * 2, 0, Math.PI * .56), hairM);
+  hairTop.scale.set(.93, 1.07, .97); hairTop.position.y = .024; headGrp.add(hairTop);
+  if (hairStyle === 1) {   // 侧分刘海
+    const bangs = box(.24, .065, .10, hairM); bangs.position.set(.04, .17, .175); bangs.rotation.z = -.22; headGrp.add(bangs);
+  } else if (hairStyle === 2) {   // 长发垂肩
+    const backHair = new THREE.Mesh(new THREE.CapsuleGeometry(.19, .24, 5, 10), hairM);
+    backHair.scale.set(1.08, 1, .68); backHair.position.set(0, -.12, -.11); headGrp.add(backHair);
+  } else if (hairStyle === 3) {   // 丸子头/发髻
+    const bun = new THREE.Mesh(sphg(.10, 8, 6), hairM); bun.position.set(0, .24, -.12); headGrp.add(bun);
+  } else if (hairStyle === 4) {   // 蓬松卷发
+    const curls = new THREE.Mesh(sphg(.275, 12, 8, 0, Math.PI * 2, 0, Math.PI * .62), hairM);
+    curls.scale.set(.98, 1.12, 1.02); curls.position.y = .03; headGrp.add(curls);
   }
-  const nose = new THREE.Mesh(sphg(.032, 6, 5), lam(0xdba87e)); nose.scale.set(.75, 1.15, 1.1); nose.position.set(0, -.02, .245); headGrp.add(nose);
-  const mouth = box(.08, .016, .02, lam(0xb8685c)); mouth.position.set(0, -.095, .225); headGrp.add(mouth);
+  const eyelids = [];
+  const irisCol = [0x241a14, 0x3b281c, 0x2d4a5e, 0x3a4a2e][seed % 4];
+  const irisM = new THREE.MeshStandardMaterial({ color: irisCol, roughness: .12, metalness: .05 });
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(sphg(.048, 6, 5), skinM); ear.scale.set(.42, 1.05, .72); ear.position.set(.225 * s, -.01, 0); headGrp.add(ear);
+    const sclera = new THREE.Mesh(sphg(.038, 8, 6), lam(0xfafafa)); sclera.position.set(.086 * s, .03, .206); headGrp.add(sclera);
+    const iris = new THREE.Mesh(sphg(.022, 8, 6), irisM); iris.position.set(.086 * s, .03, .230); headGrp.add(iris);
+    const lid = new THREE.Mesh(sphg(.041, 8, 5, 0, Math.PI * 2, 0, Math.PI * .52), skinM);
+    lid.position.set(.086 * s, .032, .208); lid.rotation.x = -.65; headGrp.add(lid); eyelids.push(lid);
+    const brow = box(.078, .016, .02, hairM); brow.position.set(.088 * s, .084, .222); brow.rotation.z = -.06 * s; headGrp.add(brow);
+  }
+  const nose = new THREE.Mesh(sphg(.030, 6, 5), skinM); nose.scale.set(.70, 1.25, 1.15); nose.position.set(0, -.018, .242); headGrp.add(nose);
+  const mouth = box(.076, .016, .02, lam(0xb8685c)); mouth.position.set(0, -.095, .222); headGrp.add(mouth);
+  if (opts.glasses || opts.cane || (seed % 7 === 0)) {
+    const frameM = new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: .35, metalness: .55 });
+    for (const s of [-1, 1]) {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(.046, .006, 6, 14), frameM);
+      rim.position.set(.086 * s, .03, .246); headGrp.add(rim);
+    }
+    const bridge = box(.045, .008, .008, frameM); bridge.position.set(0, .035, .246); headGrp.add(bridge);
+  }
   if (opts.hat === 'cone') {
     const brim = cyl(.44, .44, .04, lam(hatCol), 12); brim.position.y = .17; headGrp.add(brim);
     const h = new THREE.Mesh(cong(.28, .54, 10), lam(hatCol)); h.position.y = .44; headGrp.add(h);
@@ -5352,15 +5414,32 @@ function makePerson(bodyCol, hatCol, opts = {}) {
   if (opts.cane) { const c1 = cyl(.038, .038, 1.75, M.woodDark); c1.position.set(.56 * wide, .88, .18); g.add(c1); }
   g.userData.limbs = limbs;
   g.userData.head = headGrp;
+  g.userData.eyelids = eyelids;
+  g.userData.mouth = mouth;
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
-/* 四肢摆动:走路时手脚交替、静止时轻微呼吸摆 */
-function animLimbs(g, phase, amt) {
+/* 双关节四肢摆动:膝盖弯曲/手肘摆动/躯干微扭/说话嘴型 */
+function animLimbs(g, phase, amt, talk = false) {
   const L = g.userData.limbs; if (!L) return;
   const s = Math.sin(phase) * amt;
   L.legL.rotation.x = s; L.legR.rotation.x = -s;
-  L.armL.rotation.x = -s * .8; L.armR.rotation.x = s * .8;
+  L.armL.rotation.x = -s * .78; L.armR.rotation.x = s * .78;
+  if (L.kneeL) {
+    L.kneeL.rotation.x = amt > .15 ? Math.max(0, -s * 1.15) : .04;
+    L.kneeR.rotation.x = amt > .15 ? Math.max(0, s * 1.15) : .04;
+  }
+  if (L.elbowL) {
+    L.elbowL.rotation.x = amt > .15 ? (-0.22 - Math.max(0, s) * .52) : (-0.12 - Math.sin(phase * .5) * .04);
+    L.elbowR.rotation.x = amt > .15 ? (-0.22 - Math.max(0, -s) * .52) : (-0.12 + Math.sin(phase * .5) * .04);
+  }
+  if (g.children[0]) {
+    g.children[0].rotation.y = amt > .15 ? -s * .14 : Math.sin(phase * .35) * .03;
+    g.children[0].rotation.z = amt <= .15 ? Math.sin(phase * .45) * .022 : 0;
+  }
+  if (g.userData.mouth) {
+    g.userData.mouth.scale.y = talk ? (1 + Math.abs(Math.sin(phase * 3.2)) * 1.35) : 1;
+  }
 }
 /* 游泳姿态:配合俯身,打腿 + 交替划水 */
 function animRest9(g, state, t) {   // 🪑坐 / 🛌躺 姿态(身体倾角由物理 rotation.x 负责,这里摆四肢)
@@ -8785,12 +8864,25 @@ function updateNpcs3(dt) {
     const moving9 = !zzz && ((n.wander && n.wp) || n.path);
     if (moving9) p.y = Math.max(surfaceGround9(p.x, p.z, p.y), 0);
     n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (moving9 ? .04 : (zzz ? .012 : .018));
-    animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06));
-    if (n.g.userData.head) {
-      n.g.userData.head.rotation.y = (!moving9 && !zzz) ? Math.sin(n.phase * .55) * .16 : 0;
-      n.g.userData.head.rotation.x = n.talk ? Math.sin(n.phase * 1.8) * .08 : (zzz ? .28 : 0);
+    animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06), n.talk && !zzz);
+    if (n.g.userData.eyelids) {
+      if (n.blinkT == null) n.blinkT = 1.5 + Math.random() * 4;
+      n.blinkT -= dt;
+      const shut = zzz ? 1 : (n.blinkT < 0 ? Math.sin(Math.min(1, -n.blinkT / .14) * Math.PI) : 0);
+      if (n.blinkT < -.14) n.blinkT = 2.6 + Math.random() * 4.2;
+      const lidRot = -.65 + shut * .92;
+      for (const lid of n.g.userData.eyelids) lid.rotation.x = lidRot;
     }
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
+    if (n.g.userData.head) {
+      let headY = (!moving9 && !zzz) ? Math.sin(n.phase * .55) * .16 : 0;
+      if (!zzz && pd < 14 && n.chat9 <= 0) {
+        const relYaw = ((Math.atan2(player.position.x - p.x, player.position.z - p.z) - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        headY = Math.max(-.55, Math.min(.55, relYaw));
+      }
+      n.g.userData.head.rotation.y += (headY - n.g.userData.head.rotation.y) * Math.min(1, dt * 6);
+      n.g.userData.head.rotation.x = n.talk ? Math.sin(n.phase * 1.8) * .08 : (zzz ? .28 : Math.sin(n.phase * .4) * .03);
+    }
     if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
     if (n.chat9 > 0) { n.chat9 -= dt; n.talk = true; }   // 💬 寒暄中
@@ -11080,9 +11172,11 @@ const CHAR_ROSTER9 = [
 ];
 let curCharIdx9 = 0;
 
+let playerHumanRig = null, playerBlinkT = 2.5, prevFaceYaw9 = 0;
 function selectCharacter9(idx, notify = true) {
   curCharIdx9 = (idx + CHAR_ROSTER9.length) % CHAR_ROSTER9.length;
   const cfg = CHAR_ROSTER9[curCharIdx9];
+  try { if (notify) PSTORE.setItem('w1001.char', String(curCharIdx9)); } catch (e) {}
 
   if (playerRobot && playerRobot.parent === player) {
     player.remove(playerRobot);
@@ -11090,6 +11184,7 @@ function selectCharacter9(idx, notify = true) {
 
   if (cfg.type === 'proc') {
     usingGLTF = false;
+    playerHumanRig = null;
     for (const m of player.userData.procMeshes) m.visible = true;
     if (notify) toast('🎭 已切换角色: ' + cfg.name);
     return;
@@ -11100,6 +11195,7 @@ function selectCharacter9(idx, notify = true) {
     playerRobot = entry.root;
     playerMixer = entry.mixer;
     playerActions = entry.actions;
+    playerHumanRig = entry.humanRig || null;
     player.add(playerRobot);
     for (const m of player.userData.procMeshes) m.visible = false;
     usingGLTF = true;
@@ -11118,19 +11214,34 @@ function selectCharacter9(idx, notify = true) {
     model.scale.setScalar(cfg.scale);
     model.rotation.y = cfg.rotY || 0;
     model.position.y = 0;
+    const humanRig = { head: null, neck: null, spine: null, shL: null, shR: null, morphMeshes: [] };
     model.traverse(o => {
+      if (o.isBone) {
+        const bn = (o.name || '').toLowerCase();
+        if (!humanRig.head && (bn === 'head' || bn.endsWith('head'))) humanRig.head = o;
+        else if (!humanRig.neck && (bn === 'neck' || bn.endsWith('neck'))) humanRig.neck = o;
+        else if (!humanRig.spine && (bn.includes('spine2') || bn.includes('chest'))) humanRig.spine = o;
+        else if (!humanRig.spine && bn.includes('spine1')) humanRig.spine = o;
+        else if (!humanRig.shL && bn.includes('leftshoulder')) humanRig.shL = o;
+        else if (!humanRig.shR && bn.includes('rightshoulder')) humanRig.shR = o;
+      }
       if (o.isMesh) {
         o.castShadow = true;
         o.receiveShadow = true;
         o.frustumCulled = false;
+        if (o.morphTargetDictionary && o.morphTargetInfluences) {
+          humanRig.morphMeshes.push(o);
+        }
         if (o.material) {
-          o.material.envMapIntensity = 1.2;
+          o.material.envMapIntensity = 1.25;
           const mn = (o.material.name || '').toLowerCase();
-          if (mn.includes('eye')) { o.material.roughness = 0.08; o.material.metalness = 0.05; }
-          else if (mn.includes('skin') || mn.includes('body')) { o.material.roughness = 0.52; o.material.metalness = 0.02; }
+          if (mn.includes('eye')) { o.material.roughness = 0.04; o.material.metalness = 0.08; o.material.envMapIntensity = 1.8; }
+          else if (mn.includes('skin') || mn.includes('body') || mn.includes('head')) { o.material.roughness = 0.46; o.material.metalness = 0.01; o.material.envMapIntensity = 1.3; }
+          else if (mn.includes('hair')) { o.material.roughness = 0.34; o.material.metalness = 0.08; o.material.envMapIntensity = 1.35; }
         }
       }
     });
+    cfg.humanRig = humanRig;
 
     const mixer = new THREE.AnimationMixer(model);
     const acts = {};
@@ -11166,8 +11277,11 @@ function selectCharacter9(idx, notify = true) {
   }, undefined, () => {});
 }
 
-// 默认先加载 0 号 RobotExpressive 保证自动化冒烟测试 14 个动画 100% 通过,同时预加载男女真人模型
-selectCharacter9(0, false);
+// 默认加载真人 PBR 角色(Liam,可在🎭角色切换中随时换回其他形象),并预加载男女动捕动作库
+{
+  const savedChar = parseInt(PSTORE.getItem('w1001.char') || '2', 10);
+  selectCharacter9(isNaN(savedChar) ? 2 : savedChar, false);
+}
 setTimeout(() => {
   ensureGenderClips9('feminine', () => {});
   ensureGenderClips9('masculine', () => {});
@@ -13703,6 +13817,44 @@ function loop() {
       if (swimProcOn9) { swimProcOn9 = false; if (playerRobot) playerRobot.visible = true; for (const m of player.userData.procMeshes) m.visible = false; }
       playerMixer.update(dt);
       setPlayerAct(emoteT9 > 0 ? emote9 : restState9 === 1 ? 'Sitting' : (!grounded && vehicle === 0) ? 'Jump' : pMoving ? (keys.shift ? 'Running' : 'Walking') : 'Idle');   // 🎭表情 / 🪑真坐姿 / 🦘跳跃
+      if (playerHumanRig) {
+        if (playerHumanRig.spine) {
+          playerHumanRig.spine.rotation.x += Math.sin(t * 1.55) * (pMoving ? .012 : .026);
+        }
+        const yawDiff = ((faceYaw - prevFaceYaw9 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        prevFaceYaw9 = faceYaw;
+        if (playerRobot) {
+          const bankTarget = pMoving ? Math.max(-.14, Math.min(.14, -yawDiff * 1.8)) : 0;
+          playerRobot.rotation.z += (bankTarget - playerRobot.rotation.z) * Math.min(1, dt * 8);
+        }
+        if (playerHumanRig.head) {
+          let lookY = 0;
+          for (const n of allNpcs) {
+            if (n.talk && n.g.visible) {
+              const d = Math.hypot(n.g.position.x - player.position.x, n.g.position.z - player.position.z);
+              if (d < 10) {
+                const rel = ((Math.atan2(n.g.position.x - player.position.x, n.g.position.z - player.position.z) - player.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+                lookY = Math.max(-.42, Math.min(.42, rel));
+                break;
+              }
+            }
+          }
+          if (!lookY && !pMoving) lookY = Math.sin(t * .42) * .12;
+          playerHumanRig.head.rotation.y += lookY * .55;
+          if (playerHumanRig.neck) playerHumanRig.neck.rotation.y += lookY * .35;
+        }
+        if (playerHumanRig.morphMeshes.length) {
+          playerBlinkT -= dt;
+          const blinkVal = playerBlinkT < 0 ? Math.sin(Math.min(1, -playerBlinkT / .14) * Math.PI) : 0;
+          if (playerBlinkT < -.14) playerBlinkT = 2.8 + Math.random() * 3.4;
+          for (const m of playerHumanRig.morphMeshes) {
+            const d = m.morphTargetDictionary;
+            for (const k of ['eyesClosed', 'eyeBlinkLeft', 'eyeBlinkRight', 'blink']) {
+              if (d[k] !== undefined) m.morphTargetInfluences[d[k]] = blinkVal;
+            }
+          }
+        }
+      }
     }
   } else if (restState9) animRest9(player, restState9, t);
   else if (swimNow9) animSwim(player, t * 6.5, diving ? 0 : swimStroke9);
