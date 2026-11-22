@@ -3289,14 +3289,104 @@ function updateStarGaze() {
     if (!known && Math.abs(sgV.x) < .42 && sgV.y > -.55 && edge > .95) recognizeConst(i);   // 瞄准中央区即认得
   }
 }
-/* --- 天气(按日期随机:晴/雨/雾) --- */
-const WEATHER = (() => {
+/* --- 动态天气系统(按日期初值 + 自然演变 + 实时风场/雨丝/地面薄雾/雷暴云闪) --- */
+let WEATHER = (() => {
   const hx = (location.hash.match(/weather=(\w+)/) || [])[1];   // #weather=storm 调试
   if (['clear', 'rain', 'fog', 'storm'].includes(hx)) return hx;
   const r0 = mulberry32([...new Date().toISOString().slice(0, 10)].reduce((a, c2) => (a * 37 + c2.charCodeAt(0)) | 0, 3))();
   return r0 < .55 ? 'clear' : (r0 < .78 ? 'rain' : (r0 < .9 ? 'fog' : 'storm'));
 })();
-const RAINY = WEATHER === 'rain' || WEATHER === 'storm';
+let RAINY = WEATHER === 'rain' || WEATHER === 'storm';
+const WX_STATE9 = {
+  rainAmt: RAINY ? (WEATHER === 'storm' ? 1 : .65) : 0,
+  stormAmt: WEATHER === 'storm' ? 1 : 0,
+  fogAmt: WEATHER === 'fog' ? 1 : (WEATHER === 'storm' ? .45 : (WEATHER === 'rain' ? .22 : 0)),
+  windX: WEATHER === 'storm' ? 8.5 : (WEATHER === 'rain' ? 3.8 : 1.4),
+  windZ: WEATHER === 'storm' ? 3.6 : 1.2,
+  gust: 1,
+  auto: true,
+  nextShiftT: 195
+};
+const WX_META9 = {
+  clear: { icon: '☀️', label: '晴朗', rain: 0, storm: 0, fog: 0, wx: 1.4, wz: .8 },
+  rain:  { icon: '🌦️', label: '细雨', rain: .68, storm: 0, fog: .24, wx: 3.8, wz: 1.4 },
+  storm: { icon: '⛈️', label: '雷暴', rain: 1, storm: 1, fog: .48, wx: 8.8, wz: 3.8 },
+  fog:   { icon: '🌫️', label: '海雾', rain: 0, storm: 0, fog: 1, wx: 1.0, wz: .6 }
+};
+let rainStreaks9 = null, mistGrp9 = null;
+function syncWeatherBtn9() {
+  const b = $('btnWeather9'); if (!b) return;
+  const m = WX_META9[WEATHER] || WX_META9.clear;
+  b.textContent = `${m.icon} ${m.label}`;
+}
+function ensureWeatherFx9() {
+  if (!rainStreaks9 && !((new Date().getMonth() + 1) % 12 < 3)) {
+    const N = 700, arr = new Float32Array(N * 6), rr = mulberry32(46);
+    for (let i = 0; i < N; i++) {
+      const x = (rr() - .5) * 105, y = rr() * 58, z = (rr() - .5) * 105;
+      arr[i * 6] = x; arr[i * 6 + 1] = y; arr[i * 6 + 2] = z;
+      arr[i * 6 + 3] = x - .2; arr[i * 6 + 4] = y + 1.6; arr[i * 6 + 5] = z;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    rainStreaks9 = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xc8dff4, transparent: true, opacity: 0, depthWrite: false }));
+    rainStreaks9.frustumCulled = false;
+    scene.add(rainStreaks9);
+  }
+  if (!mistGrp9) {
+    mistGrp9 = new THREE.Group();
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const cx = cv.getContext('2d');
+    const gr = cx.createRadialGradient(64, 64, 4, 64, 64, 62);
+    gr.addColorStop(0, 'rgba(224,236,246,0.34)');
+    gr.addColorStop(.55, 'rgba(205,220,235,0.14)');
+    gr.addColorStop(1, 'rgba(205,220,235,0)');
+    cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+    const mTex = new THREE.CanvasTexture(cv);
+    const mMat = new THREE.MeshBasicMaterial({ map: mTex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+    const mGeo = new THREE.PlaneGeometry(46, 16);
+    const rr = mulberry32(91);
+    for (let i = 0; i < 16; i++) {
+      const m = new THREE.Mesh(mGeo, mMat.clone());
+      m.position.set((rr() - .5) * 150, 2.5 + rr() * 7, (rr() - .5) * 150);
+      m.userData = { ox: m.position.x, oz: m.position.z, oy: m.position.y, ph: rr() * 6.28 };
+      mistGrp9.add(m);
+    }
+    scene.add(mistGrp9);
+  }
+  if (!boltLine9) {
+    const bg9 = new THREE.BufferGeometry();
+    bg9.setAttribute('position', new THREE.BufferAttribute(new Float32Array(14 * 3), 3));
+    boltLine9 = new THREE.Line(bg9, new THREE.LineBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+    boltLine9.frustumCulled = false; boltLine9.name = 'boltLine9'; scene.add(boltLine9);
+  }
+  if (!rainbow9) {
+    rainbow9 = new THREE.Group();
+    [0xff4a4a, 0xff9a3a, 0xf2d24a, 0x5ac25a, 0x4a9ae6, 0x5a5ae6, 0x9a5ae6].forEach((c9, i9) => {
+      rainbow9.add(new THREE.Mesh(new THREE.TorusGeometry(300 - i9 * 4.5, 2.1, 5, 56, Math.PI),
+        new THREE.MeshBasicMaterial({ color: c9, transparent: true, opacity: .15, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })));
+    });
+    rainbow9.position.set(-520, -128, -880); rainbow9.visible = false;
+    scene.add(rainbow9);
+  }
+}
+function setWeather9(mode, notify = true) {
+  if (!WX_META9[mode]) return;
+  WEATHER = mode;
+  RAINY = mode === 'rain' || mode === 'storm';
+  ensureWeatherFx9();
+  syncWeatherBtn9();
+  if (notify) {
+    const m = WX_META9[mode];
+    toast(`${m.icon} 天气正在渐变为「${m.label}」`);
+  }
+}
+syncWeatherBtn9();
+$('btnWeather9')?.addEventListener('click', () => {
+  const order = ['clear', 'rain', 'storm', 'fog'];
+  WX_STATE9.auto = false;
+  setWeather9(order[(order.indexOf(WEATHER) + 1) % order.length], true);
+});
 const PHCH9 = [
   { id: 'umb', name: '打伞的居民', ck: () => RAINY && allNpcs.some(n9 => n9.g.visible && Math.hypot(n9.g.position.x - player.position.x, n9.g.position.z - player.position.z) < 12) },
   { id: 'dol', name: '跃水的海豚', ck: () => dolphins9.some(d9 => d9.visible && d9.position.y > -0.2 && Math.hypot(d9.position.x - player.position.x, d9.position.z - player.position.z) < 40) },
@@ -3518,6 +3608,7 @@ function strike9() {
 }
 if (WEATHER === 'fog') { scene.fog.near = 110; scene.fog.far = 520; }
 if (WEATHER === 'storm') { scene.fog.near = 100; scene.fog.far = 680; }
+ensureWeatherFx9();
 /* --- 节日粒子(雪 / 花瓣 / 星火,跟随玩家) --- */
 let festPts = null;
 if (FESTIVAL) {
@@ -3751,29 +3842,37 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
     u9.uCamY.value = camera.position.y;
     u9.uHaze.value.copy(skyCol).lerp(_air9.setRGB(.62, .74, .86), .45);              // 雾底色偏天青
     u9.uSunHaze.value.setRGB(1, .86 - (1 - da) * .3, .66 - (1 - da) * .34);
-    u9.uDens.value = (WEATHER === 'fog' ? .0016 : WEATHER === 'storm' ? .0011 : WEATHER === 'rain' ? .0008 : .00042) * (.35 + da * .65);
+    u9.uDens.value = (.00042 + WX_STATE9.rainAmt * .00048 + WX_STATE9.stormAmt * .00035 + WX_STATE9.fogAmt * .00118) * (.35 + da * .65);
     u9.uAmt.value = diving ? 0 : .78 * Math.min(ST9().air, 1.35);                     // 水下归潜水雾管
     u9.uDens.value *= ST9().air;
     airPass9.enabled = !diving && quality > 0;
   }
+  scene.fog.near = 560 - WX_STATE9.fogAmt * 450 - WX_STATE9.stormAmt * 180 - WX_STATE9.rainAmt * 120;
+  scene.fog.far = 2600 - WX_STATE9.fogAmt * 2080 - WX_STATE9.stormAmt * 620 - WX_STATE9.rainAmt * 720;
   sky.position.set(player.position.x, 0, player.position.z);   // 🌐 穹盒随行:半径 1050,外圈岛出穹=天空撕成穹内/裸背景两截
   if (!MOBILE) {
     renderer.toneMappingExposure = .73 - da * .18 + ST9().expo;             // ☀️ 白日收曝光(Sky 穹顶是 HDR 亮度),夜保 .73 灯火氛围
     if (bloomPass9) bloomPass9.threshold = .85 + da * 2.15;    // 🌸 泛光昼高夜低(昼 3.0):物理天空线性辐亮度>1.35,阈值低于它=整帧白纱;3 与 9 已无肉眼差,留 3 给日轮辉光
   }
-  const wxMul = WEATHER === 'storm' ? .38 : WEATHER === 'rain' ? .55 : (WEATHER === 'fog' ? .75 : 1);
-  sun.intensity = (.06 + 2.7 * da) * wxMul;
-  hemi.intensity = (.16 + .62 * da + Math.min(dusk, 1) * .12) * (WEATHER === 'clear' ? 1 : .85);   // 黄昏垫底光:背光面留出层次
-  { // ☁️ 云随昼夜染色:建云时是定死的白,夜里像贴上去的纸片——现随时段沉暗/染暖(~180 个 sprite,setRGB 开销可忽略)
+  const wxMul = 1 - WX_STATE9.rainAmt * .45 - WX_STATE9.stormAmt * .22 - WX_STATE9.fogAmt * .25;
+  sun.intensity = (.06 + 2.7 * da) * Math.max(.25, wxMul);
+  hemi.intensity = (.16 + .62 * da + Math.min(dusk, 1) * .12) * (1 - WX_STATE9.rainAmt * .16 - WX_STATE9.fogAmt * .1);   // 黄昏垫底光:背光面留出层次
+  { // ☁️ 云随昼夜+天气+闪电染色:阴雨变厚重铅灰,闪电瞬间亮白透云
     const dk9 = Math.min(dusk, 1);
+    const flashBoost = (typeof boltV9 === 'number' && boltV9 > .01) ? boltV9 * .85 : 0;
     let cr9 = .15 + .85 * da + dk9 * .55 * (1 - da * .5), cg9 = .18 + .82 * da + dk9 * .12 * (1 - da * .5), cb9 = .26 + .74 * da - dk9 * .1;
-    const cwx9 = WEATHER === 'clear' ? 1 : (WEATHER === 'fog' ? .8 : .62);
-    cr9 *= cwx9; cg9 *= cwx9; cb9 *= cwx9;
+    const cwx9 = 1 - WX_STATE9.rainAmt * .38 - WX_STATE9.stormAmt * .22 - WX_STATE9.fogAmt * .18;
+    cr9 = cr9 * cwx9 + flashBoost * .85; cg9 = cg9 * cwx9 + flashBoost * .92; cb9 = cb9 * cwx9 + flashBoost;
     const cbst9 = 1 + da * .22; cr9 *= cbst9; cg9 *= cbst9; cb9 *= cbst9;   // ☀️ 白日云提亮(sprite 色值可>1)
     for (const cg2 of clouds) for (const s2 of cg2.children) { const sh2 = s2.userData.sh || 1; s2.material.color.setRGB(cr9 * sh2, cg9 * sh2, cb9 * sh2); }
+    if (typeof cloudMat9 !== 'undefined' && cloudMat9) {
+      cloudMat9.color.setRGB(Math.min(1, cr9 * .95), Math.min(1, cg9 * .97), Math.min(1, cb9));
+      cloudMat9.opacity = Math.min(.92, .70 + WX_STATE9.rainAmt * .14 + WX_STATE9.stormAmt * .08);
+    }
   }
-  if (WEATHER === 'rain') skyCol.lerp(new THREE.Color(0x6a7480), .4);
-  if (WEATHER === 'storm') skyCol.lerp(new THREE.Color(0x424a56), .62);
+  if (WX_STATE9.rainAmt > .01) skyCol.lerp(new THREE.Color(0x6a7480), WX_STATE9.rainAmt * .45);
+  if (WX_STATE9.stormAmt > .01) skyCol.lerp(new THREE.Color(0x424a56), WX_STATE9.stormAmt * .55);
+  if (WX_STATE9.fogAmt > .01) skyCol.lerp(new THREE.Color(0xb8c8d4), WX_STATE9.fogAmt * .42);
   const sa = clamp((p + .1) / .8, 0, 1) * Math.PI;   // 日出(p≈0)→正午(p≈.3)→日落(p≈.7)
   const elev = Math.sin(sa) * da - .32 * (1 - da);   // 夜里太阳沉入地平线下
   sunDirN.set(Math.cos(sa), Math.max(elev, -0.4), .42).normalize();
@@ -13303,18 +13402,17 @@ function worldFx9(dt, t, pMoving, bh) {
     if (lastHr9 === -1) lastHr9 = hr9;
     else if (hr9 !== lastHr9) { lastHr9 = hr9; if (curDA > .35) { blip(392); setTimeout(() => blip(311), 380); } }
   }
-  /* 🌧️ 雨落水面涟漪 */
-  if (RAINY && !MOBILE && !diving) {
+  /* 🌧️ 雨落水面与地面水洼涟漪 */
+  if ((RAINY || WX_STATE9.rainAmt > .15) && !MOBILE && !diving) {
     ringT9 -= dt;
     if (ringT9 <= 0) {
-      ringT9 = .09;
-      const rx9 = player.position.x + (Math.random() - .5) * 70, rz9 = player.position.z + (Math.random() - .5) * 70;
-      if (heightMesh(rx9, rz9) < -.4) {
-        const rg9 = new THREE.Mesh(ringGeo9, ringMat9);
-        rg9.rotation.x = -Math.PI / 2; rg9.position.set(rx9, tideY + .2, rz9);
-        scene.add(rg9); rings9.push({ m: rg9, life: .9 });
-        if (rings9.length > 26) { const o9 = rings9.shift(); scene.remove(o9.m); }
-      }
+      ringT9 = WEATHER === 'storm' ? .05 : .085;
+      const rx9 = player.position.x + (Math.random() - .5) * 65, rz9 = player.position.z + (Math.random() - .5) * 65;
+      const hy9 = heightMesh(rx9, rz9);
+      const rg9 = new THREE.Mesh(ringGeo9, ringMat9);
+      rg9.rotation.x = -Math.PI / 2; rg9.position.set(rx9, hy9 < -.4 ? tideY + .2 : hy9 + .12, rz9);
+      scene.add(rg9); rings9.push({ m: rg9, life: .85 });
+      if (rings9.length > 34) { const o9 = rings9.shift(); scene.remove(o9.m); }
     }
   }
   for (let i9 = rings9.length - 1; i9 >= 0; i9--) { const r9 = rings9[i9]; r9.life -= dt; if (r9.life < 0) { scene.remove(r9.m); rings9.splice(i9, 1); } else r9.m.scale.setScalar(1 + (0.9 - r9.life) * 4.5); }
@@ -14411,18 +14509,76 @@ function loop() {
   }
   /* 雨幕跟随玩家 + 高处风声 */
   worldFx9(dt, t, pMoving, bh);   // 🌍 世界特效与系统节拍(提为具名函数,主循环瘦身)
-    if (rainPts) {
+  /* 动态天气渐变 + 风场雨丝 + 地面薄雾 + 雷暴 */
+  {
+    const tgt = WX_META9[WEATHER] || WX_META9.clear;
+    const rate = Math.min(1, dt * .28);
+    WX_STATE9.rainAmt += (tgt.rain - WX_STATE9.rainAmt) * rate;
+    WX_STATE9.stormAmt += (tgt.storm - WX_STATE9.stormAmt) * rate;
+    WX_STATE9.fogAmt += (tgt.fog - WX_STATE9.fogAmt) * rate;
+    WX_STATE9.windX += (tgt.wx - WX_STATE9.windX) * rate;
+    WX_STATE9.windZ += (tgt.wz - WX_STATE9.windZ) * rate;
+    WX_STATE9.gust = 1 + .32 * Math.sin(t * .37) + .22 * Math.sin(t * 1.3 + 1.4);
+    if (WX_STATE9.auto) {
+      WX_STATE9.nextShiftT -= dt;
+      if (WX_STATE9.nextShiftT <= 0) {
+        WX_STATE9.nextShiftT = 160 + Math.random() * 110;
+        const pool = WEATHER === 'clear' ? ['clear', 'rain', 'fog'] : WEATHER === 'rain' ? ['clear', 'storm', 'rain'] : WEATHER === 'storm' ? ['rain', 'clear'] : ['clear', 'rain'];
+        setWeather9(pool[Math.floor(Math.random() * pool.length)], false);
+      }
+    }
+  }
+  if (rainPts) {
     rainPts.position.copy(player.position);
     const rp3 = rainPts.geometry.attributes.position, ru9 = rainPts.userData;
+    rainPts.material.opacity = ru9.snow ? (.9 * Math.max(WX_STATE9.rainAmt, .35)) : (WX_STATE9.rainAmt * .55);
     for (let i = 0; i < rp3.count; i++) {
       let y3 = rp3.getY(i) - ru9.fall * dt;
       if (y3 < -4) y3 = 55;
       rp3.setY(i, y3);
-      if (ru9.snow) rp3.setX(i, rp3.getX(i) + Math.sin(y3 * .4 + i) * 2.4 * dt);   // 雪花横飘
+      if (ru9.snow) rp3.setX(i, rp3.getX(i) + (Math.sin(y3 * .4 + i) * 2.4 + WX_STATE9.windX * .35) * dt);
     }
     rp3.needsUpdate = true;
   }
-  if (WEATHER === 'storm') {   // ⛈️ 闪电与远雷
+  if (rainStreaks9) {
+    const rVis = WX_STATE9.rainAmt > .02 && !diving;
+    rainStreaks9.visible = rVis;
+    if (rVis) {
+      rainStreaks9.position.copy(player.position);
+      rainStreaks9.material.opacity = WX_STATE9.rainAmt * .48;
+      const sp = rainStreaks9.geometry.attributes.position;
+      const fallSpd = (44 + WX_STATE9.stormAmt * 24) * dt;
+      const wx = WX_STATE9.windX * WX_STATE9.gust, wz = WX_STATE9.windZ * WX_STATE9.gust;
+      const streakLen = .034 + WX_STATE9.stormAmt * .018;
+      for (let i = 0; i < sp.count; i += 2) {
+        let x = sp.getX(i) + wx * dt, y = sp.getY(i) - fallSpd, z = sp.getZ(i) + wz * dt;
+        if (y < -4) { y = 52 + (i % 7); x = ((x + 52.5) % 105 + 105) % 105 - 52.5; z = ((z + 52.5) % 105 + 105) % 105 - 52.5; }
+        sp.setXYZ(i, x, y, z);
+        sp.setXYZ(i + 1, x - wx * streakLen, y + (44 + WX_STATE9.stormAmt * 24) * streakLen, z - wz * streakLen);
+      }
+      sp.needsUpdate = true;
+    }
+  }
+  if (mistGrp9) {
+    const mistStrength = Math.max(WX_STATE9.fogAmt * .68, WX_STATE9.rainAmt * .24, Math.max(0, .48 - curDA) * .35);
+    mistGrp9.visible = mistStrength > .03 && !diving;
+    if (mistGrp9.visible) {
+      mistGrp9.position.set(player.position.x, 0, player.position.z);
+      for (const m of mistGrp9.children) {
+        m.position.x += WX_STATE9.windX * .45 * dt;
+        m.position.z += WX_STATE9.windZ * .45 * dt;
+        if (m.position.x > 75) m.position.x -= 150;
+        if (m.position.x < -75) m.position.x += 150;
+        if (m.position.z > 75) m.position.z -= 150;
+        if (m.position.z < -75) m.position.z += 150;
+        const ghM = Math.max(heightMesh(player.position.x + m.position.x, player.position.z + m.position.z), tideY);
+        m.position.y = ghM + m.userData.oy + Math.sin(t * .35 + m.userData.ph) * 1.1;
+        m.lookAt(camera.position.x, m.position.y, camera.position.z);
+        m.material.opacity = mistStrength * (.65 + .35 * Math.sin(t * .4 + m.userData.ph));
+      }
+    }
+  }
+  if (WEATHER === 'storm' || WX_STATE9.stormAmt > .2) {   // ⛈️ 闪电与远雷
     boltT9 -= dt;
     if (boltT9 <= 0) { boltT9 = 7 + Math.random() * 15; strike9(); }
     if (boltV9 > .01) { hemi.intensity *= 1 + boltV9 * 2.4; sun.intensity *= 1 + boltV9 * 1.2; if (boltLine9) boltLine9.material.opacity = boltV9 * (boltV9 > .35 ? 1 : .5); boltV9 *= Math.exp(-dt * 7); }
