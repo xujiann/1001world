@@ -2667,6 +2667,25 @@ function playBirdChirp9(panVal = 0) {
     o.start(t0); o.stop(t0 + .18);
   } catch (e) {}
 }
+let lastStepSign9 = 1;
+function playFootstep9(kind = 'grass') {
+  try {
+    if (!actx || !musicOn) return;
+    const t0 = actx.currentTime, dur = kind === 'swamp' ? .14 : .07;
+    const len = Math.floor(actx.sampleRate * dur);
+    const b = actx.createBuffer(1, len, actx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const s = actx.createBufferSource(); s.buffer = b;
+    const f = actx.createBiquadFilter();
+    f.type = kind === 'stone' ? 'bandpass' : 'lowpass';
+    f.frequency.value = kind === 'stone' ? 1100 : kind === 'sand' ? 1800 : kind === 'swamp' ? 360 : 850;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(kind === 'swamp' ? .05 : .026, t0);
+    g.gain.exponentialRampToValueAtTime(.0005, t0 + dur);
+    s.connect(f).connect(g).connect(actx.destination);
+    s.start(t0);
+  } catch (e) {}
+}
 function initAudio() {
   if (actx) return;
   try {
@@ -12236,7 +12255,7 @@ try {
 } catch (e) {}
 
 /* ---------- 相机与输入 ---------- */
-let camYaw = Math.PI, camPitch = .26, camDist = 11;
+let camYaw = Math.PI, camPitch = .22, camDist = 9.5;
 try {
   const qp = new URLSearchParams(location.search);
   const iq = (qp.get('isle') || '').trim().toLowerCase();
@@ -12594,7 +12613,7 @@ const endPtr = e => {
   if (dragCam && e.pointerId === dragCam.id) dragCam = null;
 };
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
-addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 7, 120); }, { passive: true });   // 最远 120:全岛鸟瞰
+addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * .001), 3.2, 120); }, { passive: true });   // 最近 3.2m 过肩漫游 · 最远 120 全岛鸟瞰
 
 /* ---------- 主循环 ---------- */
 /* 📦 HINTS → w-data2.js */
@@ -13515,9 +13534,11 @@ function loop() {
   } else {
     const cp = camPitch, off = new THREE.Vector3(Math.sin(camYaw) * Math.cos(cp), Math.sin(cp), Math.cos(camYaw) * Math.cos(cp)).multiplyScalar(camDist);
     const target = v3.copy(player.position).add(off);
-    target.y = Math.max(target.y, height(target.x, target.z) + 1.4, .8);
+    target.y = Math.max(target.y, surfaceGround9(target.x, target.z, target.y) + .9, .8);
     camera.position.lerp(target, Math.min(1, dt * 8));
-    camera.lookAt(player.position.x, player.position.y + 2.4, player.position.z);
+    const lookUp9 = camDist < 7 ? 1.85 : 2.35;
+    const lookFwd9 = camDist < 7 ? 1.6 : 0;
+    camera.lookAt(player.position.x - Math.sin(camYaw) * lookFwd9, player.position.y + lookUp9, player.position.z - Math.cos(camYaw) * lookFwd9);
   }
   if (introT9 > 0 && !diving && !restState9) {   // 🎬 开场运镜覆盖
     if (!modalOpen) introT9 = Math.max(0, introT9 - dt);
@@ -13530,11 +13551,18 @@ function loop() {
       player.position.z + Math.sin(ia9) * (16 + 240 * k9)), Math.min(1, dt * 3));
     camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
   }
-  if (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && !restState9) {   // 💨 走动镜头呼吸(移出开场块,始终生效)
-    camera.position.y += Math.sin(walkPhase * 2) * (keys.shift ? .09 : .05);
-    camera.position.x += Math.cos(camYaw) * Math.sin(walkPhase) * .04;
+  if (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && !restState9) {   // 💨 走动镜头呼吸 + 真实脚步声
+    camera.position.y += Math.sin(walkPhase * 2) * (keys.shift ? .085 : .045);
+    camera.position.x += Math.cos(camYaw) * Math.sin(walkPhase) * .035;
+    const stSign9 = Math.sin(walkPhase) >= 0 ? 1 : -1;
+    if (stSign9 !== lastStepSign9) {
+      lastStepSign9 = stSign9;
+      const onStruct9 = bridgeHeight(player.position.x, player.position.z) != null || pierHeight(player.position.x, player.position.z) != null || stadiumHeight(player.position.x, player.position.z) != null;
+      const ghStep9 = heightMesh(player.position.x, player.position.z);
+      playFootstep9(inSwamp9(player.position.x, player.position.z, ghStep9) ? 'swamp' : onStruct9 ? 'stone' : ghStep9 < 2.2 ? 'sand' : 'grass');
+    }
   }
-  { const tf9 = (!REDUCE9 && grounded && pMoving && vehicle === 0 && !diving && !restState9 && keys.shift) ? 62 : 58;   // 冲刺微扩视野 = 速度感
+  { const tf9 = (!REDUCE9 && pMoving && !diving && !restState9) ? (vehicle === 3 ? 66 : (grounded && vehicle === 0 && keys.shift ? 63 : 56)) : 56;
     if (Math.abs(camera.fov - tf9) > .05) { camera.fov += (tf9 - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); } }
 
   /* 动画:水 / 云 / 鱼 / 海鸥 / 篝火 / 鸟 */
@@ -14281,7 +14309,8 @@ function loop() {
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
   $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
-  $('zoneName').textContent = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
   syncBuffs(dt);
