@@ -11,6 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=24';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -6538,6 +6539,7 @@ await buildStep9("多元宇宙", 50);
 /* ================= 六新岛:山海经/桃花源/一千零一夜/海底两万里/B-612/侏罗纪 ================= */
 let nautilusHull = null, nemFishSchool = null, trexGrp = null, brachioNeck = null;
 let oceanFish9 = null, OCEAN_FN9 = 0, fishData9 = [], fishCx9 = 1e9, fishCz9 = 1e9, rays9 = [], redistributeOceanFish9 = null;
+let gpgpuFish9 = null, sharks9 = [], marineYukaMgr9 = null, marineMixers9 = [], upgradeMarineGLB9 = null;
 const raptorGrps = [], nightLamps = [];
 let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红眼
 /* —— 山海经 · 异兽之野 —— */
@@ -6990,6 +6992,220 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
     rg.userData = { ph: ri * 1.57, r: 16 + ri * 5, sp: .24 + ri * .03 };
     scene.add(rg); rays9.push(rg);
   }
+  // 🐟🔥 Three.js GPUComputationRenderer 1,024尾立体鱼阵引擎 (GPGPU Ping-Pong FBO)
+  try {
+    const GW = MOBILE ? 16 : 32, GN = GW * GW;
+    const gpu = new GPUComputationRenderer(GW, GW, renderer);
+    if (renderer.capabilities.isWebGL2) gpu.setDataType(THREE.HalfFloatType);
+    const dtPos = gpu.createTexture(), dtVel = gpu.createTexture();
+    const pArr = dtPos.image.data, vArr = dtVel.image.data;
+    const rrG = mulberry32(707);
+    for (let i = 0; i < GN; i++) {
+      const a = rrG() * 6.2832, r = 4 + rrG() * 18;
+      pArr[i * 4] = 26 + Math.cos(a) * r;
+      pArr[i * 4 + 1] = -1.2 - rrG() * 4.5;
+      pArr[i * 4 + 2] = 448 + Math.sin(a) * r;
+      pArr[i * 4 + 3] = 1;
+      vArr[i * 4] = -Math.sin(a) * 3.2;
+      vArr[i * 4 + 1] = (rrG() - .5) * .6;
+      vArr[i * 4 + 2] = Math.cos(a) * 3.2;
+      vArr[i * 4 + 3] = rrG() * 6.2832;
+    }
+    const posShader = `
+      uniform float uDelta;
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec4 p = texture2D(texturePosition, uv);
+        vec4 v = texture2D(textureVelocity, uv);
+        p.xyz += v.xyz * uDelta;
+        p.y = clamp(p.y, -7.8, -0.65);
+        gl_FragColor = p;
+      }`;
+    const velShader = `
+      uniform float uTime;
+      uniform float uDelta;
+      uniform vec3 uCenter;
+      uniform vec3 uPredator;
+      void main() {
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec3 pos = texture2D(texturePosition, uv).xyz;
+        vec4 velData = texture2D(textureVelocity, uv);
+        vec3 vel = velData.xyz;
+        vec3 sep = vec3(0.0), ali = vec3(0.0), coh = vec3(0.0);
+        float cnt = 0.0;
+        for (float y = 0.0; y < 1.0; y += 0.125) {
+          for (float x = 0.0; x < 1.0; x += 0.125) {
+            vec2 nuv = vec2(x + 0.0625, y + 0.0625);
+            vec3 nPos = texture2D(texturePosition, nuv).xyz;
+            vec3 nVel = texture2D(textureVelocity, nuv).xyz;
+            vec3 diff = pos - nPos;
+            float d2 = dot(diff, diff);
+            if (d2 > 0.001 && d2 < 36.0) {
+              if (d2 < 3.5) sep += diff / max(d2, 0.05);
+              ali += nVel;
+              coh += nPos;
+              cnt += 1.0;
+            }
+          }
+        }
+        vec3 toC = uCenter - pos;
+        vec3 swirl = normalize(vec3(-toC.z, 0.0, toC.x) + vec3(0.001)) * 3.8;
+        vec3 acc = toC * vec3(0.32, 0.6, 0.32) + swirl;
+        if (cnt > 0.0) {
+          acc += sep * 2.4 + (ali / cnt - vel) * 0.85 + (coh / cnt - pos) * 0.35;
+        }
+        vec3 pDiff = pos - uPredator;
+        float pd2 = dot(pDiff, pDiff);
+        if (pd2 < 64.0 && pd2 > 0.01) acc += normalize(pDiff) * (18.0 / max(pd2, 0.8));
+        vel += acc * uDelta;
+        float sp = length(vel);
+        if (sp > 5.8) vel = (vel / sp) * 5.8;
+        else if (sp < 2.2) vel = (vel / max(sp, 0.01)) * 2.2;
+        gl_FragColor = vec4(vel, velData.w);
+      }`;
+    const posVar = gpu.addVariable('texturePosition', posShader, dtPos);
+    const velVar = gpu.addVariable('textureVelocity', velShader, dtVel);
+    gpu.setVariableDependencies(posVar, [posVar, velVar]);
+    gpu.setVariableDependencies(velVar, [posVar, velVar]);
+    posVar.material.uniforms.uDelta = { value: 0.016 };
+    velVar.material.uniforms.uTime = { value: 0 };
+    velVar.material.uniforms.uDelta = { value: 0.016 };
+    velVar.material.uniforms.uCenter = { value: new THREE.Vector3(26, -2.6, 448) };
+    velVar.material.uniforms.uPredator = { value: new THREE.Vector3(0, -2, 430) };
+    if (gpu.init() === null) {
+      const gGeo = makeFishGeo9(0.68);
+      const refArr = new Float32Array(GN * 2);
+      for (let y = 0; y < GW; y++) for (let x = 0; x < GW; x++) {
+        const k = y * GW + x;
+        refArr[k * 2] = (x + 0.5) / GW;
+        refArr[k * 2 + 1] = (y + 0.5) / GW;
+      }
+      gGeo.setAttribute('aGpuRef', new THREE.InstancedBufferAttribute(refArr, 2));
+      const gMat = new THREE.MeshPhysicalMaterial({ color: 0x8cc8f0, roughness: .18, metalness: .38, clearcoat: .9 });
+      const gUni = {
+        uPosTex: { value: null },
+        uVelTex: { value: null },
+        uTime: fishSwimUni9.uTime
+      };
+      gMat.onBeforeCompile = sh => {
+        sh.uniforms.uPosTex = gUni.uPosTex;
+        sh.uniforms.uVelTex = gUni.uVelTex;
+        sh.uniforms.uSwimTime = gUni.uTime;
+        sh.vertexShader = 'attribute vec2 aGpuRef;\nuniform sampler2D uPosTex;\nuniform sampler2D uVelTex;\nuniform float uSwimTime;\n' + sh.vertexShader;
+        sh.vertexShader = sh.vertexShader.replace(
+          '#include <beginnormal_vertex>',
+          `#include <beginnormal_vertex>
+          vec3 gVelN = normalize(texture2D(uVelTex, aGpuRef).xyz + vec3(0.0, 0.0, 0.001));
+          vec3 gRightN = normalize(cross(vec3(0.0, 1.0, 0.0), gVelN));
+          vec3 gUpN = cross(gVelN, gRightN);
+          objectNormal = mat3(gRightN, gUpN, gVelN) * objectNormal;`
+        );
+        sh.vertexShader = sh.vertexShader.replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          vec4 gPos4 = texture2D(uPosTex, aGpuRef);
+          vec4 gVel4 = texture2D(uVelTex, aGpuRef);
+          vec3 gVel = normalize(gVel4.xyz + vec3(0.0, 0.0, 0.001));
+          vec3 gRight = normalize(cross(vec3(0.0, 1.0, 0.0), gVel));
+          vec3 gUp = cross(gVel, gRight);
+          float fMask = smoothstep(0.25, -0.5, transformed.z);
+          transformed.x += sin(transformed.z * 7.5 - uSwimTime * 10.5 + gVel4.w) * 0.11 * fMask;
+          transformed = gPos4.xyz + mat3(gRight, gUp, gVel) * transformed;`
+        );
+      };
+      const gMesh = new THREE.InstancedMesh(gGeo, gMat, GN);
+      gMesh.frustumCulled = false;
+      const gPal = [0x9ed8ff, 0x70b8e8, 0xb8e6ff, 0x5aa4d8, 0xd8f0ff].map(c => new THREE.Color(c));
+      for (let i = 0; i < GN; i++) gMesh.setColorAt(i, gPal[i % gPal.length]);
+      if (gMesh.instanceColor) gMesh.instanceColor.needsUpdate = true;
+      scene.add(gMesh);
+      gpgpuFish9 = { gpu, posVar, velVar, gUni, mesh: gMesh };
+    }
+  } catch (e) {}
+
+  // 🦈 礁鲨群 (Lathe连续流线体 + 挤出背鳍/胸鳍/尾鳍 + Yuka 3D AI)
+  {
+    const sPts = [];
+    for (let i = 0; i <= 18; i++) {
+      const t = i / 18, z = 1.85 - t * 3.7;
+      const r = t < 0.28 ? Math.sin((t / 0.28) * Math.PI * 0.5) * 0.34 : 0.34 * Math.pow(1 - (t - 0.28) / 0.72, 0.8) + 0.04;
+      sPts.push(new THREE.Vector2(Math.max(0.01, r), z));
+    }
+    const sBodyG = new THREE.LatheGeometry(sPts, 16); sBodyG.rotateX(Math.PI / 2); sBodyG.scale(0.84, 1.02, 1);
+    const sDorShape = new THREE.Shape();
+    sDorShape.moveTo(0.28, 0); sDorShape.quadraticCurveTo(0.05, 0.68, -0.30, 0.62); sDorShape.quadraticCurveTo(-0.14, 0.25, -0.22, 0);
+    const sDorG = new THREE.ExtrudeGeometry(sDorShape, { depth: 0.032, bevelEnabled: true, bevelSize: 0.01, bevelThickness: 0.008 });
+    sDorG.rotateY(Math.PI / 2); sDorG.translate(-0.016, 0.26, 0.12);
+    const sTailShape = new THREE.Shape();
+    sTailShape.moveTo(0, 0.05); sTailShape.quadraticCurveTo(-0.32, 0.55, -0.68, 0.68); sTailShape.quadraticCurveTo(-0.42, 0.12, -0.35, 0);
+    sTailShape.quadraticCurveTo(-0.38, -0.14, -0.52, -0.44); sTailShape.quadraticCurveTo(-0.22, -0.22, 0, -0.05);
+    const sTailG = new THREE.ExtrudeGeometry(sTailShape, { depth: 0.028, bevelEnabled: false });
+    sTailG.rotateY(Math.PI / 2); sTailG.translate(-0.014, 0, 0);
+    const sPecShape = new THREE.Shape();
+    sPecShape.moveTo(0, 0.08); sPecShape.quadraticCurveTo(0.42, -0.05, 0.64, -0.34); sPecShape.quadraticCurveTo(0.28, -0.28, 0, -0.10);
+    const sPecG = new THREE.ExtrudeGeometry(sPecShape, { depth: 0.024, bevelEnabled: false });
+    sPecG.rotateX(Math.PI * 0.44);
+    const sMat9 = new THREE.MeshPhysicalMaterial({ color: 0x455868, roughness: .22, metalness: .08, clearcoat: .82 });
+    const sBellyM9 = new THREE.MeshPhysicalMaterial({ color: 0xdce4ea, roughness: .28, clearcoat: .6 });
+    for (let si = 0; si < 2; si++) {
+      const sg = new THREE.Group();
+      sg.add(new THREE.Mesh(sBodyG, sMat9));
+      const sbl = new THREE.Mesh(sBodyG, sBellyM9); sbl.scale.set(0.82, 0.66, 0.94); sbl.position.y = -0.10; sg.add(sbl);
+      sg.add(new THREE.Mesh(sDorG, sMat9));
+      for (const sx of [-1, 1]) {
+        const sp = new THREE.Mesh(sPecG, sMat9); sp.scale.x = sx; sp.position.set(sx * 0.24, -0.14, 0.35); sg.add(sp);
+      }
+      const tailGrp = new THREE.Group(); tailGrp.position.set(0, 0, -1.78);
+      tailGrp.add(new THREE.Mesh(sTailG, sMat9)); sg.add(tailGrp);
+      sg.position.set(20 + si * 24, -1.8, 455 - si * 18);
+      sg.userData = { ph: si * 3.1, tailGrp };
+      scene.add(sg); sharks9.push(sg);
+    }
+  }
+
+  // 🧠 Yuka.js 3D 海洋生物群体 AI 引擎 (驱动蝠鲼 / 礁鲨绕岛避障、追逐鱼阵、自然压弯游动)
+  marineYukaMgr9 = new YUKA.EntityManager();
+  {
+    const mSep = new YUKA.SeparationBehavior([]);
+    mSep.weight = 1.8;
+    const mVehs = [];
+    const addMarineVeh = (mesh, startX, startY, startZ, maxSpd, homeX, homeZ) => {
+      const v = new YUKA.Vehicle();
+      v.position.set(startX, startY, startZ);
+      v.maxSpeed = maxSpd;
+      v.maxForce = 8;
+      v.updateOrientation = false;
+      const wander = new YUKA.WanderBehavior();
+      wander.radius = 4.5; wander.distance = 8; wander.jitter = 3.2; wander.weight = 1.2;
+      const seek = new YUKA.SeekBehavior(new YUKA.Vector3(homeX, startY, homeZ));
+      seek.weight = 0.65;
+      v.steering.add(wander); v.steering.add(seek); v.steering.add(mSep);
+      mVehs.push(v); marineYukaMgr9.add(v);
+      mesh.userData.yuka = { v, seek, homeX, homeZ, prevYaw: 0 };
+    };
+    mSep.entities = mVehs;
+    rays9.forEach((rg, ri) => addMarineVeh(rg, 10 + ri * 8, -1.1, 435 + ri * 6, 4.4, 24, 442));
+    sharks9.forEach((sg, si) => addMarineVeh(sg, 20 + si * 24, -2.0, 455 - si * 18, 5.8, 26, 448));
+  }
+
+  // 📦 外部写实海洋生物 .glb 自动升级挂钩 (支持后期放入 assets/models/dolphin.glb 等直接替换并驱动骨骼动画)
+  upgradeMarineGLB9 = (kind, url, scale = 1) => {
+    const targets = kind === 'dolphin' ? dolphins9 : kind === 'shark' ? sharks9 : kind === 'ray' ? rays9 : kind === 'turtle' ? turtles9 : kind === 'whale' && mobyWhale ? [mobyWhale] : [];
+    if (!targets.length) return;
+    new GLTFLoader().load(url, gltf => {
+      targets.forEach((tg, idx) => {
+        const clone = SkeletonUtils.clone(gltf.scene);
+        clone.scale.setScalar(scale);
+        tg.children.forEach(c => { c.visible = false; });
+        tg.add(clone);
+        if (gltf.animations && gltf.animations[0]) {
+          const mx = new THREE.AnimationMixer(clone);
+          mx.clipAction(gltf.animations[0]).startAt(idx * 0.4).play();
+          marineMixers9.push(mx);
+        }
+      });
+    }, undefined, () => {});
+  };
   addNpc({ x: gx - 6, z: gz + 10, name: '尼摩船长', body: 0x1c2a34, hat: 0x2e3e4a, opts: { tall: 1.1 },
     lines: ['我不是什么"文明人"。我和整个人类社会决裂了。', '海洋不属于暴君。在海面以下三十英尺,他们的权力就终止了。', 'Mobilis in mobili——动中之动,这是鹦鹉螺号的座右铭。'] });
   addNpc({ x: gx + 4, z: gz - 8, name: '尼德·兰', body: 0x8a4a2a, hat: 0x6a3620, opts: { wide: 1.3 },
@@ -14782,13 +14998,42 @@ function loop() {
       oceanFish9.setMatrixAt(i, m4f);
     }
     oceanFish9.instanceMatrix.needsUpdate = true;
-    for (const rg of rays9) {
-      const ru = rg.userData, aa = t * ru.sp + ru.ph;
-      rg.position.set(Math.cos(aa) * ru.r, -.85 + Math.sin(t * 1.5 + ru.ph) * .22 + tideY, 430 + Math.sin(aa) * ru.r);
-      rg.rotation.y = Math.atan2(-Math.sin(aa), Math.cos(aa));
-      rg.rotation.z = Math.sin(t * 2.4 + ru.ph) * .12;
-    }
   }
+  if (gpgpuFish9) {
+    const gDt = Math.min(dt, .04);
+    gpgpuFish9.posVar.material.uniforms.uDelta.value = gDt;
+    gpgpuFish9.velVar.material.uniforms.uDelta.value = gDt;
+    gpgpuFish9.velVar.material.uniforms.uTime.value = t;
+    gpgpuFish9.velVar.material.uniforms.uPredator.value.set(player.position.x, player.position.y, player.position.z);
+    gpgpuFish9.gpu.compute();
+    gpgpuFish9.gUni.uPosTex.value = gpgpuFish9.gpu.getCurrentRenderTarget(gpgpuFish9.posVar).texture;
+    gpgpuFish9.gUni.uVelTex.value = gpgpuFish9.gpu.getCurrentRenderTarget(gpgpuFish9.velVar).texture;
+  }
+  if (marineYukaMgr9) {
+    marineYukaMgr9.update(Math.min(dt, .05));
+    const syncMarine = (arr, baseDepth, isShark) => {
+      for (const mg of arr) {
+        const yk = mg.userData.yuka; if (!yk) continue;
+        const vp = yk.v.position, vv = yk.v.velocity;
+        if (heightMesh(vp.x, vp.z) > -1.4) {
+          vp.x += (yk.homeX - vp.x) * .08; vp.z += (yk.homeZ - vp.z) * .08;
+          vv.x *= -.6; vv.z *= -.6;
+        }
+        mg.position.set(vp.x, baseDepth + Math.sin(t * 1.5 + mg.userData.ph) * .22 + tideY, vp.z);
+        if (vv.x * vv.x + vv.z * vv.z > .04) {
+          const yaw = Math.atan2(vv.x, vv.z);
+          const dy = ((yaw - yk.prevYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          yk.prevYaw = yaw;
+          mg.rotation.y += ((yaw - mg.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
+          mg.rotation.z += (Math.max(-.28, Math.min(.28, -dy * 6)) - mg.rotation.z) * Math.min(1, dt * 5);
+        }
+        if (isShark && mg.userData.tailGrp) mg.userData.tailGrp.rotation.y = Math.sin(t * 6.5 + mg.userData.ph) * .32;
+      }
+    };
+    syncMarine(rays9, -.95, false);
+    syncMarine(sharks9, -1.65, true);
+  }
+  for (const mx of marineMixers9) mx.update(dt);
   if (trexGrp) {
     const ta = t * .12;
     trexGrp.position.x = JUR.x + Math.cos(ta) * 24;
