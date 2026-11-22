@@ -6086,23 +6086,30 @@ function updateScoreboard(minute) {
       }
     }
   }
-  // —— 球场草坪缓冲区 + 真实矩形四面阶梯看台(北/南/东/西 + 四角看台) ——
+  // —— 球场草坪缓冲区 + 真实矩形四面阶梯看台(无缝四角+玻璃护栏+挑台LED横幅) ——
   const apron9 = box(52, .12, 37, lam(0x276233)); apron9.position.set(cx3, baseH + .05, cz3); scene.add(apron9);
   const redA = lam(0xc8102e), redB = lam(0x9c0c24), stairM = M.concrete || M.stone;
   for (let i = 0; i < 14; i++) {
     const sy = baseH + .55 + i * 1.0, stM = i % 2 ? redA : redB;
     const nOff = 19.2 + i * 1.25, eOff = 26.2 + i * 1.25;
     for (const sgn of [-1, 1]) {
-      const ns = box(52, 1.0, 1.25, stM); ns.position.set(cx3, sy, cz3 + sgn * nOff); scene.add(ns);
-      const ew = box(1.25, 1.0, 38, stM); ew.position.set(cx3 + sgn * eOff, sy, cz3); scene.add(ew);
+      const ns = box(52 + i * 2.5, 1.0, 1.25, stM); ns.position.set(cx3, sy, cz3 + sgn * nOff); scene.add(ns);
+      const ew = box(1.25, 1.0, 38 + i * 2.5, stM); ew.position.set(cx3 + sgn * eOff, sy, cz3); scene.add(ew);
       for (const ax of [-16, 0, 16]) {
         const aisle = box(1.4, 1.04, 1.28, stairM); aisle.position.set(cx3 + ax, sy + .02, cz3 + sgn * nOff); scene.add(aisle);
       }
+      for (const az of [-10, 0, 10]) {
+        const aisleE = box(1.28, 1.04, 1.4, stairM); aisleE.position.set(cx3 + sgn * eOff, sy + .02, cz3 + az); scene.add(aisleE);
+      }
     }
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const crn = box(1.3 + i * .1, 1.0, 1.3 + i * .1, stM);
-      crn.position.set(cx3 + sx * eOff, sy, cz3 + sz * nOff); scene.add(crn);
-    }
+  }
+  // 看台前排透明安全玻璃护栏 + 挑台 LED 广告横幅
+  for (const sgn of [-1, 1]) {
+    const railG = box(50, 1.05, .12, M.glass); railG.position.set(cx3, baseH + .65, cz3 + sgn * 18.4); scene.add(railG);
+    const railT = box(50, .08, .16, M.metal || lam(0xd0d4da)); railT.position.set(cx3, baseH + 1.2, cz3 + sgn * 18.4); scene.add(railT);
+    const railEG = box(.12, 1.05, 36, M.glass); railEG.position.set(cx3 + sgn * 25.4, baseH + .65, cz3); scene.add(railEG);
+    const railET = box(.16, .08, 36, M.metal || lam(0xd0d4da)); railET.position.set(cx3 + sgn * 25.4, baseH + 1.2, cz3); scene.add(railET);
+    const fascia = box(56, .85, .2, new THREE.MeshBasicMaterial({ color: 0xa80c24 })); fascia.position.set(cx3, baseH + 7.4, cz3 + sgn * 26.2); scene.add(fascia);
   }
   // 球员入场红砖拱门通道(北侧中线)
   const tun = box(4.6, 3.2, 4.0, M.brick || lam(0x7c1820)); tun.position.set(cx3, baseH + 1.6, cz3 - 17.5); scene.add(tun);
@@ -6221,27 +6228,46 @@ function updateScoreboard(minute) {
   matchBall = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   matchBall.position.set(cx3, baseH + .5, cz3);
   scene.add(matchBall);
-  // —— 矩形四面看台上的球迷(实例化,主场红海 + 客队蓝区) ——
+  // —— 矩形四面看台座椅 + 拟人化动态欢呼观众(支持人浪与进球跳跃) ——
   {
-    const fanGeo = new THREE.ConeGeometry(.38, 1.05, 5);
-    const spotsF = [];
+    const fTorso = new THREE.CapsuleGeometry(.2, .42, 4, 6); fTorso.translate(0, .42, 0);
+    const fHead = new THREE.SphereGeometry(.17, 7, 6); fHead.translate(0, .86, 0);
+    const fArmL = new THREE.CapsuleGeometry(.07, .34, 3, 5); fArmL.rotateZ(.65); fArmL.translate(-.28, .72, .05);
+    const fArmR = new THREE.CapsuleGeometry(.07, .34, 3, 5); fArmR.rotateZ(-.65); fArmR.translate(.28, .72, .05);
+    const fanGeo = mergeGeometries([fTorso, fHead, fArmL, fArmR]);
+    const seatGeo = new THREE.BoxGeometry(.65, .48, .16);
+    const spotsF = [], spotsS = [];
     for (let i = 0; i < 14; i++) {
       const yF = baseH + 1.05 + i * 1.0;
       const nOff = 19.2 + i * 1.25, eOff = 26.2 + i * 1.25;
       for (let x = -24; x <= 24; x += 2.0) for (const sgn of [-1, 1]) {
-        if (Math.random() > .25) spotsF.push([cx3 + x, yF, cz3 + sgn * nOff, sgn > 0 && x > 10]);
+        const away = sgn > 0 && x > 10, yaw = sgn > 0 ? Math.PI : 0;
+        spotsS.push([cx3 + x, yF + .22, cz3 + sgn * nOff, yaw, away]);
+        if (Math.random() > .22) spotsF.push([cx3 + x, yF, cz3 + sgn * nOff, yaw, away, Math.atan2(sgn * nOff, x), Math.random() * 6.28]);
       }
       for (let z = -17; z <= 17; z += 2.0) for (const sgn of [-1, 1]) {
-        if (Math.random() > .25) spotsF.push([cx3 + sgn * eOff, yF, cz3 + z, sgn > 0 && z < 0]);
+        const away = sgn > 0 && z < 0, yaw = sgn > 0 ? -Math.PI / 2 : Math.PI / 2;
+        spotsS.push([cx3 + sgn * eOff, yF + .22, cz3 + z, yaw, away]);
+        if (Math.random() > .22) spotsF.push([cx3 + sgn * eOff, yF, cz3 + z, yaw, away, Math.atan2(z, sgn * eOff), Math.random() * 6.28]);
       }
     }
+    const seats9 = new THREE.InstancedMesh(seatGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), spotsS.length);
     const fans = new THREE.InstancedMesh(fanGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), spotsF.length);
-    const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3();
+    const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3(), ef = new THREE.Euler();
     const cRed = new THREE.Color(0xc8102e), cRed2 = new THREE.Color(0x8c1c2c), cBlue = new THREE.Color(0x6cabdd), cWhite = new THREE.Color(0xe8e4dc);
-    spotsF.forEach(([fx, fy, fz, away], idx) => {
-      pf.set(fx, fy, fz);
-      sf.setScalar(.9 + Math.random() * .22);
-      m4f.compose(pf, qf, sf);
+    spotsS.forEach(([sx, sy, sz, yaw, away], idx) => {
+      qf.setFromEuler(ef.set(0, yaw, 0));
+      m4f.compose(pf.set(sx, sy, sz), qf, sf.setScalar(1));
+      seats9.setMatrixAt(idx, m4f);
+      seats9.setColorAt(idx, away ? cBlue : cRed);
+    });
+    seats9.instanceMatrix.needsUpdate = true;
+    if (seats9.instanceColor) seats9.instanceColor.needsUpdate = true;
+    scene.add(seats9);
+    spotsF.forEach(([fx, fy, fz, yaw, away], idx) => {
+      qf.setFromEuler(ef.set(0, yaw, 0));
+      sf.setScalar(.92 + (idx % 4) * .06);
+      m4f.compose(pf.set(fx, fy, fz), qf, sf);
       fans.setMatrixAt(idx, m4f);
       const r0 = Math.random();
       fans.setColorAt(idx, away ? (r0 < .85 ? cBlue : cWhite) : (r0 < .7 ? cRed : (r0 < .88 ? cRed2 : cWhite)));
@@ -6249,6 +6275,7 @@ function updateScoreboard(minute) {
     fans.instanceMatrix.needsUpdate = true;
     if (fans.instanceColor) fans.instanceColor.needsUpdate = true;
     scene.add(fans);
+    window.__fans9 = { mesh: fans, spots: spotsF };
   }
   // —— 场外:队旗 / 渡口 / 岛名牌 ——
   const f1 = makeSign('曼联 MUFC', 5, '#c8102e', '#ffd76a'); f1.position.set(cx3 - 12, baseH + 9, cz3 + 52); scene.add(f1);
@@ -13916,6 +13943,21 @@ function loop() {
       const dStad = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z);
       const tgt = clamp(1 - dStad / 240, 0, 1) * (.035 + crowdBoost * .05);
       crowdGain.gain.value += (tgt - crowdGain.gain.value) * Math.min(1, dt * 3);
+    }
+    if (window.__fans9 && Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < 160) {   // 🏟️ 观众人浪与进球跳跃欢呼
+      const { mesh: fm, spots: fs } = window.__fans9;
+      const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(), pf = new THREE.Vector3(), ef = new THREE.Euler();
+      const waveOn = (t % 18) < 5.5;
+      for (let i = 0; i < fs.length; i++) {
+        const [fx, fy, fz, yaw, , ang, ph] = fs[i];
+        const wave = waveOn ? Math.max(0, Math.sin(t * 2.8 - ang * 2)) * .36 : 0;
+        const jump = crowdBoost > .1 ? Math.abs(Math.sin(t * 9 + ph)) * Math.min(.55, crowdBoost * .35) : Math.sin(t * 2.2 + ph) * .04;
+        qf.setFromEuler(ef.set(0, yaw, 0));
+        sf.setScalar(.92 + (i % 4) * .06);
+        m4f.compose(pf.set(fx, fy + wave + jump, fz), qf, sf);
+        fm.setMatrixAt(i, m4f);
+      }
+      fm.instanceMatrix.needsUpdate = true;
     }
     // ☁️ 天空云层漂移与晨昏着色
     if (clouds9.children.length) {
