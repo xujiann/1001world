@@ -6114,11 +6114,13 @@ function updateScoreboard(minute) {
   // 球员入场红砖拱门通道(北侧中线)
   const tun = box(4.6, 3.2, 4.0, M.brick || lam(0x7c1820)); tun.position.set(cx3, baseH + 1.6, cz3 - 17.5); scene.add(tun);
   const tunVoid = box(2.8, 2.4, 4.2, lam(0x111014)); tunVoid.position.set(cx3, baseH + 1.2, cz3 - 17.5); scene.add(tunVoid);
-  // 角区巨型高清大屏(东北 & 西南)
+  // 角区巨型高清大屏(东北 & 西南,共享实时比分贴图)
   for (const [vx, vz] of [[31, -24], [-31, 24]]) {
     const scr = box(10, 5.2, .6, lam(0x161a22)); scr.position.set(cx3 + vx, baseH + 17.5, cz3 + vz); scr.lookAt(cx3, baseH + 10, cz3); scene.add(scr);
-    const scrFace = new THREE.Mesh(new THREE.PlaneGeometry(9.2, 4.4), new THREE.MeshBasicMaterial({ color: 0x1c3a6e }));
+    const scrFace = new THREE.Mesh(new THREE.PlaneGeometry(9.2, 4.4), new THREE.MeshBasicMaterial({ map: scoreTex || null, color: 0xffffff }));
     scrFace.position.set(0, 0, .32); scr.add(scrFace);
+    if (!window.__scrFaces9) window.__scrFaces9 = [];
+    window.__scrFaces9.push(scrFace);
   }
   // 曼彻斯特红砖矩形外立面 + 玻璃幕墙柱廊 + 悬挑钢桁架顶棚
   const brickM9 = M.brick || lam(0x8c2428);
@@ -6139,8 +6141,16 @@ function updateScoreboard(minute) {
   for (let rz = -16; rz <= 16; rz += 16) for (const sgn of [-1, 1]) {
     const truss = box(20, .7, .55, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + sgn * 35.5, baseH + 19.6, cz3 + rz); scene.add(truss);
   }
-  // 场边 LED 广告围栏 + 4 面角旗 + 主客队玻璃替补席
-  const ledMat = new THREE.MeshBasicMaterial({ color: 0xc8102e });
+  // 场边动态滚动 LED 广告围栏 + 4 面角旗 + 主客队玻璃替补席
+  const ledCv9 = document.createElement('canvas'); ledCv9.width = 512; ledCv9.height = 64;
+  const ledCx9 = ledCv9.getContext('2d');
+  ledCx9.fillStyle = '#9c0c24'; ledCx9.fillRect(0, 0, 512, 64);
+  ledCx9.fillStyle = '#ffd76a'; ledCx9.font = 'bold 26px "Microsoft YaHei", sans-serif'; ledCx9.textBaseline = 'middle';
+  ledCx9.fillText('⚽ 1001 WORLD   ★   THEATRE OF DREAMS   ★   MANCHESTER DERBY   ★   ', 12, 33);
+  const ledTex9 = new THREE.CanvasTexture(ledCv9); ledTex9.wrapS = THREE.RepeatWrapping; ledTex9.colorSpace = THREE.SRGBColorSpace;
+  ledTex9.repeat.set(3, 1);
+  window.__ledTex9 = ledTex9;
+  const ledMat = new THREE.MeshBasicMaterial({ map: ledTex9 });
   for (const sz of [-15.2, 15.2]) {
     const ad = box(44, .75, .25, ledMat); ad.position.set(cx3, baseH + .45, cz3 + sz); scene.add(ad);
   }
@@ -6155,7 +6165,9 @@ function updateScoreboard(minute) {
     const dg = box(5.5, 1.6, 1.4, M.glass); dg.position.set(cx3 + ox, baseH + .9, cz3 + 16.4); scene.add(dg);
     const dRoof = box(5.8, .12, 1.8, M.metal || lam(0xd8dce0)); dRoof.position.set(cx3 + ox, baseH + 1.76, cz3 + 16.3); scene.add(dRoof);
   }
-  // 4 座角柱桁架探照灯塔
+  // 4 座角柱桁架探照灯塔 + 夜间锥形光束
+  window.__stadBeams9 = [];
+  const beamMat9 = new THREE.MeshBasicMaterial({ color: 0xfff4d4, transparent: true, opacity: .11, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   for (const [fx, fz] of [[cx3 - 43, cz3 - 36], [cx3 + 43, cz3 - 36], [cx3 + 43, cz3 + 36], [cx3 - 43, cz3 + 36]]) {
     const pole = cyl(.55, .85, 32, M.metal || M.stone, 8); pole.position.set(fx, baseH + 16, fz); scene.add(pole);
     const rack = box(6.4, 3.8, .5, lam(0x282c32)); rack.position.set(fx, baseH + 32, fz); rack.lookAt(cx3, baseH + 8, cz3); scene.add(rack);
@@ -6163,6 +6175,10 @@ function updateScoreboard(minute) {
       const bulb = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, .18), new THREE.MeshBasicMaterial({ color: 0xfff8e8 }));
       bulb.position.set(((li % 3) - 1) * 1.9, (li < 3 ? .85 : -.85), .3); rack.add(bulb);
     }
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(16, 44, 14, 1, true), beamMat9);
+    cone.position.set((fx + cx3) * .5, baseH + 17, (fz + cz3) * .5);
+    cone.lookAt(cx3, baseH, cz3); cone.rotateX(-Math.PI / 2);
+    cone.visible = false; scene.add(cone); window.__stadBeams9.push(cone);
     cirObs.push({ x: fx, z: fz, r: 1.2 });
   }
   // 四座凯旋门式红砖玻璃入场大门(东南西北)
@@ -6188,6 +6204,7 @@ function updateScoreboard(minute) {
     boardBack.rotation.y = Math.PI; boardBack.position.z = -0.05; board.add(boardBack);
     board.position.set(cx3, baseH + 21.5, cz3 - 36.5); scene.add(board);
     updateScoreboard(0);
+    if (window.__scrFaces9) window.__scrFaces9.forEach(sf => { sf.material.map = scoreTex; sf.material.needsUpdate = true; });
   }
   // —— 场上 22 名球员(与玩家同比例)+ 门将异色 + 裁判 + 皮球 ——
   function makeFootballer(kitCol, shortsCol) {
@@ -12535,7 +12552,13 @@ function toggleStarGaze() {
   starGaze = !starGaze;
   toast(starGaze ? (curDA >= .32 ? '🔭 观星模式已开(夜幕降临后仰望星空)' : '🔭 观星模式:仰望星空,星座之名浮现') : '观星模式已关');
 }
+let fifaCam9 = false;
 function tryPhantom() {
+  if (inStadium9(player.position.x, player.position.z)) {
+    fifaCam9 = !fifaCam9;
+    toast(fifaCam9 ? '📺 已切换为 FIFA 电视转播视角(自动追踪皮球,再按 V 还原)' : '🎥 已恢复自由漫游视角');
+    blip(720); return;
+  }
   if (Math.hypot(player.position.x - UNJ.x, player.position.z - UNJ.z) > 175) return;
   const bp = [1, 2, 3, 4].filter(i => PSTORE.getItem('w1001.unjb' + i) === '1').length;
   if (!bp) { toast('📐 手里还没有蓝图——去神殿、法庭、运动场和塔基找找'); return; }
@@ -13682,6 +13705,10 @@ function loop() {
       camera.position.lerp(v3.set(player.position.x - rfx9 * 4.5, player.position.y + 3.2, player.position.z - rfz9 * 4.5), Math.min(1, dt * 3));
       camera.lookAt(player.position.x + rfx9 * 70, player.position.y + 2, player.position.z + rfz9 * 70);
     }
+  } else if (fifaCam9 && inStadium9(player.position.x, player.position.z) && matchBall) {   // 📺 FIFA 电视转播视角
+    const bx = SPT.x + (matchBall.position.x - SPT.x) * .45;
+    camera.position.lerp(v3.set(bx, 22.5, SPT.z + 25.5), Math.min(1, dt * 4));
+    camera.lookAt(matchBall.position.x, 6.8, matchBall.position.z);
   } else {
     const cp = camPitch, off = new THREE.Vector3(Math.sin(camYaw) * Math.cos(cp), Math.sin(cp), Math.cos(camYaw) * Math.cos(cp)).multiplyScalar(camDist);
     const target = v3.copy(player.position).add(off);
@@ -13916,8 +13943,16 @@ function loop() {
       bp9.vy -= 24 * dt;
       matchBall.position.x += bp9.vx * dt; matchBall.position.z += bp9.vz * dt; matchBall.position.y += bp9.vy * dt;
       if (matchBall.position.y <= 6.66) { matchBall.position.y = 6.66; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; }
-      if (Math.abs(matchBall.position.x - SPT.x) > 21) bp9.vx *= -.75;
-      if (Math.abs(matchBall.position.z - SPT.z) > 13.5) bp9.vz *= -.75;
+      if (Math.abs(matchBall.position.x - SPT.x) > 20.6 && Math.abs(matchBall.position.z - SPT.z) < 4.0 && matchBall.position.y < 9.6) {
+        const gIdx = matchBall.position.x > SPT.x ? 0 : 1;
+        score[gIdx]++; updateScoreboard(minute); crowdBoost = 2.8;
+        bp9.kick = 0; matchBall.position.set(SPT.x, 6.7, SPT.z);
+        toast(`⚽ GOOOAL!! 你破门得分!曼联 ${score[0]} - ${score[1]} 曼城`);
+        blip(2400); setTimeout(() => blip(2650), 140); setTimeout(() => blip(1100), 280);
+      } else {
+        if (Math.abs(matchBall.position.x - SPT.x) > 21) bp9.vx *= -.75;
+        if (Math.abs(matchBall.position.z - SPT.z) > 13.5) bp9.vz *= -.75;
+      }
     } else {
       if (ballSwapT <= 0) { ballSwapT = 1.4 + Math.random() * 1.2; ballTarget = Math.floor(Math.random() * matchPlayers.length); }
       const tp = matchPlayers[ballTarget];
@@ -13944,6 +13979,8 @@ function loop() {
       const tgt = clamp(1 - dStad / 240, 0, 1) * (.035 + crowdBoost * .05);
       crowdGain.gain.value += (tgt - crowdGain.gain.value) * Math.min(1, dt * 3);
     }
+    if (window.__ledTex9 && Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < 160) window.__ledTex9.offset.x += dt * .14;
+    if (window.__stadBeams9) { const onB9 = curDA < .45 && Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < 220; window.__stadBeams9.forEach(c => c.visible = onB9); }
     if (window.__fans9 && Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < 160) {   // 🏟️ 观众人浪与进球跳跃欢呼
       const { mesh: fm, spots: fs } = window.__fans9;
       const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(), pf = new THREE.Vector3(), ef = new THREE.Euler();
