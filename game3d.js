@@ -11,6 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=24';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -5523,14 +5524,15 @@ function animLimbs(g, phase, amt, talk = false) {
   const L = g.userData.limbs; if (!L) return;
   const s = Math.sin(phase) * amt;
   L.legL.rotation.x = s; L.legR.rotation.x = -s;
-  L.armL.rotation.x = -s * .78; L.armR.rotation.x = s * .78;
+  L.armL.rotation.x = talk && amt <= .15 ? (-0.28 + Math.sin(phase * 1.4) * .16) : (-s * .78);
+  L.armR.rotation.x = talk && amt <= .15 ? (-0.42 + Math.cos(phase * 1.7) * .22) : (s * .78);
   if (L.kneeL) {
     L.kneeL.rotation.x = amt > .15 ? Math.max(0, -s * 1.15) : .04;
     L.kneeR.rotation.x = amt > .15 ? Math.max(0, s * 1.15) : .04;
   }
   if (L.elbowL) {
-    L.elbowL.rotation.x = amt > .15 ? (-0.22 - Math.max(0, s) * .52) : (-0.12 - Math.sin(phase * .5) * .04);
-    L.elbowR.rotation.x = amt > .15 ? (-0.22 - Math.max(0, -s) * .52) : (-0.12 + Math.sin(phase * .5) * .04);
+    L.elbowL.rotation.x = amt > .15 ? (-0.22 - Math.max(0, s) * .52) : (talk ? (-0.65 - Math.sin(phase * 2.1) * .22) : (-0.12 - Math.sin(phase * .5) * .04));
+    L.elbowR.rotation.x = amt > .15 ? (-0.22 - Math.max(0, -s) * .52) : (talk ? (-0.82 + Math.cos(phase * 2.3) * .26) : (-0.12 + Math.sin(phase * .5) * .04));
   }
   if (g.children[0]) {
     g.children[0].rotation.y = amt > .15 ? -s * .14 : Math.sin(phase * .35) * .03;
@@ -8887,9 +8889,81 @@ function unjMeeting() {
     lines: ['渡一切想去别的世界的人。', '楚门的世界已通航;中土、霍格沃茨、花果山,在建。', '船票免费,回程也是——但记忆要自己带回来。'] });
 }
 let npcChatT9 = 14;   // 💬 NPC 相遇寒暄计时
+const NPC_PBR_SPECS9 = [
+  { url: './assets/models/readyplayer.me.glb', gender: 'masculine', scale: 1.42 },
+  { url: './assets/models/Lyra.glb',           gender: 'feminine',  scale: 1.42 },
+  { url: './assets/models/Aurora.glb',         gender: 'feminine',  scale: 1.42 }
+];
+const NPC_PBR_CACHE9 = [null, null, null];
+let npcPbrBooted9 = false;
+function bootNpcPbr9() {
+  if (npcPbrBooted9 || MOBILE) return;
+  npcPbrBooted9 = true;
+  const loader = new GLTFLoader();
+  NPC_PBR_SPECS9.forEach((sp, idx) => {
+    loader.load(sp.url, gltf => {
+      gltf.scene.traverse(o => {
+        if (o.isMesh) {
+          o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+          if (o.material) {
+            o.material.envMapIntensity = 1.25;
+            const mn = (o.material.name || '').toLowerCase();
+            if (mn.includes('eye')) { o.material.roughness = 0.04; o.material.metalness = 0.08; o.material.envMapIntensity = 1.8; }
+            else if (mn.includes('skin') || mn.includes('body') || mn.includes('head')) { o.material.roughness = 0.46; o.material.metalness = 0.01; o.material.envMapIntensity = 1.3; }
+            else if (mn.includes('hair')) { o.material.roughness = 0.34; o.material.metalness = 0.08; }
+          }
+        }
+      });
+      ensureGenderClips9(sp.gender, clips => {
+        NPC_PBR_CACHE9[idx] = { scene: gltf.scene, clips, scale: sp.scale };
+      });
+    }, undefined, () => {});
+  });
+}
+function attachNpcPBR9(n) {
+  if (n.pbr9 || n.opts?.hat === 'cone' || n.opts?.cane) return false;
+  const idx = Math.abs(n.body || 0) % NPC_PBR_SPECS9.length;
+  const tpl = NPC_PBR_CACHE9[idx];
+  if (!tpl || !tpl.clips.Idle || !tpl.clips.Walking) return false;
+  const root = SkeletonUtils.clone(tpl.scene);
+  root.scale.setScalar(tpl.scale * (n.opts?.tall || 1));
+  const tint = new THREE.Color(n.body || 0x4a7a9a);
+  const rig = { head: null, neck: null, spine: null, morphMeshes: [] };
+  root.traverse(o => {
+    if (o.isBone) {
+      const bn = (o.name || '').toLowerCase();
+      if (!rig.head && (bn === 'head' || bn.endsWith('head'))) rig.head = o;
+      else if (!rig.neck && (bn === 'neck' || bn.endsWith('neck'))) rig.neck = o;
+      else if (!rig.spine && (bn.includes('spine2') || bn.includes('chest') || bn.includes('spine1'))) rig.spine = o;
+    } else if (o.isMesh) {
+      if (o.morphTargetDictionary && o.morphTargetInfluences) rig.morphMeshes.push(o);
+      if (o.material) {
+        const mn = (o.material.name || '').toLowerCase();
+        if (mn.includes('top') || mn.includes('shirt') || mn.includes('outfit') || mn.includes('jacket') || mn.includes('coat')) {
+          o.material = o.material.clone();
+          o.material.color.lerp(tint, .58);
+        }
+      }
+    }
+  });
+  const mixer = new THREE.AnimationMixer(root);
+  const actions = { Idle: mixer.clipAction(tpl.clips.Idle), Walking: mixer.clipAction(tpl.clips.Walking) };
+  actions.Idle.play();
+  for (const ch of n.g.children) { if (ch !== n.umb9) ch.visible = false; }
+  n.g.add(root);
+  n.pbr9 = { root, mixer, actions, act: 'Idle', rig };
+  return true;
+}
+function detachNpcPBR9(n) {
+  if (!n.pbr9) return;
+  n.g.remove(n.pbr9.root);
+  n.pbr9 = null;
+  for (const ch of n.g.children) ch.visible = true;
+}
 /* 📦 EVE_SPOTS9 → w-data2.js */   // 🌆 黄昏小聚点(广场灯笼串一带)
 function updateNpcs3(dt) {
   npcFrame++;
+  if (!npcPbrBooted9 && npcFrame > 45) bootNpcPbr9();
   npcChatT9 -= dt;
   if (npcChatT9 <= 0) {
     npcChatT9 = 26 + Math.random() * 18;
@@ -8909,12 +8983,14 @@ function updateNpcs3(dt) {
         }
       }
   }
-  let ni = 0;
+  let ni = 0, pbrActiveCount = 0;
+  for (const n of allNpcs) if (n.pbr9) pbrActiveCount++;
   for (const n of allNpcs) {
     ni++;
     // 远端 NPC 降频:600 米外每 8 帧更新一次
     const farD2 = (player.position.x - n.g.position.x) ** 2 + (player.position.z - n.g.position.z) ** 2;
     if (farD2 > 78400) {   // 280 米外整体隐身(省 draw call),走近再现身
+      if (n.pbr9) { detachNpcPBR9(n); pbrActiveCount--; }
       if (n.g.visible) { n.g.visible = false; n.bub.classList.add('hidden'); n.talk = false; }
       continue;
     }
@@ -8922,7 +8998,12 @@ function updateNpcs3(dt) {
     if (n.night || n.day) {   // 昼夜限定 NPC(兰若寺)
       const show = n.night ? curDA < .35 : curDA >= .35;
       n.g.visible = show;
-      if (!show) { n.bub.classList.add('hidden'); n.talk = false; continue; }
+      if (!show) { if (n.pbr9) { detachNpcPBR9(n); pbrActiveCount--; } n.bub.classList.add('hidden'); n.talk = false; continue; }
+    }
+    if (n.spdMul == null) n.spdMul = .85 + Math.random() * .3;
+    if (n.pbr9 && farD2 > 2916) { detachNpcPBR9(n); pbrActiveCount--; }
+    else if (!n.pbr9 && !MOBILE && farD2 < 2116 && pbrActiveCount < 6 && !npcSleeping(n)) {
+      if (attachNpcPBR9(n)) pbrActiveCount++;
     }
     const p = n.g.position;
     const zzz = npcSleeping(n);
@@ -8937,7 +9018,7 @@ function updateNpcs3(dt) {
       const tx = P9.ox + tgt[0], tz = P9.oz + tgt[1];
       const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
       if (d < 1.3) { P9.i += P9.dir; if (P9.i >= ln.length || P9.i < 0) { P9.dir *= -1; P9.i += P9.dir * 2; if (P9.i < 0) P9.i = 0; if (P9.i >= ln.length) P9.i = ln.length - 1; } }
-      else { const sp9 = 4.2 * dt; p.x += dx / d * sp9; p.z += dz / d * sp9; n.g.rotation.y = Math.atan2(dx, dz); n.phase += dt * 8; }
+      else { const sp9 = 4.2 * n.spdMul * dt; p.x += dx / d * sp9; p.z += dz / d * sp9; n.g.rotation.y = Math.atan2(dx, dz); n.phase += dt * 8 * n.spdMul; }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
     } else if (!zzz && n.wander) {
       if (n.pause > 0) { n.pause -= dt; }
@@ -8952,35 +9033,62 @@ function updateNpcs3(dt) {
           if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
           else { n.wp = null; n.pause = 3 + Math.random() * 5; }
         } else {
-          const sp = 6.5 * dt;
+          const sp = 6.2 * n.spdMul * dt;
           p.x += dx / d * sp; p.z += dz / d * sp;
           n.g.rotation.y = Math.atan2(dx, dz);
-          n.phase += dt * 9;
+          n.phase += dt * 8.5 * n.spdMul;
         }
       }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
     } else { n.phase += dt * 2.2; }
     const moving9 = !zzz && ((n.wander && n.wp) || n.path);
     if (moving9) p.y = Math.max(surfaceGround9(p.x, p.z, p.y), 0);
-    n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (moving9 ? .04 : (zzz ? .012 : .018));
-    animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06), n.talk && !zzz);
-    if (n.g.userData.eyelids) {
-      if (n.blinkT == null) n.blinkT = 1.5 + Math.random() * 4;
-      n.blinkT -= dt;
-      const shut = zzz ? 1 : (n.blinkT < 0 ? Math.sin(Math.min(1, -n.blinkT / .14) * Math.PI) : 0);
-      if (n.blinkT < -.14) n.blinkT = 2.6 + Math.random() * 4.2;
-      const lidRot = -.65 + shut * .92;
-      for (const lid of n.g.userData.eyelids) lid.rotation.x = lidRot;
-    }
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
-    if (n.g.userData.head) {
-      let headY = (!moving9 && !zzz) ? Math.sin(n.phase * .55) * .16 : 0;
-      if (!zzz && pd < 14 && n.chat9 <= 0) {
-        const relYaw = ((Math.atan2(player.position.x - p.x, player.position.z - p.z) - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        headY = Math.max(-.55, Math.min(.55, relYaw));
+    if (n.blinkT == null) n.blinkT = 1.5 + Math.random() * 4;
+    n.blinkT -= dt;
+    const shut = zzz ? 1 : (n.blinkT < 0 ? Math.sin(Math.min(1, -n.blinkT / .14) * Math.PI) : 0);
+    if (n.blinkT < -.14) n.blinkT = 2.6 + Math.random() * 4.2;
+    if (n.pbr9) {
+      const wantAct = moving9 ? 'Walking' : 'Idle';
+      if (n.pbr9.act !== wantAct) {
+        n.pbr9.actions[wantAct].reset().fadeIn(.24).play();
+        n.pbr9.actions[n.pbr9.act].fadeOut(.24);
+        n.pbr9.act = wantAct;
       }
-      n.g.userData.head.rotation.y += (headY - n.g.userData.head.rotation.y) * Math.min(1, dt * 6);
-      n.g.userData.head.rotation.x = n.talk ? Math.sin(n.phase * 1.8) * .08 : (zzz ? .28 : Math.sin(n.phase * .4) * .03);
+      n.pbr9.mixer.update(dt);
+      const rig = n.pbr9.rig;
+      if (rig.spine) rig.spine.rotation.x += Math.sin(n.phase * .7) * (moving9 ? .012 : .024);
+      if (rig.head) {
+        let lookY = (!moving9 && !zzz) ? Math.sin(n.phase * .5) * .12 : 0;
+        if (pd < 14 && n.chat9 <= 0) {
+          const relYaw = ((Math.atan2(player.position.x - p.x, player.position.z - p.z) - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          lookY = Math.max(-.45, Math.min(.45, relYaw));
+        }
+        rig.head.rotation.y += lookY * .55;
+        if (rig.neck) rig.neck.rotation.y += lookY * .35;
+      }
+      for (const m of rig.morphMeshes) {
+        const d = m.morphTargetDictionary;
+        for (const k of ['eyesClosed', 'eyeBlinkLeft', 'eyeBlinkRight', 'blink']) {
+          if (d[k] !== undefined) m.morphTargetInfluences[d[k]] = shut;
+        }
+      }
+    } else {
+      n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (moving9 ? .04 : (zzz ? .012 : .018));
+      animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06), n.talk && !zzz);
+      if (n.g.userData.eyelids) {
+        const lidRot = -.65 + shut * .92;
+        for (const lid of n.g.userData.eyelids) lid.rotation.x = lidRot;
+      }
+      if (n.g.userData.head) {
+        let headY = (!moving9 && !zzz) ? Math.sin(n.phase * .55) * .16 : 0;
+        if (!zzz && pd < 14 && n.chat9 <= 0) {
+          const relYaw = ((Math.atan2(player.position.x - p.x, player.position.z - p.z) - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          headY = Math.max(-.55, Math.min(.55, relYaw));
+        }
+        n.g.userData.head.rotation.y += (headY - n.g.userData.head.rotation.y) * Math.min(1, dt * 6);
+        n.g.userData.head.rotation.x = n.talk ? Math.sin(n.phase * 1.8) * .08 : (zzz ? .28 : Math.sin(n.phase * .4) * .03);
+      }
     }
     if (pd < 11 && !n.talk) { n.talk = true; n.idx = (n.idx + 1) % n.lines.length; }
     else if (pd > 18) { n.talk = false; }
