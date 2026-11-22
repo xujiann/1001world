@@ -14,6 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9 } from './aaa-engine.js?v=1';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -3460,6 +3461,7 @@ const FESTIVAL = (() => {
 })();
 const MOON_FULL = FULLMOON || (FESTIVAL && FESTIVAL.key === 'midautumn');   // 中秋强制满月
 const CLOUDU9 = { t: { value: 0 }, a: { value: .13 } };   // 🌥️ 云影 uniforms(时间/强度)
+const TERRAIN_WET9 = { value: RAINY ? 1.0 : 0.0 }, TERRAIN_TIDE9 = { value: 0.0 };
 let rainPts = null;
 if (RAINY) {
   const N4 = WEATHER === 'storm' ? 900 : 480, arr2 = new Float32Array(N4 * 3);
@@ -4150,16 +4152,17 @@ function heightMesh(x, z) {
         roughness: RAINY ? .48 : .86,
         metalness: 0.02
       });   // 🏔️ 真实地形法线贴图 + 湿地面微反光
-  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 草地/泥土双纹理混色 + 沙纹 + 雨天水洼反光 + 三平面岩层 + 湿滩高光
+  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 草地/泥土双纹理混色 + 沙纹 + 雨天水洼反光 + 三平面岩层 + 湿滩高光 + 海底焦散 + 岸线浪沫
     sh9.uniforms.uCldT9 = CLOUDU9.t; sh9.uniforms.uCldA9 = CLOUDU9.a;
     sh9.uniforms.uDetTex9 = { value: terrainDetTex9 };
     sh9.uniforms.uSoilTex9 = { value: terrainSoilTex9 };
-    sh9.uniforms.uRainWet9 = { value: RAINY ? 1.0 : 0.0 };
+    sh9.uniforms.uRainWet9 = TERRAIN_WET9;
+    sh9.uniforms.uTide9 = TERRAIN_TIDE9;
     sh9.vertexShader = sh9.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wPos9 = modelMatrix * vec4( position, 1.0 );\nvWXZ9 = wPos9.xz;\nvWY9 = wPos9.y;\nvWNY9 = normalize( mat3( modelMatrix ) * objectNormal ).y;');
     sh9.fragmentShader = sh9.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform float uRainWet9;\nuniform sampler2D uDetTex9;\nuniform sampler2D uSoilTex9;')
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform float uRainWet9;\nuniform float uTide9;\nuniform sampler2D uDetTex9;\nuniform sampler2D uSoilTex9;')
       .replace('#include <color_fragment>',
         '#include <color_fragment>\n' +
         'vec3 detNear9 = texture2D( uDetTex9, vWXZ9 * 0.085 ).rgb;\n' +
@@ -4176,7 +4179,17 @@ function heightMesh(x, z) {
         'float cliffBlend9 = smoothstep( 0.22, 0.52, slope9 );\n' +
         'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.48, 0.45, 0.41 ) * ( 0.92 + strata9 + rockGrain9 ), cliffBlend9 * 0.62 );\n' +
         'float texMix9 = mix( detLuma9, soilLuma9, clamp( sandMix9, 0.0, 0.85 ) );\n' +
-        'diffuseColor.rgb *= clamp( 0.78 + texMix9 * 0.46 + ripple9 + ( vWY9 > 14.0 ? strata9 * 0.6 : 0.0 ), 0.62, 1.28 );')
+        'diffuseColor.rgb *= clamp( 0.78 + texMix9 * 0.46 + ripple9 + ( vWY9 > 14.0 ? strata9 * 0.6 : 0.0 ), 0.62, 1.28 );\n' +
+        'float puddleC9 = uRainWet9 * smoothstep( 0.45, 0.75, sin( vWXZ9.x * 0.19 ) * cos( vWXZ9.y * 0.17 ) + 0.5 ) * (1.0 - smoothstep( 0.05, 0.2, slope9 ));\n' +
+        'diffuseColor.rgb *= ( 1.0 - puddleC9 * 0.26 );\n' +
+        'float relH9 = vWY9 - uTide9;\n' +
+        'float c1 = sin( vWXZ9.x * 0.65 + uCldT9 * 1.4 + sin( vWXZ9.y * 0.55 - uCldT9 ) );\n' +
+        'float c2 = cos( vWXZ9.y * 0.72 - uCldT9 * 1.1 + cos( vWXZ9.x * 0.48 + uCldT9 * 0.8 ) );\n' +
+        'float caust9 = pow( clamp( 1.0 - abs( c1 + c2 ) * 0.5, 0.0, 1.0 ), 3.0 ) * ( 1.0 - smoothstep( -0.3, 0.25, relH9 ) ) * smoothstep( -14.0, -2.0, relH9 );\n' +
+        'diffuseColor.rgb += vec3( 0.20, 0.42, 0.48 ) * caust9 * 0.75;\n' +
+        'float lap9 = sin( relH9 * 14.0 - uCldT9 * 3.2 + sin( vWXZ9.x * 0.35 + vWXZ9.y * 0.35 ) * 2.0 );\n' +
+        'float foamBand9 = smoothstep( 0.55, 0.95, lap9 ) * ( 1.0 - smoothstep( 0.08, 0.42, abs( relH9 - 0.12 ) ) );\n' +
+        'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.92, 0.96, 0.99 ), foamBand9 * 0.58 );')
       .replace('#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
         'float wetShore9 = 1.0 - smoothstep( -0.4, 1.8, vWY9 );\n' +
@@ -11619,6 +11632,22 @@ function startCast(fs) {
   blip(440);
 }
 function endFishing() { fishing.state = 'idle'; fishing.spot = null; bobber.visible = false; }
+/* ===== 🚀 AAA 五大核心引擎实例化 (Rapier3D / 足部IK+轨迹 / 空间声场 / 电影运镜 / 60FPS自适应) ===== */
+const aaaPerf9 = new AdaptivePerf9(renderer);
+const trails9 = new TrailEffects9(scene, heightMesh);
+const spatialAudio9 = new SpatialAudio9();
+const cinematic9 = new CinematicCamAndHud9();
+const rapier9 = new RapierPhysics9(scene, heightMesh);
+if (!MOBILE) {
+  setTimeout(() => {
+    rapier9.init([
+      { x: 16, z: 24, kind: 'crate' }, { x: 18, z: 26, kind: 'crate' },
+      { x: -14, z: 18, kind: 'ball' }, { x: 8, z: 365, kind: 'ball' },
+      { x: 12, z: 370, kind: 'ball' }, { x: -4, z: 390, kind: 'crate' },
+      { x: -780, z: 120, kind: 'ball' }, { x: -775, z: 126, kind: 'ball' }
+    ]);
+  }, 1800);
+}
 /* 🕸️ 海洋捕捞:帆船拖网 */
 let trawlOn9 = false, trawlFill9 = 0, trawlNet9 = null, trawlFullTold9 = false;
 {
@@ -14512,6 +14541,7 @@ function loop() {
             }
           }
         }
+        applyHumanSlopeIK9(playerHumanRig, player, heightMesh, pMoving, grounded, dt);
       }
     }
   } else if (restState9) animRest9(player, restState9, t);
@@ -14519,6 +14549,22 @@ function loop() {
   else animLimbs(player, pMoving ? walkPhase : t * 1.6, pMoving ? .5 : .06);
   blob.position.set(player.position.x, Math.max(gh, 0) + .06, player.position.z);
   blob.material.opacity = (swimming || diving) ? 0 : .3;
+
+  // AAA 引擎每帧驱动: 地形湿润/海底焦散/岸浪 + Rapier3D刚体 + 沙滩脚印/尾迹 + 空间音频 + 电影FOV + 自适应分辨率
+  TERRAIN_WET9.value = WX_STATE9.rainAmt;
+  TERRAIN_TIDE9.value = tideY;
+  aaaPerf9.update(dt);
+  rapier9.update(dt, player.position, moveVx9, moveVz9);
+  trails9.update(dt, player.position, faceYaw, pMoving, grounded, vehicle, tideY);
+  if (actx && !spatialAudio9.booted) {
+    spatialAudio9.boot(actx, [
+      { x: 0, y: 2, z: 14, freq: 950, type: 'bandpass', gain: 0.015, refDist: 6, maxDist: 45 },
+      { x: 0, y: 1, z: 400, freq: 340, type: 'lowpass', gain: 0.022, refDist: 16, maxDist: 120 },
+      { x: FIRE_POS9 ? FIRE_POS9[0] : -24, y: 2, z: FIRE_POS9 ? FIRE_POS9[1] : 28, freq: 520, type: 'bandpass', gain: 0.014, refDist: 5, maxDist: 35 }
+    ]);
+  }
+  if (actx) spatialAudio9.update(actx, camera, player.position);
+  cinematic9.update(dt, camera, Math.hypot(moveVx9, moveVz9), pMoving, modalOpen, typeof bokehPass !== 'undefined' ? bokehPass : null);
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
   if (grassBlades) {
