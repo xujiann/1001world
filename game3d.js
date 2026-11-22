@@ -6844,19 +6844,74 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   addSpot(gx + 28, gz + 31, 'lore', 'nemflag', { r: 6 });   // 南极黑旗(复制品)
   addNpc({ x: gx - 20, z: gz - 16, name: '阿龙纳斯教授', body: 0x5a6a7a, hat: 0x3e4a56, opts: { tall: 1.02 },
     lines: ['我是来研究"海怪"的——结果住进了海怪的肚子里。', '尼德·兰天天想逃,康塞尔天天做分类,我天天记笔记。', '《海底两万里》——就是那本笔记。'] });
-  // 🐟 写实流线鱼体几何(躯干+背鳍+叉状尾鳍)+ 全球海洋浅海鱼群(120尾) + 蝠鲼群(4只)
+  // 🐟 写实参数化流线鱼体(Lathe纺锤躯干+新月叉尾+后掠背鳍/胸鳍) + GPU脊椎波浪游动着色器 + 全球Boids鱼群 + 蝠鲼翼浪
   function makeFishGeo9(sc = 1) {
-    const body = new THREE.CapsuleGeometry(.16 * sc, .56 * sc, 5, 8);
-    body.rotateX(Math.PI / 2); body.scale(.65, 1.05, 1);
-    const tail = new THREE.ConeGeometry(.18 * sc, .32 * sc, 4);
-    tail.rotateX(Math.PI / 2); tail.scale(.25, 1.15, 1); tail.translate(0, 0, -.44 * sc);
-    const dorsal = new THREE.ConeGeometry(.12 * sc, .24 * sc, 3);
-    dorsal.scale(.22, 1, 1.2); dorsal.rotateX(-.3); dorsal.translate(0, .18 * sc, -.04 * sc);
-    return mergeGeometries([body, tail, dorsal]);
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16;
+      const z = (0.48 - t * 0.92) * sc;   // 头(+0.48)→尾柄(-0.44)
+      const r = t < 0.28
+        ? Math.sin((t / 0.28) * Math.PI * 0.5) * 0.145 * sc
+        : (0.145 * Math.pow(1 - (t - 0.28) / 0.72, 0.72) + 0.018) * sc;
+      pts.push(new THREE.Vector2(Math.max(0.002, r), z));
+    }
+    const body = new THREE.LatheGeometry(pts, 14);
+    body.rotateX(Math.PI / 2);
+    body.scale(0.56, 1.05, 1);
+
+    const tailShape = new THREE.Shape();
+    tailShape.moveTo(0, 0.02 * sc);
+    tailShape.quadraticCurveTo(-0.18 * sc, 0.20 * sc, -0.34 * sc, 0.22 * sc);
+    tailShape.quadraticCurveTo(-0.22 * sc, 0.04 * sc, -0.20 * sc, 0);
+    tailShape.quadraticCurveTo(-0.22 * sc, -0.04 * sc, -0.34 * sc, -0.22 * sc);
+    tailShape.quadraticCurveTo(-0.18 * sc, -0.20 * sc, 0, -0.02 * sc);
+    const tail = new THREE.ExtrudeGeometry(tailShape, { depth: 0.014 * sc, bevelEnabled: false });
+    tail.rotateY(Math.PI / 2);
+    tail.translate(-0.007 * sc, 0, -0.42 * sc);
+
+    const dorsalShape = new THREE.Shape();
+    dorsalShape.moveTo(0.12 * sc, 0);
+    dorsalShape.quadraticCurveTo(0.02 * sc, 0.18 * sc, -0.14 * sc, 0.14 * sc);
+    dorsalShape.lineTo(-0.10 * sc, 0);
+    const dorsal = new THREE.ExtrudeGeometry(dorsalShape, { depth: 0.012 * sc, bevelEnabled: false });
+    dorsal.rotateY(Math.PI / 2);
+    dorsal.translate(-0.006 * sc, 0.11 * sc, 0.02 * sc);
+
+    const pecShape = new THREE.Shape();
+    pecShape.moveTo(0, 0);
+    pecShape.quadraticCurveTo(0.14 * sc, -0.04 * sc, 0.18 * sc, -0.14 * sc);
+    pecShape.lineTo(0.02 * sc, -0.06 * sc);
+    const pecL = new THREE.ExtrudeGeometry(pecShape, { depth: 0.008 * sc, bevelEnabled: false });
+    pecL.rotateX(Math.PI * 0.42); pecL.rotateZ(-0.25); pecL.translate(0.06 * sc, -0.04 * sc, 0.12 * sc);
+    const pecR = pecL.clone(); pecR.scale(-1, 1, 1);
+
+    return mergeGeometries([body, tail, dorsal, pecL, pecR].map(g => g.index ? g.toNonIndexed() : g));
+  }
+  const fishSwimUni9 = { uTime: { value: 0 } };
+  function applyFishSwimShader9(mat, instanced = false) {
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.uSwimTime = fishSwimUni9.uTime;
+      if (instanced) {
+        sh.vertexShader = 'attribute float aSwimPh;\n' + sh.vertexShader;
+      }
+      sh.vertexShader = 'uniform float uSwimTime;\n' + sh.vertexShader;
+      sh.vertexShader = sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        float ph9 = ${instanced ? 'aSwimPh' : '0.0'};
+        float mask9 = smoothstep(0.28, -0.58, transformed.z);
+        transformed.x += sin(transformed.z * 7.2 - uSwimTime * 9.5 + ph9) * 0.13 * mask9;`
+      );
+    };
+    return mat;
   }
   {
     const fg = makeFishGeo9(1.25);
-    nemFishSchool = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .35, metalness: .15 }), 30);
+    const phArr = new Float32Array(30);
+    for (let i = 0; i < 30; i++) phArr[i] = i * 1.37;
+    fg.setAttribute('aSwimPh', new THREE.InstancedBufferAttribute(phArr, 1));
+    const fMat = applyFishSwimShader9(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .22, metalness: .28, clearcoat: .85, clearcoatRoughness: .12 }), true);
+    nemFishSchool = new THREE.InstancedMesh(fg, fMat, 30);
     const cols2 = Object.values(FISH_COLOR).map(c2 => new THREE.Color(c2));
     for (let i = 0; i < 30; i++) nemFishSchool.setColorAt(i, cols2[i % cols2.length]);
     if (nemFishSchool.instanceColor) nemFishSchool.instanceColor.needsUpdate = true;
@@ -6864,13 +6919,22 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   }
   OCEAN_FN9 = MOBILE ? 48 : 120;
   const oceanFishGeo9 = makeFishGeo9(.95);
-  oceanFish9 = new THREE.InstancedMesh(oceanFishGeo9, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3, metalness: .18 }), OCEAN_FN9);
+  {
+    const phArr2 = new Float32Array(OCEAN_FN9);
+    for (let i = 0; i < OCEAN_FN9; i++) phArr2[i] = i * .83;
+    oceanFishGeo9.setAttribute('aSwimPh', new THREE.InstancedBufferAttribute(phArr2, 1));
+  }
+  const oceanFishMat9 = applyFishSwimShader9(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .20, metalness: .30, clearcoat: .88, clearcoatRoughness: .10 }), true);
+  oceanFish9 = new THREE.InstancedMesh(oceanFishGeo9, oceanFishMat9, OCEAN_FN9);
   oceanFish9.frustumCulled = false;
   const fishPal9 = [0xff7a2f, 0x2e86de, 0xf5cd42, 0x38bdf8, 0xd9e4ec, 0xf472b6].map(c => new THREE.Color(c));
   for (let i = 0; i < OCEAN_FN9; i++) oceanFish9.setColorAt(i, fishPal9[i % fishPal9.length]);
   if (oceanFish9.instanceColor) oceanFish9.instanceColor.needsUpdate = true;
   fishData9 = [];
-  for (let i = 0; i < OCEAN_FN9; i++) fishData9.push({ cx: 0, cz: 430, y: -1.6, r: 8 + (i % 7) * 3.5, sp: .35 + (i % 5) * .12, ph: i * .62, ok: false });
+  for (let i = 0; i < OCEAN_FN9; i++) {
+    const a = i * .62;
+    fishData9.push({ cx: 0, cz: 430, x: Math.cos(a) * 14, z: 430 + Math.sin(a) * 14, vx: -Math.sin(a) * 2.5, vz: Math.cos(a) * 2.5, y: -1.6, r: 8 + (i % 7) * 3.5, sp: .35 + (i % 5) * .12, ph: i * .62, ok: false });
+  }
   redistributeOceanFish9 = (px, pz) => {
     fishCx9 = px; fishCz9 = pz;
     const rndF = mulberry32(((px * 7 + pz * 13) | 0) ^ 991);
@@ -6879,18 +6943,50 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
       const fx = px + Math.cos(a) * dist, fz = pz + Math.sin(a) * dist;
       const fh = heightMesh(fx, fz);
       const fd = fishData9[i];
-      if (fh < -1.1) { fd.cx = fx; fd.cz = fz; fd.y = Math.max(fh + .55, -2.6 - (i % 4) * .5); fd.ok = true; }
+      if (fh < -1.1) { fd.cx = fx; fd.cz = fz; fd.x = fx; fd.z = fz; fd.vx = Math.cos(a + 1.5) * 2.8; fd.vz = Math.sin(a + 1.5) * 2.8; fd.y = Math.max(fh + .55, -2.6 - (i % 4) * .5); fd.ok = true; }
       else fd.ok = false;
     }
   };
   scene.add(oceanFish9);
+  // 🦈 写实参数化蝠鲼(宽翼展流线体+头鳍+鞭尾+GPU翼浪扑动)
+  function makeMantaGeo9() {
+    const geo = new THREE.PlaneGeometry(3.4, 2.4, 24, 14);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      const ax = Math.abs(x) / 1.7;
+      const zFront = 0.65 - ax * 1.15;
+      const zBack = -0.75 + ax * 0.35;
+      const zn = (z + 1.2) / 2.4;
+      const nz = zBack + (zFront - zBack) * zn;
+      const arch = Math.max(0, 1 - ax * ax) * Math.sin(zn * Math.PI) * 0.24;
+      pos.setXYZ(i, x, arch, nz);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
   rays9 = [];
+  const mantaGeo9 = makeMantaGeo9();
+  const rMat9 = new THREE.MeshPhysicalMaterial({ color: 0x22364a, roughness: .24, metalness: .12, clearcoat: .85, side: THREE.DoubleSide });
+  rMat9.onBeforeCompile = sh => {
+    sh.uniforms.uSwimTime = fishSwimUni9.uTime;
+    sh.vertexShader = 'uniform float uSwimTime;\n' + sh.vertexShader;
+    sh.vertexShader = sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      float ax9 = abs(transformed.x);
+      transformed.y += sin(ax9 * 1.9 - uSwimTime * 3.4) * pow(ax9, 1.35) * 0.26;`
+    );
+  };
   for (let ri = 0; ri < 4; ri++) {
-    const rg = new THREE.Group(), rMat = lam(0x283e54), rBelly = lam(0xd4dee6);
-    const disc = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.2, 4), rMat);
-    disc.rotation.x = Math.PI / 2; disc.scale.set(1.6, .16, 1); rg.add(disc);
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), rBelly); belly.scale.set(1.2, .22, 1.3); belly.position.y = -.06; rg.add(belly);
-    const tail = cyl(.02, .05, 1.8, rMat, 5); tail.rotation.x = Math.PI / 2; tail.position.z = -1.6; rg.add(tail);
+    const rg = new THREE.Group();
+    const disc = new THREE.Mesh(mantaGeo9, rMat9); rg.add(disc);
+    const tail = cyl(.015, .045, 2.1, lam(0x1b2a3a), 6); tail.rotation.x = Math.PI / 2; tail.position.z = -1.65; rg.add(tail);
+    for (const sx of [-1, 1]) {
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(.07, .42, 6), lam(0x22364a));
+      horn.rotation.x = Math.PI / 2; horn.rotation.z = sx * .22; horn.position.set(sx * .26, .02, .72); rg.add(horn);
+    }
     rg.userData = { ph: ri * 1.57, r: 16 + ri * 5, sp: .24 + ri * .03 };
     scene.add(rg); rays9.push(rg);
   }
@@ -10100,46 +10196,86 @@ const gulls = [];
     }, undefined, () => {});
   } catch (e) {}
 }
-/* --- 🐟 飞鱼池(扬帆惊起,掠水而过) --- */
-for (let i9 = 0; i9 < 8; i9++) {
-  const f9 = new THREE.Group();
-  const fb9 = new THREE.Mesh(new THREE.CapsuleGeometry(.11, .58, 6, 10), lam(0xb8d0e0)); fb9.rotation.x = Math.PI / 2; f9.add(fb9);
-  for (const s9 of [-1, 1]) { const fw9 = new THREE.Mesh(new THREE.PlaneGeometry(.7, .3), new THREE.MeshLambertMaterial({ color: 0xd8ecf4, side: THREE.DoubleSide, transparent: true, opacity: .85 })); fw9.position.set(s9 * .35, 0, 0); fw9.rotation.z = s9 * .4; f9.add(fw9); }
-  f9.visible = false; f9.userData = { k: 9 };
-  scene.add(f9); FLYF9.push(f9);
+/* --- 🐟 飞鱼池(Lathe流线鱼体+半透明掠水滑翔翼) --- */
+{
+  const fPts = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12, z = 0.36 - t * 0.72;
+    const r = t < 0.25 ? Math.sin((t / 0.25) * Math.PI * 0.5) * 0.09 : 0.09 * Math.pow(1 - (t - 0.25) / 0.75, 0.8) + 0.01;
+    fPts.push(new THREE.Vector2(Math.max(0.002, r), z));
+  }
+  const fBodyG = new THREE.LatheGeometry(fPts, 10); fBodyG.rotateX(Math.PI / 2); fBodyG.scale(0.62, 1, 1);
+  const fWingShape = new THREE.Shape();
+  fWingShape.moveTo(0, 0.06); fWingShape.quadraticCurveTo(0.45, 0.14, 0.78, -0.08); fWingShape.quadraticCurveTo(0.42, -0.18, 0, -0.12);
+  const fWingG = new THREE.ShapeGeometry(fWingShape); fWingG.rotateX(-Math.PI / 2);
+  const fBodyM = new THREE.MeshPhysicalMaterial({ color: 0x9ec0d8, roughness: .18, metalness: .35, clearcoat: .85 });
+  const fWingM = new THREE.MeshPhysicalMaterial({ color: 0xdff2ff, roughness: .22, transparent: true, opacity: .78, side: THREE.DoubleSide });
+  for (let i9 = 0; i9 < 8; i9++) {
+    const f9 = new THREE.Group();
+    f9.add(new THREE.Mesh(fBodyG, fBodyM));
+    for (const s9 of [-1, 1]) {
+      const fw9 = new THREE.Mesh(fWingG, fWingM);
+      fw9.scale.x = s9; fw9.position.set(s9 * .04, .02, .05); fw9.rotation.z = s9 * .22; f9.add(fw9);
+    }
+    f9.visible = false; f9.userData = { k: 9 };
+    scene.add(f9); FLYF9.push(f9);
+  }
 }
-/* --- 🐬 双海豚(主码头湾内环游,鼠海豚式跃水 · 高精度宽吻海豚解剖模型) --- */
-for (let i9 = 0; i9 < 2; i9++) {
-  const d9 = new THREE.Group();
-  const dSkinMat9 = MOBILE ? lam(0x4a7a9a) : new THREE.MeshStandardMaterial({ color: 0x3d6e8e, roughness: 0.16, metalness: 0.08 });
-  const dBellyMat9 = MOBILE ? lam(0xd8e6ee) : new THREE.MeshStandardMaterial({ color: 0xd8e6ee, roughness: 0.24, metalness: 0.04 });
-  // 纺锤形流线海豚躯干 + 浅白腹部
-  const bd9 = new THREE.Mesh(new THREE.CapsuleGeometry(.42, 1.55, 12, 18), dSkinMat9);
-  bd9.rotation.x = Math.PI / 2; bd9.scale.set(0.92, 1, 1.04); d9.add(bd9);
-  const bl9 = new THREE.Mesh(new THREE.CapsuleGeometry(.36, 1.32, 10, 14), dBellyMat9);
-  bl9.rotation.x = Math.PI / 2; bl9.position.set(0, -0.11, -0.05); d9.add(bl9);
-  // 宽吻海豚额隆与吻突 (Rostrum)
-  const sn9 = new THREE.Mesh(new THREE.CapsuleGeometry(.13, .45, 8, 12), dSkinMat9);
-  sn9.rotation.x = Math.PI / 2; sn9.position.set(0, -0.06, -1.18); d9.add(sn9);
-  // 镰刀状后掠背鳍
-  const fn9 = new THREE.Mesh(new THREE.ConeGeometry(.28, .78, 10), dSkinMat9);
-  fn9.scale.set(0.28, 1, 1.15); fn9.rotation.x = 0.38; fn9.position.set(0, .54, .08); d9.add(fn9);
-  // 左右流线胸鳍
-  for (const sgn of [-1, 1]) {
-    const pf9 = new THREE.Mesh(new THREE.SphereGeometry(.26, 10, 8), dSkinMat9);
-    pf9.scale.set(1.55, 0.18, 0.65); pf9.position.set(sgn * 0.46, -0.18, -0.38);
-    pf9.rotation.set(0.2, sgn * 0.35, -sgn * 0.38); d9.add(pf9);
+/* --- 🐬 双海豚(Lathe连续流线体 + 镰刀背鳍 + 活动新月尾叶 + 湿润清漆PBR) --- */
+{
+  const dPts = [];
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const z = -1.45 + t * 2.75;   // 吻突(-1.45)→尾柄(+1.30)
+    let r;
+    if (t < 0.14) r = 0.06 + (t / 0.14) * 0.08;                // 宽吻
+    else if (t < 0.36) r = 0.14 + Math.sin(((t - 0.14) / 0.22) * Math.PI * 0.5) * 0.28;   // 额隆到胸腔
+    else r = 0.42 * Math.pow(1 - (t - 0.36) / 0.64, 0.78) + 0.045;                        // 流线收窄至尾柄
+    dPts.push(new THREE.Vector2(Math.max(0.01, r), z));
   }
-  // 锥形尾柄与新月水平尾叶
-  const stk9 = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.15, 12), dSkinMat9);
-  stk9.rotation.x = -Math.PI / 2; stk9.position.set(0, 0, 1.18); d9.add(stk9);
-  for (const sgn of [-1, 1]) {
-    const flk9 = new THREE.Mesh(new THREE.SphereGeometry(.34, 10, 8), dSkinMat9);
-    flk9.scale.set(1.45, 0.15, 0.68); flk9.position.set(sgn * 0.34, 0, 1.68);
-    flk9.rotation.y = -sgn * 0.36; d9.add(flk9);
+  const dBodyG = new THREE.LatheGeometry(dPts, 18); dBodyG.rotateX(Math.PI / 2); dBodyG.scale(0.86, 1.04, 1);
+  const dBellyG = new THREE.LatheGeometry(dPts, 14); dBellyG.rotateX(Math.PI / 2); dBellyG.scale(0.74, 0.68, 0.94);
+
+  const dFinShape = new THREE.Shape();
+  dFinShape.moveTo(-0.22, 0); dFinShape.quadraticCurveTo(-0.02, 0.56, 0.30, 0.50); dFinShape.quadraticCurveTo(0.14, 0.20, 0.22, 0);
+  const dFinG = new THREE.ExtrudeGeometry(dFinShape, { depth: 0.035, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.01 });
+  dFinG.rotateY(Math.PI / 2); dFinG.translate(-0.018, 0.32, 0.08);
+
+  const dPecShape = new THREE.Shape();
+  dPecShape.moveTo(0, 0.08); dPecShape.quadraticCurveTo(0.32, 0.02, 0.48, -0.26); dPecShape.quadraticCurveTo(0.22, -0.22, 0, -0.06);
+  const dPecG = new THREE.ExtrudeGeometry(dPecShape, { depth: 0.024, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006 });
+  dPecG.rotateX(Math.PI * 0.45);
+
+  const dFlukeShape = new THREE.Shape();
+  dFlukeShape.moveTo(0, 0.04);
+  dFlukeShape.quadraticCurveTo(0.34, 0.02, 0.56, -0.22);
+  dFlukeShape.quadraticCurveTo(0.22, -0.14, 0, -0.06);
+  dFlukeShape.quadraticCurveTo(-0.22, -0.14, -0.56, -0.22);
+  dFlukeShape.quadraticCurveTo(-0.34, 0.02, 0, 0.04);
+  const dFlukeG = new THREE.ExtrudeGeometry(dFlukeShape, { depth: 0.024, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006 });
+  dFlukeG.rotateX(-Math.PI / 2);
+
+  const dSkinMat9 = MOBILE ? lam(0x4a7a9a) : new THREE.MeshPhysicalMaterial({ color: 0x356484, roughness: 0.14, metalness: 0.06, clearcoat: 0.92, clearcoatRoughness: 0.08 });
+  const dBellyMat9 = MOBILE ? lam(0xd8e6ee) : new THREE.MeshPhysicalMaterial({ color: 0xdbe9f2, roughness: 0.22, metalness: 0.02, clearcoat: 0.75 });
+  const dEyeM9 = new THREE.MeshStandardMaterial({ color: 0x0b0e12, roughness: 0.05 });
+
+  for (let i9 = 0; i9 < 2; i9++) {
+    const d9 = new THREE.Group();
+    d9.add(new THREE.Mesh(dBodyG, dSkinMat9));
+    const bl9 = new THREE.Mesh(dBellyG, dBellyMat9); bl9.position.set(0, -0.11, -0.04); d9.add(bl9);
+    d9.add(new THREE.Mesh(dFinG, dSkinMat9));
+    for (const sgn of [-1, 1]) {
+      const pf9 = new THREE.Mesh(dPecG, dSkinMat9);
+      pf9.scale.x = sgn; pf9.position.set(sgn * 0.28, -0.14, -0.45); pf9.rotation.z = -sgn * 0.36; d9.add(pf9);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.036, 6, 5), dEyeM9);
+      eye.position.set(sgn * 0.22, 0.03, -0.92); d9.add(eye);
+    }
+    const tailGrp = new THREE.Group(); tailGrp.position.set(0, 0, 1.26);
+    const flk = new THREE.Mesh(dFlukeG, dSkinMat9); tailGrp.add(flk);
+    d9.add(tailGrp);
+    d9.userData = { ph: i9 * 2.4, tailGrp };
+    scene.add(d9); dolphins9.push(d9);
   }
-  d9.userData = { ph: i9 * 2.4 };
-  scene.add(d9); dolphins9.push(d9);
 }
 /* 🪧 真实市政/公路多臂指路牌(镀锌钢柱+混凝土基座+公路绿底白字+自动测距) */
 function fingerpost9(x9, z9, arms9) {
@@ -10901,20 +11037,32 @@ function makeBoat(sailCol, scale = 1) {
   }
   scene.add(g); boats.push(g); return g;
 }
-// 🐢 沿岸海龟群(钓鱼栈桥旁浅海巡游)
-for (let ti = 0; ti < 4; ti++) {
-  const tg = new THREE.Group(), shM = lam(0x3a5a32), skM = lam(0x567a44);
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(.72, 12, 8, 0, Math.PI * 2, 0, Math.PI * .6), shM);
-  shell.scale.set(1, .52, 1.28); tg.add(shell);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(.68, .08, 6, 12), lam(0x887442)); rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.28, 1); tg.add(rim);
-  const hd = new THREE.Mesh(new THREE.CapsuleGeometry(.16, .24, 6, 8), skM); hd.rotation.x = Math.PI / 2; hd.position.set(0, .06, .95); tg.add(hd);
-  const flp = [];
-  for (const sx of [-1, 1]) {
-    const f = new THREE.Mesh(new THREE.SphereGeometry(.28, 8, 6), skM); f.scale.set(1.6, .16, .65); f.position.set(sx * .78, -.02, .35); tg.add(f); flp.push(f);
-    const b = new THREE.Mesh(new THREE.SphereGeometry(.18, 6, 6), skM); b.scale.set(1.1, .14, .75); b.position.set(sx * .52, -.04, -.72); tg.add(b);
+// 🐢 沿岸海龟群(曲面盾甲+桨状长鳍+湿润清漆PBR)
+{
+  const flpShape = new THREE.Shape();
+  flpShape.moveTo(0, 0.08); flpShape.quadraticCurveTo(0.45, 0.14, 0.72, -0.18); flpShape.quadraticCurveTo(0.32, -0.22, 0, -0.08);
+  const flpG = new THREE.ExtrudeGeometry(flpShape, { depth: 0.032, bevelEnabled: true, bevelSize: 0.01, bevelThickness: 0.008 });
+  flpG.rotateX(-Math.PI / 2);
+  const shM = new THREE.MeshPhysicalMaterial({ color: 0x35542d, roughness: .28, metalness: .05, clearcoat: .78 });
+  const rimM = new THREE.MeshPhysicalMaterial({ color: 0x86723e, roughness: .35, clearcoat: .55 });
+  const skM = new THREE.MeshPhysicalMaterial({ color: 0x4f723e, roughness: .32, clearcoat: .65 });
+  for (let ti = 0; ti < 4; ti++) {
+    const tg = new THREE.Group();
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(.72, 16, 10, 0, Math.PI * 2, 0, Math.PI * .58), shM);
+    shell.scale.set(1, .48, 1.28); tg.add(shell);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.68, .075, 8, 16), rimM); rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.28, 1); tg.add(rim);
+    const hd = new THREE.Mesh(new THREE.CapsuleGeometry(.15, .26, 8, 10), skM); hd.rotation.x = Math.PI / 2; hd.position.set(0, .06, .95); tg.add(hd);
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(.03, 6, 5), lam(0x111111)); eye.position.set(sx * .11, .11, 1.04); tg.add(eye);
+    }
+    const flp = [];
+    for (const sx of [-1, 1]) {
+      const f = new THREE.Mesh(flpG, skM); f.scale.x = sx; f.position.set(sx * .52, -.02, .38); tg.add(f); flp.push(f);
+      const b = new THREE.Mesh(flpG, skM); b.scale.set(sx * .58, 1, .62); b.position.set(sx * .38, -.04, -.65); tg.add(b);
+    }
+    tg.userData = { ph: ti * 1.57, r: 10 + ti * 3.5, sp: .22 + ti * .04, flp };
+    scene.add(tg); turtles9.push(tg);
   }
-  tg.userData = { ph: ti * 1.57, r: 10 + ti * 3.5, sp: .22 + ti * .04, flp };
-  scene.add(tg); turtles9.push(tg);
 }
 // 🦢 鲸眼湖水生植物(芦苇+睡莲)与白天鹅
 for (let i = 0; i < 18; i++) {
@@ -13602,13 +13750,14 @@ function worldFx9(dt, t, pMoving, bh) {
     }
   }
   for (let i9 = rings9.length - 1; i9 >= 0; i9--) { const r9 = rings9[i9]; r9.life -= dt; if (r9.life < 0) { scene.remove(r9.m); rings9.splice(i9, 1); } else r9.m.scale.setScalar(1 + (0.9 - r9.life) * 4.5); }
-  for (const d9 of dolphins9) {   // 🐬 鼠海豚式跃水
+  for (const d9 of dolphins9) {   // 🐬 鼠海豚式跃水 + 尾叶上下拍水
     const ph9 = d9.userData.ph, aa9 = t * .32 + ph9;
     const cx9 = 30 + Math.cos(aa9) * 26, cz9 = 474 + Math.sin(aa9) * 26;
     const jp9 = aa9 * 3.1;
     d9.position.set(cx9, Math.sin(jp9) * 2.1 - 1.1 + tideY, cz9);
     d9.rotation.y = Math.atan2(-Math.sin(aa9), Math.cos(aa9));
     d9.rotation.x = -Math.cos(jp9) * .55;
+    if (d9.userData.tailGrp) d9.userData.tailGrp.rotation.x = Math.sin(t * 7.5 + ph9) * .38;
     d9.visible = d9.position.y > -2.4;
   }
   for (const tg of turtles9) {   // 🐢 沿岸海龟巡游
@@ -14595,17 +14744,40 @@ function loop() {
     }
     nemFishSchool.instanceMatrix.needsUpdate = true;
   }
-  // 🐟 全球海洋与浅海鱼群(自动环绕水域分布+避让游动)+ 蝠鲼巡游
+  if (typeof fishSwimUni9 !== 'undefined') fishSwimUni9.uTime.value = t;
+  // 🐟 全球海洋与浅海 Boids 鱼群(分离/对齐/凝聚/惊散避让) + 蝠鲼翼浪巡游
   if (oceanFish9 && redistributeOceanFish9) {
     if ((player.position.x - fishCx9) ** 2 + (player.position.z - fishCz9) ** 2 > 400) redistributeOceanFish9(player.position.x, player.position.z);
     const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3();
+    const bDt = Math.min(dt, .04);
     for (let i = 0; i < OCEAN_FN9; i++) {
       const fd = fishData9[i];
       if (!fd.ok) { m4f.makeTranslation(0, -999, 0); oceanFish9.setMatrixAt(i, m4f); continue; }
-      const aa = t * fd.sp + fd.ph, wx = fd.cx + Math.cos(aa) * fd.r, wz = fd.cz + Math.sin(aa) * fd.r;
-      const wig = Math.sin(t * 7.5 + fd.ph) * .16;
-      pf.set(wx, fd.y + Math.sin(t * 1.8 + fd.ph) * .18, wz);
-      qf.setFromEuler(new THREE.Euler(0, -aa + wig, 0));
+      let sepX = 0, sepZ = 0, aliX = 0, aliZ = 0, cohX = 0, cohZ = 0, cnt = 0;
+      for (let j = (i + 1) % OCEAN_FN9, k = 0; k < 10; k++, j = (j + 3) % OCEAN_FN9) {
+        const o = fishData9[j]; if (!o.ok) continue;
+        const dx = fd.x - o.x, dz = fd.z - o.z, d2 = dx * dx + dz * dz;
+        if (d2 < 36 && d2 > .01) {
+          if (d2 < 4.5) { sepX += dx / d2; sepZ += dz / d2; }
+          aliX += o.vx; aliZ += o.vz;
+          cohX += o.x; cohZ += o.z;
+          cnt++;
+        }
+      }
+      let ax = (fd.cx - fd.x) * .28, az = (fd.cz - fd.z) * .28;
+      if (cnt > 0) {
+        ax += sepX * 3.5 + (aliX / cnt - fd.vx) * .9 + (cohX / cnt - fd.x) * .35;
+        az += sepZ * 3.5 + (aliZ / cnt - fd.vz) * .9 + (cohZ / cnt - fd.z) * .35;
+      }
+      const pdx = fd.x - player.position.x, pdz = fd.z - player.position.z, pd2 = pdx * pdx + pdz * pdz;
+      if (pd2 < 42 && pd2 > .01) { ax += pdx / pd2 * 22; az += pdz / pd2 * 22; }
+      fd.vx += ax * bDt; fd.vz += az * bDt;
+      const spd = Math.hypot(fd.vx, fd.vz) || 1, maxS = 2.6 + (i % 4) * .45;
+      if (spd > maxS || spd < 1.2) { const ts = spd > maxS ? maxS : 1.5; fd.vx = fd.vx / spd * ts; fd.vz = fd.vz / spd * ts; }
+      fd.x += fd.vx * bDt; fd.z += fd.vz * bDt;
+      const yaw = Math.atan2(fd.vx, fd.vz);
+      pf.set(fd.x, fd.y + Math.sin(t * 1.8 + fd.ph) * .18, fd.z);
+      qf.setFromEuler(new THREE.Euler(0, yaw, 0));
       m4f.compose(pf, qf, sf);
       oceanFish9.setMatrixAt(i, m4f);
     }
