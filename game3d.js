@@ -397,8 +397,8 @@ function height(x, z) {
     // 喜马拉雅-青藏高原造山带 (Asia)
     const dHim = Math.hypot((x - 940) * .72, z + 560);
     if (dHim < 180) h += smooth01(clamp(1 - dHim / 180, 0, 1)) ** 1.6 * 36 * (.55 + .45 * ridged(x * .022, z * .022, 4));
-    // 安第斯山脉 (West South America)
-    if (x > -840 && x < -640 && z > -80 && z < 720) {
+    // 安第斯山脉 (West South America, 避开体育岛 SPT 避免山体压进看台)
+    if (x > -840 && x < -640 && z > -80 && z < 720 && Math.hypot(x - SPT.x, z - SPT.z) > 90) {
       const dAnd = Math.abs(x + 740) / 100;
       if (dAnd < 1) h += smooth01(1 - dAnd) ** 1.5 * 28 * (.5 + .5 * ridged(x * .025, z * .018, 4));
     }
@@ -456,9 +456,9 @@ function height(x, z) {
   h = h * (1 - smooth01(clamp(1 - mbt / 52, 0, 1)) * .88) + 6 * smooth01(clamp(1 - mbt / 52, 0, 1)) * .88;
   const mbf = Math.hypot(x - 120, z - 697);            // 渡口浅滩(北岸)
   h = h * (1 - smooth01(clamp(1 - mbf / 18, 0, 1)) * .95) + 2.2 * smooth01(clamp(1 - mbf / 18, 0, 1)) * .95;
-  const spf = Math.hypot(x - SPT.x, z - SPT.z);        // 体育岛整平(球场内 100% 平坦 6.0m,防安第斯山脉隆起穿模)
-  if (spf < 78) {
-    const spFlat = spf < 52 ? 1.0 : smooth01(clamp(1 - spf / 78, 0, 1)) * .96;
+  const spf = Math.hypot(x - SPT.x, z - SPT.z);        // 体育岛整平(r<66m 100% 平坦 6.0m,覆盖全部矩形看台与四角)
+  if (spf < 96) {
+    const spFlat = spf < 66 ? 1.0 : smooth01(clamp(1 - (spf - 66) / 30, 0, 1));
     h = h * (1 - spFlat) + 6 * spFlat;
   }
   const spd2 = Math.hypot(x + 678, z - 120);           // 体育岛渡口浅滩(东岸)
@@ -5999,7 +5999,8 @@ function updateScoreboard(minute) {
   scoreTex.needsUpdate = true;
 }
 {
-  const cx3 = SPT.x, cz3 = SPT.z, baseH = 6;
+  const cx3 = SPT.x, cz3 = SPT.z, baseH = 6.2;
+  const basePlinth9 = box(92, 1.0, 76, M.concrete || M.stone); basePlinth9.position.set(cx3, baseH - .48, cz3); scene.add(basePlinth9);
   // —— 草坪:FIFA 标准画线(10px = 1m,105×68 场地 + 2m 缓冲) ——
   {
     const pc = document.createElement('canvas'); pc.width = 1090; pc.height = 720;
@@ -10295,15 +10296,15 @@ const deckY = t => 3 + Math.sin(t * Math.PI) * 6;
 function pierHeight(x, z) {
   return (Math.abs(x) < 3.2 && z > 346 && z < 427) ? 1.85 : null;
 }
-/* 梦剧场矩形四面看台台阶(可拾级而上,14 层) */
+/* 梦剧场纯平草坪(6.34m) + 矩形四面看台台阶(可拾级而上,14 层) */
 function stadiumHeight(x, z) {
   const dx = Math.abs(x - SPT.x), dz = Math.abs(z - SPT.z);
-  if (dx > 44 || dz > 37) return null;
+  if (dx > 45 || dz > 38) return null;
   const rx = dx - 25.6, rz = dz - 18.6;
   const r = Math.max(rx, rz);
-  if (r < 0) return null;
+  if (r < 0) return 6.34;
   const i = Math.min(13, Math.floor(r / 1.25));
-  return 6.0 + 1.0 * (i + 1);
+  return 6.2 + 1.0 * (i + 1);
 }
 /* 进步之塔螺旋坡道 + 断口平台(可拾级登顶,cirObs 的 top 字段放行高处) */
 function unjTowerHeight(x, z) {
@@ -11606,7 +11607,7 @@ function redistributeMist(cx, cz) {
     dandel9 = new THREE.Points(dg9, new THREE.PointsMaterial({ map: softDot9, color: 0xffffff, size: 1.05, transparent: true, opacity: .5, depthWrite: false }));
     dandel9.frustumCulled = false; scene.add(dandel9);
   }
-  osmCity(C9, OSM_SPTT, SPT.x + 64, SPT.z, -40, [lam(0xc03a3a), lam(0x8a8a92)]);    // 老特拉福德(梦剧场原型)
+  // (已由主场景 1:1 真实四面矩形老特拉福德球场取代,避免 OSM_SPTT 原型块穿入草坪)
   osmRoads(C9, OSM_ROADS.TRUMAN, TRU.x + 30, TRU.z, 32, new THREE.MeshLambertMaterial({ color: 0xd8cfc0, side: THREE.DoubleSide }), 1.8, .12);   // Seaside 放射街网
   osmRoads(C9, OSM_ROADS.MOBT, MOB.x - 24, MOB.z, 34, new THREE.MeshLambertMaterial({ color: 0xa89878, side: THREE.DoubleSide }), 1.7, .12);   // 南塔开特鹅卵石街
   { const pts9 = OSM_PIERS_MOB.flat ? OSM_PIERS_MOB : [];   // 南塔开特码头栈桥(伸进海里)
@@ -13887,7 +13888,7 @@ function loop() {
       bp9.kick -= dt;
       bp9.vy -= 24 * dt;
       matchBall.position.x += bp9.vx * dt; matchBall.position.z += bp9.vz * dt; matchBall.position.y += bp9.vy * dt;
-      if (matchBall.position.y <= 6.42) { matchBall.position.y = 6.42; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; }
+      if (matchBall.position.y <= 6.66) { matchBall.position.y = 6.66; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; }
       if (Math.abs(matchBall.position.x - SPT.x) > 21) bp9.vx *= -.75;
       if (Math.abs(matchBall.position.z - SPT.z) > 13.5) bp9.vz *= -.75;
     } else {
