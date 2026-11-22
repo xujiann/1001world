@@ -456,8 +456,11 @@ function height(x, z) {
   h = h * (1 - smooth01(clamp(1 - mbt / 52, 0, 1)) * .88) + 6 * smooth01(clamp(1 - mbt / 52, 0, 1)) * .88;
   const mbf = Math.hypot(x - 120, z - 697);            // 渡口浅滩(北岸)
   h = h * (1 - smooth01(clamp(1 - mbf / 18, 0, 1)) * .95) + 2.2 * smooth01(clamp(1 - mbf / 18, 0, 1)) * .95;
-  const spf = Math.hypot(x - SPT.x, z - SPT.z);        // 体育岛整平(球场基座)
-  h = h * (1 - smooth01(clamp(1 - spf / 72, 0, 1)) * .92) + 6 * smooth01(clamp(1 - spf / 72, 0, 1)) * .92;
+  const spf = Math.hypot(x - SPT.x, z - SPT.z);        // 体育岛整平(球场内 100% 平坦 6.0m,防安第斯山脉隆起穿模)
+  if (spf < 78) {
+    const spFlat = spf < 52 ? 1.0 : smooth01(clamp(1 - spf / 78, 0, 1)) * .96;
+    h = h * (1 - spFlat) + 6 * spFlat;
+  }
   const spd2 = Math.hypot(x + 678, z - 120);           // 体育岛渡口浅滩(东岸)
   h = h * (1 - smooth01(clamp(1 - spd2 / 18, 0, 1)) * .95) + 2.2 * smooth01(clamp(1 - spd2 / 18, 0, 1)) * .95;
   // —— 六新岛地形(q:局部整平) ——
@@ -6122,11 +6125,11 @@ function updateScoreboard(minute) {
     const ewRoof = box(16, .5, 74, lam(0xe6e2da)); ewRoof.rotation.z = -sgn * .08; ewRoof.position.set(cx3 + sgn * 37.5, baseH + 19.2, cz3); scene.add(ewRoof);
     const ewSky = box(4.5, .22, 72, M.glass); ewSky.rotation.z = -sgn * .08; ewSky.position.set(cx3 + sgn * 27.5, baseH + 18.5, cz3); scene.add(ewSky);
   }
-  for (let rx = -36; rx <= 36; rx += 12) for (const sgn of [-1, 1]) {
-    const truss = box(.55, .7, 21, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + rx, baseH + 19.6, cz3 + sgn * 28.5); scene.add(truss);
+  for (let rx = -24; rx <= 24; rx += 12) for (const sgn of [-1, 1]) {
+    const truss = box(.55, .7, 20, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + rx, baseH + 19.6, cz3 + sgn * 28.5); scene.add(truss);
   }
-  for (let rz = -30; rz <= 30; rz += 12) for (const sgn of [-1, 1]) {
-    const truss = box(21, .7, .55, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + sgn * 35.5, baseH + 19.6, cz3 + rz); scene.add(truss);
+  for (let rz = -16; rz <= 16; rz += 16) for (const sgn of [-1, 1]) {
+    const truss = box(20, .7, .55, M.metal || lam(0xc8ccd0)); truss.position.set(cx3 + sgn * 35.5, baseH + 19.6, cz3 + rz); scene.add(truss);
   }
   // 场边 LED 广告围栏 + 4 面角旗 + 主客队玻璃替补席
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xc8102e });
@@ -15415,7 +15418,7 @@ if (!MOBILE) {
     for (let x9 = -1900; x9 < 1900; x9 += 14)
       for (let z9 = -1900; z9 < 1900; z9 += 14) {
         const h9 = heightMesh(x9, z9);
-        if (h9 < .4) continue;                                  // 水下/沙滩交给浅滩泡沫
+        if (h9 < .4 || (x9 - SPT.x) ** 2 + (z9 - SPT.z) ** 2 < 62 * 62) continue;
         const slope9 = Math.abs(heightMesh(x9 + 6, z9) - h9) + Math.abs(heightMesh(x9, z9 + 6) - h9);
         const steep9 = slope9 > 2.2, high9 = h9 > 20;
         if (!(steep9 || (high9 && slope9 > .8))) continue;      // 只在陡坡/高地
