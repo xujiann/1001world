@@ -4000,6 +4000,11 @@ function heightMesh(x, z) {
     tx.colorSpace = THREE.SRGBColorSpace;
     tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   }) : null;
+  const terrainSoilTex9 = !MOBILE ? new THREE.TextureLoader().load('./assets/textures/dirt_color.jpg', tx => {
+    tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+    tx.colorSpace = THREE.SRGBColorSpace;
+    tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  }) : null;
   const terrainMat = MOBILE
     ? new THREE.MeshLambertMaterial({ vertexColors: true })
     : new THREE.MeshStandardMaterial({
@@ -4009,25 +4014,32 @@ function heightMesh(x, z) {
         roughness: RAINY ? .48 : .86,
         metalness: 0.02
       });   // 🏔️ 真实地形法线贴图 + 湿地面微反光
-  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 三平面岩层/陡坡纹理 + 湿滩镜面高光 + 多尺度地表微细节
+  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 草地/泥土双纹理混色 + 沙纹 + 三平面岩层 + 湿滩高光
     sh9.uniforms.uCldT9 = CLOUDU9.t; sh9.uniforms.uCldA9 = CLOUDU9.a;
     sh9.uniforms.uDetTex9 = { value: terrainDetTex9 };
+    sh9.uniforms.uSoilTex9 = { value: terrainSoilTex9 };
     sh9.vertexShader = sh9.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wPos9 = modelMatrix * vec4( position, 1.0 );\nvWXZ9 = wPos9.xz;\nvWY9 = wPos9.y;\nvWNY9 = normalize( mat3( modelMatrix ) * objectNormal ).y;');
     sh9.fragmentShader = sh9.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform sampler2D uDetTex9;')
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform sampler2D uDetTex9;\nuniform sampler2D uSoilTex9;')
       .replace('#include <color_fragment>',
         '#include <color_fragment>\n' +
         'vec3 detNear9 = texture2D( uDetTex9, vWXZ9 * 0.085 ).rgb;\n' +
         'vec3 detFar9  = texture2D( uDetTex9, vWXZ9 * 0.018 ).rgb;\n' +
+        'vec3 soilTex9 = texture2D( uSoilTex9, vWXZ9 * 0.065 ).rgb;\n' +
         'float detLuma9 = dot( mix( detNear9, detFar9, 0.45 ), vec3( 0.299, 0.587, 0.114 ) );\n' +
+        'float soilLuma9 = dot( soilTex9, vec3( 0.299, 0.587, 0.114 ) );\n' +
+        'float soilPatch9 = smoothstep( 0.35, 0.78, sin( vWXZ9.x * 0.055 ) * cos( vWXZ9.y * 0.055 ) + 0.5 );\n' +
+        'float sandMix9 = (1.0 - smoothstep( 0.8, 3.0, vWY9 )) + soilPatch9 * 0.35;\n' +
+        'float ripple9 = sin( vWXZ9.x * 2.2 + vWXZ9.y * 1.1 + sin( vWXZ9.y * 0.25 ) ) * (1.0 - smoothstep( 0.5, 2.8, vWY9 )) * 0.045;\n' +
         'float slope9 = clamp( 1.0 - vWNY9, 0.0, 1.0 );\n' +
         'float strata9 = sin( vWY9 * 2.1 + sin( vWXZ9.x * 0.07 ) * 1.8 + cos( vWXZ9.y * 0.07 ) * 1.8 ) * 0.085;\n' +
         'float rockGrain9 = sin( vWXZ9.x * 0.35 + vWY9 * 0.9 ) * cos( vWXZ9.y * 0.35 - vWY9 * 0.7 ) * 0.05;\n' +
         'float cliffBlend9 = smoothstep( 0.22, 0.52, slope9 );\n' +
         'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.48, 0.45, 0.41 ) * ( 0.92 + strata9 + rockGrain9 ), cliffBlend9 * 0.62 );\n' +
-        'diffuseColor.rgb *= clamp( 0.78 + detLuma9 * 0.46 + ( vWY9 > 14.0 ? strata9 * 0.6 : 0.0 ), 0.62, 1.28 );')
+        'float texMix9 = mix( detLuma9, soilLuma9, clamp( sandMix9, 0.0, 0.85 ) );\n' +
+        'diffuseColor.rgb *= clamp( 0.78 + texMix9 * 0.46 + ripple9 + ( vWY9 > 14.0 ? strata9 * 0.6 : 0.0 ), 0.62, 1.28 );')
       .replace('#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
         'float wetShore9 = 1.0 - smoothstep( -0.4, 1.8, vWY9 );\n' +
@@ -6249,6 +6261,7 @@ function updateScoreboard(minute) {
 await buildStep9("多元宇宙", 50);
 /* ================= 六新岛:山海经/桃花源/一千零一夜/海底两万里/B-612/侏罗纪 ================= */
 let nautilusHull = null, nemFishSchool = null, trexGrp = null, brachioNeck = null;
+let oceanFish9 = null, OCEAN_FN9 = 0, fishData9 = [], fishCx9 = 1e9, fishCz9 = 1e9, rays9 = [], redistributeOceanFish9 = null;
 const raptorGrps = [], nightLamps = [];
 let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红眼
 /* —— 山海经 · 异兽之野 —— */
@@ -6555,14 +6568,55 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   addSpot(gx + 28, gz + 31, 'lore', 'nemflag', { r: 6 });   // 南极黑旗(复制品)
   addNpc({ x: gx - 20, z: gz - 16, name: '阿龙纳斯教授', body: 0x5a6a7a, hat: 0x3e4a56, opts: { tall: 1.02 },
     lines: ['我是来研究"海怪"的——结果住进了海怪的肚子里。', '尼德·兰天天想逃,康塞尔天天做分类,我天天记笔记。', '《海底两万里》——就是那本笔记。'] });
-  // 环艇鱼群
+  // 🐟 写实流线鱼体几何(躯干+背鳍+叉状尾鳍)+ 全球海洋浅海鱼群(120尾) + 蝠鲼群(4只)
+  function makeFishGeo9(sc = 1) {
+    const body = new THREE.CapsuleGeometry(.16 * sc, .56 * sc, 5, 8);
+    body.rotateX(Math.PI / 2); body.scale(.65, 1.05, 1);
+    const tail = new THREE.ConeGeometry(.18 * sc, .32 * sc, 4);
+    tail.rotateX(Math.PI / 2); tail.scale(.25, 1.15, 1); tail.translate(0, 0, -.44 * sc);
+    const dorsal = new THREE.ConeGeometry(.12 * sc, .24 * sc, 3);
+    dorsal.scale(.22, 1, 1.2); dorsal.rotateX(-.3); dorsal.translate(0, .18 * sc, -.04 * sc);
+    return mergeGeometries([body, tail, dorsal]);
+  }
   {
-    const fg = new THREE.ConeGeometry(.4, 1.4, 5);
-    nemFishSchool = new THREE.InstancedMesh(fg, new THREE.MeshLambertMaterial({ color: 0xffffff }), 30);
+    const fg = makeFishGeo9(1.25);
+    nemFishSchool = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .35, metalness: .15 }), 30);
     const cols2 = Object.values(FISH_COLOR).map(c2 => new THREE.Color(c2));
     for (let i = 0; i < 30; i++) nemFishSchool.setColorAt(i, cols2[i % cols2.length]);
     if (nemFishSchool.instanceColor) nemFishSchool.instanceColor.needsUpdate = true;
     scene.add(nemFishSchool);
+  }
+  OCEAN_FN9 = MOBILE ? 48 : 120;
+  const oceanFishGeo9 = makeFishGeo9(.95);
+  oceanFish9 = new THREE.InstancedMesh(oceanFishGeo9, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3, metalness: .18 }), OCEAN_FN9);
+  oceanFish9.frustumCulled = false;
+  const fishPal9 = [0xff7a2f, 0x2e86de, 0xf5cd42, 0x38bdf8, 0xd9e4ec, 0xf472b6].map(c => new THREE.Color(c));
+  for (let i = 0; i < OCEAN_FN9; i++) oceanFish9.setColorAt(i, fishPal9[i % fishPal9.length]);
+  if (oceanFish9.instanceColor) oceanFish9.instanceColor.needsUpdate = true;
+  fishData9 = [];
+  for (let i = 0; i < OCEAN_FN9; i++) fishData9.push({ cx: 0, cz: 430, y: -1.6, r: 8 + (i % 7) * 3.5, sp: .35 + (i % 5) * .12, ph: i * .62, ok: false });
+  redistributeOceanFish9 = (px, pz) => {
+    fishCx9 = px; fishCz9 = pz;
+    const rndF = mulberry32(((px * 7 + pz * 13) | 0) ^ 991);
+    for (let i = 0; i < OCEAN_FN9; i++) {
+      const a = rndF() * 6.2832, dist = 12 + rndF() * 58;
+      const fx = px + Math.cos(a) * dist, fz = pz + Math.sin(a) * dist;
+      const fh = heightMesh(fx, fz);
+      const fd = fishData9[i];
+      if (fh < -1.1) { fd.cx = fx; fd.cz = fz; fd.y = Math.max(fh + .55, -2.6 - (i % 4) * .5); fd.ok = true; }
+      else fd.ok = false;
+    }
+  };
+  scene.add(oceanFish9);
+  rays9 = [];
+  for (let ri = 0; ri < 4; ri++) {
+    const rg = new THREE.Group(), rMat = lam(0x283e54), rBelly = lam(0xd4dee6);
+    const disc = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.2, 4), rMat);
+    disc.rotation.x = Math.PI / 2; disc.scale.set(1.6, .16, 1); rg.add(disc);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), rBelly); belly.scale.set(1.2, .22, 1.3); belly.position.y = -.06; rg.add(belly);
+    const tail = cyl(.02, .05, 1.8, rMat, 5); tail.rotation.x = Math.PI / 2; tail.position.z = -1.6; rg.add(tail);
+    rg.userData = { ph: ri * 1.57, r: 16 + ri * 5, sp: .24 + ri * .03 };
+    scene.add(rg); rays9.push(rg);
   }
   addNpc({ x: gx - 6, z: gz + 10, name: '尼摩船长', body: 0x1c2a34, hat: 0x2e3e4a, opts: { tall: 1.1 },
     lines: ['我不是什么"文明人"。我和整个人类社会决裂了。', '海洋不属于暴君。在海面以下三十英尺,他们的权力就终止了。', 'Mobilis in mobili——动中之动,这是鹦鹉螺号的座右铭。'] });
@@ -11363,6 +11417,29 @@ let butterflies9 = null, bfCx = 1e9, bfCz = 1e9, bees9 = null, dragonflies9 = nu
   }
   scene.add(dragonflies9);
 }
+// 🦗 草丛蚱蜢(白昼草地跳跃) + 🦋 夜间趋光飞蛾(路灯旋飞)
+const hoppers9 = [], moths9 = [];
+{
+  const hMat9 = lam(0x649a38);
+  for (let i = 0; i < (MOBILE ? 4 : 8); i++) {
+    const hg = new THREE.Group();
+    const hb = new THREE.Mesh(new THREE.CapsuleGeometry(.035, .14, 4, 6), hMat9); hb.rotation.x = Math.PI / 2; hg.add(hb);
+    for (const s of [-1, 1]) {
+      const hl = cyl(.01, .014, .16, hMat9, 4); hl.rotation.x = -.7; hl.position.set(s * .045, .04, -.04); hg.add(hl);
+    }
+    hg.userData = { bx: 0, bz: 0, by: -999, ph: i * .95, ang: i * 1.1 };
+    scene.add(hg); hoppers9.push(hg);
+  }
+  const mMat9 = new THREE.MeshBasicMaterial({ color: 0xf4ecd8, side: THREE.DoubleSide });
+  for (let i = 0; i < 6; i++) {
+    const mg = new THREE.Group();
+    const mb = new THREE.Mesh(new THREE.CapsuleGeometry(.018, .08, 3, 5), lam(0x4e4236)); mb.rotation.x = Math.PI / 2; mg.add(mb);
+    const wl = new THREE.Mesh(new THREE.PlaneGeometry(.12, .08), mMat9); wl.rotation.x = -Math.PI / 2; wl.position.x = -.065; mg.add(wl);
+    const wr = new THREE.Mesh(new THREE.PlaneGeometry(.12, .08), mMat9); wr.rotation.x = -Math.PI / 2; wr.position.x = .065; mg.add(wr);
+    mg.userData = { wl, wr, ph: i * 1.05 };
+    mg.visible = false; scene.add(mg); moths9.push(mg);
+  }
+}
 /* 🐦 惊飞的鸟:陆上白昼移动时前方偶有几只鸟扑棱飞起(小对象池) */
 let flushBirds9 = null, flushT9 = 0, flushCD9 = 10;
 {
@@ -11394,6 +11471,12 @@ function redistributeButterflies9(cx, cz) {
       bb[i * 3] = x; bb[i * 3 + 2] = z;
       bb[i * 3 + 1] = (!inStadium9(x, z) && h > 2.2 && h < 18 && grassOK(x, z)) ? h + .65 + u.rnd() * .8 : -999;
     }
+  }
+  for (let i = 0; i < hoppers9.length; i++) {
+    const a = u.rnd() * 6.2832, rr = 2.5 + u.rnd() * 14;
+    const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr, h = heightMesh(x, z);
+    hoppers9[i].userData.bx = x; hoppers9[i].userData.bz = z; hoppers9[i].userData.ang = a;
+    hoppers9[i].userData.by = (!inStadium9(x, z) && h > 2.2 && h < 18 && grassOK(x, z)) ? h + .08 : -999;
   }
 }
 /* --- 流星(夜空偶尔划过) --- */
@@ -13843,6 +13926,28 @@ function loop() {
     }
     nemFishSchool.instanceMatrix.needsUpdate = true;
   }
+  // 🐟 全球海洋与浅海鱼群(自动环绕水域分布+避让游动)+ 蝠鲼巡游
+  if (oceanFish9 && redistributeOceanFish9) {
+    if ((player.position.x - fishCx9) ** 2 + (player.position.z - fishCz9) ** 2 > 400) redistributeOceanFish9(player.position.x, player.position.z);
+    const m4f = new THREE.Matrix4(), qf = new THREE.Quaternion(), sf = new THREE.Vector3(1, 1, 1), pf = new THREE.Vector3();
+    for (let i = 0; i < OCEAN_FN9; i++) {
+      const fd = fishData9[i];
+      if (!fd.ok) { m4f.makeTranslation(0, -999, 0); oceanFish9.setMatrixAt(i, m4f); continue; }
+      const aa = t * fd.sp + fd.ph, wx = fd.cx + Math.cos(aa) * fd.r, wz = fd.cz + Math.sin(aa) * fd.r;
+      const wig = Math.sin(t * 7.5 + fd.ph) * .16;
+      pf.set(wx, fd.y + Math.sin(t * 1.8 + fd.ph) * .18, wz);
+      qf.setFromEuler(new THREE.Euler(0, -aa + wig, 0));
+      m4f.compose(pf, qf, sf);
+      oceanFish9.setMatrixAt(i, m4f);
+    }
+    oceanFish9.instanceMatrix.needsUpdate = true;
+    for (const rg of rays9) {
+      const ru = rg.userData, aa = t * ru.sp + ru.ph;
+      rg.position.set(Math.cos(aa) * ru.r, -.85 + Math.sin(t * 1.5 + ru.ph) * .22 + tideY, 430 + Math.sin(aa) * ru.r);
+      rg.rotation.y = Math.atan2(-Math.sin(aa), Math.cos(aa));
+      rg.rotation.z = Math.sin(t * 2.4 + ru.ph) * .12;
+    }
+  }
   if (trexGrp) {
     const ta = t * .12;
     trexGrp.position.x = JUR.x + Math.cos(ta) * 24;
@@ -14158,12 +14263,13 @@ function loop() {
         if (b[i * 3 + 1] < -900) { g.visible = false; continue; }
         g.visible = true;
         const p2 = u.ph[i], ox = g.position.x, oz = g.position.z;
-        const nx = b[i * 3] + Math.sin(t * 1.4 + p2) * 1.8 + Math.sin(t * 3.2 + p2) * .4;
-        const nz = b[i * 3 + 2] + Math.cos(t * 1.15 + p2 * 1.3) * 1.8;
-        const ny = b[i * 3 + 1] + Math.sin(t * 2.5 + p2) * .5 + Math.abs(Math.sin(t * 7 + p2)) * .22;
+        const resting = Math.sin(t * .42 + p2 * 3) > .72;
+        const nx = b[i * 3] + Math.sin(t * 1.4 + p2) * (resting ? .2 : 1.8) + Math.sin(t * 3.2 + p2) * (resting ? .05 : .4);
+        const nz = b[i * 3 + 2] + Math.cos(t * 1.15 + p2 * 1.3) * (resting ? .2 : 1.8);
+        const ny = resting ? (Math.max(heightMesh(nx, nz), 0) + .55) : (b[i * 3 + 1] + Math.sin(t * 2.5 + p2) * .5 + Math.abs(Math.sin(t * 7 + p2)) * .22);
         g.position.set(nx, ny, nz);
-        g.rotation.y = Math.atan2(nx - ox, nz - oz);
-        const flap = Math.sin(t * 15 + p2 * 3) * .85;
+        if (!resting) g.rotation.y = Math.atan2(nx - ox, nz - oz);
+        const flap = resting ? (.55 + Math.sin(t * 2.5 + p2) * .18) : Math.sin(t * 15 + p2 * 3) * .85;
         if (g.userData.wl) g.userData.wl.rotation.z = flap;
         if (g.userData.wr) g.userData.wr.rotation.z = -flap;
       }
@@ -14202,6 +14308,29 @@ function loop() {
           if (du.wls) du.wls.forEach((w, wi) => { w.rotation.z = (wi < 2 ? -1 : 1) * dz; });
         }
       }
+    }
+    for (const hg of hoppers9) {
+      const hu = hg.userData;
+      if (!dayClear || hu.by < -900) { hg.visible = false; continue; }
+      hg.visible = true;
+      const cycle = (t * 1.1 + hu.ph) % 2.4;
+      const hop = cycle < .45 ? Math.sin(cycle / .45 * Math.PI) : 0;
+      const slide = cycle < .45 ? (cycle / .45) * 1.1 : 1.1;
+      hg.position.set(hu.bx + Math.cos(hu.ang) * slide, hu.by + hop * .65, hu.bz + Math.sin(hu.ang) * slide);
+      hg.rotation.y = hu.ang;
+    }
+    const nightMoth9 = curDA < .35 && WEATHER !== 'storm' && !REDUCE9 && !inStadium9(player.position.x, player.position.z);
+    for (let mi = 0; mi < moths9.length; mi++) {
+      const mg = moths9[mi];
+      mg.visible = nightMoth9;
+      if (!nightMoth9) continue;
+      const mu = mg.userData, ma = t * 3.2 + mu.ph;
+      const mx = player.position.x + Math.cos(ma * .35) * 5 + Math.cos(ma) * .65;
+      const mz = player.position.z + Math.sin(ma * .35) * 5 + Math.sin(ma) * .65;
+      mg.position.set(mx, Math.max(heightMesh(mx, mz), 0) + 2.2 + Math.sin(t * 2.4 + mu.ph) * .4, mz);
+      mg.rotation.y = -ma;
+      const mf = Math.sin(t * 32 + mu.ph) * .7;
+      mu.wl.rotation.z = mf; mu.wr.rotation.z = -mf;
     }
   }
   if (meteor) {
