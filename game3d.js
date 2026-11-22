@@ -12,6 +12,7 @@ import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=24';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import * as YUKA from 'yuka';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -8961,9 +8962,47 @@ function detachNpcPBR9(n) {
   for (const ch of n.g.children) ch.visible = true;
 }
 /* 📦 EVE_SPOTS9 → w-data2.js */   // 🌆 黄昏小聚点(广场灯笼串一带)
+const npcYukaMgr9 = new YUKA.EntityManager();
+const npcYukaObs9 = [], npcYukaVecs9 = [];
+let npcYukaBooted9 = false;
+function bootNpcYuka9() {
+  if (npcYukaBooted9) return;
+  npcYukaBooted9 = true;
+  for (const o of cirObs) {
+    const ent = new YUKA.GameEntity();
+    ent.position.set(o.x, 0, o.z);
+    ent.boundingRadius = (o.r || 1) + 0.55;
+    npcYukaObs9.push(ent);
+    npcYukaMgr9.add(ent);
+  }
+  const sep = new YUKA.SeparationBehavior(npcYukaVecs9);
+  sep.weight = 1.65;
+  const obsAvoid = new YUKA.ObstacleAvoidanceBehavior(npcYukaObs9);
+  obsAvoid.weight = 2.4;
+  obsAvoid.dBoxMinLength = 3.2;
+  for (const n of allNpcs) {
+    if (!n.wander && !n.path) continue;
+    const v = new YUKA.Vehicle();
+    v.position.set(n.g.position.x, 0, n.g.position.z);
+    v.boundingRadius = 0.75;
+    v.maxSpeed = (n.path ? 4.2 : 6.2) * (n.spdMul || 1);
+    v.maxForce = 14;
+    v.updateOrientation = false;
+    const seek = new YUKA.SeekBehavior(new YUKA.Vector3(n.g.position.x, 0, n.g.position.z));
+    seek.weight = 1.4;
+    v.steering.add(seek);
+    v.steering.add(sep);
+    v.steering.add(obsAvoid);
+    npcYukaVecs9.push(v);
+    npcYukaMgr9.add(v);
+    n.yuka9 = { vehicle: v, seek };
+  }
+}
 function updateNpcs3(dt) {
   npcFrame++;
   if (!npcPbrBooted9 && npcFrame > 45) bootNpcPbr9();
+  if (!npcYukaBooted9 && npcFrame > 60) bootNpcYuka9();
+  if (npcYukaBooted9) npcYukaMgr9.update(Math.min(dt, 0.05));
   npcChatT9 -= dt;
   if (npcChatT9 <= 0) {
     npcChatT9 = 26 + Math.random() * 18;
@@ -8991,6 +9030,7 @@ function updateNpcs3(dt) {
     const farD2 = (player.position.x - n.g.position.x) ** 2 + (player.position.z - n.g.position.z) ** 2;
     if (farD2 > 78400) {   // 280 米外整体隐身(省 draw call),走近再现身
       if (n.pbr9) { detachNpcPBR9(n); pbrActiveCount--; }
+      if (n.yuka9) n.yuka9.vehicle.active = false;
       if (n.g.visible) { n.g.visible = false; n.bub.classList.add('hidden'); n.talk = false; }
       continue;
     }
@@ -8998,7 +9038,7 @@ function updateNpcs3(dt) {
     if (n.night || n.day) {   // 昼夜限定 NPC(兰若寺)
       const show = n.night ? curDA < .35 : curDA >= .35;
       n.g.visible = show;
-      if (!show) { if (n.pbr9) { detachNpcPBR9(n); pbrActiveCount--; } n.bub.classList.add('hidden'); n.talk = false; continue; }
+      if (!show) { if (n.pbr9) { detachNpcPBR9(n); pbrActiveCount--; } if (n.yuka9) n.yuka9.vehicle.active = false; n.bub.classList.add('hidden'); n.talk = false; continue; }
     }
     if (n.spdMul == null) n.spdMul = .85 + Math.random() * .3;
     if (n.pbr9 && farD2 > 2916) { detachNpcPBR9(n); pbrActiveCount--; }
@@ -9013,25 +9053,47 @@ function updateNpcs3(dt) {
       if (dd9 > .6) { p.x += dx9 / dd9 * 2.4 * dt; p.z += dz9 / dd9 * 2.4 * dt; n.g.rotation.y = Math.atan2(dx9, dz9); n.phase += dt * 8; }
       else { n.g.rotation.y = Math.atan2(FIRE_POS9[0] - p.x, FIRE_POS9[1] - p.z); n.g.rotation.z = Math.sin(n.phase += dt * 2) * .055; }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
-    } else if (!zzz && n.path) {   // 🚶 沿真实街道散步(OSM 路网)
+    } else if (!zzz && n.path) {   // 🚶 沿真实街道散步(OSM 路网 + Yuka 避障转向)
       const P9 = n.path, ln = P9.ln, tgt = ln[P9.i];
       const tx = P9.ox + tgt[0], tz = P9.oz + tgt[1];
       const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-      if (d < 1.3) { P9.i += P9.dir; if (P9.i >= ln.length || P9.i < 0) { P9.dir *= -1; P9.i += P9.dir * 2; if (P9.i < 0) P9.i = 0; if (P9.i >= ln.length) P9.i = ln.length - 1; } }
-      else { const sp9 = 4.2 * n.spdMul * dt; p.x += dx / d * sp9; p.z += dz / d * sp9; n.g.rotation.y = Math.atan2(dx, dz); n.phase += dt * 8 * n.spdMul; }
+      if (d < 1.6) { P9.i += P9.dir; if (P9.i >= ln.length || P9.i < 0) { P9.dir *= -1; P9.i += P9.dir * 2; if (P9.i < 0) P9.i = 0; if (P9.i >= ln.length) P9.i = ln.length - 1; } }
+      else if (n.yuka9 && farD2 < 14400) {
+        n.yuka9.vehicle.active = true;
+        n.yuka9.seek.target.set(tx, 0, tz);
+        const vp = n.yuka9.vehicle.position, vv = n.yuka9.vehicle.velocity;
+        p.x = vp.x; p.z = vp.z;
+        if (vv.squaredLength() > .08) {
+          const wantY = Math.atan2(vv.x, vv.z);
+          n.g.rotation.y += ((wantY - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 8);
+        }
+        n.phase += dt * 8 * n.spdMul;
+      } else { const sp9 = 4.2 * n.spdMul * dt; p.x += dx / d * sp9; p.z += dz / d * sp9; n.g.rotation.y = Math.atan2(dx, dz); n.phase += dt * 8 * n.spdMul; }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
     } else if (!zzz && n.wander) {
-      if (n.pause > 0) { n.pause -= dt; }
-      else {
+      if (n.pause > 0) {
+        n.pause -= dt;
+        if (n.yuka9) { n.yuka9.vehicle.active = false; n.yuka9.vehicle.position.set(p.x, 0, p.z); n.yuka9.vehicle.velocity.set(0, 0, 0); }
+      } else {
         if (!n.wp) {
           const eve9 = curDA < .56 && curDA >= .33 && (n.g.position.x ** 2 + n.g.position.z ** 2 < 102400);   // 🌆 黄昏:主岛居民去广场灯下小聚
           const target = eve9 ? EVE_SPOTS9[(Math.random() * EVE_SPOTS9.length) | 0] : n.wps[Math.floor(Math.random() * n.wps.length)];
           n.route = [NPC_HUB3, target]; n.leg = 0; n.wp = n.route[0];
         }
         const dx = n.wp[0] - p.x, dz = n.wp[1] - p.z, d = Math.hypot(dx, dz);
-        if (d < 2) {
+        if (d < 2.2) {
           if (n.leg === 0) { n.leg = 1; n.wp = n.route[1]; }
           else { n.wp = null; n.pause = 3 + Math.random() * 5; }
+        } else if (n.yuka9 && farD2 < 14400) {
+          n.yuka9.vehicle.active = true;
+          n.yuka9.seek.target.set(n.wp[0], 0, n.wp[1]);
+          const vp = n.yuka9.vehicle.position, vv = n.yuka9.vehicle.velocity;
+          p.x = vp.x; p.z = vp.z;
+          if (vv.squaredLength() > .08) {
+            const wantY = Math.atan2(vv.x, vv.z);
+            n.g.rotation.y += ((wantY - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 8);
+          }
+          n.phase += dt * 8.5 * n.spdMul;
         } else {
           const sp = 6.2 * n.spdMul * dt;
           p.x += dx / d * sp; p.z += dz / d * sp;
@@ -9040,9 +9102,17 @@ function updateNpcs3(dt) {
         }
       }
       p.y = Math.max(heightMesh(p.x, p.z), 0);
-    } else { n.phase += dt * 2.2; }
+    } else {
+      n.phase += dt * 2.2;
+      if (n.yuka9) { n.yuka9.vehicle.active = false; n.yuka9.vehicle.position.set(p.x, 0, p.z); }
+    }
     const moving9 = !zzz && ((n.wander && n.wp) || n.path);
-    if (moving9) p.y = Math.max(surfaceGround9(p.x, p.z, p.y), 0);
+    let slopePitch = 0;
+    if (moving9) {
+      p.y = Math.max(surfaceGround9(p.x, p.z, p.y), 0);
+      const fx = Math.sin(n.g.rotation.y) * .6, fz = Math.cos(n.g.rotation.y) * .6;
+      slopePitch = Math.max(-.18, Math.min(.18, (heightMesh(p.x + fx, p.z + fz) - heightMesh(p.x - fx, p.z - fz)) * .16));
+    }
     const pd = Math.hypot(player.position.x - p.x, player.position.z - p.z);
     if (n.blinkT == null) n.blinkT = 1.5 + Math.random() * 4;
     n.blinkT -= dt;
@@ -9057,7 +9127,7 @@ function updateNpcs3(dt) {
       }
       n.pbr9.mixer.update(dt);
       const rig = n.pbr9.rig;
-      if (rig.spine) rig.spine.rotation.x += Math.sin(n.phase * .7) * (moving9 ? .012 : .024);
+      if (rig.spine) rig.spine.rotation.x += Math.sin(n.phase * .7) * (moving9 ? .012 : .024) + slopePitch;
       if (rig.head) {
         let lookY = (!moving9 && !zzz) ? Math.sin(n.phase * .5) * .12 : 0;
         if (pd < 14 && n.chat9 <= 0) {
@@ -9067,14 +9137,22 @@ function updateNpcs3(dt) {
         rig.head.rotation.y += lookY * .55;
         if (rig.neck) rig.neck.rotation.y += lookY * .35;
       }
+      const talkAmp = (n.talk && !zzz) ? (Math.abs(Math.sin(n.phase * 3.8)) * .48 + Math.abs(Math.sin(n.phase * 6.3)) * .22) : 0;
+      const smileAmp = (n.talk && !zzz) ? .28 : .12;
       for (const m of rig.morphMeshes) {
         const d = m.morphTargetDictionary;
         for (const k of ['eyesClosed', 'eyeBlinkLeft', 'eyeBlinkRight', 'blink']) {
           if (d[k] !== undefined) m.morphTargetInfluences[d[k]] = shut;
         }
+        for (const k of ['mouthOpen', 'jawOpen', 'viseme_aa', 'viseme_O']) {
+          if (d[k] !== undefined) m.morphTargetInfluences[d[k]] = talkAmp;
+        }
+        if (d.mouthSmile !== undefined) m.morphTargetInfluences[d.mouthSmile] = smileAmp;
+        if (d.browInnerUp !== undefined) m.morphTargetInfluences[d.browInnerUp] = (n.talk && !zzz) ? Math.abs(Math.sin(n.phase * 1.9)) * .22 : 0;
       }
     } else {
       n.g.children[0].scale.y = 1 + Math.sin(n.phase) * (moving9 ? .04 : (zzz ? .012 : .018));
+      n.g.children[0].rotation.x = slopePitch * .65;
       animLimbs(n.g, zzz ? (n.phase += dt * .9) : n.phase, moving9 ? .5 : (zzz ? .02 : .06), n.talk && !zzz);
       if (n.g.userData.eyelids) {
         const lidRot = -.65 + shut * .92;
