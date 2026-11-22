@@ -256,3 +256,136 @@ export class CinematicCamAndHud9 {
     }
   }
 }
+
+export class BiomeMoodSystem9 {
+  constructor(scene, biomes) {
+    this.scene = scene;
+    this.biomes = biomes || [];
+    this.curColor = new THREE.Color();
+    this.curBiome = null;
+    this.wLight = new THREE.PointLight(0xffe69c, 0, 48, 1.8);
+    scene.add(this.wLight);
+    const pGeo = new THREE.BufferGeometry();
+    const pArr = new Float32Array(60 * 3);
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      pArr[i * 3] = Math.cos(a) * (2.5 + (i % 5) * 1.4);
+      pArr[i * 3 + 1] = (i % 10) * 1.2;
+      pArr[i * 3 + 2] = Math.sin(a) * (2.5 + (i % 5) * 1.4);
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pArr, 3));
+    this.motes = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0xffeaa8, size: 0.45, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.motes.frustumCulled = false;
+    scene.add(this.motes);
+  }
+  update(t, dt, playerPos, skyCol, fog, bloomPass, onEnterBiome) {
+    let best = null, bestW = 0;
+    for (const b of this.biomes) {
+      const d = Math.hypot(playerPos.x - b.x, playerPos.z - b.z);
+      if (d < b.r) {
+        const w = Math.pow(1 - d / b.r, 1.4);
+        if (w > bestW) { bestW = w; best = b; }
+      }
+    }
+    if (best && bestW > 0.25 && best.id !== this.curBiome) {
+      this.curBiome = best.id;
+      if (onEnterBiome) onEnterBiome(best);
+    } else if (!best && this.curBiome) {
+      this.curBiome = null;
+    }
+    if (best && bestW > 0.02) {
+      this.curColor.setHex(best.fog);
+      skyCol.lerp(this.curColor, bestW * 0.42);
+      fog.color.copy(skyCol);
+      this.scene.background.copy(skyCol);
+      if (bloomPass) bloomPass.strength = 0.22 + bestW * (best.bloom || 0.25);
+      this.motes.position.set(playerPos.x, playerPos.y, playerPos.z);
+      this.motes.rotation.y = t * 0.25;
+      this.motes.material.color.setHex(best.particle || 0xffeaa8);
+      this.motes.material.opacity = bestW * 0.72;
+      this.wLight.color.setHex(best.particle || 0xffeaa8);
+      this.wLight.position.set(playerPos.x, playerPos.y + 4, playerPos.z);
+      this.wLight.intensity = bestW * 3.5;
+    } else {
+      this.motes.material.opacity *= Math.exp(-dt * 3);
+      this.wLight.intensity *= Math.exp(-dt * 3);
+    }
+  }
+}
+
+export function buildWeenieLandmarks9(scene, heightFn) {
+  const grp = new THREE.Group();
+  const rings = [];
+
+  // 1. 苍穹水晶圣塔 (NW Highland Crest: -220, -240, ~135m 发光水晶尖塔 + 旋转符文环)
+  const spX = -220, spZ = -240, spH = Math.max(heightFn(spX, spZ), 12);
+  const spireM = new THREE.MeshPhysicalMaterial({ color: 0x6ce8ff, emissive: 0x1a78a8, emissiveIntensity: 0.65, roughness: 0.15, metalness: 0.2, clearcoat: 0.9, transparent: true, opacity: 0.88 });
+  const spire = new THREE.Mesh(new THREE.OctahedronGeometry(12, 1), spireM);
+  spire.scale.set(0.65, 5.2, 0.65); spire.position.set(spX, spH + 56, spZ); grp.add(spire);
+  const beamM = new THREE.MeshBasicMaterial({ color: 0x9ef6ff, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 9.5, 160, 12, 1, true), beamM);
+  beam.position.set(spX, spH + 85, spZ); grp.add(beam);
+  const ringM = new THREE.MeshStandardMaterial({ color: 0xffdf88, emissive: 0xd49b35, emissiveIntensity: 0.7, roughness: 0.28, metalness: 0.8 });
+  for (let i = 0; i < 2; i++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(18 + i * 7, 0.9, 8, 36), ringM);
+    r.position.set(spX, spH + 72 + i * 14, spZ);
+    r.rotation.x = Math.PI * (0.35 + i * 0.25);
+    grp.add(r);
+    rings.push({ m: r, sx: 0.25 + i * 0.15, sy: 0.45 - i * 0.2 });
+  }
+
+  // 2. 远海星环之门 (SE Ocean Horizon: 460, 480, 90m 宏伟双环海上圣门)
+  const gtX = 460, gtZ = 480;
+  const gateM = new THREE.MeshStandardMaterial({ color: 0x3b4452, roughness: 0.55, metalness: 0.4 });
+  const archO = new THREE.Mesh(new THREE.TorusGeometry(42, 3.6, 10, 48, Math.PI * 1.15), gateM);
+  archO.position.set(gtX, 8, gtZ); archO.rotation.z = -0.22; archO.rotation.y = -0.6; grp.add(archO);
+  const archI = new THREE.Mesh(new THREE.TorusGeometry(35, 1.4, 8, 48), new THREE.MeshBasicMaterial({ color: 0x7effc6, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending }));
+  archI.position.set(gtX, 8, gtZ); archI.rotation.y = -0.6; grp.add(archI);
+  rings.push({ m: archI, sx: 0.08, sy: 0.18 });
+
+  // 3. 鲸背古代太阳浑天仪 (Central Crest: 110, -260, 65m 旋转金色天体仪)
+  const asX = 110, asZ = -260, asH = Math.max(heightFn(asX, asZ), 10);
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(8, 12, 18, 12), gateM);
+  ped.position.set(asX, asH + 9, asZ); grp.add(ped);
+  for (let i = 0; i < 3; i++) {
+    const ar = new THREE.Mesh(new THREE.TorusGeometry(20 - i * 3.8, 0.85, 8, 36), ringM);
+    ar.position.set(asX, asH + 38, asZ);
+    ar.rotation.set(i * 0.6, i * 0.9, 0);
+    grp.add(ar);
+    rings.push({ m: ar, sx: 0.18 * (i % 2 ? 1 : -1), sy: 0.28 + i * 0.1 });
+  }
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t, dt) {
+      for (const r of rings) { r.m.rotation.x += r.sx * dt; r.m.rotation.y += r.sy * dt; }
+      spire.position.y = spH + 56 + Math.sin(t * 0.9) * 2.5;
+      beamM.opacity = 0.12 + Math.sin(t * 1.4) * 0.05;
+    }
+  };
+}
+
+export class ImmersiveMode9 {
+  constructor() {
+    this.on = false;
+    this.selectors = ['#hud', '#minimap', '#compass', '#hub-link'];
+    addEventListener('keydown', e => {
+      if (e.key === 'F1') { e.preventDefault(); this.toggle(); }
+    });
+  }
+  toggle() {
+    this.on = !this.on;
+    for (const sel of this.selectors) {
+      const el = document.querySelector(sel);
+      if (el) {
+        el.style.transition = 'opacity 0.45s ease';
+        el.style.opacity = this.on ? '0' : '1';
+        el.style.pointerEvents = this.on ? 'none' : '';
+      }
+    }
+    const btn = document.getElementById('btnImmerse9');
+    if (btn) btn.textContent = this.on ? '🖥️ 恢复UI' : '🌿 沉浸';
+    return this.on;
+  }
+}

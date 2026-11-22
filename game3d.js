@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9 } from './aaa-engine.js?v=1';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9 } from './aaa-engine.js?v=2';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -11651,6 +11651,19 @@ const trails9 = new TrailEffects9(scene, heightMesh);
 const spatialAudio9 = new SpatialAudio9();
 const cinematic9 = new CinematicCamAndHud9();
 const rapier9 = new RapierPhysics9(scene, heightMesh);
+const immerse9 = new ImmersiveMode9();
+$('btnImmerse9')?.addEventListener('click', () => {
+  const on = immerse9.toggle();
+  toast(on ? '🌿 已进入纯粹沉浸漫游模式 (按 F1 恢复界面)' : '🖥️ 已恢复交互界面');
+});
+const weenie9 = buildWeenieLandmarks9(scene, heightMesh);
+const biomeMood9 = new BiomeMoodSystem9(scene, [
+  { id: 'spire', x: -220, z: -240, r: 135, fog: 0x164a62, particle: 0x7af2ff, bloom: 0.35, msg: '🔮 步入「苍穹水晶圣塔」灵光域——晶柱共鸣,星尘环绕' },
+  { id: 'stargate', x: 460, z: 480, r: 150, fog: 0x144a44, particle: 0x7effc6, bloom: 0.38, msg: '🌌 接近「远海星环之门」——极光微粒自海面升起' },
+  { id: 'b612', x: B612.x, z: B612.z, r: 90, fog: 0x2a1c48, particle: 0xffe08a, bloom: 0.32, msg: '🌹 踏入 B-612 小行星域——夜色与金沙星尘为你停留' },
+  { id: 'tao', x: THY.x, z: THY.z, r: 110, fog: 0xf4c6d0, particle: 0xffb8cc, bloom: 0.28, msg: '🌸 芳草鲜美,落英缤纷——已入桃花源境' },
+  { id: 'shj', x: SHJ.x, z: SHJ.z, r: 115, fog: 0x5c3624, particle: 0xff9a5a, bloom: 0.30, msg: '⛰️ 踏入《山海经》异兽荒原——大荒古气苍茫' }
+]);
 if (!MOBILE) {
   setTimeout(() => {
     rapier9.init([
@@ -14578,6 +14591,8 @@ function loop() {
   }
   if (actx) spatialAudio9.update(actx, camera, player.position);
   cinematic9.update(dt, camera, Math.hypot(moveVx9, moveVz9), pMoving, modalOpen, typeof bokehPass !== 'undefined' ? bokehPass : null);
+  weenie9.update(t, dt);
+  biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
   if (grassBlades) {
