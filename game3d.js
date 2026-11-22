@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
+import { CSM } from 'three/addons/csm/CSM.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeNIContent, osmCity, osmRoads } from './w-isles.js?v=24';
 import { OSM_MOBT, OSM_TRUMAN, OSM_DGYT, OSM_SPTT, OSM_GUNKAN_COAST, OSM_ROADS, OSM_GGB, OSM_FOGJAIL_COAST, OSM_PIERS_MOB, OSM_DGY_WATER, OSM_ATL_COAST, OSM_WG_COAST } from './w-osm.js?v=11';
@@ -259,6 +260,19 @@ function earthContinentMask(x, z) {
 function earthCoord9(x, z) {
   const lon = clamp(x / 2000 * 180, -180, 180), lat = clamp(-z / 1650 * 90, -90, 90);
   return `${lat >= 0 ? '北纬' : '南纬'} ${Math.abs(lat).toFixed(0)}° · ${lon >= 0 ? '东经' : '西经'} ${Math.abs(lon).toFixed(0)}°`;
+}
+function earthRegion9(x, z) {
+  const lon = x / 2000 * 180, lat = -z / 1650 * 90;
+  if (lat < -68) return '南极洲冰原';
+  if (lat > 66) return '北冰洋/极地';
+  if (x > 650 && z < 0) return '欧亚大陆·东亚';
+  if (x > 300 && z < -250) return '欧亚大陆·中亚';
+  if (x > -180 && x <= 380 && z < -540) return '欧亚大陆·欧洲';
+  if (x > -200 && x < 560 && z >= -540 && z < 560 && !(x > -90 && x < 350 && z > 330)) return (lat > 14 ? '北非·撒哈拉' : '非洲大陆');
+  if (x < -820 && z < -120) return '北美洲';
+  if (x < -380 && z >= -120 && z < 840) return '南美洲';
+  if (x > 1180 && z > 180 && z < 760) return '大洋洲';
+  return lon < -35 ? '太平洋/美洲海域' : (lon > 40 ? '印度洋海域' : '大西洋海域');
 }
 function islandMask(x, z) {
   let m = earthContinentMask(x, z);
@@ -3061,12 +3075,29 @@ const sun = new THREE.DirectionalLight(0xfff1cf, 2.6);
 sun.position.set(180, 260, 120); scene.add(sun);
 scene.add(sun.target);
 const sunDirN = new THREE.Vector3(.5, .6, .3).normalize();
+let csm9 = null;
 if (!MOBILE) {
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  const sc = sun.shadow.camera;
-  sc.left = -260; sc.right = 260; sc.top = 260; sc.bottom = -260; sc.near = 10; sc.far = 900;   // 阴影覆盖扩展(中景建筑也落影)
-  sun.shadow.bias = -0.0006;
+  try {
+    csm9 = new CSM({
+      maxFar: 420,
+      cascades: 3,
+      mode: 'practical',
+      parent: scene,
+      shadowMapSize: 2048,
+      lightDirection: sunDirN.clone().negate(),
+      camera
+    });
+    csm9.fade = true;
+    csm9.lights.forEach(l => { l.color.copy(sun.color); l.intensity = sun.intensity * .36; });
+    sun.intensity *= .45;
+  } catch (e) {
+    csm9 = null;
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    const sc = sun.shadow.camera;
+    sc.left = -260; sc.right = 260; sc.top = 260; sc.bottom = -260; sc.near = 10; sc.far = 900;
+    sun.shadow.bias = -0.0006;
+  }
 }
 /* --- 物理大气天空 --- */
 const sky = new Sky();
@@ -4014,15 +4045,16 @@ function heightMesh(x, z) {
         roughness: RAINY ? .48 : .86,
         metalness: 0.02
       });   // 🏔️ 真实地形法线贴图 + 湿地面微反光
-  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 草地/泥土双纹理混色 + 沙纹 + 三平面岩层 + 湿滩高光
+  if (!MOBILE) terrainMat.onBeforeCompile = sh9 => {   // 🌥️ 云影 + 草地/泥土双纹理混色 + 沙纹 + 雨天水洼反光 + 三平面岩层 + 湿滩高光
     sh9.uniforms.uCldT9 = CLOUDU9.t; sh9.uniforms.uCldA9 = CLOUDU9.a;
     sh9.uniforms.uDetTex9 = { value: terrainDetTex9 };
     sh9.uniforms.uSoilTex9 = { value: terrainSoilTex9 };
+    sh9.uniforms.uRainWet9 = { value: RAINY ? 1.0 : 0.0 };
     sh9.vertexShader = sh9.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wPos9 = modelMatrix * vec4( position, 1.0 );\nvWXZ9 = wPos9.xz;\nvWY9 = wPos9.y;\nvWNY9 = normalize( mat3( modelMatrix ) * objectNormal ).y;');
     sh9.fragmentShader = sh9.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform sampler2D uDetTex9;\nuniform sampler2D uSoilTex9;')
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWXZ9;\nvarying float vWY9;\nvarying float vWNY9;\nuniform float uCldT9;\nuniform float uCldA9;\nuniform float uRainWet9;\nuniform sampler2D uDetTex9;\nuniform sampler2D uSoilTex9;')
       .replace('#include <color_fragment>',
         '#include <color_fragment>\n' +
         'vec3 detNear9 = texture2D( uDetTex9, vWXZ9 * 0.085 ).rgb;\n' +
@@ -4043,13 +4075,16 @@ function heightMesh(x, z) {
       .replace('#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
         'float wetShore9 = 1.0 - smoothstep( -0.4, 1.8, vWY9 );\n' +
+        'float puddle9 = uRainWet9 * smoothstep( 0.45, 0.75, sin( vWXZ9.x * 0.19 ) * cos( vWXZ9.y * 0.17 ) + 0.5 ) * (1.0 - smoothstep( 0.05, 0.2, 1.0 - vWNY9 ));\n' +
         'float snowGlint9 = smoothstep( 31.0, 36.0, vWY9 );\n' +
         'roughnessFactor = mix( roughnessFactor, 0.20, wetShore9 * 0.85 );\n' +
+        'roughnessFactor = mix( roughnessFactor, 0.08, puddle9 * 0.9 );\n' +
         'roughnessFactor = mix( roughnessFactor, 0.42, snowGlint9 * 0.7 );')
       .replace('#include <dithering_fragment>',
         'float cs9 = sin( vWXZ9.x * .008 + uCldT9 * .021 + sin( vWXZ9.y * .011 + uCldT9 * .016 ) * 1.7 ) * sin( vWXZ9.y * .007 - uCldT9 * .014 + sin( vWXZ9.x * .009 ) * 1.3 );\n' +
         'gl_FragColor.rgb *= 1.0 - smoothstep( .25, .9, cs9 ) * uCldA9;\n#include <dithering_fragment>');
   };
+  if (csm9) try { csm9.setupMaterial(terrainMat); } catch (e) {}
   const w2 = TSEG + 1, GRIDN = w2 * w2;
   for (let chz = 0; chz < TCH; chz++) for (let chx = 0; chx < TCH; chx++) {   // 8×8 分块 + 三档 LOD(1/2/5 细分步长)
     // 顶点 = 网格 w2×w2 + 周边裙边(下压 3m,防 LOD 接缝裂缝)
@@ -13849,11 +13884,29 @@ function loop() {
       matchRef.lookAt(matchBall.position.x, matchRef.position.y, matchBall.position.z);
     }
     ballSwapT -= dt;
-    if (ballSwapT <= 0) { ballSwapT = 1.4 + Math.random() * 1.2; ballTarget = Math.floor(Math.random() * matchPlayers.length); }
-    const tp = matchPlayers[ballTarget];
-    matchBall.position.x += (tp.position.x - matchBall.position.x) * Math.min(1, dt * 3);
-    matchBall.position.z += (tp.position.z - matchBall.position.z) * Math.min(1, dt * 3);
-    matchBall.position.y = 6.5 + Math.abs(Math.sin(t * 6)) * .5;
+    if (typeof window.__ballPhys9 === 'undefined') window.__ballPhys9 = { vx: 0, vy: 0, vz: 0, kick: 0 };
+    const bp9 = window.__ballPhys9;
+    const dPlayerBall9 = Math.hypot(player.position.x - matchBall.position.x, player.position.z - matchBall.position.z);
+    if (dPlayerBall9 < 2.4 && pMoving && bp9.kick <= 0) {
+      const kx = matchBall.position.x - player.position.x, kz = matchBall.position.z - player.position.z, kl = Math.max(.1, Math.hypot(kx, kz));
+      const pwr = keys.shift ? 24 : 15;
+      bp9.vx = kx / kl * pwr; bp9.vz = kz / kl * pwr; bp9.vy = keys.shift ? 8.5 : 5.2; bp9.kick = 3.2;
+      blip(440);
+    }
+    if (bp9.kick > 0) {
+      bp9.kick -= dt;
+      bp9.vy -= 24 * dt;
+      matchBall.position.x += bp9.vx * dt; matchBall.position.z += bp9.vz * dt; matchBall.position.y += bp9.vy * dt;
+      if (matchBall.position.y <= 6.42) { matchBall.position.y = 6.42; bp9.vy = Math.abs(bp9.vy) * .58; bp9.vx *= .84; bp9.vz *= .84; }
+      if (Math.abs(matchBall.position.x - SPT.x) > 21) bp9.vx *= -.75;
+      if (Math.abs(matchBall.position.z - SPT.z) > 13.5) bp9.vz *= -.75;
+    } else {
+      if (ballSwapT <= 0) { ballSwapT = 1.4 + Math.random() * 1.2; ballTarget = Math.floor(Math.random() * matchPlayers.length); }
+      const tp = matchPlayers[ballTarget];
+      matchBall.position.x += (tp.position.x - matchBall.position.x) * Math.min(1, dt * 3);
+      matchBall.position.z += (tp.position.z - matchBall.position.z) * Math.min(1, dt * 3);
+      matchBall.position.y = 6.5 + Math.abs(Math.sin(t * 6)) * .5;
+    }
     nextGoalT -= dt;
     if (nextGoalT <= 0) {
       nextGoalT = 55 + Math.random() * 60;
@@ -14465,7 +14518,7 @@ function loop() {
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
   $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
   const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
-  $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
+  $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthRegion9(player.position.x, player.position.z)} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
   syncBuffs(dt);
@@ -14613,6 +14666,11 @@ function loop() {
     }
   }
   obTick9(dt, pMoving);
+  if (csm9) {
+    csm9.lightDirection.copy(sunDirN).negate();
+    csm9.lights.forEach(l => { l.color.copy(sun.color); l.intensity = sun.intensity * .36; });
+    csm9.update();
+  }
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
   if (pcPending) {
     pcPending = false; makePostcard();
