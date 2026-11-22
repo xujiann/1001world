@@ -4185,11 +4185,11 @@ function heightMesh(x, z) {
         'float relH9 = vWY9 - uTide9;\n' +
         'float c1 = sin( vWXZ9.x * 0.65 + uCldT9 * 1.4 + sin( vWXZ9.y * 0.55 - uCldT9 ) );\n' +
         'float c2 = cos( vWXZ9.y * 0.72 - uCldT9 * 1.1 + cos( vWXZ9.x * 0.48 + uCldT9 * 0.8 ) );\n' +
-        'float caust9 = pow( clamp( 1.0 - abs( c1 + c2 ) * 0.5, 0.0, 1.0 ), 3.0 ) * ( 1.0 - smoothstep( -0.3, 0.25, relH9 ) ) * smoothstep( -14.0, -2.0, relH9 );\n' +
-        'diffuseColor.rgb += vec3( 0.20, 0.42, 0.48 ) * caust9 * 0.75;\n' +
-        'float lap9 = sin( relH9 * 14.0 - uCldT9 * 3.2 + sin( vWXZ9.x * 0.35 + vWXZ9.y * 0.35 ) * 2.0 );\n' +
-        'float foamBand9 = smoothstep( 0.55, 0.95, lap9 ) * ( 1.0 - smoothstep( 0.08, 0.42, abs( relH9 - 0.12 ) ) );\n' +
-        'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.92, 0.96, 0.99 ), foamBand9 * 0.58 );')
+        'float caust9 = pow( clamp( 1.0 - abs( c1 + c2 ) * 0.5, 0.0, 1.0 ), 2.6 ) * ( 1.0 - smoothstep( -0.25, 0.35, relH9 ) ) * smoothstep( -12.0, -1.5, relH9 );\n' +
+        'diffuseColor.rgb += vec3( 0.24, 0.50, 0.56 ) * caust9 * 1.45;\n' +
+        'float lap9 = sin( relH9 * 9.0 - uCldT9 * 3.4 + sin( vWXZ9.x * 0.35 + vWXZ9.y * 0.35 ) * 2.2 );\n' +
+        'float foamBand9 = smoothstep( 0.15, 0.82, lap9 ) * ( 1.0 - smoothstep( 0.12, 0.88, abs( relH9 - 0.52 ) ) );\n' +
+        'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.96, 0.99, 1.0 ), foamBand9 * 0.95 );')
       .replace('#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
         'float wetShore9 = 1.0 - smoothstep( -0.4, 1.8, vWY9 );\n' +
@@ -9121,6 +9121,19 @@ function showSkeletonCard() {
   cardBody.querySelector('[data-close]')?.addEventListener('click', closeModals);
   blip(196); setTimeout(() => blip(262), 220); setTimeout(() => blip(392), 440); setTimeout(() => blip(523), 700);
 }
+{
+  const uh = Math.max(height(UNJ.x, UNJ.z), 7.2) + .18;
+  const aspM = new THREE.MeshStandardMaterial({ color: 0x262a30, roughness: .72, metalness: .04 });
+  const laneM = new THREE.MeshBasicMaterial({ color: 0xe8da9a });
+  const av1 = box(220, .35, 22, aspM); av1.position.set(UNJ.x, uh, UNJ.z); av1.receiveShadow = true; scene.add(av1);
+  const av2 = box(22, .35, 220, aspM); av2.position.set(UNJ.x, uh, UNJ.z); av2.receiveShadow = true; scene.add(av2);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(34, 34, .36, 24), aspM); hub.position.set(UNJ.x, uh + .01, UNJ.z); hub.receiveShadow = true; scene.add(hub);
+  for (let i = -9; i <= 9; i++) {
+    if (Math.abs(i) <= 2) continue;
+    const d1 = box(6, .06, .65, laneM); d1.position.set(UNJ.x + i * 11, uh + .19, UNJ.z); scene.add(d1);
+    const d2 = box(.65, .06, 6, laneM); d2.position.set(UNJ.x, uh + .19, UNJ.z + i * 11); scene.add(d2);
+  }
+}
 /* 未竟之都:无人会议(主线终章) */
 /* 幻影运动会:夜里点燃冷火炬,幽蓝的选手绕场跑完他们等了一百年的比赛 */
 let unjGamesT = 0, unjGamesGrp = null, unjFlame = null;
@@ -9504,7 +9517,7 @@ function updateNpcs3(dt) {
         const want = Math.atan2(player.position.x - p.x, player.position.z - p.z);
         n.g.rotation.y += ((want - n.g.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 6);
       }
-      v3.set(p.x, p.y + 3.8, p.z).project(camera);
+      v3.set(p.x, p.y + 4.55, p.z).project(camera);
       if (v3.z < 1) {
         n.bub.innerHTML = `<b>${n.name}</b>:${zzz ? "💤 …(鼾声)" : (dqFor(n.name) ? "❗ " : "") + n.lines[n.idx]}`;
         n.bub.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
@@ -10526,7 +10539,7 @@ function fingerpost9(x9, z9, arms9) {
 {
   const apM9 = AIRPORTS[0];
   fingerpost9(14, -4, [['✈️ 鲸背机场', apM9[2], apM9[3]], ['⛴️ 渡口码头', 0, 410], ['🕊️ 大鹏栖石', PENG_X, PENG_Z]]);
-  fingerpost9(6, 402, [['🏛️ 圆枢广场', 0, 0], ['✈️ 鲸背机场', apM9[2], apM9[3]]]);
+  fingerpost9(14, 356, [['🏛️ 圆枢广场', 0, 0], ['✈️ 鲸背机场', apM9[2], apM9[3]]]);
   fingerpost9(apM9[2] - 10, apM9[3] + 8, [['🏛️ 圆枢广场', 0, 0], ['⛴️ 渡口码头', 0, 410]]);
   const zArt = ZONES3D.find(z => z.key === 'art'), zBook = ZONES3D.find(z => z.key === 'books');
   const zBeer = ZONES3D.find(z => z.key === 'beers'), zClas = ZONES3D.find(z => z.key === 'classical');
@@ -11331,7 +11344,7 @@ makeBoat(null, .7).userData = { anchor: [14, 408] };   // 栈桥边的小舢板
 {
   makeBoat(null, .82).userData = { anchor: [13, 414] };   // 圣地亚哥的小帆船
   // 大马林鱼(流线解剖蓝枪鱼造型,拴在船舷半浮于水)
-  const mx = 13, mz = 407, my = .9;
+  const mx = 19, mz = 412, my = .9;
   const marlin = new THREE.Group();
   const mBack = lam(0x284e88), mBelly = lam(0xd4dee8), mFin = lam(0x1f3a66);
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(.86, 4.2, 10, 14), mBack); body.rotation.x = Math.PI / 2; body.scale.set(.84, 1, 1.12); marlin.add(body);
@@ -12024,7 +12037,7 @@ let GRASS_COL9 = null, FLOWER_COL9 = null, ROCK_COL9 = null;
   const GN = MOBILE ? 1000 : 3400, R = MOBILE ? 30 : 48;   // F:近景草加密
   const bladeGeo = new THREE.ConeGeometry(.055, .62, 3);   // 细小草叶(更像草,不像圆锥)
   bladeGeo.translate(0, .31, 0);   // 基部落到 y=0,便于自底摇摆
-  grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false });
+  grassMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x264420, vertexColors: false });
   grassMat.onBeforeCompile = sh => {
     sh.uniforms.uTime = { value: 0 };
     sh.uniforms.uAmp = { value: WEATHER === 'storm' ? .38 : RAINY ? .24 : .16 };   // 风力:暴风草伏,雨天草劲
@@ -13243,7 +13256,7 @@ try {
 } catch (e) {}
 
 /* ---------- 相机与输入 ---------- */
-let camYaw = Math.PI, camPitch = .22, camDist = 9.5;
+let camYaw = Math.PI, camPitch = .16, camDist = 8.8;
 try {
   const qp = new URLSearchParams(location.search);
   const iq = (qp.get('isle') || '').trim().toLowerCase();
@@ -14589,16 +14602,16 @@ function loop() {
       camera.position.lerp(v3.set(player.position.x - rfx9 * 4.5, player.position.y + 3.2, player.position.z - rfz9 * 4.5), Math.min(1, dt * 3));
       camera.lookAt(player.position.x + rfx9 * 70, player.position.y + 2, player.position.z + rfz9 * 70);
     }
-  } else if (fifaCam9 && inStadium9(player.position.x, player.position.z) && matchBall) {   // 📺 FIFA 电视转播视角
+  } else if (fifaCam9 && inStadium9(player.position.x, player.position.z) && matchBall) {   // 📺 FIFA 电视转播视角(看台内沿下方无遮挡俯拍全场)
     const bx = SPT.x + (matchBall.position.x - SPT.x) * .45;
-    camera.position.lerp(v3.set(bx, 22.5, SPT.z + 25.5), Math.min(1, dt * 4));
-    camera.lookAt(matchBall.position.x, 6.8, matchBall.position.z);
+    camera.position.lerp(v3.set(bx, 14.5, SPT.z + 18.5), Math.min(1, dt * 4));
+    camera.lookAt(matchBall.position.x, 2.2, matchBall.position.z);
   } else {
     const cp = camPitch, off = new THREE.Vector3(Math.sin(camYaw) * Math.cos(cp), Math.sin(cp), Math.cos(camYaw) * Math.cos(cp)).multiplyScalar(camDist);
     const target = v3.copy(player.position).add(off);
     target.y = Math.max(target.y, surfaceGround9(target.x, target.z, target.y) + .9, .8);
     camera.position.lerp(target, Math.min(1, dt * 8));
-    const lookUp9 = camDist < 7 ? 1.85 : 2.35;
+    const lookUp9 = camDist < 7 ? 1.85 : 2.55;
     const lookFwd9 = camDist < 7 ? 1.6 : 0;
     camera.lookAt(player.position.x - Math.sin(camYaw) * lookFwd9, player.position.y + lookUp9, player.position.z - Math.cos(camYaw) * lookFwd9);
   }
