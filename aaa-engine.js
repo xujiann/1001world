@@ -498,7 +498,7 @@ export class CityTowersFX9 {
   }
 }
 
-export function buildArrakis9(scene, heightFn, cx, cz) {
+export function buildArrakis9(scene, heightFn, cx, cz, boxObs = []) {
   const grp = new THREE.Group();
   const safeH = (x, z, min = 6) => {
     const v = typeof heightFn === 'function' ? heightFn(x, z) : min;
@@ -576,18 +576,81 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
   duneMesh.receiveShadow = true;
   grp.add(duneMesh);
 
-  // 1. 厄拉奇恩倾斜野兽派巨型堡垒 (Arrakeen Brutalist Citadel)
-  const citX = cx, citZ = cz - 46, citH = safeH(citX, citZ, 10);
-  const keep = new THREE.Mesh(new THREE.CylinderGeometry(16, 28, 46, 4), sandStoneM);
-  keep.rotation.y = Math.PI / 4; keep.position.set(citX, citH + 21, citZ); keep.castShadow = true; keep.receiveShadow = true; grp.add(keep);
+  // 1. 可进入的厄拉奇恩野兽派圣殿堡垒 (Enterable Arrakeen Brutalist Great Hall)
+  const citX = cx, citZ = cz - 46, citH = safeH(citX, citZ, 21.5);
+  const obsidianM = new THREE.MeshStandardMaterial({ color: 0x221d1a, roughness: 0.35, metalness: 0.45 });
+  const hallW = 36, hallD = 36, wallH = 34, wallT = 4.2, doorHalf = 5.5;
+  // 室内黑曜石抛光地面 + 南侧仪式入口长阶
+  const hallFloor = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.8, hallD), obsidianM);
+  hallFloor.position.set(citX, citH - 0.15, citZ); hallFloor.receiveShadow = true; grp.add(hallFloor);
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(doorHalf * 2 + 4, 0.8, 12), darkBasaltM);
+  ramp.position.set(citX, citH - 0.65, citZ + hallD / 2 + 5); ramp.rotation.x = 0.08; ramp.receiveShadow = true; grp.add(ramp);
+  // 后墙（北）+ 东西侧倾斜巨墙 + 南侧双翼门墙（中间留 11m 宽可步入大门）
+  const addCitWall = (wx, wy, wz, w, h, d, col = true) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), sandStoneM);
+    m.position.set(wx, wy, wz); m.castShadow = true; m.receiveShadow = true; grp.add(m);
+    if (col && boxObs) boxObs.push({ x1: wx - w / 2, z1: wz - d / 2, x2: wx + w / 2, z2: wz + d / 2 });
+  };
+  addCitWall(citX, citH + wallH / 2, citZ - hallD / 2, hallW + wallT, wallH, wallT); // 北墙
   for (const sgn of [-1, 1]) {
-    const wing = new THREE.Mesh(new THREE.CylinderGeometry(9, 16, 30, 4), darkBasaltM);
-    wing.rotation.y = Math.PI / 4; wing.position.set(citX + sgn * 25, citH + 13, citZ + 8); wing.castShadow = true; grp.add(wing);
-    const ban = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 20), spiceGlowM);
-    ban.position.set(citX + sgn * 9, citH + 16, citZ + 18.2); grp.add(ban);
+    addCitWall(citX + sgn * (hallW / 2), citH + wallH / 2, citZ, wallT, wallH, hallD); // 东/西墙
+    const swW = (hallW - doorHalf * 2) / 2;
+    addCitWall(citX + sgn * (doorHalf + swW / 2), citH + wallH / 2, citZ + hallD / 2, swW, wallH, wallT); // 南门两侧墙
+    // 门框斜柱 + 发光香料竖幅
+    const pylon = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 5.2, wallH + 6, 4), darkBasaltM);
+    pylon.rotation.y = Math.PI / 4; pylon.position.set(citX + sgn * (doorHalf + 2.2), citH + (wallH + 6) / 2, citZ + hallD / 2 + 2.2);
+    pylon.castShadow = true; grp.add(pylon);
+    const ban = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 22), spiceGlowM);
+    ban.position.set(citX + sgn * (doorHalf + 5.5), citH + 17, citZ + hallD / 2 + 2.25); grp.add(ban);
+    // 外侧野兽派斜翼堡 + 弗雷曼风阱蓄水塔 (Windtrap Towers)
+    const wing = new THREE.Mesh(new THREE.CylinderGeometry(7, 13, 28, 4), darkBasaltM);
+    wing.rotation.y = Math.PI / 4; wing.position.set(citX + sgn * 26, citH + 13, citZ + 6); wing.castShadow = true; grp.add(wing);
+    const wt = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.6, 22, 8), darkBasaltM);
+    wt.position.set(citX + sgn * 28, citH + 10, citZ - 14); wt.castShadow = true; grp.add(wt);
   }
-  const gate = new THREE.Mesh(new THREE.BoxGeometry(10, 15, 7), new THREE.MeshStandardMaterial({ color: 0x161210, roughness: 0.9 }));
-  gate.position.set(citX, citH + 6.5, citZ + 17); grp.add(gate);
+  // 门楣横梁（15m 净高，人物可轻松步入）
+  addCitWall(citX, citH + 15 + (wallH - 15) / 2, citZ + hallD / 2, doorHalf * 2 + 2, wallH - 15, wallT + 1.5, false);
+  // 穹顶天窗框（Oculus Skylight: 四周封顶，中央留 14×14 采光井）
+  const rSide = (hallW - 14) / 2;
+  addCitWall(citX, citH + wallH, citZ - (7 + rSide / 2), hallW + 2, 2.4, rSide, false);
+  addCitWall(citX, citH + wallH, citZ + (7 + rSide / 2), hallW + 2, 2.4, rSide, false);
+  addCitWall(citX - (7 + rSide / 2), citH + wallH, citZ, rSide, 2.4, 14, false);
+  addCitWall(citX + (7 + rSide / 2), citH + wallH, citZ, rSide, 2.4, 14, false);
+  // 室内 6 根野兽派巨柱（带蓝晶导光槽）
+  for (const sx of [-10.5, 10.5]) for (const sz of [-9, 0, 9]) {
+    const colMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.85, wallH - 1, 6), darkBasaltM);
+    colMesh.position.set(citX + sx, citH + wallH / 2, citZ + sz); colMesh.castShadow = true; grp.add(colMesh);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.28, wallH - 8, 0.28), spiceGlowM);
+    strip.position.set(citX + sx * 0.88, citH + wallH / 2, citZ + sz); grp.add(strip);
+    if (boxObs) boxObs.push({ x1: citX + sx - 1.6, z1: citZ + sz - 1.6, x2: citX + sx + 1.6, z2: citZ + sz + 1.6 });
+  }
+  // 穹顶体积光柱 + 室内暖金照明
+  const shaftM = new THREE.MeshBasicMaterial({ color: 0xffd28a, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 11.5, wallH - 2, 12, 1, true), shaftM);
+  shaft.position.set(citX, citH + wallH / 2, citZ); grp.add(shaft);
+  const hallLight = new THREE.PointLight(0xffb868, 2.4, 48, 1.4);
+  hallLight.position.set(citX, citH + 14, citZ); grp.add(hallLight);
+  // 室内中央：厄崔迪全息香料星图祭坛 + 北侧王座高台
+  const altar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 4.0, 1.5, 8), darkBasaltM);
+  altar.position.set(citX, citH + 0.9, citZ); grp.add(altar);
+  const holoGlobe = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 1), new THREE.MeshBasicMaterial({ color: 0x58d8ff, wireframe: true, transparent: true, opacity: 0.78 }));
+  holoGlobe.position.set(citX, citH + 3.4, citZ); grp.add(holoGlobe);
+  const holoRing = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.08, 6, 32), spiceGlowM);
+  holoRing.position.set(citX, citH + 3.4, citZ); holoRing.rotation.x = Math.PI / 2.4; grp.add(holoRing);
+  const dais = new THREE.Mesh(new THREE.BoxGeometry(14, 1.6, 6), darkBasaltM);
+  dais.position.set(citX, citH + 0.9, citZ - 13); grp.add(dais);
+  const throne = new THREE.Mesh(new THREE.BoxGeometry(2.4, 4.2, 2.0), obsidianM);
+  throne.position.set(citX, citH + 3.6, citZ - 14.2); grp.add(throne);
+  const windTurbines = [];
+  for (const sgn of [-1, 1]) {
+    const turb = new THREE.Group();
+    for (let bi = 0; bi < 4; bi++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.14, 0.5), sandStoneM);
+      blade.rotation.y = (bi / 4) * Math.PI * 2; turb.add(blade);
+    }
+    turb.position.set(citX + sgn * 28, citH + 22, citZ - 14);
+    grp.add(turb); windTurbines.push(turb);
+  }
 
   // 2. 振翼扑翼机 (Ornithopter)
   const thop = new THREE.Group();
@@ -717,11 +780,14 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
   return {
     grp,
     update(t) {
-      // 扑翼机悬停微振翼
+      // 扑翼机悬停微振翼 + 圣殿全息星图与风阱叶轮旋转
       thop.position.y = padH + 4.0 + Math.sin(t * 2.2) * 0.45;
       for (const w of thopWings) {
         w.m.rotation.z = w.sx * Math.sin(t * 24 + w.ph) * 0.34;
       }
+      holoGlobe.rotation.y = t * 0.45;
+      holoRing.rotation.z = t * 0.7;
+      for (const tb of windTurbines) tb.rotation.y = t * 1.4;
       // 沙虫在沙海连续破沙潜行跃动
       const baseA = t * 0.24;
       for (let i = 0; i < WORM_RINGS; i++) {

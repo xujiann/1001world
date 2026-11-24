@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=8';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=9';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -498,6 +498,10 @@ function height(x, z) {
       const dune = crest * 9.5 + ridge2 * 3.8 + 2.6;
       h += fall * dune;
       if (z < ARRAKIS.z - 42) h += smooth01(clamp((ARRAKIS.z - 42 - z) / 48, 0, 1)) * fall * 15;   // 北侧玄武岩盾墙
+      // 厄拉奇恩堡垒可步入平坦圣殿台基与南侧仪式坡道
+      const dxC = Math.abs(lx), dzC = lz + 46;
+      const inHall = clamp(1 - Math.max(dxC - 18, Math.abs(dzC) - 18) / 10, 0, 1);
+      if (inHall > 0) h = h * (1 - smooth01(inHall)) + 21.5 * smooth01(inHall);
     }
     q(ARRAKIS.x, ARRAKIS.z + ARRAKIS.r + 14, 16, 2.2, .95);
   }
@@ -11687,7 +11691,7 @@ $('btnImmerse9')?.addEventListener('click', () => {
 const weenie9 = buildWeenieLandmarks9(scene, heightMesh);
 const cityTraffic9 = new CityTraffic9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const cityTowers9 = new CityTowersFX9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
-const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z);
+const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z, boxObs);
 addNpc({ x: ARRAKIS.x + 8, z: ARRAKIS.z + 18, name: '保罗·厄崔迪', body: 0x2c343e, hat: 0x1c2026, opts: { tall: 1.04 },
   lines: ['恐惧是思维的杀手。', '谁控制了香料，谁就控制了宇宙。', '听沙海下的震动——沙伊胡鲁德正在经过。'] });
 addNpc({ x: ARRAKIS.x - 10, z: ARRAKIS.z + 24, name: '契妮', body: 0x3b4856, hat: 0x8c6844,
