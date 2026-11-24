@@ -389,3 +389,225 @@ export class ImmersiveMode9 {
     return this.on;
   }
 }
+
+export class CityTraffic9 {
+  constructor(scene, cx, cz, yBase) {
+    this.cars = [];
+    this.lights = [];
+    const bodyCols = [0x263242, 0xb83a2e, 0xd8dce2, 0x1e2228, 0x3a6484, 0xc89a3c];
+    const cabMat = new THREE.MeshStandardMaterial({ color: 0x141820, roughness: 0.25, metalness: 0.6 });
+    const headM = new THREE.MeshBasicMaterial({ color: 0xfff4d6 });
+    const tailM = new THREE.MeshBasicMaterial({ color: 0xff2e2e });
+    const wheelM = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.85 });
+
+    for (let i = 0; i < 6; i++) {
+      const g = new THREE.Group();
+      const bMat = new THREE.MeshPhysicalMaterial({ color: bodyCols[i % bodyCols.length], roughness: 0.24, metalness: 0.45, clearcoat: 0.88 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.72, 4.2), bMat);
+      body.position.y = 0.56; body.castShadow = true; g.add(body);
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.58, 2.2), cabMat);
+      cabin.position.set(0, 1.15, -0.15); g.add(cabin);
+      for (const sx of [-0.72, 0.72]) {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.08), headM);
+        hl.position.set(sx, 0.62, 2.11); g.add(hl);
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.08), tailM);
+        tl.position.set(sx, 0.62, -2.11); g.add(tl);
+        for (const sz of [-1.25, 1.25]) {
+          const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10), wheelM);
+          w.rotation.z = Math.PI / 2; w.position.set(sx * 1.25, 0.32, sz); g.add(w);
+        }
+      }
+      const beam = new THREE.SpotLight(0xfff0c8, 0, 26, 0.45, 0.5, 1.5);
+      beam.position.set(0, 0.8, 2.1);
+      const tgt = new THREE.Object3D(); tgt.position.set(0, 0.1, 14);
+      g.add(beam); g.add(tgt); beam.target = tgt;
+      this.lights.push(beam);
+
+      const axis = i % 2; // 0: X-avenue, 1: Z-avenue
+      const dir = i % 4 < 2 ? 1 : -1;
+      const lane = dir * 4.5;
+      const offset = -90 + (i * 33);
+      g.position.set(axis === 0 ? cx + offset : cx + lane, yBase + 0.18, axis === 1 ? cz + offset : cz + lane);
+      g.rotation.y = axis === 0 ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (dir > 0 ? 0 : Math.PI);
+      scene.add(g);
+      this.cars.push({ g, axis, dir, cx, cz, lane, pos: offset, spd: 11 + (i % 3) * 3.5 });
+    }
+  }
+  update(dt, curDA) {
+    const nightBoost = Math.max(0, 1 - curDA * 1.4);
+    for (const l of this.lights) l.intensity = nightBoost * 16;
+    for (const c of this.cars) {
+      c.pos += c.dir * c.spd * dt;
+      if (c.pos > 102) c.pos = -102;
+      if (c.pos < -102) c.pos = 102;
+      if (c.axis === 0) c.g.position.set(c.cx + c.pos, c.g.position.y, c.cz + c.lane);
+      else c.g.position.set(c.cx + c.lane, c.g.position.y, c.cz + c.pos);
+    }
+  }
+}
+
+export class CityTowersFX9 {
+  constructor(scene, cx, cz, yBase) {
+    this.beacons = [];
+    this.winMats = [];
+    const bMat = new THREE.MeshBasicMaterial({ color: 0xff2828, transparent: true, opacity: 0.9 });
+    const bGeo = new THREE.SphereGeometry(0.45, 8, 6);
+    const locs = [
+      [-55, -55, 62], [55, -55, 74], [-58, 52, 56], [56, 54, 82],
+      [-82, -18, 48], [82, 22, 66], [24, -78, 58], [-22, 82, 60]
+    ];
+    for (let i = 0; i < locs.length; i++) {
+      const [ox, oz, h] = locs[i];
+      const m = new THREE.Mesh(bGeo, bMat.clone());
+      m.position.set(cx + ox, yBase + h, cz + oz);
+      scene.add(m);
+      this.beacons.push({ m, ph: i * 0.9 });
+    }
+    // 视差感透光室内橱窗带 (贴合塔楼立面呈现温暖室内灯层)
+    const wTexCv = document.createElement('canvas'); wTexCv.width = 128; wTexCv.height = 256;
+    const wx = wTexCv.getContext('2d');
+    wx.fillStyle = '#0c121a'; wx.fillRect(0, 0, 128, 256);
+    for (let r = 0; r < 16; r++) for (let c = 0; c < 8; c++) {
+      if ((r * 7 + c * 13) % 5 !== 0) {
+        wx.fillStyle = ((r + c) % 3 === 0) ? '#ffdca0' : ((r * c) % 4 === 0 ? '#9ed8ff' : '#e8c47a');
+        wx.fillRect(c * 16 + 3, r * 16 + 3, 10, 10);
+        wx.fillStyle = 'rgba(0,0,0,0.32)';
+        wx.fillRect(c * 16 + 3, r * 16 + 8, 10, 5);
+      }
+    }
+    const wTex = new THREE.CanvasTexture(wTexCv);
+    wTex.wrapS = wTex.wrapT = THREE.RepeatWrapping;
+    wTex.repeat.set(2, 4);
+    const wMat = new THREE.MeshStandardMaterial({ map: wTex, emissiveMap: wTex, emissive: 0xffdf9e, emissiveIntensity: 0.65, roughness: 0.18, metalness: 0.6 });
+    this.winMats.push(wMat);
+    for (let i = 0; i < 4; i++) {
+      const [ox, oz, h] = locs[i];
+      const tw = new THREE.Mesh(new THREE.BoxGeometry(16.2, h * 0.85, 16.2), wMat);
+      tw.position.set(cx + ox, yBase + h * 0.425, cz + oz);
+      scene.add(tw);
+    }
+  }
+  update(t, curDA) {
+    const night = Math.max(0.15, 1 - curDA * 1.1);
+    for (const m of this.winMats) m.emissiveIntensity = 0.25 + night * 0.95;
+    for (const b of this.beacons) {
+      const pulse = Math.sin(t * 3.4 + b.ph) > 0.35 ? 1 : 0.15;
+      b.m.material.opacity = pulse;
+      b.m.scale.setScalar(0.8 + pulse * 0.5);
+    }
+  }
+}
+
+export function buildArrakis9(scene, heightFn, cx, cz) {
+  const grp = new THREE.Group();
+  const safeH = (x, z, min = 6) => {
+    const v = typeof heightFn === 'function' ? heightFn(x, z) : min;
+    return Number.isFinite(v) ? Math.max(v, min) : min;
+  };
+  const sandStoneM = new THREE.MeshStandardMaterial({ color: 0xc28f56, roughness: 0.78, metalness: 0.08 });
+  const darkBasaltM = new THREE.MeshStandardMaterial({ color: 0x3b312a, roughness: 0.85, metalness: 0.1 });
+  const spiceGlowM = new THREE.MeshBasicMaterial({ color: 0x4ad4ff, transparent: true, opacity: 0.82, blending: THREE.AdditiveBlending });
+
+  // 1. 厄拉奇恩倾斜野兽派巨型堡垒 (Arrakeen Brutalist Citadel)
+  const citX = cx, citZ = cz - 46, citH = safeH(citX, citZ, 10);
+  const keep = new THREE.Mesh(new THREE.CylinderGeometry(16, 28, 46, 4), sandStoneM);
+  keep.rotation.y = Math.PI / 4; keep.position.set(citX, citH + 21, citZ); keep.castShadow = true; keep.receiveShadow = true; grp.add(keep);
+  for (const sgn of [-1, 1]) {
+    const wing = new THREE.Mesh(new THREE.CylinderGeometry(9, 16, 30, 4), darkBasaltM);
+    wing.rotation.y = Math.PI / 4; wing.position.set(citX + sgn * 25, citH + 13, citZ + 8); wing.castShadow = true; grp.add(wing);
+    const ban = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 20), spiceGlowM);
+    ban.position.set(citX + sgn * 9, citH + 16, citZ + 18.2); grp.add(ban);
+  }
+  const gate = new THREE.Mesh(new THREE.BoxGeometry(10, 15, 7), new THREE.MeshStandardMaterial({ color: 0x161210, roughness: 0.9 }));
+  gate.position.set(citX, citH + 6.5, citZ + 17); grp.add(gate);
+
+  // 2. 振翼扑翼机 (Ornithopter)
+  const thop = new THREE.Group();
+  const thopM = new THREE.MeshPhysicalMaterial({ color: 0x5c5346, roughness: 0.35, metalness: 0.65, clearcoat: 0.5 });
+  const glassM = new THREE.MeshPhysicalMaterial({ color: 0xffb85c, roughness: 0.1, metalness: 0.2, clearcoat: 0.95, transparent: true, opacity: 0.85 });
+  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(1.1, 4.2, 6, 10), thopM);
+  fuse.rotation.x = Math.PI / 2; fuse.scale.set(0.85, 1, 0.9); thop.add(fuse);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.05, 10, 8), glassM);
+  canopy.scale.set(0.85, 0.72, 1.5); canopy.position.set(0, 0.45, 1.6); thop.add(canopy);
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.35, 5.2, 8), thopM);
+  boom.rotation.x = Math.PI / 2; boom.position.set(0, 0.25, -4.4); thop.add(boom);
+  const thopWings = [];
+  const wingGeo = new THREE.BoxGeometry(6.8, 0.06, 0.85);
+  wingGeo.translate(3.4, 0, 0);
+  for (const sx of [-1, 1]) for (const sz of [0.8, -0.6]) {
+    const w = new THREE.Mesh(wingGeo, thopM);
+    w.scale.x = sx; w.position.set(sx * 0.8, 0.55, sz);
+    thop.add(w); thopWings.push({ m: w, sx, ph: sz });
+  }
+  const padX = cx + 22, padZ = cz + 4, padH = safeH(padX, padZ, 6);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(10, 11, 0.8, 16), darkBasaltM);
+  pad.position.set(padX, padH + 0.3, padZ); pad.receiveShadow = true; grp.add(pad);
+  thop.position.set(padX, padH + 4.0, padZ); thop.rotation.y = -0.6; grp.add(thop);
+
+  // 3. 巨型沙虫 (Shai-Hulud: 14节装甲虫躯 + 利齿环形巨口)
+  const wormSegs = [];
+  const wormSkinM = new THREE.MeshStandardMaterial({ color: 0x9c744c, roughness: 0.72, metalness: 0.08 });
+  const wormRingM = new THREE.MeshStandardMaterial({ color: 0x5c432b, roughness: 0.85 });
+  const toothM = new THREE.MeshBasicMaterial({ color: 0xf4ecd8 });
+  for (let i = 0; i < 14; i++) {
+    const seg = new THREE.Group();
+    const r = i === 0 ? 4.8 : Math.max(1.6, 5.0 - i * 0.24);
+    const body = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), i % 2 === 0 ? wormSkinM : wormRingM);
+    body.scale.set(1, 1, 1.35); body.castShadow = true; seg.add(body);
+    if (i === 0) {
+      const maw = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.85, 8, 18), wormRingM);
+      maw.position.z = r * 0.85; seg.add(maw);
+      const throat = new THREE.Mesh(new THREE.CircleGeometry(2.8, 14), new THREE.MeshBasicMaterial({ color: 0x160a06 }));
+      throat.position.z = r * 0.75; seg.add(throat);
+      for (let ti = 0; ti < 12; ti++) {
+        const a = (ti / 12) * Math.PI * 2;
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.26, 1.3, 4), toothM);
+        tooth.position.set(Math.cos(a) * 2.4, Math.sin(a) * 2.4, r * 0.95);
+        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.45;
+        seg.add(tooth);
+      }
+    }
+    grp.add(seg);
+    wormSegs.push(seg);
+  }
+
+  // 4. 香料矿脉涌泉 (Spice Melange Vents + 蓝晶簇)
+  for (const [ox, oz] of [[-16, 12], [14, 14], [-26, -14], [30, -18]]) {
+    const vh = safeH(cx + ox, cz + oz, 4);
+    const vent = new THREE.Mesh(new THREE.CircleGeometry(4.5, 16), spiceGlowM);
+    vent.rotation.x = -Math.PI / 2; vent.position.set(cx + ox, vh + 0.25, cz + oz);
+    grp.add(vent);
+    const spire = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), spiceGlowM);
+    spire.scale.set(0.7, 2.2, 0.7); spire.position.set(cx + ox, vh + 1.8, cz + oz);
+    grp.add(spire);
+  }
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t) {
+      // 扑翼机悬停微振翼
+      thop.position.y = padH + 4.0 + Math.sin(t * 2.2) * 0.45;
+      for (const w of thopWings) {
+        w.m.rotation.z = w.sx * Math.sin(t * 24 + w.ph) * 0.34;
+      }
+      // 沙虫在沙海破沙潜行跃动
+      const baseA = t * 0.24;
+      for (let i = 0; i < wormSegs.length; i++) {
+        const a = baseA - i * 0.14;
+        const wr = 46 + Math.sin(a * 2.0) * 10;
+        const wx = (cx - 18) + Math.cos(a) * wr, wz = (cz - 8) + Math.sin(a) * wr;
+        const gh = safeH(wx, wz, 2);
+        const arc = Math.sin(a * 2.5) * 9.0 + 3.5;
+        const seg = wormSegs[i];
+        seg.position.set(wx, gh + arc, wz);
+        const na = a + 0.05;
+        const nwr = 46 + Math.sin(na * 2.0) * 10;
+        const nwx = (cx - 18) + Math.cos(na) * nwr, nwz = (cz - 8) + Math.sin(na) * nwr;
+        const ngh = safeH(nwx, nwz, 2);
+        const narc = Math.sin(na * 2.5) * 9.0 + 3.5;
+        seg.lookAt(nwx, ngh + narc, nwz);
+      }
+    }
+  };
+}

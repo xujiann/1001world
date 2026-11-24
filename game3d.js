@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9 } from './aaa-engine.js?v=2';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=6';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -167,6 +167,7 @@ const RBX = { x: 420, z: 1300, r: 120 };    // 鲁滨逊·绝望岛
 const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
 const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,七层螺旋)
 const UNJ = { x: 350, z: 620, r: 115 };     // 未竟之都(人工几何岛:世界交流中心遗址)
+const ARRAKIS = { x: 1550, z: -100, r: 150 }; // 沙丘·厄拉科斯(Dune Arrakis 沙漠奇观岛)
 /* —— 海洋文学带:外环诸岛(数据驱动,内容见 NI_CONTENT)—— */
 const NISLES = [
   { key: 'mys', x: -1500, z: -1400, r: 92, mask: 2.0, h: 7, peak: { r: 52, hh: 30 }, dock: [-1434, -1339] }, // 神秘岛(火山)
@@ -315,6 +316,7 @@ function islandMask(x, z) {
   m = Math.max(m, isleM9(x, z, DGY.x, DGY.z, DGY.r, 1.8));
   m = Math.max(m, isleM9(x, z, PUR.x, PUR.z, PUR.r, 2.0));  // 炼狱山
   m = Math.max(m, isleM9(x, z, UNJ.x, UNJ.z, UNJ.r, 2.2));  // 未竟之都(人工岛)
+  m = Math.max(m, isleM9(x, z, ARRAKIS.x, ARRAKIS.z, ARRAKIS.r, 2.1)); // 厄拉科斯·沙丘
   for (const s of nislesNear(x, z)) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带(空间索引)
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
@@ -484,6 +486,15 @@ function height(x, z) {
   h += smooth01(clamp(1 - Math.hypot(x - B612.x, z - B612.z) / 55, 0, 1)) ** 1.4 * 15;       // B-612 圆丘
   q(B612.x, B612.z, 14, 21, .9);
   q(B612.x, B612.z - 54, 12, 2.2, .95);
+  { const dar = Math.hypot(x - ARRAKIS.x, z - ARRAKIS.z);
+    if (dar < ARRAKIS.r) {
+      const fall = smooth01(clamp(1 - dar / ARRAKIS.r, 0, 1));
+      const dune = Math.abs(Math.sin(x * .048 + Math.cos(z * .032) * 1.4)) * 7.2 + 3.2;
+      h += fall * dune;
+      if (z < ARRAKIS.z - 42) h += smooth01(clamp((ARRAKIS.z - 42 - z) / 48, 0, 1)) * fall * 15;   // 北侧玄武岩盾墙
+    }
+    q(ARRAKIS.x, ARRAKIS.z + ARRAKIS.r + 14, 16, 2.2, .95);
+  }
   q(JUR.x, JUR.z, 80, 7);                                                                    // 侏罗纪园区
   q(JUR.x, JUR.z - 126, 16, 2.2, .95);
   // —— 名著十岛 ——
@@ -4075,6 +4086,8 @@ function heightMesh(x, z) {
       c = fbm(x * .07, z * .07) > .5 ? new THREE.Color(0x4a4038) : new THREE.Color(0x3a322c);
     } else if (Math.hypot(x - UNJ.x, z - UNJ.z) < 112 && h > 1) {   // 未竟之都:白石铺地
       c = fbm(x * .12, z * .12) > .5 ? new THREE.Color(0xd8d4c8) : new THREE.Color(0xc9c4b6);
+    } else if (Math.hypot(x - ARRAKIS.x, z - ARRAKIS.z) < ARRAKIS.r && h > .5) {   // 厄拉科斯·沙丘金红硅砂与玄武岩盾墙
+      c = (z < ARRAKIS.z - 52 && h > 20) ? new THREE.Color(0x4b3d34) : (fbm(x * .06, z * .06) > .5 ? new THREE.Color(0xe6aa5a) : new THREE.Color(0xd69044));
     } else if (h < -2) {
       c = cSea.clone().lerp(cDeep9, smooth01(clamp((-h - 2) / 15, 0, 1)));   // 浅滩→深海渐变
     } else {
@@ -4189,7 +4202,9 @@ function heightMesh(x, z) {
         'diffuseColor.rgb += vec3( 0.24, 0.50, 0.56 ) * caust9 * 1.45;\n' +
         'float lap9 = sin( relH9 * 9.0 - uCldT9 * 3.4 + sin( vWXZ9.x * 0.35 + vWXZ9.y * 0.35 ) * 2.2 );\n' +
         'float foamBand9 = smoothstep( 0.15, 0.82, lap9 ) * ( 1.0 - smoothstep( 0.12, 0.88, abs( relH9 - 0.52 ) ) );\n' +
-        'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.96, 0.99, 1.0 ), foamBand9 * 0.95 );')
+        'diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.96, 0.99, 1.0 ), foamBand9 * 0.95 );\n' +
+        'float wetBand9 = smoothstep( -0.1, 0.25, relH9 ) * ( 1.0 - smoothstep( 0.85, 1.55, relH9 ) );\n' +
+        'diffuseColor.rgb *= ( 1.0 - wetBand9 * 0.30 );')
       .replace('#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
         'float wetShore9 = 1.0 - smoothstep( -0.4, 1.8, vWY9 );\n' +
@@ -4794,6 +4809,7 @@ const EZ_PROTOS9 = (() => {
       leafMat.onBeforeCompile = sh => {
         sh.uniforms.uTime = { value: 0 };
         sh.uniforms.uGust = { value: 1 };
+        sh.uniforms.uSunDir = { value: sunDirN };
         sh.vertexShader = 'uniform float uTime;\nuniform float uGust;\n' + sh.vertexShader.replace('#include <begin_vertex>',
           `#include <begin_vertex>
            #ifdef USE_INSTANCING
@@ -4804,6 +4820,12 @@ const EZ_PROTOS9 = (() => {
            float hFac = clamp(transformed.y * 0.12, 0.0, 1.2);
            float wv = sin(uTime * 1.35 + iP.x * .17 + iP.z * .13 + transformed.x * .8 + ${cfg.ph.toFixed(2)}) * .19 * uGust * hFac;
            transformed.x += wv; transformed.z += wv * .65; transformed.y += sin(uTime * 2.1 + transformed.z) * .04 * uGust * hFac;`);
+        sh.fragmentShader = 'uniform vec3 uSunDir;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
+          `vec3 vDir9 = normalize(vViewPosition);
+           vec3 sDir9 = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
+           float sss9 = pow(clamp(dot(vDir9, -sDir9), 0.0, 1.0), 2.2);
+           gl_FragColor.rgb += gl_FragColor.rgb * vec3(0.45, 0.62, 0.18) * sss9 * 0.72;
+           #include <dithering_fragment>`);
         leafMat.userData.shader = sh;
       };
       treeWindMats.push(leafMat);
@@ -9603,7 +9625,7 @@ const MAP_LABELS = [
   ['一千零一夜', ANH.x, ANH.z], ['鹦鹉螺锚地', NEM.x, NEM.z], ['B-612', B612.x, B612.z], ['侏罗纪公园', JUR.x, JUR.z],
   ['花果山', HGS.x, HGS.z], ['爱丽丝仙境', ALC.x, ALC.z], ['赤壁', CBI.x, CBI.z], ['兰若寺', LRS.x, LRS.z],
   ['梁山泊', LSP.x, LSP.z], ['风车原野', FCY.x, FCY.z], ['伊夫堡', YFB.x, YFB.z], ['绝望岛', RBX.x, RBX.z],
-  ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['未竟之都', UNJ.x, UNJ.z], ['塞壬海域⚠', SIR.x, SIR.z],
+  ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['未竟之都', UNJ.x, UNJ.z], ['厄拉科斯·沙丘', ARRAKIS.x, ARRAKIS.z], ['塞壬海域⚠', SIR.x, SIR.z],
   ...NISLES.map(s => [NI_CONTENT[s.key].name, s.x, s.z]),
 ];
 function renderBigMap() {
@@ -11657,7 +11679,15 @@ $('btnImmerse9')?.addEventListener('click', () => {
   toast(on ? '🌿 已进入纯粹沉浸漫游模式 (按 F1 恢复界面)' : '🖥️ 已恢复交互界面');
 });
 const weenie9 = buildWeenieLandmarks9(scene, heightMesh);
+const cityTraffic9 = new CityTraffic9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
+const cityTowers9 = new CityTowersFX9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
+const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z);
+addNpc({ x: ARRAKIS.x + 8, z: ARRAKIS.z + 18, name: '保罗·厄崔迪', body: 0x2c343e, hat: 0x1c2026, opts: { tall: 1.04 },
+  lines: ['恐惧是思维的杀手。', '谁控制了香料，谁就控制了宇宙。', '听沙海下的震动——沙伊胡鲁德正在经过。'] });
+addNpc({ x: ARRAKIS.x - 10, z: ARRAKIS.z + 24, name: '契妮', body: 0x3b4856, hat: 0x8c6844,
+  lines: ['踏上沙丘时要打乱脚步的节奏，不要像钟摆那样行走。', '这片沙海属于弗雷曼人。'] });
 const biomeMood9 = new BiomeMoodSystem9(scene, [
+  { id: 'arrakis', x: ARRAKIS.x, z: ARRAKIS.z, r: 165, fog: 0xd87c38, particle: 0x5cd6ff, bloom: 0.36, msg: '🪱 踏入「厄拉科斯 · 沙丘」——香料蓝尘漫天,沙虫在沙海深处翻涌' },
   { id: 'spire', x: -220, z: -240, r: 135, fog: 0x164a62, particle: 0x7af2ff, bloom: 0.35, msg: '🔮 步入「苍穹水晶圣塔」灵光域——晶柱共鸣,星尘环绕' },
   { id: 'stargate', x: 460, z: 480, r: 150, fog: 0x144a44, particle: 0x7effc6, bloom: 0.38, msg: '🌌 接近「远海星环之门」——极光微粒自海面升起' },
   { id: 'b612', x: B612.x, z: B612.z, r: 90, fog: 0x2a1c48, particle: 0xffe08a, bloom: 0.32, msg: '🌹 踏入 B-612 小行星域——夜色与金沙星尘为你停留' },
@@ -12173,6 +12203,7 @@ const NO_GRASS = [
   { x: -1490, z: -1010, r: 100 }, // 莫罗博士岛(荒岛)
   { x: 120, z: 800, r: 150 },     // 南塔开特(石铺捕鲸港)
   { x: 350, z: 620, r: 125 },     // 未竟之都(白石之城)
+  { x: ARRAKIS.x, z: ARRAKIS.z, r: ARRAKIS.r + 10 }, // 厄拉科斯·沙丘(纯沙海无草)
 ];
 function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
 /* 世界锚定的抖动网格散布:位置由世界格坐标 hash 决定 → 随玩家移动只在圆盘边缘增减,
@@ -12963,25 +12994,30 @@ let railPts9 = [], railLen9 = 0, trainGrp9 = null, trainS9 = 0, trainWait9 = 5, 
   }
   railLen9 = acc9;
   railStopS9 = RAIL_STOPS9.map(([wi9, nm9]) => ({ s: railPts9[wi9].s, nm: nm9, x: railPts9[wi9].x, z: railPts9[wi9].z }));
-  // 轨道几何:每 2.4m 一枕木 + 双钢轨短节,贴地合并(2 个网格)
-  const slG9 = [], rlG9 = [], step9 = 2.4;
+  // 轨道几何:碎石道砟路基 + 每 2.4m 一枕木 + 双钢轨短节,贴地合并(3 个网格)
+  const blG9 = [], slG9 = [], rlG9 = [], step9 = 2.4;
   for (let s9 = 0; s9 < railLen9; s9 += step9) {
     const a9 = railAt9(s9), b9 = railAt9(Math.min(s9 + step9, railLen9 - .01));
     const yaw9 = Math.atan2(b9.x - a9.x, b9.z - a9.z);
     const mid9 = { x: (a9.x + b9.x) / 2, y: (a9.y + b9.y) / 2, z: (a9.z + b9.z) / 2 };
     const seg9 = Math.hypot(b9.x - a9.x, b9.z - a9.z) || step9;
     const pitch9 = Math.atan2(b9.y - a9.y, seg9);
+    const bl9 = new THREE.BoxGeometry(3.2, .12, seg9 + .35);
+    bl9.applyMatrix4(new THREE.Matrix4().makeRotationY(yaw9).multiply(new THREE.Matrix4().makeRotationX(-pitch9)));
+    bl9.translate(mid9.x, mid9.y + .03, mid9.z);
+    blG9.push(bl9);
     const sl9 = new THREE.BoxGeometry(2.0, .12, .6);
-    sl9.applyMatrix4(new THREE.Matrix4().makeRotationY(yaw9)).translate(a9.x, a9.y + .06, a9.z);
+    sl9.applyMatrix4(new THREE.Matrix4().makeRotationY(yaw9)).translate(a9.x, a9.y + .09, a9.z);
     slG9.push(sl9);
     for (const side9 of [-0.72, 0.72]) {
       const rl9 = new THREE.BoxGeometry(.1, .12, seg9 + .25);
       const m9 = new THREE.Matrix4().makeRotationY(yaw9).multiply(new THREE.Matrix4().makeRotationX(-pitch9));
       rl9.applyMatrix4(m9);
-      rl9.translate(mid9.x + Math.cos(yaw9) * side9, mid9.y + .17, mid9.z - Math.sin(yaw9) * side9);
+      rl9.translate(mid9.x + Math.cos(yaw9) * side9, mid9.y + .19, mid9.z - Math.sin(yaw9) * side9);
       rlG9.push(rl9);
     }
   }
+  scene.add(new THREE.Mesh(mergeGeometries(blG9, false), new THREE.MeshStandardMaterial({ color: 0x686a6e, roughness: .94 })));
   scene.add(new THREE.Mesh(mergeGeometries(slG9, false), lam(0x5a4630)));
   const railMesh9 = new THREE.Mesh(mergeGeometries(rlG9, false), MOBILE ? new THREE.MeshLambertMaterial({ color: 0x9aa2ab }) : new THREE.MeshStandardMaterial({ color: 0x9aa2ab, roughness: .45, metalness: .7 }));
   scene.add(railMesh9);
@@ -14592,6 +14628,9 @@ function loop() {
   if (actx) spatialAudio9.update(actx, camera, player.position);
   cinematic9.update(dt, camera, Math.hypot(moveVx9, moveVz9), pMoving, modalOpen, typeof bokehPass !== 'undefined' ? bokehPass : null);
   weenie9.update(t, dt);
+  cityTraffic9.update(dt, curDA);
+  cityTowers9.update(t, curDA);
+  arrakis9.update(t);
   biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
@@ -15649,14 +15688,15 @@ function loop() {
   const onHog = Math.hypot(player.position.x - HOG.x, player.position.z - HOG.z) < HOG.r + 20;
   const onMob = Math.hypot(player.position.x - MOB.x, player.position.z - MOB.z) < MOB.r + 20;
   const onSpt = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < SPT.r + 20;
+  const onArrakis = Math.hypot(player.position.x - ARRAKIS.x, player.position.z - ARRAKIS.z) < ARRAKIS.r + 15;
   const isl = ISLES.find(z3 => Math.hypot(player.position.x - z3.c.x, player.position.z - z3.c.z) < z3.c.r + 20);
   const onSky9 = player.position.y > 140 && Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z) < SKY.r + 60;
   const mz2 = onSky9 ? 'sky' : (swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (isl ? isl.theme : (onTruman ? 'truman' : (hereKey || 'street')))))))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))));
-  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))));
+  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onArrakis ? '🪱' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')))))))))));
+  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onArrakis ? '厄拉科斯 · 沙丘' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')))))))))));
   $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthRegion9(player.position.x, player.position.z)} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
@@ -15948,11 +15988,11 @@ const BUCKETS = [
   { x: JUR.x, z: JUR.z }, { x: HGS.x, z: HGS.z }, { x: ALC.x, z: ALC.z }, { x: CBI.x, z: CBI.z },
   { x: LRS.x, z: LRS.z }, { x: LSP.x, z: LSP.z }, { x: FCY.x, z: FCY.z }, { x: YFB.x, z: YFB.z },
   { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
-  { x: PUR.x, z: PUR.z }, { x: UNJ.x, z: UNJ.z },
+  { x: PUR.x, z: PUR.z }, { x: UNJ.x, z: UNJ.z }, { x: ARRAKIS.x, z: ARRAKIS.z },
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
@@ -16114,6 +16154,7 @@ if (!MOBILE) {
   let np9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && np9 < 110; gx9 += 15)   // 🌴 沙滩棕榈
     for (let gz9 = -1900; gz9 < 1900 && np9 < 110; gz9 += 15) {
+      if (Math.hypot(gx9 - ARRAKIS.x, gz9 - ARRAKIS.z) < ARRAKIS.r + 12) continue;
       const h9 = heightMesh(gx9, gz9);
       if (h9 > .5 && h9 < 1.6 && rv9() < .5) {
         const px9 = gx9 + rv9() * 8 - 4, pz9 = gz9 + rv9() * 8 - 4, ph9 = heightMesh(px9, pz9);
@@ -16137,6 +16178,7 @@ if (!MOBILE) {
   let npn9 = 0;
   for (let gx9 = -1900; gx9 < 1900 && npn9 < 80; gx9 += 31)   // 🌲 高地松杉
     for (let gz9 = -1900; gz9 < 1900 && npn9 < 80; gz9 += 31) {
+      if (Math.hypot(gx9 - ARRAKIS.x, gz9 - ARRAKIS.z) < ARRAKIS.r + 12) continue;
       const h9 = heightMesh(gx9, gz9);
       if (h9 > 13 && h9 < 55 && rv9() < .4) {
         const px9 = gx9 + rv9() * 10 - 5, pz9 = gz9 + rv9() * 10 - 5, ph9 = heightMesh(px9, pz9);
