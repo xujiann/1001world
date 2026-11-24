@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=7';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=8';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';

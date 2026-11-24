@@ -612,54 +612,75 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
   pad.position.set(padX, padH + 0.3, padZ); pad.receiveShadow = true; grp.add(pad);
   thop.position.set(padX, padH + 4.0, padZ); thop.rotation.y = -0.6; grp.add(thop);
 
-  // 3. 电影级巨型沙虫 (Shai-Hulud: 24节重叠角质甲壳 + 三瓣漏斗深喉巨口 + 破沙尘暴)
-  const wormSegs = [];
-  const wormArmorM = new THREE.MeshStandardMaterial({ color: 0x8a6440, roughness: 0.78, metalness: 0.12 });
-  const wormRidgeM = new THREE.MeshStandardMaterial({ color: 0x4b3624, roughness: 0.9, metalness: 0.08 });
-  const wormFleshM = new THREE.MeshStandardMaterial({ color: 0x6b3222, roughness: 0.75 });
-  const toothM = new THREE.MeshStandardMaterial({ color: 0xf6eedb, emissive: 0x443828, emissiveIntensity: 0.25, roughness: 0.25, metalness: 0.15 });
-  for (let i = 0; i < 24; i++) {
-    const seg = new THREE.Group();
-    const r = i === 0 ? 5.2 : Math.max(1.5, 5.4 - i * 0.16);
-    const rBack = i === 0 ? 5.3 : Math.max(1.3, r - 0.18);
-    // 重叠锥台甲壳，消除球体糖葫芦缝隙
-    const shell = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, rBack, 3.8, 16, 1), i % 2 === 0 ? wormArmorM : wormRidgeM);
-    shell.rotation.x = Math.PI / 2; shell.castShadow = true; shell.receiveShadow = true; seg.add(shell);
-    // 节间角质凸起骨环
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.96, 0.36, 7, 16), wormRidgeM);
-    ring.position.z = 1.2; seg.add(ring);
-    if (i === 0) {
-      // 深邃漏斗状咽喉
-      const funnel = new THREE.Mesh(new THREE.CylinderGeometry(3.8, 0.8, 6.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x120604, side: THREE.BackSide }));
-      funnel.rotation.x = Math.PI / 2; funnel.position.z = -0.2; seg.add(funnel);
-      // 三瓣外翻唇瓣
-      for (let li = 0; li < 3; li++) {
-        const la = (li / 3) * Math.PI * 2 + Math.PI / 6;
-        const lobe = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 8), wormFleshM);
-        lobe.scale.set(1.15, 0.65, 1.35);
-        lobe.position.set(Math.cos(la) * 3.1, Math.sin(la) * 3.1, 2.2);
-        lobe.rotation.z = la + Math.PI / 2;
-        seg.add(lobe);
-      }
-      // 双圈 24 枚向内弯曲晶牙
-      for (let ti = 0; ti < 16; ti++) {
-        const a = (ti / 16) * Math.PI * 2;
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.85, 5), toothM);
-        tooth.position.set(Math.cos(a) * 3.3, Math.sin(a) * 3.3, 2.35);
-        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.72;
-        seg.add(tooth);
-      }
-      for (let ti = 0; ti < 8; ti++) {
-        const a = (ti / 8) * Math.PI * 2 + 0.2;
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.3, 4), toothM);
-        tooth.position.set(Math.cos(a) * 2.1, Math.sin(a) * 2.1, 1.2);
-        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.85;
-        seg.add(tooth);
+  // 3. 电影级连续无缝巨型沙虫 (Shai-Hulud: 48环连续可变形甲壳管躯 + 三瓣深喉晶牙巨口 + 破沙尘暴)
+  const WORM_RINGS = 48, WORM_RAD = 18;
+  const wormVertCount = WORM_RINGS * (WORM_RAD + 1);
+  const wormPos = new Float32Array(wormVertCount * 3);
+  const wormCol = new Float32Array(wormVertCount * 3);
+  const wormIdx = [];
+  const cPlate = new THREE.Color(0x936b44), cCrease = new THREE.Color(0x3f2b1b), cBelly = new THREE.Color(0xb48a5a);
+  for (let i = 0; i < WORM_RINGS; i++) {
+    const isCrease = (i % 2 === 1);
+    const baseC = isCrease ? cCrease : cPlate;
+    for (let j = 0; j <= WORM_RAD; j++) {
+      const ang = (j / WORM_RAD) * Math.PI * 2;
+      const bellyMix = Math.max(0, -Math.sin(ang)) * 0.35;
+      const c = baseC.clone().lerp(cBelly, bellyMix);
+      const vi = (i * (WORM_RAD + 1) + j) * 3;
+      wormCol[vi] = c.r; wormCol[vi + 1] = c.g; wormCol[vi + 2] = c.b;
+    }
+    if (i < WORM_RINGS - 1) {
+      for (let j = 0; j < WORM_RAD; j++) {
+        const a = i * (WORM_RAD + 1) + j;
+        const b = a + (WORM_RAD + 1);
+        wormIdx.push(a, b, a + 1, a + 1, b, b + 1);
       }
     }
-    grp.add(seg);
-    wormSegs.push(seg);
   }
+  const wormGeo = new THREE.BufferGeometry();
+  wormGeo.setAttribute('position', new THREE.BufferAttribute(wormPos, 3));
+  wormGeo.setAttribute('color', new THREE.BufferAttribute(wormCol, 3));
+  wormGeo.setIndex(wormIdx);
+  const wormBodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0.1, side: THREE.DoubleSide });
+  const wormMesh = new THREE.Mesh(wormGeo, wormBodyMat);
+  wormMesh.castShadow = true; wormMesh.receiveShadow = true; wormMesh.frustumCulled = false;
+  grp.add(wormMesh);
+
+  // 沙虫头部：三瓣外翻唇瓣 + 深邃漏斗咽喉 + 24枚向内弯曲晶牙（无缝衔接第0环）
+  const wormHead = new THREE.Group();
+  const wormRidgeM = new THREE.MeshStandardMaterial({ color: 0x4b3624, roughness: 0.88, metalness: 0.08 });
+  const wormFleshM = new THREE.MeshStandardMaterial({ color: 0x6b3222, roughness: 0.75 });
+  const toothM = new THREE.MeshStandardMaterial({ color: 0xf6eedb, emissive: 0x443828, emissiveIntensity: 0.25, roughness: 0.25, metalness: 0.15 });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(4.9, 0.7, 8, 20), wormRidgeM);
+  collar.position.z = 0.2; wormHead.add(collar);
+  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 0.9, 6.8, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0x120604, side: THREE.BackSide }));
+  funnel.rotation.x = Math.PI / 2; funnel.position.z = -1.6; wormHead.add(funnel);
+  for (let li = 0; li < 3; li++) {
+    const la = (li / 3) * Math.PI * 2 + Math.PI / 6;
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(2.8, 10, 8), wormFleshM);
+    lobe.scale.set(1.2, 0.68, 1.4);
+    lobe.position.set(Math.cos(la) * 3.3, Math.sin(la) * 3.3, 1.2);
+    lobe.rotation.z = la + Math.PI / 2;
+    wormHead.add(lobe);
+  }
+  for (let ti = 0; ti < 16; ti++) {
+    const a = (ti / 16) * Math.PI * 2;
+    const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.25, 2.0, 5), toothM);
+    tooth.position.set(Math.cos(a) * 3.5, Math.sin(a) * 3.5, 1.45);
+    tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.72;
+    wormHead.add(tooth);
+  }
+  for (let ti = 0; ti < 8; ti++) {
+    const a = (ti / 8) * Math.PI * 2 + 0.2;
+    const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.4, 4), toothM);
+    tooth.position.set(Math.cos(a) * 2.2, Math.sin(a) * 2.2, 0.35);
+    tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.85;
+    wormHead.add(tooth);
+  }
+  grp.add(wormHead);
+
+  const wSpine = Array.from({ length: WORM_RINGS }, () => new THREE.Vector3());
+  const wT = new THREE.Vector3(), wB = new THREE.Vector3(), wN = new THREE.Vector3(), wUp = new THREE.Vector3(0, 1, 0);
 
   // 3b. 破沙尘暴扬尘云 + 贴地流沙雾
   const plumeMat = new THREE.MeshBasicMaterial({ color: 0xdca560, transparent: true, opacity: 0.34, depthWrite: false });
@@ -701,25 +722,49 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
       for (const w of thopWings) {
         w.m.rotation.z = w.sx * Math.sin(t * 24 + w.ph) * 0.34;
       }
-      // 沙虫在沙海破沙潜行跃动
+      // 沙虫在沙海连续破沙潜行跃动
       const baseA = t * 0.24;
-      for (let i = 0; i < wormSegs.length; i++) {
-        const a = baseA - i * 0.085;
+      for (let i = 0; i < WORM_RINGS; i++) {
+        const a = baseA - i * 0.038;
         const wr = 46 + Math.sin(a * 2.0) * 10;
         const wx = (cx - 18) + Math.cos(a) * wr, wz = (cz - 8) + Math.sin(a) * wr;
         const gh = safeH(wx, wz, 2);
         const arc = Math.sin(a * 2.5) * 9.5 + 3.0;
-        const seg = wormSegs[i];
-        seg.position.set(wx, gh + arc, wz);
-        const na = a + 0.05;
-        const nwr = 46 + Math.sin(na * 2.0) * 10;
-        const nwx = (cx - 18) + Math.cos(na) * nwr, nwz = (cz - 8) + Math.sin(na) * nwr;
-        const ngh = safeH(nwx, nwz, 2);
-        const narc = Math.sin(na * 2.5) * 9.5 + 3.0;
-        seg.lookAt(nwx, ngh + narc, nwz);
+        wSpine[i].set(wx, gh + arc, wz);
       }
+      const pAttr = wormGeo.attributes.position;
+      for (let i = 0; i < WORM_RINGS; i++) {
+        const prev = wSpine[Math.max(0, i - 1)];
+        const next = wSpine[Math.min(WORM_RINGS - 1, i + 1)];
+        wT.subVectors(prev, next).normalize();
+        wB.crossVectors(wT, wUp);
+        if (wB.lengthSq() < 1e-4) wB.set(1, 0, 0);
+        wB.normalize();
+        wN.crossVectors(wB, wT).normalize();
+        const tNorm = i / (WORM_RINGS - 1);
+        const taper = i === 0 ? 4.9 : Math.max(0.45, (5.35 - tNorm * 4.2) * (i === WORM_RINGS - 1 ? 0.35 : 1.0));
+        const plateRipple = i % 2 === 0 ? 1.06 : 0.93;
+        const baseR = taper * plateRipple;
+        for (let j = 0; j <= WORM_RAD; j++) {
+          const ang = (j / WORM_RAD) * Math.PI * 2;
+          const dorsal = Math.max(0, Math.sin(ang)) * 0.26 * (1 - tNorm);
+          const rad = baseR + dorsal;
+          const ca = Math.cos(ang) * rad, sa = Math.sin(ang) * rad;
+          const vi = i * (WORM_RAD + 1) + j;
+          pAttr.setXYZ(vi,
+            wSpine[i].x + wB.x * ca + wN.x * sa,
+            wSpine[i].y + wB.y * ca + wN.y * sa,
+            wSpine[i].z + wB.z * ca + wN.z * sa
+          );
+        }
+      }
+      pAttr.needsUpdate = true;
+      wormGeo.computeVertexNormals();
+      wormHead.position.copy(wSpine[0]);
+      wT.subVectors(wSpine[0], wSpine[1]).normalize();
+      wormHead.lookAt(wSpine[0].x + wT.x, wSpine[0].y + wT.y, wSpine[0].z + wT.z);
       // 破沙扬尘随沙虫头部与中段翻涌
-      const headPos = wormSegs[0].position;
+      const headPos = wSpine[0];
       const headGh = safeH(headPos.x, headPos.z, 2);
       for (let i = 0; i < sandPlumes.length; i++) {
         const p = sandPlumes[i];
