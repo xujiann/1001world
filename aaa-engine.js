@@ -508,6 +508,74 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
   const darkBasaltM = new THREE.MeshStandardMaterial({ color: 0x3b312a, roughness: 0.85, metalness: 0.1 });
   const spiceGlowM = new THREE.MeshBasicMaterial({ color: 0x4ad4ff, transparent: true, opacity: 0.82, blending: THREE.AdditiveBlending });
 
+  // 0. 高精物理沙海覆盖层 (140x140 平滑沙丘网格 + 风成沙纹法线贴图 + 《风之旅人》微晶闪烁着色器)
+  const rCv = document.createElement('canvas'); rCv.width = rCv.height = 256;
+  const rCtx = rCv.getContext('2d');
+  const rImg = rCtx.createImageData(256, 256);
+  for (let py = 0; py < 256; py++) {
+    for (let px = 0; px < 256; px++) {
+      const u = (px / 256) * Math.PI * 2, v = (py / 256) * Math.PI * 2;
+      const rip = Math.sin(u * 14 + Math.sin(v * 3) * 1.6) * 0.55 + Math.sin(u * 28 + v * 2) * 0.15;
+      const grain = (Math.sin(px * 12.9898 + py * 78.233) * 43758.5453) % 1;
+      const nx = Math.max(0, Math.min(255, Math.floor(128 + rip * 42 + (grain - 0.5) * 16)));
+      const ny = Math.max(0, Math.min(255, Math.floor(128 + Math.cos(v * 3) * 14 + (grain - 0.5) * 16)));
+      const idx = (py * 256 + px) * 4;
+      rImg.data[idx] = nx; rImg.data[idx + 1] = ny; rImg.data[idx + 2] = 245; rImg.data[idx + 3] = 255;
+    }
+  }
+  rCtx.putImageData(rImg, 0, 0);
+  const rippleTex = new THREE.CanvasTexture(rCv);
+  rippleTex.wrapS = rippleTex.wrapT = THREE.RepeatWrapping;
+  rippleTex.repeat.set(34, 34);
+
+  const duneSeg = 136, duneSpan = 280;
+  const duneGeo = new THREE.PlaneGeometry(duneSpan, duneSpan, duneSeg, duneSeg);
+  duneGeo.rotateX(-Math.PI / 2);
+  const dPos = duneGeo.attributes.position;
+  const dCol = new Float32Array(dPos.count * 3);
+  const cCrest = new THREE.Color(0xebb464), cSlip = new THREE.Color(0xc87434), cBasalt = new THREE.Color(0x4a3b32);
+  for (let i = 0; i < dPos.count; i++) {
+    const lx = dPos.getX(i), lz = dPos.getZ(i);
+    const wx = cx + lx, wz = cz + lz;
+    const dist = Math.hypot(lx, lz);
+    const gh = typeof heightFn === 'function' ? heightFn(wx, wz) : 0;
+    const y = dist < 142 && gh > 0.4 ? gh + 0.12 : gh - 2.5;
+    dPos.setY(i, y);
+    const isWall = lz < -50 && gh > 20;
+    const tCol = isWall ? cBasalt : cSlip.clone().lerp(cCrest, Math.max(0, Math.min(1, (gh - 5) / 14)));
+    dCol[i * 3] = tCol.r; dCol[i * 3 + 1] = tCol.g; dCol[i * 3 + 2] = tCol.b;
+  }
+  duneGeo.setAttribute('color', new THREE.BufferAttribute(dCol, 3));
+  duneGeo.computeVertexNormals();
+
+  const sandMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    normalMap: rippleTex,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughness: 0.88,
+    metalness: 0.04
+  });
+  sandMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSandWPos;\nvarying vec3 vSandWNorm;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvSandWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvSandWNorm = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSandWPos;\nvarying vec3 vSandWNorm;')
+      .replace('#include <dithering_fragment>', `
+        vec3 sV = normalize(cameraPosition - vSandWPos);
+        float rim = pow(1.0 - max(dot(normalize(vSandWNorm), sV), 0.0), 2.8);
+        vec2 gCell = floor(vSandWPos.xz * 7.5);
+        float gHash = fract(sin(dot(gCell, vec2(127.1, 311.7))) * 43758.5453);
+        float glint = step(0.985, gHash) * pow(max(dot(reflect(-sV, normalize(vSandWNorm)), normalize(vec3(0.55, 0.72, 0.42))), 0.0), 10.0);
+        gl_FragColor.rgb += vec3(1.0, 0.86, 0.56) * (rim * 0.14 + glint * 0.95);
+        #include <dithering_fragment>
+      `);
+  };
+  const duneMesh = new THREE.Mesh(duneGeo, sandMat);
+  duneMesh.position.set(cx, 0, cz);
+  duneMesh.receiveShadow = true;
+  grp.add(duneMesh);
+
   // 1. 厄拉奇恩倾斜野兽派巨型堡垒 (Arrakeen Brutalist Citadel)
   const citX = cx, citZ = cz - 46, citH = safeH(citX, citZ, 10);
   const keep = new THREE.Mesh(new THREE.CylinderGeometry(16, 28, 46, 4), sandStoneM);
@@ -544,32 +612,74 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
   pad.position.set(padX, padH + 0.3, padZ); pad.receiveShadow = true; grp.add(pad);
   thop.position.set(padX, padH + 4.0, padZ); thop.rotation.y = -0.6; grp.add(thop);
 
-  // 3. 巨型沙虫 (Shai-Hulud: 14节装甲虫躯 + 利齿环形巨口)
+  // 3. 电影级巨型沙虫 (Shai-Hulud: 24节重叠角质甲壳 + 三瓣漏斗深喉巨口 + 破沙尘暴)
   const wormSegs = [];
-  const wormSkinM = new THREE.MeshStandardMaterial({ color: 0x9c744c, roughness: 0.72, metalness: 0.08 });
-  const wormRingM = new THREE.MeshStandardMaterial({ color: 0x5c432b, roughness: 0.85 });
-  const toothM = new THREE.MeshBasicMaterial({ color: 0xf4ecd8 });
-  for (let i = 0; i < 14; i++) {
+  const wormArmorM = new THREE.MeshStandardMaterial({ color: 0x8a6440, roughness: 0.78, metalness: 0.12 });
+  const wormRidgeM = new THREE.MeshStandardMaterial({ color: 0x4b3624, roughness: 0.9, metalness: 0.08 });
+  const wormFleshM = new THREE.MeshStandardMaterial({ color: 0x6b3222, roughness: 0.75 });
+  const toothM = new THREE.MeshStandardMaterial({ color: 0xf6eedb, emissive: 0x443828, emissiveIntensity: 0.25, roughness: 0.25, metalness: 0.15 });
+  for (let i = 0; i < 24; i++) {
     const seg = new THREE.Group();
-    const r = i === 0 ? 4.8 : Math.max(1.6, 5.0 - i * 0.24);
-    const body = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), i % 2 === 0 ? wormSkinM : wormRingM);
-    body.scale.set(1, 1, 1.35); body.castShadow = true; seg.add(body);
+    const r = i === 0 ? 5.2 : Math.max(1.5, 5.4 - i * 0.16);
+    const rBack = i === 0 ? 5.3 : Math.max(1.3, r - 0.18);
+    // 重叠锥台甲壳，消除球体糖葫芦缝隙
+    const shell = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, rBack, 3.8, 16, 1), i % 2 === 0 ? wormArmorM : wormRidgeM);
+    shell.rotation.x = Math.PI / 2; shell.castShadow = true; shell.receiveShadow = true; seg.add(shell);
+    // 节间角质凸起骨环
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.96, 0.36, 7, 16), wormRidgeM);
+    ring.position.z = 1.2; seg.add(ring);
     if (i === 0) {
-      const maw = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.85, 8, 18), wormRingM);
-      maw.position.z = r * 0.85; seg.add(maw);
-      const throat = new THREE.Mesh(new THREE.CircleGeometry(2.8, 14), new THREE.MeshBasicMaterial({ color: 0x160a06 }));
-      throat.position.z = r * 0.75; seg.add(throat);
-      for (let ti = 0; ti < 12; ti++) {
-        const a = (ti / 12) * Math.PI * 2;
-        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.26, 1.3, 4), toothM);
-        tooth.position.set(Math.cos(a) * 2.4, Math.sin(a) * 2.4, r * 0.95);
-        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.45;
+      // 深邃漏斗状咽喉
+      const funnel = new THREE.Mesh(new THREE.CylinderGeometry(3.8, 0.8, 6.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x120604, side: THREE.BackSide }));
+      funnel.rotation.x = Math.PI / 2; funnel.position.z = -0.2; seg.add(funnel);
+      // 三瓣外翻唇瓣
+      for (let li = 0; li < 3; li++) {
+        const la = (li / 3) * Math.PI * 2 + Math.PI / 6;
+        const lobe = new THREE.Mesh(new THREE.SphereGeometry(2.6, 10, 8), wormFleshM);
+        lobe.scale.set(1.15, 0.65, 1.35);
+        lobe.position.set(Math.cos(la) * 3.1, Math.sin(la) * 3.1, 2.2);
+        lobe.rotation.z = la + Math.PI / 2;
+        seg.add(lobe);
+      }
+      // 双圈 24 枚向内弯曲晶牙
+      for (let ti = 0; ti < 16; ti++) {
+        const a = (ti / 16) * Math.PI * 2;
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.85, 5), toothM);
+        tooth.position.set(Math.cos(a) * 3.3, Math.sin(a) * 3.3, 2.35);
+        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.72;
+        seg.add(tooth);
+      }
+      for (let ti = 0; ti < 8; ti++) {
+        const a = (ti / 8) * Math.PI * 2 + 0.2;
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.3, 4), toothM);
+        tooth.position.set(Math.cos(a) * 2.1, Math.sin(a) * 2.1, 1.2);
+        tooth.rotation.z = a + Math.PI / 2; tooth.rotation.x = 0.85;
         seg.add(tooth);
       }
     }
     grp.add(seg);
     wormSegs.push(seg);
   }
+
+  // 3b. 破沙尘暴扬尘云 + 贴地流沙雾
+  const plumeMat = new THREE.MeshBasicMaterial({ color: 0xdca560, transparent: true, opacity: 0.34, depthWrite: false });
+  const sandPlumes = [];
+  for (let i = 0; i < 14; i++) {
+    const pm = new THREE.Mesh(new THREE.DodecahedronGeometry(3.2 + (i % 3) * 1.1, 1), plumeMat);
+    grp.add(pm);
+    sandPlumes.push({ m: pm, ph: i * 0.45 });
+  }
+  const streakCount = 48;
+  const streakGeo = new THREE.BufferGeometry();
+  const streakPos = new Float32Array(streakCount * 3);
+  for (let i = 0; i < streakCount; i++) {
+    const a = (i / streakCount) * Math.PI * 2 * 3, r = 12 + (i % 12) * 10;
+    const sx = cx + Math.cos(a) * r, sz = cz + Math.sin(a) * r;
+    streakPos[i * 3] = sx; streakPos[i * 3 + 1] = safeH(sx, sz, 4) + 1.1; streakPos[i * 3 + 2] = sz;
+  }
+  streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPos, 3));
+  const sandStreaks = new THREE.Points(streakGeo, new THREE.PointsMaterial({ color: 0xf2c888, size: 3.4, transparent: true, opacity: 0.28, depthWrite: false }));
+  grp.add(sandStreaks);
 
   // 4. 香料矿脉涌泉 (Spice Melange Vents + 蓝晶簇)
   for (const [ox, oz] of [[-16, 12], [14, 14], [-26, -14], [30, -18]]) {
@@ -594,20 +704,44 @@ export function buildArrakis9(scene, heightFn, cx, cz) {
       // 沙虫在沙海破沙潜行跃动
       const baseA = t * 0.24;
       for (let i = 0; i < wormSegs.length; i++) {
-        const a = baseA - i * 0.14;
+        const a = baseA - i * 0.085;
         const wr = 46 + Math.sin(a * 2.0) * 10;
         const wx = (cx - 18) + Math.cos(a) * wr, wz = (cz - 8) + Math.sin(a) * wr;
         const gh = safeH(wx, wz, 2);
-        const arc = Math.sin(a * 2.5) * 9.0 + 3.5;
+        const arc = Math.sin(a * 2.5) * 9.5 + 3.0;
         const seg = wormSegs[i];
         seg.position.set(wx, gh + arc, wz);
         const na = a + 0.05;
         const nwr = 46 + Math.sin(na * 2.0) * 10;
         const nwx = (cx - 18) + Math.cos(na) * nwr, nwz = (cz - 8) + Math.sin(na) * nwr;
         const ngh = safeH(nwx, nwz, 2);
-        const narc = Math.sin(na * 2.5) * 9.0 + 3.5;
+        const narc = Math.sin(na * 2.5) * 9.5 + 3.0;
         seg.lookAt(nwx, ngh + narc, nwz);
       }
+      // 破沙扬尘随沙虫头部与中段翻涌
+      const headPos = wormSegs[0].position;
+      const headGh = safeH(headPos.x, headPos.z, 2);
+      for (let i = 0; i < sandPlumes.length; i++) {
+        const p = sandPlumes[i];
+        const cycle = (t * 1.4 + p.ph) % 1;
+        const ang = i * 0.9 + t * 0.8;
+        const rad = 3.5 + cycle * 9.5;
+        p.m.position.set(headPos.x + Math.cos(ang) * rad, headGh + 1.2 + cycle * 6.5, headPos.z + Math.sin(ang) * rad);
+        const sc = (1 - cycle) * 1.4 + 0.3;
+        p.m.scale.setScalar(sc);
+      }
+      // 贴地风沙顺风飘移
+      const sp = streakGeo.attributes.position;
+      for (let i = 0; i < streakCount; i++) {
+        let sx = sp.getX(i) + 0.14;
+        let sz = sp.getZ(i) + 0.08;
+        if (Math.hypot(sx - cx, sz - cz) > 135) {
+          sx = cx - 90 + ((i * 37) % 180);
+          sz = cz - 90 + ((i * 53) % 180);
+        }
+        sp.setXYZ(i, sx, safeH(sx, sz, 4) + 1.1 + Math.sin(t * 2 + i) * 0.4, sz);
+      }
+      sp.needsUpdate = true;
     }
   };
 }

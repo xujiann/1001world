@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=6';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9 } from './aaa-engine.js?v=7';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -489,7 +489,13 @@ function height(x, z) {
   { const dar = Math.hypot(x - ARRAKIS.x, z - ARRAKIS.z);
     if (dar < ARRAKIS.r) {
       const fall = smooth01(clamp(1 - dar / ARRAKIS.r, 0, 1));
-      const dune = Math.abs(Math.sin(x * .048 + Math.cos(z * .032) * 1.4)) * 7.2 + 3.2;
+      const lx = x - ARRAKIS.x, lz = z - ARRAKIS.z;
+      const warp = Math.sin(lx * .018 + lz * .014) * 1.35 + Math.cos(lz * .024 - lx * .011) * .9;
+      const ph = lx * .036 + lz * .022 + warp;
+      const asym = ph + Math.sin(ph) * .42; // 迎风缓坡 + 陡峭背风滑落面 (Barchan/Transverse)
+      const crest = Math.pow(1 - Math.abs(Math.sin(asym)), 1.45);
+      const ridge2 = Math.pow(1 - Math.abs(Math.sin(lz * .045 - lx * .025 + warp * .6)), 1.6);
+      const dune = crest * 9.5 + ridge2 * 3.8 + 2.6;
       h += fall * dune;
       if (z < ARRAKIS.z - 42) h += smooth01(clamp((ARRAKIS.z - 42 - z) / 48, 0, 1)) * fall * 15;   // 北侧玄武岩盾墙
     }
