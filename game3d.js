@@ -542,8 +542,20 @@ function height(x, z) {
   h -= smooth01(clamp(1 - bd2 / WHALE_BLOW.r, 0, 1)) * 11;
   // 海岸柔化:抬高 -3.5..+3.5 过渡带(修复新噪声下沉的栈桥,滩涂也更自然)
   if (h > -3.5 && h < 3.5) h += (3.5 - Math.abs(h)) / 3.5 * 2.2;
+  if (_apReady9) {
+    for (let i = 0; i < AIRPORTS.length; i++) {
+      const dx = Math.abs(x - AIRPORTS[i][2]), dz = Math.abs(z - AIRPORTS[i][3]);
+      if (dx < 26 && dz < 36) {
+        const w = smooth01(clamp(1 - Math.max(dx - 16, dz - 26) / 10, 0, 1));
+        h = h * (1 - w) + AIRPORT_H9[i] * w;
+      }
+    }
+  }
   return h;
 }
+let _apReady9 = false, AIRPORT_H9 = [];
+AIRPORT_H9 = AIRPORTS.map(([,, ax, az]) => Math.max(height(ax, az), 1.8));
+_apReady9 = true;
 
 /* ================= UI(与 2D 版共用逻辑与存档) ================= */
 const $ = id => document.getElementById(id);
@@ -9083,7 +9095,7 @@ function setDiveSurfaceHidden9(hide) {
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
-  const next = diving ? 'dive' : (swimming ? 'swim' : 'land');
+  const next = flight ? 'land' : (diving ? 'dive' : (swimming ? 'swim' : 'land'));
   if (next === suitMode9) return;
   suitMode9 = next;
   const sp = player.userData.suitParts9;
@@ -12439,7 +12451,8 @@ const NO_GRASS = [
   { x: 350, z: 620, r: 125 },     // 未竟之都(白石之城)
   { x: ARRAKIS.x, z: ARRAKIS.z, r: ARRAKIS.r + 10 }, // 厄拉科斯·沙丘(纯沙海无草)
 ];
-function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
+function inAirport9(x, z) { for (const [,, ax, az] of AIRPORTS) if (Math.abs(x - ax) < 17 && Math.abs(z - az) < 27) return true; return false; }
+function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; if (inAirport9(x, z)) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
 /* 世界锚定的抖动网格散布:位置由世界格坐标 hash 决定 → 随玩家移动只在圆盘边缘增减,
    圈内格保持原位不动 = 草地平滑铺开、不再整体重洗;颜色也按格 hash 稳定(免闪) */
 const _sgM4 = new THREE.Matrix4(), _sgQ = new THREE.Quaternion(), _sgS = new THREE.Vector3(), _sgP = new THREE.Vector3(), _sgE = new THREE.Euler();
@@ -12480,7 +12493,7 @@ function redistributeGrass(cx, cz) {
     (x, z, h) => h > 2.8 && h < 17 && grassOK(x, z) && fbm(x * .07 + 3, z * .07) > .46,
     (x, z, h, gx, gz, m, q, s, p, e) => { q.setFromEuler(e.set(0, hash2(gx + 4, gz + 1) * 6.2832, 0)); s.setScalar(0.68); m.compose(p.set(x, h + .16, z), q, s); }); }
   if (rockInst) { const ku = rockInst.userData; scatterGrid9(rockInst, ku.KN, ku.R, cx, cz, 4.4, ROCK_COL9,
-    (x, z, h) => h > 2 && h < 26 && !inStadium9(x, z) && fbm(x * .05 + 8, z * .05) > .6,   // 🪨 噪声成簇:石头只落在少数石砾斑块,不再满地颗粒
+    (x, z, h) => h > 2 && h < 26 && !inStadium9(x, z) && !inAirport9(x, z) && fbm(x * .05 + 8, z * .05) > .6,   // 🪨 噪声成簇:石头只落在少数石砾斑块,不再满地颗粒
     (x, z, h, gx, gz, m, q, s, p, e) => {
       q.setFromEuler(e.set(hash2(gx, gz + 5) * 3, hash2(gx + 6, gz) * 6.28, hash2(gx + 2, gz + 2) * 3));
       const sc = .5 + hash2(gx + 1, gz + 9) * 1.1; s.set(sc, sc * .7, sc);
@@ -12858,6 +12871,67 @@ function makePlane9(s9) {
 {
   planeGrp9 = makePlane9(1.4); planeGrp9.visible = false; scene.add(planeGrp9);
   prop9 = planeGrp9.userData.prop;
+  // ✈️ 鲸航 A350 客舱+驾驶舱内部视角模型 (航行时切换为舱内视角，窗外可见机翼与云海)
+  const cabinGrp9 = new THREE.Group();
+  {
+    const cWallM = new THREE.MeshStandardMaterial({ color: 0xedeae2, roughness: 0.6, side: THREE.DoubleSide });
+    const cCarpetM = new THREE.MeshStandardMaterial({ color: 0x1b3350, roughness: 0.85 });
+    const cSeatM = new THREE.MeshStandardMaterial({ color: 0x225588, roughness: 0.55 });
+    const cHeadM = new THREE.MeshStandardMaterial({ color: 0xdbe6f0, roughness: 0.5 });
+    const cDashM = new THREE.MeshStandardMaterial({ color: 0x1e242c, roughness: 0.5, metalness: 0.4 });
+    const cGlowM = new THREE.MeshBasicMaterial({ color: 0x58e6ff });
+    const cCeilingGlowM = new THREE.MeshBasicMaterial({ color: 0xfff2d6 });
+    const cWinM = new THREE.MeshPhysicalMaterial({ color: 0x9ed8ff, transparent: true, opacity: 0.22, roughness: 0.08, side: THREE.DoubleSide });
+    // 客舱地板 + 深蓝过道地毯
+    const fl = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.22, 11.5), cCarpetM);
+    fl.position.set(0, 0.85, 0.5); cabinGrp9.add(fl);
+    // 拱形舱顶 + 暖光阅读灯带
+    const ceil = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 1.95, 11.2, 12, 1, true, -Math.PI / 2, Math.PI), cWallM);
+    ceil.rotation.x = -Math.PI / 2; ceil.position.set(0, 2.35, 0.5); cabinGrp9.add(ceil);
+    const cStrip = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 9.8), cCeilingGlowM);
+    cStrip.position.set(0, 3.65, 0.4); cabinGrp9.add(cStrip);
+    const cLight = new THREE.PointLight(0xffe8c4, 2.2, 18, 1.2);
+    cLight.position.set(0, 3.2, 1.0); cabinGrp9.add(cLight);
+    // 两侧带舷窗客舱壁 + 外部 A350 机翼
+    for (const sx of [-1, 1]) {
+      const lowW = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.9, 11.2), cWallM);
+      lowW.position.set(sx * 1.92, 1.4, 0.5); cabinGrp9.add(lowW);
+      const upW = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 11.2), cWallM);
+      upW.position.set(sx * 1.92, 2.85, 0.5); cabinGrp9.add(upW);
+      for (let wi = 0; wi < 4; wi++) {
+        const pil = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.75), cWallM);
+        pil.position.set(sx * 1.92, 2.18, -3.2 + wi * 2.5); cabinGrp9.add(pil);
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 0.72), cWinM);
+        win.rotation.y = Math.PI / 2; win.position.set(sx * 1.92, 2.18, -1.95 + wi * 2.5); cabinGrp9.add(win);
+      }
+      // 窗外可见的真机翼 + 翼尖帆
+      const wingOut = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.16, 2.4), new THREE.MeshStandardMaterial({ color: 0xe6ecf2, roughness: 0.35, metalness: 0.25 }));
+      wingOut.position.set(sx * 5.6, 1.95, 0.4); wingOut.rotation.y = -sx * 0.22; cabinGrp9.add(wingOut);
+    }
+    // 3 排双侧航空座椅 (玩家坐在第 2 排)
+    for (const rz of [-1.8, 0.4, 2.6]) {
+      for (const sx of [-1.18, 1.18]) {
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.32, 0.75), cSeatM);
+        seat.position.set(sx, 1.18, rz); cabinGrp9.add(seat);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.05, 0.22), cSeatM);
+        back.position.set(sx, 1.72, rz - 0.28); back.rotation.x = -0.14; cabinGrp9.add(back);
+        const hr = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.28, 0.18), cHeadM);
+        hr.position.set(sx, 2.28, rz - 0.34); cabinGrp9.add(hr);
+      }
+    }
+    // 前方驾驶舱仪表台 + 航电双屏 + 操纵杆 + 后舱壁
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.1, 1.1), cDashM);
+    dash.position.set(0, 1.5, 4.9); cabinGrp9.add(dash);
+    for (const sx of [-0.75, 0.75]) {
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.56), cGlowM);
+      scr.position.set(sx, 1.85, 4.33); scr.rotation.y = Math.PI; cabinGrp9.add(scr);
+    }
+    const backBulk = new THREE.Mesh(new THREE.BoxGeometry(3.8, 2.9, 0.2), cWallM);
+    backBulk.position.set(0, 2.2, -5.0); cabinGrp9.add(backBulk);
+  }
+  cabinGrp9.visible = false;
+  planeGrp9.add(cabinGrp9);
+  planeGrp9.userData.cabin9 = cabinGrp9;
   ferryBoat9 = makeBoat(0xd8b04a, 1.6); ferryBoat9.visible = false; ferryBoat9.userData.anchor = [0, -2600]; scene.add(ferryBoat9);   // anchor 满足 boats 循环,乘船时每帧覆盖
   ambPlane9 = makePlane9(1.6); ambPlane9.position.set(-2100, 150, -300); ambPlane9.userData.dir = { dx: 1, dz: .2 }; scene.add(ambPlane9);
   try {
@@ -14934,6 +15008,12 @@ function loop() {
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
     camera.position.lerp(v3.set(player.position.x - fx * 4.2, player.position.y + 1.6 + camPitch * 2, player.position.z - fz * 4.2), Math.min(1, dt * 9));
     camera.lookAt(player.position.x + fx * 6, player.position.y - camPitch * 3, player.position.z + fz * 6);
+  } else if (flight && flight.air && planeGrp9) {   // ✈️ 鲸航 A350 客舱/驾驶舱内部第一人称视角
+    const yaw9 = faceYaw + (camYaw - faceYaw) * 0.35;
+    const fx9 = Math.sin(faceYaw), fz9 = Math.cos(faceYaw);
+    const lx9 = Math.sin(yaw9), lz9 = Math.cos(yaw9);
+    camera.position.set(planeGrp9.position.x - fx9 * 1.4, planeGrp9.position.y + 2.45, planeGrp9.position.z - fz9 * 1.4);
+    camera.lookAt(planeGrp9.position.x + lx9 * 14, planeGrp9.position.y + 2.0 + (camPitch - 0.22) * 8, planeGrp9.position.z + lz9 * 14);
   } else if (restState9) {
     const rfx9 = Math.sin(faceYaw), rfz9 = Math.cos(faceYaw);
     if (restState9 === 2) {   // 🛌 躺平看天:相机贴地略仰望天空
@@ -15706,12 +15786,18 @@ function loop() {
     const lift = Math.sin(Math.min(1, k2 * 1.04) * Math.PI) * (flight.lift ?? 120);
     player.position.set(fx2, Math.max(height(fx2, fz2), 0) + 2.2 + lift, fz2);
     vy = 0;
-    if (flight.air && planeGrp9) {   // ✈️ 鲸航客机随行
+    if (flight.air && planeGrp9) {   // ✈️ 鲸航客机随行（展示客舱内部，隐藏外层实体壳）
       if (flight.lx != null) { const mvx = fx2 - flight.lx, mvz = fz2 - flight.lz; if (mvx * mvx + mvz * mvz > 1e-7) faceYaw = Math.atan2(mvx, mvz); }
       flight.lx = fx2; flight.lz = fz2;
       planeGrp9.visible = true;
       planeGrp9.position.set(fx2, player.position.y - 2.1, fz2);
       planeGrp9.rotation.y = faceYaw;
+      if (planeGrp9.userData.cabin9) {
+        planeGrp9.children.forEach(c => { c.visible = (c === planeGrp9.userData.cabin9); });
+      }
+      const seatOffX = Math.cos(faceYaw) * 1.18 + Math.sin(faceYaw) * 0.4;
+      const seatOffZ = -Math.sin(faceYaw) * 1.18 + Math.cos(faceYaw) * 0.4;
+      player.position.set(fx2 + seatOffX, planeGrp9.position.y + 1.05, fz2 + seatOffZ);
       prop9.rotation.z += dt * 40;
     }
     if (k2 >= 1) {
