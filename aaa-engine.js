@@ -856,3 +856,202 @@ export function buildArrakis9(scene, heightFn, cx, cz, boxObs = []) {
     }
   };
 }
+
+export class OceanWhales9 {
+  constructor(scene) {
+    this.grp = new THREE.Group();
+    this.whales = [];
+    const specs = [
+      // 1. 蓝鲸 (Blue Whale: 28m 长，深蓝灰背部+浅灰腹沟+小镰刀背鳍+高大喷水柱)
+      { kind: 'blue', cx: 260, cz: 340, r: 58, sp: 0.14, len: 28, rad: 3.1, breach: false, spout: true },
+      // 2. 座头鲸 (Humpback Whale: 16m 长，超长白色瘤状胸鳍+周期性跃出海面 Breaching)
+      { kind: 'humpback', cx: -240, cz: 360, r: 44, sp: 0.22, len: 16, rad: 2.3, breach: true, spout: true },
+      // 3. 虎鲸双鲸群 (Orca Pod × 2: 黑白分明+眼后白斑+高耸镰刀背鳍)
+      { kind: 'orca', cx: -420, cz: 220, r: 34, sp: 0.34, len: 9.5, rad: 1.55, phase: 0, breach: false, spout: false },
+      { kind: 'orca', cx: -420, cz: 220, r: 30, sp: 0.34, len: 8.2, rad: 1.35, phase: 0.55, breach: false, spout: false },
+      // 4. 独角鲸 (Narwhal: 北方冷水海域，银白斑驳皮肤+螺旋长牙)
+      { kind: 'narwhal', cx: -380, cz: -520, r: 32, sp: 0.26, len: 7.4, rad: 1.25, breach: false, spout: false },
+    ];
+    for (const s of specs) {
+      this.whales.push(this._makeWhale(s));
+    }
+    scene.add(this.grp);
+  }
+
+  _makeWhale(s) {
+    const wg = new THREE.Group();
+    const RINGS = 26, RAD = 16;
+    const pos = new Float32Array(RINGS * (RAD + 1) * 3);
+    const basePos = new Float32Array(RINGS * (RAD + 1) * 3);
+    const col = new Float32Array(RINGS * (RAD + 1) * 3);
+    const idx = [];
+
+    const cTop = new THREE.Color(
+      s.kind === 'blue' ? 0x2f5373 : s.kind === 'humpback' ? 0x1e242b : s.kind === 'orca' ? 0x101318 : 0x708496
+    );
+    const cBelly = new THREE.Color(
+      s.kind === 'blue' ? 0x7c9eb8 : s.kind === 'humpback' ? 0xdce4ea : s.kind === 'orca' ? 0xf6f8fa : 0xdbe3e8
+    );
+    const cWhite = new THREE.Color(0xf6f8fa);
+
+    for (let i = 0; i < RINGS; i++) {
+      const u = i / (RINGS - 1); // 0 = 吻端(front +Z), 1 = 尾柄(back -Z)
+      const z = (0.5 - u) * s.len;
+      // 真实鲸类流线轮廓：头部饱满微扁，中段宽厚，后半部收细至尾柄
+      const profile = u < 0.22
+        ? Math.pow(Math.sin((u / 0.22) * (Math.PI / 2)), 0.72)
+        : Math.pow(Math.cos(((u - 0.22) / 0.78) * (Math.PI / 2)), 1.25);
+      const rx = s.rad * Math.max(0.08, profile) * (s.kind === 'blue' ? 0.92 : 1.0);
+      const ry = s.rad * Math.max(0.08, profile) * (u < 0.2 ? 0.78 : 0.95);
+
+      for (let j = 0; j <= RAD; j++) {
+        const ang = (j / RAD) * Math.PI * 2;
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const vi = (i * (RAD + 1) + j) * 3;
+        const px = ca * rx, py = sa * ry;
+        pos[vi] = basePos[vi] = px;
+        pos[vi + 1] = basePos[vi + 1] = py;
+        pos[vi + 2] = basePos[vi + 2] = z;
+
+        // 物种精准涂装
+        let vc = cTop.clone();
+        if (sa < -0.15) vc.lerp(cBelly, Math.min(1, (-sa - 0.15) * 1.4));
+        if (s.kind === 'orca') {
+          // 虎鲸眼后白斑 + 背后灰白鞍斑
+          if (u > 0.10 && u < 0.21 && sa > 0.05 && Math.abs(ca) > 0.55) vc.copy(cWhite);
+          if (u > 0.42 && u < 0.56 && sa > 0.35) vc.lerp(cWhite, 0.72);
+        } else if (s.kind === 'blue' && sa < -0.2 && u < 0.55) {
+          // 蓝鲸腹褶沟条纹感
+          if (j % 2 === 0) vc.multiplyScalar(0.86);
+        } else if (s.kind === 'narwhal' && ((i + j) % 3 === 0)) {
+          vc.lerp(cWhite, 0.45);
+        }
+        col[vi] = vc.r; col[vi + 1] = vc.g; col[vi + 2] = vc.b;
+      }
+      if (i < RINGS - 1) {
+        for (let j = 0; j < RAD; j++) {
+          const a = i * (RAD + 1) + j, b = a + (RAD + 1);
+          idx.push(a, b, a + 1, a + 1, b, b + 1);
+        }
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const skinMat = new THREE.MeshPhysicalMaterial({
+      vertexColors: true, roughness: 0.24, metalness: 0.05, clearcoat: 0.92, clearcoatRoughness: 0.08
+    });
+    const bodyMesh = new THREE.Mesh(geo, skinMat);
+    bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
+    wg.add(bodyMesh);
+
+    // 胸鳍 (座头鲸标志性超长白胸鳍)
+    const finLen = s.kind === 'humpback' ? s.len * 0.33 : s.len * 0.18;
+    const finMat = new THREE.MeshPhysicalMaterial({
+      color: s.kind === 'humpback' ? 0xeef2f5 : cTop.getHex(), roughness: 0.28, clearcoat: 0.85
+    });
+    for (const sgn of [-1, 1]) {
+      const fGeo = new THREE.ConeGeometry(s.rad * 0.34, finLen, 6);
+      fGeo.scale(0.28, 1, 0.65);
+      const fin = new THREE.Mesh(fGeo, finMat);
+      fin.position.set(sgn * (s.rad * 0.85 + finLen * 0.32), -s.rad * 0.35, s.len * 0.16);
+      fin.rotation.set(0.25, -sgn * 0.35, sgn * 1.18);
+      wg.add(fin);
+    }
+
+    // 背鳍 (虎鲸高耸直立镰刀鳍 / 蓝鲸小背鳍 / 座头鲸驼峰背鳍)
+    if (s.kind !== 'narwhal') {
+      const dH = s.kind === 'orca' ? s.rad * 1.55 : s.kind === 'humpback' ? s.rad * 0.48 : s.rad * 0.32;
+      const dGeo = new THREE.ConeGeometry(s.rad * 0.32, dH, 5);
+      dGeo.scale(0.24, 1, 0.9);
+      const dorsal = new THREE.Mesh(dGeo, new THREE.MeshPhysicalMaterial({ color: cTop.getHex(), roughness: 0.25, clearcoat: 0.85 }));
+      dorsal.position.set(0, s.rad * 0.85 + dH * 0.35, -s.len * 0.05);
+      dorsal.rotation.x = -0.35;
+      wg.add(dorsal);
+    }
+
+    // 独角鲸螺旋长牙
+    if (s.kind === 'narwhal') {
+      const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.11, 2.8, 8), new THREE.MeshStandardMaterial({ color: 0xf4ecd4, roughness: 0.35 }));
+      tusk.rotation.x = Math.PI / 2;
+      tusk.position.set(0, 0.05, s.len * 0.5 + 1.25);
+      wg.add(tusk);
+    }
+
+    // 水平新月尾鳍 (随尾柄同步实时波动)
+    const flukeGrp = new THREE.Group();
+    const flW = s.rad * 1.65;
+    for (const sgn of [-1, 1]) {
+      const flGeo = new THREE.ConeGeometry(s.rad * 0.42, flW, 6);
+      flGeo.scale(1, 1, 0.22);
+      const fl = new THREE.Mesh(flGeo, skinMat);
+      fl.position.set(sgn * flW * 0.42, 0, -s.len * 0.5 - 0.15);
+      fl.rotation.set(0, sgn * 0.48, -sgn * Math.PI / 2);
+      flukeGrp.add(fl);
+    }
+    wg.add(flukeGrp);
+
+    // 呼吸孔喷水柱
+    let spout = null;
+    if (s.spout) {
+      spout = new THREE.Mesh(
+        new THREE.ConeGeometry(s.rad * 0.45, s.rad * 3.2, 10, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xe6f8ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
+      );
+      spout.rotation.x = Math.PI;
+      spout.position.set(0, s.rad * 2.1, s.len * 0.28);
+      wg.add(spout);
+    }
+
+    this.grp.add(wg);
+    return { s, wg, geo, basePos, RINGS, RAD, flukeGrp, spout };
+  }
+
+  update(t) {
+    for (const w of this.whales) {
+      const { s, wg, geo, basePos, RINGS, RAD, flukeGrp, spout } = w;
+      const a = t * s.sp + (s.phase || 0);
+      const wx = s.cx + Math.cos(a) * s.r, wz = s.cz + Math.sin(a) * s.r;
+      // 跃水与上浮周期
+      let wy = -1.6 + Math.sin(t * 0.55 + (s.phase || 0)) * 1.4;
+      let pitch = Math.cos(t * 0.55 + (s.phase || 0)) * 0.12;
+      if (s.breach) {
+        const bCycle = (t * 0.12) % 1;
+        if (bCycle < 0.28) {
+          const bp = Math.sin((bCycle / 0.28) * Math.PI);
+          wy = -2.0 + bp * 9.5;
+          pitch = Math.cos((bCycle / 0.28) * Math.PI) * 0.55;
+        }
+      }
+      wg.position.set(wx, wy, wz);
+      const nx = s.cx + Math.cos(a + 0.05) * s.r, nz = s.cz + Math.sin(a + 0.05) * s.r;
+      wg.lookAt(nx, wy, nz);
+      wg.rotateX(pitch);
+
+      // 连续软体尾柄波浪摆动
+      const pAttr = geo.attributes.position;
+      const wavePhase = t * (s.kind === 'orca' ? 3.8 : 2.3) + (s.phase || 0);
+      for (let i = 0; i < RINGS; i++) {
+        const u = i / (RINGS - 1);
+        const bend = u > 0.45 ? Math.pow((u - 0.45) / 0.55, 1.7) * Math.sin(wavePhase - u * 2.4) * (s.rad * 0.68) : 0;
+        for (let j = 0; j <= RAD; j++) {
+          const vi = i * (RAD + 1) + j;
+          pAttr.setY(vi, basePos[vi * 3 + 1] + bend);
+        }
+      }
+      pAttr.needsUpdate = true;
+      const tailBend = Math.sin(wavePhase - 2.4) * (s.rad * 0.68);
+      flukeGrp.position.y = tailBend;
+      flukeGrp.rotation.x = Math.cos(wavePhase - 2.4) * 0.35;
+
+      if (spout) {
+        const spOp = wy > -1.0 ? Math.max(0, Math.sin(t * 1.5)) * 0.55 : 0;
+        spout.material.opacity = spOp;
+        spout.scale.setScalar(0.8 + spOp * 0.7);
+      }
+    }
+  }
+}
