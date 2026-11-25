@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9 } from './aaa-engine.js?v=12';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9 } from './aaa-engine.js?v=13';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -8520,15 +8520,9 @@ if (EVENT === 'kites') {
 /* ===== ✈️ 鲸航 QJ:12 座机场(仅"现实上说得通"的岛设跑道) ===== */
 
 const AIR_KEYS = new Set(AIRPORTS.filter(a => !a[4] && a[0] !== 'main').map(a => a[0]));   // 可通航的岛(渡口下架名单)
+const airportSys9 = new AirportSystems9(scene, height, AIRPORTS, cirObs);
 for (const [k3, nm3, ax, az] of AIRPORTS) {
-  const ah3 = Math.max(height(ax, az), .4);
-  const run = box(5, .25, 34, lam(0x565c64)); run.position.set(ax, ah3 + .3, az); scene.add(run);
-  for (let i = 0; i < 5; i++) { const st4 = box(.5, .06, 2.2, lam(0xe8e4d8)); st4.position.set(ax, ah3 + .46, az - 12 + i * 6); scene.add(st4); }
-  const hutA = box(3, 2.4, 2.4, lam(0xdfe3e8)); hutA.position.set(ax + 4.6, ah3 + 1.2, az + 8); scene.add(hutA); cirObs.push({ x: ax + 4.6, z: az + 8, r: 2 });
-  const roofA = box(3.4, .3, 2.8, lam(0x3a6a9a)); roofA.position.set(ax + 4.6, ah3 + 2.55, az + 8); scene.add(roofA);
-  const poleW = cyl(.06, .08, 3.6, M.woodDark, 5); poleW.position.set(ax + 4.6, ah3 + 4.3, az + 5.6); scene.add(poleW);
-  const sock = new THREE.Mesh(new THREE.ConeGeometry(.28, 1.1, 6), lam(0xe8863c)); sock.rotation.z = Math.PI / 2; sock.position.set(ax + 5.2, ah3 + 5.6, az + 5.6); scene.add(sock);
-  addSpot(ax + 4.6, az + 5.2, 'air', 'airport', { r: 8, airKey: k3 });
+  addSpot(ax + 5.6, az + 8.5, 'air', 'airport', { r: 8, airKey: k3 });
 }
 function openAirCounter(fromKey) {
   const from = AIRPORTS.find(a => a[0] === fromKey); if (!from) return;
@@ -9085,6 +9079,7 @@ function setDiveSurfaceHidden9(hide) {
   if (typeof skyCityFX9 !== 'undefined' && skyCityFX9?.grp) skyCityFX9.grp.visible = !hide;
   if (typeof coastalBirds9 !== 'undefined' && coastalBirds9?.grp) coastalBirds9.grp.visible = !hide;
   if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !hide;
+  if (typeof airportSys9 !== 'undefined' && airportSys9?.grp) airportSys9.grp.visible = !hide;
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
@@ -12865,6 +12860,21 @@ function makePlane9(s9) {
   prop9 = planeGrp9.userData.prop;
   ferryBoat9 = makeBoat(0xd8b04a, 1.6); ferryBoat9.visible = false; ferryBoat9.userData.anchor = [0, -2600]; scene.add(ferryBoat9);   // anchor 满足 boats 循环,乘船时每帧覆盖
   ambPlane9 = makePlane9(1.6); ambPlane9.position.set(-2100, 150, -300); ambPlane9.userData.dir = { dx: 1, dz: .2 }; scene.add(ambPlane9);
+  try {
+    new GLTFLoader().load('./assets/models/A350_nologo.glb', gltf => {
+      if (!gltf.scene) return;
+      const box9 = new THREE.Box3().setFromObject(gltf.scene);
+      const sz9 = box9.getSize(new THREE.Vector3());
+      const sc9 = 11.5 / Math.max(sz9.x, sz9.y, sz9.z, 0.01);
+      [planeGrp9, ambPlane9].forEach((pg, pi) => {
+        if (!pg) return;
+        const m9 = SkeletonUtils.clone(gltf.scene);
+        m9.scale.setScalar(sc9 * (pi === 1 ? 1.2 : 1));
+        pg.children.forEach(c => { c.visible = false; });
+        pg.add(m9);
+      });
+    }, undefined, () => {});
+  } catch (e) {}
   ambFerry9 = makeBoat(0x8ab0c8, 1.4); ambFerry9.userData.anchor = [400, 40]; scene.add(ambFerry9);
   ambFerry9.userData.k = 0; ambFerry9.userData.dir = 1;
   balloon9 = new THREE.Group();   // 🎈 主岛观光热气球(环景)
@@ -14906,6 +14916,7 @@ function loop() {
   skyCityFX9.update(t, dt);
   coastalBirds9.update(t, dt);
   oceanMarine9.update(t, dt);
+  airportSys9.update(t, dt);
   biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
@@ -16270,7 +16281,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

@@ -1403,3 +1403,144 @@ export class OceanMarineLife9 {
     }
   }
 }
+
+export class AirportSystems9 {
+  constructor(scene, heightFn, airports, cirObs = []) {
+    this.grp = new THREE.Group();
+    this.radars = [];
+    this.beacons = [];
+    this.flyers = [];
+    this.mixers = [];
+
+    const asphM = new THREE.MeshStandardMaterial({ color: 0x383e46, roughness: 0.88, metalness: 0.08 });
+    const lineM = new THREE.MeshBasicMaterial({ color: 0xf0ece0 });
+    const termM = new THREE.MeshStandardMaterial({ color: 0xe6ecf2, roughness: 0.38, metalness: 0.15 });
+    const glassM = new THREE.MeshPhysicalMaterial({ color: 0x62b8e8, roughness: 0.1, metalness: 0.25, clearcoat: 0.9, transparent: true, opacity: 0.78 });
+    const towerGlassM = new THREE.MeshPhysicalMaterial({ color: 0x58e2a8, roughness: 0.12, metalness: 0.2, transparent: true, opacity: 0.82 });
+    const darkM = new THREE.MeshStandardMaterial({ color: 0x262c34, roughness: 0.6, metalness: 0.45 });
+    const edgeLightM = new THREE.MeshBasicMaterial({ color: 0xffd26a, fog: false });
+    const greenLightM = new THREE.MeshBasicMaterial({ color: 0x5eff9e, fog: false });
+
+    const pads = [];
+    airports.forEach(([k3, nm3, ax, az], idx) => {
+      const ah = Math.max(heightFn(ax, az), 0.5);
+      // 1. 加宽加长跑道 (7.6m × 46m) + 斑马线与双排助航灯
+      const run = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.28, 46), asphM);
+      run.position.set(ax, ah + 0.28, az); run.receiveShadow = true; this.grp.add(run);
+      for (let i = -3; i <= 3; i++) {
+        const dash = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 2.6), lineM);
+        dash.position.set(ax, ah + 0.44, az + i * 5.6); this.grp.add(dash);
+      }
+      for (const sz of [-21, 21]) for (let xi = -2; xi <= 2; xi++) {
+        const zeb = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 2.2), lineM);
+        zeb.position.set(ax + xi * 1.2, ah + 0.44, az + sz); this.grp.add(zeb);
+      }
+      for (let li = -4; li <= 4; li++) {
+        for (const sx of [-3.6, 3.6]) {
+          const lm = Math.abs(li) === 4 ? greenLightM : edgeLightM;
+          const el = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), lm);
+          el.position.set(ax + sx, ah + 0.55, az + li * 5.2); this.grp.add(el);
+        }
+      }
+      // 停机坪 + 直升机坪
+      const apron = new THREE.Mesh(new THREE.BoxGeometry(10, 0.24, 14), asphM);
+      apron.position.set(ax + 8.5, ah + 0.24, az - 4); apron.receiveShadow = true; this.grp.add(apron);
+      const hpad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.24, 16), asphM);
+      hpad.position.set(ax - 7.5, ah + 0.24, az + 6); this.grp.add(hpad);
+      const hring = new THREE.Mesh(new THREE.RingGeometry(2.3, 2.6, 20), edgeLightM);
+      hring.rotation.x = -Math.PI / 2; hring.position.set(ax - 7.5, ah + 0.38, az + 6); this.grp.add(hring);
+      pads.push({ idx, ax, az, ah });
+
+      // 2. 现代化玻璃幕墙航站楼 + 遮雨弧顶 + 登机廊桥
+      const term = new THREE.Mesh(new THREE.BoxGeometry(6.8, 3.6, 9.2), termM);
+      term.position.set(ax + 9.2, ah + 1.9, az + 8.5); term.castShadow = true; term.receiveShadow = true; this.grp.add(term);
+      const glassWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.4, 8.2), glassM);
+      glassWall.position.set(ax + 5.78, ah + 1.9, az + 8.5); this.grp.add(glassWall);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.45, 10.6), darkM);
+      roof.position.set(ax + 8.8, ah + 3.9, az + 8.5); roof.castShadow = true; this.grp.add(roof);
+      const jetway = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.3, 1.4), termM);
+      jetway.position.set(ax + 6.2, ah + 2.4, az + 1.5); this.grp.add(jetway);
+      cirObs.push({ x: ax + 9.2, z: az + 8.5, r: 4.5 });
+
+      // 3. 航空管制塔台 (ATC Tower + 旋转雷达 + 红色警示信标)
+      const tx = ax + 9.5, tz = az + 15.5;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.6, 10.5, 8), termM);
+      shaft.position.set(tx, ah + 5.25, tz); shaft.castShadow = true; this.grp.add(shaft);
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 1.7, 2.1, 8), towerGlassM);
+      cab.position.set(tx, ah + 11.2, tz); this.grp.add(cab);
+      const cabRoof = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.35, 8), darkM);
+      cabRoof.position.set(tx, ah + 12.4, tz); this.grp.add(cabRoof);
+      const radar = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.45, 0.25), darkM);
+      radar.position.set(tx, ah + 13.1, tz); this.grp.add(radar);
+      this.radars.push(radar);
+      const bMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b, fog: false });
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.24, 6, 5), bMat);
+      beacon.position.set(tx, ah + 13.5, tz); this.grp.add(beacon);
+      this.beacons.push({ m: bMat, ph: idx * 0.9 });
+      cirObs.push({ x: tx, z: tz, r: 2.0 });
+    });
+
+    // 4. 加载外部真实 GLB 模型：A350_nologo.glb 与 helicopter.glb
+    const loader = new GLTFLoader();
+    loader.load('./assets/models/A350_nologo.glb', gltf => {
+      if (!gltf.scene) return;
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      const sz = box.getSize(new THREE.Vector3());
+      const norm = 12.5 / Math.max(sz.x, sz.y, sz.z, 0.01);
+      // 停靠在主机场与主要枢纽停机坪
+      pads.filter((_, i) => i % 3 === 0).forEach(p => {
+        const m = SkeletonUtils.clone(gltf.scene);
+        m.scale.setScalar(norm);
+        m.position.set(p.ax + 8.5, p.ah + 1.1, p.az - 4);
+        m.rotation.y = Math.PI * 0.82;
+        this.grp.add(m);
+      });
+      // 2 架高空巡航 A350 客机
+      for (let i = 0; i < 2; i++) {
+        const fm = SkeletonUtils.clone(gltf.scene);
+        fm.scale.setScalar(norm * 1.15);
+        this.grp.add(fm);
+        this.flyers.push({ m: fm, cx: i === 0 ? 120 : -320, cz: i === 0 ? 160 : -220, r: 240 + i * 80, y: 82 + i * 24, sp: 0.14, ph: i * 2.4 });
+      }
+    }, undefined, () => {});
+
+    loader.load('./assets/models/helicopter.glb', gltf => {
+      if (!gltf.scene) return;
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      const sz = box.getSize(new THREE.Vector3());
+      const norm = 5.4 / Math.max(sz.x, sz.y, sz.z, 0.01);
+      pads.filter((_, i) => i % 2 === 1).forEach(p => {
+        const m = SkeletonUtils.clone(gltf.scene);
+        m.scale.setScalar(norm);
+        m.position.set(p.ax - 7.5, p.ah + 0.9, p.az + 6);
+        m.rotation.y = 0.5;
+        this.grp.add(m);
+      });
+      // 2 架低空巡逻直升机
+      for (let i = 0; i < 2; i++) {
+        const hm = SkeletonUtils.clone(gltf.scene);
+        hm.scale.setScalar(norm);
+        this.grp.add(hm);
+        this.flyers.push({ m: hm, cx: i === 0 ? 320 : -400, cz: i === 0 ? 220 : 120, r: 130, y: 36 + i * 10, sp: 0.28, ph: i * 3.1 });
+        if (gltf.animations && gltf.animations[0]) {
+          const mx = new THREE.AnimationMixer(hm);
+          mx.clipAction(gltf.animations[0]).play();
+          this.mixers.push(mx);
+        }
+      }
+    }, undefined, () => {});
+
+    scene.add(this.grp);
+  }
+  update(t, dt) {
+    for (const r of this.radars) r.rotation.y = t * 1.8;
+    for (const b of this.beacons) b.m.color.setHex(Math.sin(t * 4.5 + b.ph) > 0.2 ? 0xff3b3b : 0x441010);
+    for (const f of this.flyers) {
+      const a = t * f.sp + f.ph;
+      const x = f.cx + Math.cos(a) * f.r, z = f.cz + Math.sin(a) * f.r;
+      f.m.position.set(x, f.y + Math.sin(t * 0.8 + f.ph) * 2.5, z);
+      f.m.lookAt(f.cx + Math.cos(a + 0.05) * f.r, f.m.position.y, f.cz + Math.sin(a + 0.05) * f.r);
+    }
+    for (const mx of this.mixers) mx.update(dt);
+  }
+}
