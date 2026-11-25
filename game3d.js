@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9 } from './aaa-engine.js?v=10';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9 } from './aaa-engine.js?v=11';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -9082,6 +9082,9 @@ function setDiveSurfaceHidden9(hide) {
   if (typeof weenie9 !== 'undefined' && weenie9?.grp) weenie9.grp.visible = !hide;
   if (typeof arrakis9 !== 'undefined' && arrakis9?.grp) arrakis9.grp.visible = !hide;
   if (typeof oceanWhales9 !== 'undefined' && oceanWhales9?.grp) oceanWhales9.grp.visible = !hide;
+  if (typeof skyCityFX9 !== 'undefined' && skyCityFX9?.grp) skyCityFX9.grp.visible = !hide;
+  if (typeof coastalBirds9 !== 'undefined' && coastalBirds9?.grp) coastalBirds9.grp.visible = !hide;
+  if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !hide;
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
@@ -11891,6 +11894,9 @@ const cityTraffic9 = new CityTraffic9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x
 const cityTowers9 = new CityTowersFX9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z, boxObs);
 const oceanWhales9 = new OceanWhales9(scene);
+const skyCityFX9 = new SkyCityFX9(scene, SKY);
+const coastalBirds9 = new CoastalBirds9(scene);
+const oceanMarine9 = new OceanMarineLife9(scene);
 addNpc({ x: ARRAKIS.x + 8, z: ARRAKIS.z + 18, name: '保罗·厄崔迪', body: 0x2c343e, hat: 0x1c2026, opts: { tall: 1.04 },
   lines: ['恐惧是思维的杀手。', '谁控制了香料，谁就控制了宇宙。', '听沙海下的震动——沙伊胡鲁德正在经过。'] });
 addNpc({ x: ARRAKIS.x - 10, z: ARRAKIS.z + 24, name: '契妮', body: 0x3b4856, hat: 0x8c6844,
@@ -14897,6 +14903,9 @@ function loop() {
   cityTowers9.update(t, curDA);
   arrakis9.update(t);
   oceanWhales9.update(t);
+  skyCityFX9.update(t, dt);
+  coastalBirds9.update(t, dt);
+  oceanMarine9.update(t, dt);
   biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
@@ -16261,7 +16270,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

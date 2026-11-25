@@ -8,6 +8,8 @@
    5. 自适应 60FPS 分辨率调度器
    ============================================================ */
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 export class AdaptivePerf9 {
   constructor(renderer, baseDpr = Math.min(devicePixelRatio || 1, 2)) {
@@ -1051,6 +1053,324 @@ export class OceanWhales9 {
         const spOp = wy > -1.0 ? Math.max(0, Math.sin(t * 1.5)) * 0.55 : 0;
         spout.material.opacity = spOp;
         spout.scale.setScalar(0.8 + spOp * 0.7);
+      }
+    }
+  }
+}
+
+export class SkyCityFX9 {
+  constructor(scene, skyPos) {
+    this.grp = new THREE.Group();
+    this.grp.position.set(skyPos.x, skyPos.y, skyPos.z);
+    this.rings = [];
+    this.mixers = [];
+    this.birds = [];
+
+    // 1. 岛底飞行石反重力光锥 + 三重旋转符文能量环
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0x6ce8ff, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(8, 32, 90, 16, 1, true), beamMat);
+    beam.position.y = -48; this.grp.add(beam);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xffe08a, emissive: 0x26a8d8, emissiveIntensity: 0.65, roughness: 0.25, metalness: 0.85 });
+    for (let i = 0; i < 3; i++) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(11 + i * 5.5, 0.45, 8, 36), ringMat);
+      r.position.y = -54 + i * 4;
+      r.rotation.x = Math.PI / 2 + (i - 1) * 0.25;
+      this.grp.add(r);
+      this.rings.push({ m: r, sx: 0.22 * (i % 2 ? 1 : -1), sy: 0.45 + i * 0.12 });
+    }
+
+    // 2. 中央穹顶金色浑天观测仪 + 四风塔飞行石灯标
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xffd56b, emissive: 0xc88a24, emissiveIntensity: 0.4, roughness: 0.22, metalness: 0.88 });
+    for (let i = 0; i < 2; i++) {
+      const ar = new THREE.Mesh(new THREE.TorusGeometry(4.2 - i * 0.9, 0.18, 6, 28), armMat);
+      ar.position.set(0, 18.5, -8); ar.rotation.set(i * 0.7, i * 1.1, 0);
+      this.grp.add(ar);
+      this.rings.push({ m: ar, sx: 0.35, sy: 0.55 - i * 0.2 });
+    }
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0x7ef2ff, fog: false });
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + Math.PI / 4;
+      const b = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), beaconMat);
+      b.position.set(Math.cos(a) * 34, 20.5, Math.sin(a) * 34);
+      this.grp.add(b);
+      this.rings.push({ m: b, sx: 0, sy: 1.2 });
+    }
+
+    // 3. 东缘瀑布水雾云团
+    this.mist = [];
+    const mistMat = new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0.28, depthWrite: false });
+    for (let i = 0; i < 8; i++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(2.8 + (i % 3), 8, 6), mistMat);
+      m.position.set(skyPos.r - 1.5, -10 - i * 8, (i % 2 ? 4 : -4));
+      this.grp.add(m);
+      this.mist.push({ m, ph: i * 0.8, y0: -10 - i * 8 });
+    }
+
+    // 4. 真实骨骼动画飞鸟绕天空之城盘旋 (Stork.glb + Flamingo.glb)
+    const loader = new GLTFLoader();
+    ['./assets/models/Stork.glb', './assets/models/Flamingo.glb'].forEach((url, ui) => {
+      loader.load(url, gltf => {
+        if (!gltf.scene) return;
+        for (let k = 0; k < 3; k++) {
+          const b = SkeletonUtils.clone(gltf.scene);
+          b.scale.setScalar(0.032);
+          this.grp.add(b);
+          const ang = (ui * 3 + k) * (Math.PI * 2 / 6);
+          this.birds.push({ m: b, r: 46 + k * 7, y: 20 + k * 4.5, sp: 0.28 + ui * 0.06, ph: ang });
+          if (gltf.animations && gltf.animations[0]) {
+            const mx = new THREE.AnimationMixer(b);
+            mx.clipAction(gltf.animations[0]).startAt(k * 0.25).play();
+            this.mixers.push(mx);
+          }
+        }
+      }, undefined, () => {});
+    });
+
+    scene.add(this.grp);
+  }
+  update(t, dt) {
+    for (const r of this.rings) { r.m.rotation.x += r.sx * dt; r.m.rotation.y += r.sy * dt; }
+    for (const ms of this.mist) {
+      ms.m.position.y = ms.y0 - ((t * 6 + ms.ph) % 12);
+      ms.m.scale.setScalar(0.9 + Math.sin(t * 2 + ms.ph) * 0.25);
+    }
+    for (const b of this.birds) {
+      const a = t * b.sp + b.ph;
+      const x = Math.cos(a) * b.r, z = Math.sin(a) * b.r, y = b.y + Math.sin(t * 1.4 + b.ph) * 1.8;
+      b.m.position.set(x, y, z);
+      b.m.lookAt(Math.cos(a + 0.05) * b.r, y, Math.sin(a + 0.05) * b.r);
+    }
+    for (const mx of this.mixers) mx.update(dt);
+  }
+}
+
+export class CoastalBirds9 {
+  constructor(scene) {
+    this.grp = new THREE.Group();
+    this.flocks = [];
+    this.mixers = [];
+    const loader = new GLTFLoader();
+    const specs = [
+      // 热带彩鹦鹉群 (主岛植物园与广场低空穿梭)
+      { url: './assets/models/Parrot.glb', count: 8, cx: 40, cz: 30, y: 16, r: 65, sp: 0.42, sc: 0.036 },
+      // 海岸白鹳群 (主岛西海岸与灯塔屿跨海大桥低空滑翔)
+      { url: './assets/models/Stork.glb', count: 6, cx: -320, cz: -140, y: 24, r: 95, sp: 0.26, sc: 0.038 },
+      // 碧湾火烈鸟群 (南湾浅滩盘旋)
+      { url: './assets/models/Flamingo.glb', count: 6, cx: 140, cz: 360, y: 20, r: 75, sp: 0.30, sc: 0.035 },
+    ];
+    for (const sp of specs) {
+      loader.load(sp.url, gltf => {
+        if (!gltf.scene) return;
+        for (let i = 0; i < sp.count; i++) {
+          const b = SkeletonUtils.clone(gltf.scene);
+          b.scale.setScalar(sp.sc);
+          this.grp.add(b);
+          const ph = (i / sp.count) * Math.PI * 2;
+          this.flocks.push({ m: b, cx: sp.cx, cz: sp.cz, r: sp.r + (i % 3) * 14, y: sp.y + (i % 3) * 4, sp: sp.sp, ph });
+          if (gltf.animations && gltf.animations[0]) {
+            const mx = new THREE.AnimationMixer(b);
+            mx.clipAction(gltf.animations[0]).startAt(i * 0.18).play();
+            this.mixers.push(mx);
+          }
+        }
+      }, undefined, () => {});
+    }
+    scene.add(this.grp);
+  }
+  update(t, dt) {
+    for (const f of this.flocks) {
+      const a = t * f.sp + f.ph;
+      const x = f.cx + Math.cos(a) * f.r, z = f.cz + Math.sin(a) * f.r;
+      const y = f.y + Math.sin(t * 1.6 + f.ph) * 2.2;
+      f.m.position.set(x, y, z);
+      f.m.lookAt(f.cx + Math.cos(a + 0.05) * f.r, y, f.cz + Math.sin(a + 0.05) * f.r);
+    }
+    for (const mx of this.mixers) mx.update(dt);
+  }
+}
+
+export class OceanMarineLife9 {
+  constructor(scene) {
+    this.grp = new THREE.Group();
+    this.creatures = [];
+    this.mixers = [];
+    this.sharks = [];
+
+    // 1. 外部真实骨骼模型：大白鲨/礁鲨 (BabylonJS/MeshesLibrary shark.glb × 3)
+    new GLTFLoader().load('./assets/models/shark.glb', gltf => {
+      if (!gltf.scene) return;
+      const sharkSpots = [
+        { cx: -260, cz: 260, r: 44, sp: 0.32, y: -1.8, ph: 0 },
+        { cx: 220, cz: 320, r: 48, sp: 0.28, y: -2.0, ph: 2.1 },
+        { cx: -380, cz: 180, r: 36, sp: 0.35, y: -1.6, ph: 4.2 },
+      ];
+      for (const sp of sharkSpots) {
+        const m = SkeletonUtils.clone(gltf.scene);
+        const box = new THREE.Box3().setFromObject(m);
+        const sz = box.getSize(new THREE.Vector3());
+        const norm = 7.5 / Math.max(sz.x, sz.y, sz.z, 0.01);
+        m.scale.setScalar(norm);
+        this.grp.add(m);
+        this.sharks.push({ m, cx: sp.cx, cz: sp.cz, r: sp.r, sp: sp.sp, y: sp.y, ph: sp.ph });
+        if (gltf.animations && gltf.animations[0]) {
+          const mx = new THREE.AnimationMixer(m);
+          mx.clipAction(gltf.animations[0]).play();
+          this.mixers.push(mx);
+        }
+      }
+    }, undefined, () => {});
+
+    // 2. 巨型蝠鲼 / 魔鬼鱼 (Manta Ray × 3)
+    const mantaMat = new THREE.MeshPhysicalMaterial({ color: 0x1a2634, roughness: 0.25, clearcoat: 0.9 });
+    const mantaBellyMat = new THREE.MeshPhysicalMaterial({ color: 0xdce6ec, roughness: 0.3, clearcoat: 0.8 });
+    for (let i = 0; i < 3; i++) {
+      const mg = new THREE.Group();
+      const wings = [];
+      for (const sgn of [-1, 1]) {
+        const wg = new THREE.ConeGeometry(2.6, 4.4, 4);
+        wg.scale(0.16, 1, 0.85);
+        wg.translate(0, 2.1, 0);
+        const wm = new THREE.Mesh(wg, mantaMat);
+        wm.rotation.z = -sgn * Math.PI / 2;
+        mg.add(wm); wings.push({ m: wm, sgn });
+      }
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.14, 4.5, 5), mantaBellyMat);
+      tail.rotation.x = Math.PI / 2; tail.position.z = -2.8; mg.add(tail);
+      this.grp.add(mg);
+      this.creatures.push({ kind: 'manta', m: mg, wings, cx: i < 2 ? -240 : 200, cz: 300 + i * 25, r: 28 + i * 8, sp: 0.36, ph: i * 2.1, y: -1.4 });
+    }
+
+    // 3. 绿海龟 (Sea Turtle × 4)
+    const shellMat = new THREE.MeshPhysicalMaterial({ color: 0x3b633c, roughness: 0.42, clearcoat: 0.65 });
+    const tSkinMat = new THREE.MeshStandardMaterial({ color: 0x728a52, roughness: 0.55 });
+    for (let i = 0; i < 4; i++) {
+      const tg = new THREE.Group();
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(1.15, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shellMat);
+      shell.scale.set(1.0, 0.55, 1.3); tg.add(shell);
+      const tHead = new THREE.Mesh(new THREE.SphereGeometry(0.36, 8, 6), tSkinMat);
+      tHead.scale.set(0.9, 0.8, 1.25); tHead.position.set(0, 0.12, 1.45); tg.add(tHead);
+      const flippers = [];
+      for (const sgn of [-1, 1]) {
+        const fl = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.45), tSkinMat);
+        fl.position.set(sgn * 1.15, 0.05, 0.55); tg.add(fl); flippers.push({ m: fl, sgn });
+      }
+      this.grp.add(tg);
+      this.creatures.push({ kind: 'turtle', m: tg, flippers, cx: i < 2 ? -140 : 140, cz: 345, r: 22 + i * 6, sp: 0.28, ph: i * 1.6, y: -0.9 });
+    }
+
+    // 4. 宽吻海豚跃浪群 (Bottlenose Dolphins × 4)
+    const dolMat = new THREE.MeshPhysicalMaterial({ color: 0x4d748e, roughness: 0.18, clearcoat: 0.94 });
+    for (let i = 0; i < 4; i++) {
+      const dg = new THREE.Group();
+      const dBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 2.4, 8, 12), dolMat);
+      dBody.rotation.x = Math.PI / 2; dg.add(dBody);
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 8), dolMat);
+      snout.rotation.x = Math.PI / 2; snout.position.z = 1.75; dg.add(snout);
+      const dFin = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.7, 4), dolMat);
+      dFin.scale.set(0.3, 1, 0.8); dFin.position.set(0, 0.62, -0.1); dFin.rotation.x = -0.35; dg.add(dFin);
+      const dFluke = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 0.45), dolMat);
+      dFluke.position.z = -1.65; dg.add(dFluke);
+      this.grp.add(dg);
+      this.creatures.push({ kind: 'dolphin', m: dg, cx: -200, cz: 310, r: 26 + (i % 2) * 5, sp: 0.52, ph: i * 0.45, y: -0.7 });
+    }
+
+    // 5. 巨型章鱼 (Giant Octopus × 2)
+    const octMat = new THREE.MeshPhysicalMaterial({ color: 0xb8463a, roughness: 0.28, clearcoat: 0.85 });
+    for (let i = 0; i < 2; i++) {
+      const og = new THREE.Group();
+      const mantle = new THREE.Mesh(new THREE.SphereGeometry(1.3, 12, 10), octMat);
+      mantle.scale.set(0.95, 1.35, 0.95); mantle.position.y = 1.1; og.add(mantle);
+      const arms = [];
+      for (let ai = 0; ai < 8; ai++) {
+        const aa = (ai / 8) * Math.PI * 2;
+        const arm = new THREE.Mesh(new THREE.ConeGeometry(0.22, 3.4, 6), octMat);
+        arm.position.set(Math.cos(aa) * 1.1, -0.8, Math.sin(aa) * 1.1);
+        arm.rotation.z = -Math.cos(aa) * 0.65; arm.rotation.x = Math.sin(aa) * 0.65;
+        og.add(arm); arms.push({ m: arm, aa });
+      }
+      this.grp.add(og);
+      this.creatures.push({ kind: 'octopus', m: og, arms, cx: i === 0 ? -310 : 290, cz: 265, r: 16, sp: 0.22, ph: i * 3.1, y: -1.6 });
+    }
+
+    // 6. 双髻鲨 (Hammerhead Shark × 2)
+    const hamMat = new THREE.MeshPhysicalMaterial({ color: 0x5c6874, roughness: 0.24, clearcoat: 0.9 });
+    for (let i = 0; i < 2; i++) {
+      const hg = new THREE.Group();
+      const hBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 3.6, 8, 12), hamMat);
+      hBody.rotation.x = Math.PI / 2; hg.add(hBody);
+      const hammer = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.26, 0.52), hamMat);
+      hammer.position.set(0, 0.05, 2.1); hg.add(hammer);
+      const hFin = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.15, 4), hamMat);
+      hFin.scale.set(0.25, 1, 0.8); hFin.position.set(0, 0.78, 0.1); hFin.rotation.x = -0.35; hg.add(hFin);
+      this.grp.add(hg);
+      this.creatures.push({ kind: 'hammer', m: hg, cx: 310, cz: 240, r: 26 + i * 8, sp: 0.38, ph: i * 2.8, y: -1.5 });
+    }
+
+    // 7. 皇带鱼 (Giant Oarfish × 2)
+    const oarMat = new THREE.MeshPhysicalMaterial({ color: 0xc8d8e6, roughness: 0.18, metalness: 0.5, clearcoat: 0.9 });
+    const crestMat = new THREE.MeshBasicMaterial({ color: 0xe63b3b });
+    for (let i = 0; i < 2; i++) {
+      const og = new THREE.Group();
+      const segs = [];
+      for (let si = 0; si < 12; si++) {
+        const sm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.95 - si * 0.06, 1.05), oarMat);
+        sm.position.z = -si * 0.95; og.add(sm); segs.push(sm);
+      }
+      const cr = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.1, 4), crestMat);
+      cr.position.set(0, 0.75, 0.2); cr.rotation.x = -0.3; og.add(cr);
+      this.grp.add(og);
+      this.creatures.push({ kind: 'oarfish', m: og, segs, cx: -280, cz: 340, r: 24 + i * 8, sp: 0.30, ph: i * 3.1, y: -1.7 });
+    }
+
+    // 8. 发光海月水母群 (Bioluminescent Jellyfish × 10)
+    const jMat = new THREE.MeshBasicMaterial({ color: 0x9ef0ff, transparent: true, opacity: 0.62, fog: false });
+    for (let i = 0; i < 10; i++) {
+      const j = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), jMat);
+      const cx0 = (i < 5 ? -220 : 190) + (i % 5 - 2) * 10;
+      const cz0 = (i < 5 ? 290 : 330) + ((i % 3) - 1) * 9;
+      j.position.set(cx0, -1.6 - (i % 2) * 0.5, cz0);
+      this.grp.add(j);
+      this.creatures.push({ kind: 'jelly', m: j, y0: j.position.y, ph: i * 0.85 });
+    }
+
+    scene.add(this.grp);
+  }
+
+  update(t, dt) {
+    for (const mx of this.mixers) mx.update(dt);
+    for (const sh of this.sharks) {
+      const a = t * sh.sp + sh.ph;
+      const x = sh.cx + Math.cos(a) * sh.r, z = sh.cz + Math.sin(a) * sh.r;
+      sh.m.position.set(x, sh.y + Math.sin(t * 1.2 + sh.ph) * 0.3, z);
+      sh.m.lookAt(sh.cx + Math.cos(a + 0.05) * sh.r, sh.m.position.y, sh.cz + Math.sin(a + 0.05) * sh.r);
+    }
+    for (const c of this.creatures) {
+      if (c.kind === 'jelly') {
+        c.m.position.y = c.y0 + Math.sin(t * 1.4 + c.ph) * 0.55;
+        const sc = 1 + Math.sin(t * 3.2 + c.ph) * 0.16;
+        c.m.scale.set(sc, 2 - sc, sc);
+        continue;
+      }
+      const a = t * c.sp + c.ph;
+      const x = c.cx + Math.cos(a) * c.r, z = c.cz + Math.sin(a) * c.r;
+      let y = c.y + Math.sin(t * 1.5 + c.ph) * 0.35;
+      let pitch = 0;
+      if (c.kind === 'dolphin') {
+        const leap = Math.sin(t * 2.1 + c.ph);
+        y = -0.9 + Math.max(-0.4, leap * 2.6);
+        pitch = Math.cos(t * 2.1 + c.ph) * 0.45;
+      }
+      c.m.position.set(x, y, z);
+      c.m.lookAt(c.cx + Math.cos(a + 0.05) * c.r, y, c.cz + Math.sin(a + 0.05) * c.r);
+      if (pitch) c.m.rotateX(pitch);
+      if (c.kind === 'manta') {
+        for (const w of c.wings) w.m.rotation.z = -w.sgn * (Math.PI / 2 + Math.sin(t * 3.4 + c.ph) * 0.28);
+      } else if (c.kind === 'turtle') {
+        for (const f of c.flippers) f.m.rotation.x = Math.sin(t * 4.2 + c.ph + f.sgn) * 0.42;
+      } else if (c.kind === 'octopus') {
+        for (const arm of c.arms) arm.m.rotation.x = Math.sin(arm.aa) * (0.65 + Math.sin(t * 3.2 + arm.aa) * 0.25);
+      } else if (c.kind === 'oarfish') {
+        c.segs.forEach((sm, si) => { sm.position.x = Math.sin(t * 4.0 - si * 0.55) * 0.55; });
       }
     }
   }
