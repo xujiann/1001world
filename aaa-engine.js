@@ -2184,31 +2184,197 @@ export function buildSpaceAsteroidB612(scene, B612) {
 export function buildSpaceRocket9(scene, px, py, pz) {
   const grp = new THREE.Group();
   grp.position.set(px, py, pz);
-  const bodyM = new THREE.MeshStandardMaterial({ color: 0xf4f7fa, roughness: 0.3, metalness: 0.25 });
-  const redM = new THREE.MeshStandardMaterial({ color: 0xd6382b, roughness: 0.4, metalness: 0.2 });
-  const darkM = new THREE.MeshStandardMaterial({ color: 0x262e38, roughness: 0.5, metalness: 0.6 });
-  const winM = new THREE.MeshPhysicalMaterial({ color: 0x5ce8ff, roughness: 0.1, clearcoat: 0.9 });
 
-  // 火箭主体 + 整流罩尖锥 + 舷窗 + 三片尾翼 + 发射架 + 等离子尾焰
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, 0.5, 12), darkM);
-  pad.position.y = 0.25; grp.add(pad);
-  const ship = new THREE.Group();
-  const hull = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.45, 5.6, 14), bodyM);
-  hull.position.y = 3.4; hull.castShadow = true; ship.add(hull);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 14), redM);
-  nose.position.y = 7.4; ship.add(nose);
-  const port = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), winM);
-  port.position.set(0, 4.6, 1.05); ship.add(port);
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.2, 1.4), redM);
-    fin.position.set(Math.cos(a) * 1.45, 1.4, Math.sin(a) * 1.45);
-    fin.rotation.y = -a + Math.PI / 2; ship.add(fin);
+  const steelM = new THREE.MeshStandardMaterial({ color: 0xd8dfe6, roughness: 0.22, metalness: 0.86 });
+  const tileM = new THREE.MeshStandardMaterial({ color: 0x161920, roughness: 0.62, metalness: 0.25 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x262e38, roughness: 0.5, metalness: 0.65 });
+  const winM = new THREE.MeshPhysicalMaterial({ color: 0x6ce8ff, roughness: 0.08, clearcoat: 0.95, emissive: 0x114466, emissiveIntensity: 0.45 });
+
+  // SpaceX 轨道发射台（八边形基座 + 4 组机械夹臂）
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 5.4, 0.65, 8), darkM);
+  pad.position.y = 0.32; grp.add(pad);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.45, 2.2, 1.1), darkM);
+    arm.position.set(Math.cos(a) * 2.5, 1.1, Math.sin(a) * 2.5);
+    arm.rotation.y = -a + Math.PI / 2;
+    grp.add(arm);
   }
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.85, 3.6, 10), new THREE.MeshBasicMaterial({ color: 0x5ce8ff, transparent: true, opacity: 0, fog: false }));
-  flame.rotation.x = Math.PI; flame.position.y = -0.8; ship.add(flame);
-  grp.add(ship);
 
+  // SpaceX Starship 星舰主体
+  const ship = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.38, 6.8, 18), steelM);
+  hull.position.y = 4.1; hull.castShadow = true; ship.add(hull);
+  const heatShield = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.37, 1.4, 6.6, 18, 1, true, Math.PI * 0.62, Math.PI * 0.76),
+    tileM
+  );
+  heatShield.position.y = 4.1; ship.add(heatShield);
+
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.35, 3.2, 18), steelM);
+  nose.position.y = 9.1; nose.castShadow = true; ship.add(nose);
+  const noseShield = new THREE.Mesh(
+    new THREE.ConeGeometry(1.37, 3.15, 18, 1, true, Math.PI * 0.62, Math.PI * 0.76),
+    tileM
+  );
+  noseShield.position.y = 9.1; ship.add(noseShield);
+
+  const cabinWin = new THREE.Mesh(new THREE.CylinderGeometry(1.37, 1.37, 0.48, 18, 1, true, -0.55, 1.1), winM);
+  cabinWin.position.y = 7.15; ship.add(cabinWin);
+
+  const logoCv = document.createElement('canvas');
+  logoCv.width = 128; logoCv.height = 512;
+  const lctx = logoCv.getContext('2d');
+  lctx.clearRect(0, 0, 128, 512);
+  lctx.fillStyle = '#0f1722';
+  lctx.font = 'bold 42px system-ui, sans-serif';
+  lctx.textAlign = 'center';
+  'SPACEX'.split('').forEach((ch, idx) => lctx.fillText(ch, 64, 92 + idx * 66));
+  const logoTex = new THREE.CanvasTexture(logoCv);
+  const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 4.2), new THREE.MeshBasicMaterial({ map: logoTex, transparent: true }));
+  logoPlane.position.set(0, 4.3, 1.39); ship.add(logoPlane);
+
+  for (const sgn of [-1, 1]) {
+    const fwdFlap = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.75, 0.14), tileM);
+    fwdFlap.position.set(sgn * 1.45, 7.8, -0.15);
+    fwdFlap.rotation.z = -sgn * 0.28;
+    ship.add(fwdFlap);
+
+    const aftFlap = new THREE.Mesh(new THREE.BoxGeometry(1.65, 2.75, 0.18), tileM);
+    aftFlap.position.set(sgn * 1.78, 2.05, -0.15);
+    aftFlap.rotation.z = -sgn * 0.18;
+    ship.add(aftFlap);
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const bell = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.65, 8, 1, true), darkM);
+    bell.position.set(Math.cos(a) * 0.68, 0.55, Math.sin(a) * 0.68);
+    ship.add(bell);
+  }
+
+  const flame = new THREE.Mesh(
+    new THREE.ConeGeometry(1.05, 4.8, 12),
+    new THREE.MeshBasicMaterial({ color: 0x66ccff, transparent: true, opacity: 0, fog: false })
+  );
+  flame.rotation.x = Math.PI; flame.position.y = -1.6; ship.add(flame);
+
+  // 若存在外部 SpaceX .glb 资源则自动加载替换船体
+  new GLTFLoader().load('./assets/models/spacex_starship.glb', gltf => {
+    const ext = gltf.scene;
+    ext.scale.setScalar(1.2);
+    ship.children.forEach(c => { if (c !== flame) c.visible = false; });
+    ship.add(ext);
+  }, undefined, () => {});
+
+  grp.add(ship);
   scene.add(grp);
   return { grp, ship, flame };
+}
+
+export function buildSpaceMars9(scene, MARS) {
+  const grp = new THREE.Group();
+  const R = 52;
+  const cx = MARS.x, cy = MARS.y - R, cz = MARS.z;
+  grp.position.set(cx, cy, cz);
+
+  // 1. 火星铁锈红星体（奥林帕斯山 + 水手谷 + 陨石坑 + 极冠冰盖）
+  const marsGeo = new THREE.IcosahedronGeometry(R, 4);
+  const pos = marsGeo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const cRust = new THREE.Color(0xc85a32), cDark = new THREE.Color(0x6e2a18), cHigh = new THREE.Color(0xe07e4a), cIce = new THREE.Color(0xf2efe9);
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+    const n = Math.sin(vx * 0.14) * Math.cos(vy * 0.16) * Math.sin(vz * 0.14);
+    const canyon = Math.abs(vz) < 6 && vx > 4 && vy > R * 0.35 ? -1.4 : 0;
+    const olympus = (vx + 16) * (vx + 16) + (vz + 12) * (vz + 12) < 160 && vy > R * 0.55 ? 2.4 : 0;
+    const scale = 1 + n * 0.032 + (canyon + olympus) * 0.012;
+    pos.setXYZ(i, vx * scale, vy * scale, vz * scale);
+    let c = n > 0.25 ? cHigh : (canyon < 0 || n < -0.25 ? cDark : cRust);
+    if (vy < -R * 0.84) c = cIce;
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  marsGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  marsGeo.computeVertexNormals();
+  const marsMesh = new THREE.Mesh(marsGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.04 }));
+  marsMesh.castShadow = true; marsMesh.receiveShadow = true;
+  grp.add(marsMesh);
+
+  // 2. 火星稀薄橙红大气辉光壳
+  const atmo = new THREE.Mesh(
+    new THREE.SphereGeometry(R + 3.8, 28, 20),
+    new THREE.MeshBasicMaterial({ color: 0xff7b42, transparent: true, opacity: 0.14, side: THREE.BackSide, fog: false })
+  );
+  grp.add(atmo);
+
+  const surfH = (lx, lz) => Math.sqrt(Math.max(1, R * R - lx * lx - lz * lz));
+
+  // 3. SpaceX 火星基地：双穹顶生态舱 + 太阳能翼板 + 火星车
+  const domeMat = new THREE.MeshPhysicalMaterial({ color: 0xcbeeff, transparent: true, opacity: 0.42, roughness: 0.1, clearcoat: 0.9 });
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0xd8dfe6, roughness: 0.35, metalness: 0.6 });
+  const solarMat = new THREE.MeshStandardMaterial({ color: 0x1c3a6e, roughness: 0.2, metalness: 0.7 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x3fa34d, roughness: 0.75 });
+
+  [[6, -4, 4.6], [14, 3, 3.3]].forEach(([dx, dz, dr]) => {
+    const dy = surfH(dx, dz);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(dr + 0.3, dr + 0.5, 0.8, 16), baseMat);
+    ring.position.set(dx, dy + 0.2, dz); grp.add(ring);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(dr, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+    dome.position.set(dx, dy + 0.4, dz); grp.add(dome);
+    const plant = new THREE.Mesh(new THREE.SphereGeometry(dr * 0.48, 10, 8), leafMat);
+    plant.scale.set(1.2, 0.65, 1.2);
+    plant.position.set(dx, dy + 0.9, dz); grp.add(plant);
+  });
+
+  for (let si = 0; si < 3; si++) {
+    const sx = -2 + si * 4.2, sz = 11, sy = surfH(sx, sz);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 2.2, 8), baseMat);
+    pole.position.set(sx, sy + 0.9, sz); grp.add(pole);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 1.8), solarMat);
+    panel.position.set(sx, sy + 2.0, sz); panel.rotation.x = 0.45; grp.add(panel);
+  }
+
+  const rover = new THREE.Group();
+  const rBody = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.65, 2.2), baseMat);
+  rBody.position.y = 0.85; rover.add(rBody);
+  const rMast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.05, 8), baseMat);
+  rMast.position.set(0, 1.55, 0.7); rover.add(rMast);
+  const rCam = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 0.35), new THREE.MeshStandardMaterial({ color: 0x222a34 }));
+  rCam.position.set(0, 2.1, 0.72); rover.add(rCam);
+  for (const wx of [-0.95, 0.95]) {
+    for (const wz of [-0.85, 0, 0.85]) {
+      const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10), new THREE.MeshStandardMaterial({ color: 0x2a2d34, roughness: 0.8 }));
+      wh.rotation.z = Math.PI / 2; wh.position.set(wx, 0.32, wz); rover.add(wh);
+    }
+  }
+  grp.add(rover);
+
+  // 4. 火星双卫星：火卫一 Phobos & 火卫二 Deimos
+  const moons = new THREE.Group();
+  const mMat = new THREE.MeshStandardMaterial({ color: 0x8b7768, roughness: 0.92 });
+  const phobos = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 1), mMat);
+  phobos.position.set(R + 18, 8, 0); moons.add(phobos);
+  const deimos = new THREE.Mesh(new THREE.DodecahedronGeometry(1.3, 1), mMat);
+  deimos.position.set(-(R + 28), -6, 14); moons.add(deimos);
+  grp.add(moons);
+
+  const marsGlow = new THREE.PointLight(0xff8e5a, 2.4, 140, 1.1);
+  marsGlow.position.set(0, R + 18, 0); grp.add(marsGlow);
+
+  scene.add(grp);
+  return {
+    grp,
+    surfaceY(x, z) {
+      const dx = x - cx, dz = z - cz, d2 = dx * dx + dz * dz;
+      if (d2 > (R - 3) * (R - 3)) return null;
+      return cy + Math.sqrt(Math.max(0, R * R - d2)) + 0.18;
+    },
+    update(t) {
+      moons.rotation.y = t * 0.14;
+      const ra = t * 0.22;
+      const rx = Math.cos(ra) * 14, rz = Math.sin(ra) * 14;
+      rover.position.set(rx, surfH(rx, rz) + 0.08, rz);
+      rover.rotation.y = -ra;
+    }
+  };
 }
