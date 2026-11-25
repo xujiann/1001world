@@ -859,20 +859,42 @@ export function buildArrakis9(scene, heightFn, cx, cz, boxObs = []) {
   };
 }
 
+function keepInDeepWater9(heightFn, x, z, minDepth = 3.2) {
+  if (typeof heightFn !== 'function') return { x, z };
+  let px = x, pz = z;
+  for (let step = 0; step < 12; step++) {
+    const h = heightFn(px, pz);
+    if (h <= -minDepth) break;
+    const gx = heightFn(px + 5, pz) - heightFn(px - 5, pz);
+    const gz = heightFn(px, pz + 5) - heightFn(px, pz - 5);
+    const gl = Math.hypot(gx, gz);
+    if (gl > 0.05) {
+      px -= (gx / gl) * 7.5;
+      pz -= (gz / gl) * 7.5;
+    } else {
+      const rl = Math.hypot(px, pz) || 1;
+      px += (px / rl) * 7.5;
+      pz += (pz / rl) * 7.5;
+    }
+  }
+  return { x: px, z: pz };
+}
+
 export class OceanWhales9 {
-  constructor(scene) {
+  constructor(scene, heightFn = null) {
+    this.heightFn = heightFn;
     this.grp = new THREE.Group();
     this.whales = [];
     const specs = [
       // 1. 蓝鲸 (Blue Whale: 28m 长，深蓝灰背部+浅灰腹沟+小镰刀背鳍+高大喷水柱)
-      { kind: 'blue', cx: 260, cz: 340, r: 58, sp: 0.14, len: 28, rad: 3.1, breach: false, spout: true },
+      { kind: 'blue', cx: 340, cz: 420, r: 58, sp: 0.14, len: 28, rad: 3.1, breach: false, spout: true },
       // 2. 座头鲸 (Humpback Whale: 16m 长，超长白色瘤状胸鳍+周期性跃出海面 Breaching)
-      { kind: 'humpback', cx: -240, cz: 360, r: 44, sp: 0.22, len: 16, rad: 2.3, breach: true, spout: true },
+      { kind: 'humpback', cx: -280, cz: 400, r: 44, sp: 0.22, len: 16, rad: 2.3, breach: true, spout: true },
       // 3. 虎鲸双鲸群 (Orca Pod × 2: 黑白分明+眼后白斑+高耸镰刀背鳍)
-      { kind: 'orca', cx: -420, cz: 220, r: 34, sp: 0.34, len: 9.5, rad: 1.55, phase: 0, breach: false, spout: false },
-      { kind: 'orca', cx: -420, cz: 220, r: 30, sp: 0.34, len: 8.2, rad: 1.35, phase: 0.55, breach: false, spout: false },
+      { kind: 'orca', cx: -440, cz: 230, r: 34, sp: 0.34, len: 9.5, rad: 1.55, phase: 0, breach: false, spout: false },
+      { kind: 'orca', cx: -440, cz: 230, r: 30, sp: 0.34, len: 8.2, rad: 1.35, phase: 0.55, breach: false, spout: false },
       // 4. 独角鲸 (Narwhal: 北方冷水海域，银白斑驳皮肤+螺旋长牙)
-      { kind: 'narwhal', cx: -380, cz: -520, r: 32, sp: 0.26, len: 7.4, rad: 1.25, breach: false, spout: false },
+      { kind: 'narwhal', cx: -410, cz: -540, r: 32, sp: 0.26, len: 7.4, rad: 1.25, breach: false, spout: false },
     ];
     for (const s of specs) {
       this.whales.push(this._makeWhale(s));
@@ -1016,7 +1038,8 @@ export class OceanWhales9 {
     for (const w of this.whales) {
       const { s, wg, geo, basePos, RINGS, RAD, flukeGrp, spout } = w;
       const a = t * s.sp + (s.phase || 0);
-      const wx = s.cx + Math.cos(a) * s.r, wz = s.cz + Math.sin(a) * s.r;
+      const pSafe = keepInDeepWater9(this.heightFn, s.cx + Math.cos(a) * s.r, s.cz + Math.sin(a) * s.r, Math.max(3.6, s.rad * 1.4));
+      const wx = pSafe.x, wz = pSafe.z;
       // 跃水与上浮周期
       let wy = -1.6 + Math.sin(t * 0.55 + (s.phase || 0)) * 1.4;
       let pitch = Math.cos(t * 0.55 + (s.phase || 0)) * 0.12;
@@ -1029,8 +1052,8 @@ export class OceanWhales9 {
         }
       }
       wg.position.set(wx, wy, wz);
-      const nx = s.cx + Math.cos(a + 0.05) * s.r, nz = s.cz + Math.sin(a + 0.05) * s.r;
-      wg.lookAt(nx, wy, nz);
+      const nSafe = keepInDeepWater9(this.heightFn, s.cx + Math.cos(a + 0.05) * s.r, s.cz + Math.sin(a + 0.05) * s.r, Math.max(3.6, s.rad * 1.4));
+      wg.lookAt(nSafe.x, wy, nSafe.z);
       wg.rotateX(pitch);
 
       // 连续软体尾柄波浪摆动
@@ -1190,7 +1213,8 @@ export class CoastalBirds9 {
 }
 
 export class OceanMarineLife9 {
-  constructor(scene) {
+  constructor(scene, heightFn = null) {
+    this.heightFn = heightFn;
     this.grp = new THREE.Group();
     this.creatures = [];
     this.mixers = [];
@@ -1200,9 +1224,9 @@ export class OceanMarineLife9 {
     new GLTFLoader().load('./assets/models/shark.glb', gltf => {
       if (!gltf.scene) return;
       const sharkSpots = [
-        { cx: -260, cz: 260, r: 44, sp: 0.32, y: -1.8, ph: 0 },
-        { cx: 220, cz: 320, r: 48, sp: 0.28, y: -2.0, ph: 2.1 },
-        { cx: -380, cz: 180, r: 36, sp: 0.35, y: -1.6, ph: 4.2 },
+        { cx: -290, cz: 290, r: 44, sp: 0.32, y: -1.8, ph: 0 },
+        { cx: 320, cz: 410, r: 48, sp: 0.28, y: -2.0, ph: 2.1 },
+        { cx: -410, cz: 200, r: 36, sp: 0.35, y: -1.6, ph: 4.2 },
       ];
       for (const sp of sharkSpots) {
         const m = SkeletonUtils.clone(gltf.scene);
@@ -1303,7 +1327,7 @@ export class OceanMarineLife9 {
       const hFin = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.15, 4), hamMat);
       hFin.scale.set(0.25, 1, 0.8); hFin.position.set(0, 0.78, 0.1); hFin.rotation.x = -0.35; hg.add(hFin);
       this.grp.add(hg);
-      this.creatures.push({ kind: 'hammer', m: hg, cx: 310, cz: 240, r: 26 + i * 8, sp: 0.38, ph: i * 2.8, y: -1.5 });
+      this.creatures.push({ kind: 'hammer', m: hg, cx: 380, cz: 320, r: 26 + i * 8, sp: 0.38, ph: i * 2.8, y: -1.5 });
     }
 
     // 7. 皇带鱼 (Giant Oarfish × 2)
@@ -1319,16 +1343,17 @@ export class OceanMarineLife9 {
       const cr = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.1, 4), crestMat);
       cr.position.set(0, 0.75, 0.2); cr.rotation.x = -0.3; og.add(cr);
       this.grp.add(og);
-      this.creatures.push({ kind: 'oarfish', m: og, segs, cx: -280, cz: 340, r: 24 + i * 8, sp: 0.30, ph: i * 3.1, y: -1.7 });
+      this.creatures.push({ kind: 'oarfish', m: og, segs, cx: -310, cz: 360, r: 24 + i * 8, sp: 0.30, ph: i * 3.1, y: -1.7 });
     }
 
     // 8. 发光海月水母群 (Bioluminescent Jellyfish × 10)
     const jMat = new THREE.MeshBasicMaterial({ color: 0x9ef0ff, transparent: true, opacity: 0.62, fog: false });
     for (let i = 0; i < 10; i++) {
       const j = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), jMat);
-      const cx0 = (i < 5 ? -220 : 190) + (i % 5 - 2) * 10;
-      const cz0 = (i < 5 ? 290 : 330) + ((i % 3) - 1) * 9;
-      j.position.set(cx0, -1.6 - (i % 2) * 0.5, cz0);
+      const rawX = (i < 5 ? -260 : 300) + (i % 5 - 2) * 10;
+      const rawZ = (i < 5 ? 310 : 410) + ((i % 3) - 1) * 9;
+      const safeJ = keepInDeepWater9(this.heightFn, rawX, rawZ, 2.2);
+      j.position.set(safeJ.x, -1.6 - (i % 2) * 0.5, safeJ.z);
       this.grp.add(j);
       this.creatures.push({ kind: 'jelly', m: j, y0: j.position.y, ph: i * 0.85 });
     }
@@ -1340,9 +1365,10 @@ export class OceanMarineLife9 {
     for (const mx of this.mixers) mx.update(dt);
     for (const sh of this.sharks) {
       const a = t * sh.sp + sh.ph;
-      const x = sh.cx + Math.cos(a) * sh.r, z = sh.cz + Math.sin(a) * sh.r;
-      sh.m.position.set(x, sh.y + Math.sin(t * 1.2 + sh.ph) * 0.3, z);
-      sh.m.lookAt(sh.cx + Math.cos(a + 0.05) * sh.r, sh.m.position.y, sh.cz + Math.sin(a + 0.05) * sh.r);
+      const pSafe = keepInDeepWater9(this.heightFn, sh.cx + Math.cos(a) * sh.r, sh.cz + Math.sin(a) * sh.r, 3.0);
+      const nSafe = keepInDeepWater9(this.heightFn, sh.cx + Math.cos(a + 0.05) * sh.r, sh.cz + Math.sin(a + 0.05) * sh.r, 3.0);
+      sh.m.position.set(pSafe.x, sh.y + Math.sin(t * 1.2 + sh.ph) * 0.3, pSafe.z);
+      sh.m.lookAt(nSafe.x, sh.m.position.y, nSafe.z);
     }
     for (const c of this.creatures) {
       if (c.kind === 'jelly') {
@@ -1352,7 +1378,9 @@ export class OceanMarineLife9 {
         continue;
       }
       const a = t * c.sp + c.ph;
-      const x = c.cx + Math.cos(a) * c.r, z = c.cz + Math.sin(a) * c.r;
+      const minD = c.kind === 'oarfish' ? 3.5 : 2.6;
+      const pSafe = keepInDeepWater9(this.heightFn, c.cx + Math.cos(a) * c.r, c.cz + Math.sin(a) * c.r, minD);
+      const nSafe = keepInDeepWater9(this.heightFn, c.cx + Math.cos(a + 0.05) * c.r, c.cz + Math.sin(a + 0.05) * c.r, minD);
       let y = c.y + Math.sin(t * 1.5 + c.ph) * 0.35;
       let pitch = 0;
       if (c.kind === 'dolphin') {
@@ -1360,8 +1388,8 @@ export class OceanMarineLife9 {
         y = -0.9 + Math.max(-0.4, leap * 2.6);
         pitch = Math.cos(t * 2.1 + c.ph) * 0.45;
       }
-      c.m.position.set(x, y, z);
-      c.m.lookAt(c.cx + Math.cos(a + 0.05) * c.r, y, c.cz + Math.sin(a + 0.05) * c.r);
+      c.m.position.set(pSafe.x, y, pSafe.z);
+      c.m.lookAt(nSafe.x, y, nSafe.z);
       if (pitch) c.m.rotateX(pitch);
       if (c.kind === 'manta') {
         for (const w of c.wings) w.m.rotation.z = -w.sgn * (Math.PI / 2 + Math.sin(t * 3.4 + c.ph) * 0.28);

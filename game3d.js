@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9 } from './aaa-engine.js?v=11';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9 } from './aaa-engine.js?v=12';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -11893,10 +11893,10 @@ const weenie9 = buildWeenieLandmarks9(scene, heightMesh);
 const cityTraffic9 = new CityTraffic9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const cityTowers9 = new CityTowersFX9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z, boxObs);
-const oceanWhales9 = new OceanWhales9(scene);
+const oceanWhales9 = new OceanWhales9(scene, height);
 const skyCityFX9 = new SkyCityFX9(scene, SKY);
 const coastalBirds9 = new CoastalBirds9(scene);
-const oceanMarine9 = new OceanMarineLife9(scene);
+const oceanMarine9 = new OceanMarineLife9(scene, height);
 addNpc({ x: ARRAKIS.x + 8, z: ARRAKIS.z + 18, name: '保罗·厄崔迪', body: 0x2c343e, hat: 0x1c2026, opts: { tall: 1.04 },
   lines: ['恐惧是思维的杀手。', '谁控制了香料，谁就控制了宇宙。', '听沙海下的震动——沙伊胡鲁德正在经过。'] });
 addNpc({ x: ARRAKIS.x - 10, z: ARRAKIS.z + 24, name: '契妮', body: 0x3b4856, hat: 0x8c6844,
