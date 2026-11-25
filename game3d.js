@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9 } from './aaa-engine.js?v=17';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9 } from './aaa-engine.js?v=18';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -4762,37 +4762,11 @@ function paintingMesh(grp, lx, lz, ry, spot) {
     paintingMesh(grp, 22.4, -8 + i * 5.4, -Math.PI / 2, s);
   }
 }
-/* --- 图书馆(铜绿肋拱穹顶+天窗采光亭+柱廊) --- */
+/* --- 亚历山大·千夜图书馆（倾斜日轮玻璃天窗 + 古典柱廊 + 卷轴壁龛 + 浑天仪）--- */
+let alexLib9 = null;
 {
   const zn = ZONES3D.find(z => z.key === 'books');
-  const grp = pavilion(zn, { w: 32, d: 24, walls: 'three', roof: 0xcfc0a2, floor: 0xd8c49c });
-  const drum = cyl(9.5, 10.2, 2.4, M.white, 20); drum.position.y = 9.0; grp.add(drum);
-  const drumWin = new THREE.Mesh(new THREE.CylinderGeometry(9.65, 9.65, 1.3, 20, 1, true), M.glass); drumWin.position.y = 9.1; grp.add(drumWin);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(9.4, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), lam(0x4f9e8f));
-  dome.position.y = 10.2; grp.add(dome);
-  for (let r = 0; r < 12; r++) {
-    const rib = new THREE.Mesh(new THREE.TorusGeometry(9.46, .12, 6, 18, Math.PI), M.gold);
-    rib.rotation.y = r / 12 * Math.PI; rib.position.y = 10.2; grp.add(rib);
-  }
-  const lantern = cyl(1.6, 1.8, 1.6, M.glass, 10); lantern.position.y = 19.6; grp.add(lantern);
-  const finial = cyl(.15, .3, 2.0, M.gold, 8); finial.position.y = 21.2; grp.add(finial);
-  for (const sgn of [-1, 1]) {
-    const col = cyl(.65, .75, 7, M.white, 12); col.position.set(sgn * 4.5, 3.8, 12.6); grp.add(col);
-    cirObs.push({ x: zn.x + sgn * 4.5, z: zn.z + 12.6, r: 1 });
-  }
-  const arch = box(11, 1.4, 2, M.white); arch.position.set(0, 7.6, 12.6); grp.add(arch);
-  const sign = makeSign('千夜图书馆', 8, '#2c2418', '#ffe9a8'); sign.position.set(0, 9.4, 13.4); grp.add(sign);
-  let n = 0;
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
-    if (n++ >= 12) break;
-    const lx = -10.5 + c * 7, lz = -7 + r * 6;
-    const sh = box(5, 3.2, 1.3, M.woodDark); sh.position.set(lx, 2, lz); grp.add(sh);
-    for (let b = 0; b < 6; b++) {
-      const bk = box(.6, 2, .9, lam(hashCol(r * 4 + c + b))); bk.position.set(lx - 1.9 + b * .76, 2.2, lz); grp.add(bk);
-    }
-    boxObs.push({ x1: zn.x + lx - 2.5, z1: zn.z + lz - .8, x2: zn.x + lx + 2.5, z2: zn.z + lz + .8 });
-    const s = addSpot(zn.x + lx, zn.z + lz + 2.6, 'books', 'shelf'); s.y = zn.h;
-  }
+  alexLib9 = buildAlexandriaLibrary9(scene, zn, addSpot, boxObs, cirObs, makeSign);
 }
 /* --- 树(通用 · @dgreenheck/ez-tree 植物学多级分叉真树引擎 + 1K PBR 树皮与镂空真叶 + 桃花林树种) --- */
 const treeWindMats = [];
@@ -8524,6 +8498,80 @@ if (EVENT === 'kites') {
 const AIR_KEYS = new Set(AIRPORTS.filter(a => !a[4] && a[0] !== 'main').map(a => a[0]));   // 可通航的岛(渡口下架名单)
 const airportSys9 = new AirportSystems9(scene, height, AIRPORTS, cirObs);
 const suoStadium9 = buildBarracudaBayStadium9(scene, SUO.x, SUO.z, 4.5);
+
+/* ===== 🌍 一键漫游全世界 (WorldTour9: 自动环游全图 18 大奇观) ===== */
+const WORLD_TOUR_STOPS9 = [
+  { name: '收藏之岛 · 圆枢广场', x: 0, z: 18, dist: 24, pitch: 0.22 },
+  { name: '亚历山大 · 千夜图书馆', x: 60, z: -206, dist: 34, pitch: 0.24 },
+  { name: '大连梭鱼湾专业足球场', x: 325, z: 220, dist: 64, pitch: 0.36 },
+  { name: '大连星海湾跨海大桥', x: -498, z: -277, y: 12, dist: 56, pitch: 0.26 },
+  { name: '鲸背国际机场 (A350 & 塔台)', x: 458, z: -40, dist: 34, pitch: 0.24 },
+  { name: '天空之城 · 勒皮他', x: SKY.x, z: SKY.z + 24, y: SKY.y + 1.5, dist: 46, pitch: 0.24 },
+  { name: '灯塔屿', x: IS2.x, z: IS2.z + 24, dist: 42, pitch: 0.25 },
+  { name: '中土 · 夏尔与末日火山', x: MID.x, z: MID.z + 30, dist: 52, pitch: 0.28 },
+  { name: '霍格沃茨魔法城堡', x: HOG.x, z: HOG.z + 30, dist: 50, pitch: 0.26 },
+  { name: '体育岛 · 红色梦剧场', x: SPT.x, z: SPT.z + 20, dist: 48, pitch: 0.30 },
+  { name: '桃花源秘境', x: THY.x, z: THY.z + 20, dist: 36, pitch: 0.24 },
+  { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18, dist: 28, pitch: 0.24 },
+  { name: '红楼梦 · 大观园', x: DGY.x, z: DGY.z + 26, dist: 42, pitch: 0.26 },
+  { name: '沙丘 · 厄拉科斯 (沙虫与堡垒)', x: ARRAKIS.x, z: ARRAKIS.z + 25, dist: 42, pitch: 0.24 },
+  { name: '侏罗纪公园', x: JUR.x, z: JUR.z + 26, dist: 44, pitch: 0.25 },
+  { name: '未竟之都 · 摩天都会', x: UNJ.x, z: UNJ.z + 28, dist: 52, pitch: 0.28 },
+  { name: '西海鲸鲨与虎鲸群', x: -420, z: 220, y: 1.5, dist: 44, pitch: 0.28 },
+  { name: '收藏之岛 · 蓝洞玻璃隧道入口', x: -338, z: 180, dist: 22, pitch: 0.22 },
+];
+const worldTour9 = (() => {
+  let active = false, idx = 0, timer = 0;
+  const bar = document.createElement('div');
+  bar.id = 'tourBar9'; bar.className = 'hidden';
+  Object.assign(bar.style, {
+    position: 'fixed', left: '50%', bottom: '24px', transform: 'translateX(-50%)', zIndex: '25',
+    display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 16px', borderRadius: '999px',
+    background: 'rgba(12,26,38,0.88)', backdropFilter: 'blur(8px)', color: '#eef8ff',
+    border: '1px solid rgba(100,220,255,0.45)', boxShadow: '0 8px 26px rgba(0,0,0,0.45)', font: '13px system-ui,sans-serif'
+  });
+  bar.innerHTML = '<span id="tourLbl9" style="font-weight:700;color:#7ee8ff"></span><button id="tourNext9" style="border:none;border-radius:999px;padding:4px 10px;background:#1e6ea8;color:#fff;cursor:pointer;font-size:12px">⏭️ 下一站</button><button id="tourStop9" style="border:none;border-radius:999px;padding:4px 10px;background:#8c3232;color:#fff;cursor:pointer;font-size:12px">⏹️ 结束</button>';
+  document.body.appendChild(bar);
+  const go = (i) => {
+    idx = (i + WORLD_TOUR_STOPS9.length) % WORLD_TOUR_STOPS9.length;
+    timer = 0;
+    const s = WORLD_TOUR_STOPS9[idx];
+    if (diving) surfaceDive(diveEntry);
+    flight = null; vehicle = 0;
+    const ty = s.y != null ? s.y : Math.max(height(s.x, s.z), 0.5) + 0.8;
+    player.position.set(s.x, ty, s.z); vy = 0;
+    camDist = s.dist || 32; camPitch = s.pitch || 0.24; camYaw = 0.25;
+    introT9 = 0;
+    $('tourLbl9').textContent = `🌍 一键环球漫游 · 第 ${idx + 1}/${WORLD_TOUR_STOPS9.length} 站：${s.name}`;
+    const btn = $('btnTour9');
+    if (btn) btn.textContent = `⏸️ ${idx + 1}/${WORLD_TOUR_STOPS9.length}`;
+    toast(`🌍 第 ${idx + 1}/${WORLD_TOUR_STOPS9.length} 站：${s.name}`);
+  };
+  const stop = () => {
+    if (!active) return;
+    active = false; bar.classList.add('hidden');
+    const btn = $('btnTour9'); if (btn) btn.textContent = '🌍 漫游';
+    toast('🌍 已结束一键漫游，继续自由探索吧！');
+  };
+  const toggle = () => {
+    if (active) { stop(); return; }
+    active = true; bar.classList.remove('hidden'); go(0);
+  };
+  $('btnTour9')?.addEventListener('click', toggle);
+  $('tourNext9')?.addEventListener('click', () => go(idx + 1));
+  $('tourStop9')?.addEventListener('click', stop);
+  return {
+    get active() { return active; },
+    stop,
+    go,
+    update(dt) {
+      if (!active) return;
+      camYaw += dt * 0.22;
+      timer += dt;
+      if (timer >= 5.5) go(idx + 1);
+    }
+  };
+})();
 for (const [k3, nm3, ax, az] of AIRPORTS) {
   addSpot(ax + 5.6, az + 8.5, 'air', 'airport', { r: 8, airKey: k3 });
 }
@@ -14997,6 +15045,8 @@ function loop() {
   oceanMarine9.update(t, dt);
   airportSys9.update(t, dt);
   suoStadium9.update(t);
+  if (alexLib9) alexLib9.update(t);
+  worldTour9.update(dt);
   biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
@@ -16393,7 +16443,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

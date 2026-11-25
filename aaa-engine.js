@@ -2016,3 +2016,94 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
     }
   };
 }
+
+export function buildAlexandriaLibrary9(scene, zn, addSpot, boxObs, cirObs, makeSign) {
+  const grp = new THREE.Group();
+  grp.position.set(zn.x, zn.h, zn.z);
+
+  const graniteM = new THREE.MeshStandardMaterial({ color: 0xcab89c, roughness: 0.78, metalness: 0.05 });
+  const marbleM = new THREE.MeshStandardMaterial({ color: 0xf2ece0, roughness: 0.45, metalness: 0.08 });
+  const roofDiscM = new THREE.MeshPhysicalMaterial({ color: 0x3b6e8c, roughness: 0.14, metalness: 0.25, clearcoat: 0.9, transparent: true, opacity: 0.84, side: THREE.DoubleSide });
+  const frameM = new THREE.MeshStandardMaterial({ color: 0x2a3542, roughness: 0.45, metalness: 0.55 });
+  const goldM = new THREE.MeshStandardMaterial({ color: 0xe6b84c, roughness: 0.28, metalness: 0.82 });
+  const woodM = new THREE.MeshStandardMaterial({ color: 0x5c3e24, roughness: 0.72 });
+  const scrollM = new THREE.MeshStandardMaterial({ color: 0xf0dfa8, roughness: 0.65 });
+
+  // 1. 阶梯式大理石基座 + 花岗岩半圆形外墙（亚历山大图书馆标志性象形弧墙）
+  for (let s = 0; s < 3; s++) {
+    const step = new THREE.Mesh(new THREE.CylinderGeometry(23.5 - s * 1.1, 24.2 - s * 1.1, 0.5, 32), marbleM);
+    step.position.y = 0.25 + s * 0.45; step.receiveShadow = true; grp.add(step);
+  }
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(20.8, 20.8, 0.3, 32), marbleM);
+  floor.position.y = 1.45; floor.receiveShadow = true; grp.add(floor);
+
+  // 后半圆花岗岩铭文弧墙（南侧留出宽阔柱廊入口）
+  const arcWall = new THREE.Mesh(new THREE.CylinderGeometry(20.6, 21.2, 11.5, 28, 1, true, Math.PI * 0.28, Math.PI * 1.44), graniteM);
+  arcWall.material.side = THREE.DoubleSide;
+  arcWall.position.y = 7.2; arcWall.castShadow = true; arcWall.receiveShadow = true; grp.add(arcWall);
+
+  // 2. 标志性「倾斜日轮」玻璃格栅斜屋顶 (Tilted Sun-Disc Skylight Roof)
+  const roofGrp = new THREE.Group();
+  roofGrp.position.set(0, 12.8, -1.2);
+  roofGrp.rotation.x = 0.24; // 朝南/朝海倾斜日轮
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(21.6, 21.6, 0.7, 36), roofDiscM);
+  roofGrp.add(disc);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(21.6, 0.45, 8, 48), goldM);
+  rim.rotation.x = Math.PI / 2; roofGrp.add(rim);
+  for (let gi = -3; gi <= 3; gi++) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(39, 0.35, 0.35), frameM);
+    rib.position.set(0, 0.38, gi * 5.2); roofGrp.add(rib);
+    const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 39), frameM);
+    rib2.position.set(gi * 5.2, 0.38, 0); roofGrp.add(rib2);
+  }
+  grp.add(roofGrp);
+
+  // 3. 古典亚历山大柱廊门厅（10根科林斯大理石巨柱 + 山花门楣）
+  for (let ci = 0; ci < 8; ci++) {
+    const px = -14 + ci * 4;
+    const pz = 15.2 + Math.abs(ci - 3.5) * 0.35;
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.66, 8.8, 12), marbleM);
+    col.position.set(px, 5.8, pz); col.castShadow = true; grp.add(col);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.56, 0.65, 12), goldM);
+    cap.position.set(px, 10.3, pz); grp.add(cap);
+    cirObs.push({ x: zn.x + px, z: zn.z + pz, r: 0.9 });
+  }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(31, 1.5, 2.2), marbleM);
+  lintel.position.set(0, 11.4, 15.8); grp.add(lintel);
+  if (makeSign) {
+    const sign = makeSign('亚历山大 · 千夜图书馆', 10, '#1c2430', '#ffe49c');
+    sign.position.set(0, 13.0, 16.8); grp.add(sign);
+  }
+
+  // 4. 室内 12 组卷轴壁龛书架（保留全部 12 个交互点）+ 中央旋转黄金浑天仪
+  let n = 0;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+    if (n++ >= 12) break;
+    const lx = -10.5 + c * 7, lz = -8 + r * 6;
+    const sh = new THREE.Mesh(new THREE.BoxGeometry(5.0, 3.6, 1.3), woodM);
+    sh.position.set(lx, 3.3, lz); sh.castShadow = true; grp.add(sh);
+    for (let b = 0; b < 6; b++) {
+      const scr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 6), scrollM);
+      scr.rotation.x = Math.PI / 2; scr.position.set(lx - 1.9 + b * 0.76, 3.5, lz); grp.add(scr);
+    }
+    boxObs.push({ x1: zn.x + lx - 2.5, z1: zn.z + lz - 0.8, x2: zn.x + lx + 2.5, z2: zn.z + lz + 0.8 });
+    const s = addSpot(zn.x + lx, zn.z + lz + 2.6, 'books', 'shelf'); s.y = zn.h + 1.4;
+  }
+  const astro = new THREE.Group(); astro.position.set(0, 5.2, 8.5);
+  const aRings = [];
+  for (let i = 0; i < 3; i++) {
+    const ar = new THREE.Mesh(new THREE.TorusGeometry(2.2 - i * 0.45, 0.08, 6, 32), goldM);
+    ar.rotation.set(i * 0.6, i * 0.8, 0); astro.add(ar); aRings.push(ar);
+  }
+  grp.add(astro);
+  const hallLight = new THREE.PointLight(0xffe0a8, 2.2, 42, 1.3);
+  hallLight.position.set(0, 9.5, 2); grp.add(hallLight);
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t) {
+      aRings.forEach((ar, i) => { ar.rotation.y = t * (0.35 + i * 0.18); ar.rotation.x = t * (0.2 + i * 0.1); });
+    }
+  };
+}
