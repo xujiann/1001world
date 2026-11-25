@@ -13695,8 +13695,37 @@ try {
     }
   }
   const tpq = (qp.get('tp') || '').split(',').map(Number);
-  if (tpq.length >= 2 && tpq.every(Number.isFinite)) {
+  const hasTp9 = tpq.length >= 2 && tpq.every(Number.isFinite);
+  if (hasTp9) {
     player.position.set(tpq[0], Math.max(height(tpq[0], tpq[1]), 0) + 1.2, tpq[1]);
+  } else if (!iq) {
+    // 🎲 每次进入游戏随机降临一座岛屿（含全部经典名著/奇观岛）
+    const rndIsles9 = [
+      { name: '收藏之岛 · 圆枢广场', x: 0, z: 14 },
+      { name: '亚历山大 · 千夜图书馆', x: 60, z: -204 },
+      { name: '大连梭鱼湾足球场', x: 325, z: 220 },
+      { name: '鲸背国际机场', x: 458, z: -40 },
+      { name: '天空之城 · 勒皮他', x: SKY.x, z: SKY.z + 24, y: SKY.y + 1.5 },
+      { name: '灯塔屿', x: IS2.x, z: IS2.z + 24 },
+      { name: '楚门的世界 · 桃源岛', x: TRU.x, z: TRU.z + 24 },
+      { name: '中土 · 夏尔', x: MID.x, z: MID.z + 28 },
+      { name: '霍格沃茨魔法城堡', x: HOG.x, z: HOG.z + 28 },
+      { name: '南塔开特 · 捕鲸港', x: MOB.x, z: MOB.z + 24 },
+      { name: '体育岛 · 红色梦剧场', x: SPT.x, z: SPT.z + 20 },
+      { name: '山海经 · 异兽之野', x: SHJ.x, z: SHJ.z + 24 },
+      { name: '桃花源秘境', x: THY.x, z: THY.z + 20 },
+      { name: '一千零一夜 · 巴格达', x: ANH.x, z: ANH.z + 24 },
+      { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18 },
+      { name: '侏罗纪公园', x: JUR.x, z: JUR.z + 26 },
+      { name: '西游记 · 花果山', x: HGS.x, z: HGS.z + 26 },
+      { name: '红楼梦 · 大观园', x: DGY.x, z: DGY.z + 26 },
+      { name: '沙丘 · 厄拉科斯', x: ARRAKIS.x, z: ARRAKIS.z + 25 },
+      { name: '未竟之都 · 摩天都会', x: UNJ.x, z: UNJ.z + 28 },
+    ];
+    const pick = rndIsles9[Math.floor(Math.random() * rndIsles9.length)];
+    const py9 = pick.y != null ? pick.y : Math.max(height(pick.x, pick.z), 0.6) + 1.2;
+    player.position.set(pick.x, py9, pick.z);
+    setTimeout(() => toast(`🎲 本次随机降临：「${pick.name}」`), 1200);
   }
   const camq = (qp.get('cam') || '').split(',').map(Number);
   if (camq.length >= 3 && camq.every(Number.isFinite)) {
