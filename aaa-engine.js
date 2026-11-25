@@ -1544,3 +1544,275 @@ export class AirportSystems9 {
     for (const mx of this.mixers) mx.update(dt);
   }
 }
+
+export function buildRealisticEagle9() {
+  const g = new THREE.Group();
+
+  // 程序化羽毛法线贴图（斜向羽支条纹）
+  const fCv = document.createElement('canvas'); fCv.width = fCv.height = 256;
+  const fCtx = fCv.getContext('2d');
+  const fImg = fCtx.createImageData(256, 256);
+  for (let y = 0; y < 256; y++) {
+    for (let x = 0; x < 256; x++) {
+      const barb = Math.sin(x * 0.45 + Math.abs(y - 128) * 0.18) * 0.5 + Math.sin(y * 0.35) * 0.35;
+      const idx = (y * 256 + x) * 4;
+      fImg.data[idx] = Math.max(0, Math.min(255, Math.floor(128 + barb * 46)));
+      fImg.data[idx + 1] = Math.max(0, Math.min(255, Math.floor(128 + Math.cos(y * 0.35) * 32)));
+      fImg.data[idx + 2] = 242; fImg.data[idx + 3] = 255;
+    }
+  }
+  fCtx.putImageData(fImg, 0, 0);
+  const featherNorm = new THREE.CanvasTexture(fCv);
+  featherNorm.wrapS = featherNorm.wrapT = THREE.RepeatWrapping;
+  featherNorm.repeat.set(4, 4);
+
+  const darkPlumage = new THREE.MeshStandardMaterial({ color: 0x3b281c, roughness: 0.72, metalness: 0.04, normalMap: featherNorm, normalScale: new THREE.Vector2(0.7, 0.7) });
+  const hackleMat = new THREE.MeshStandardMaterial({ color: 0x9c6d38, roughness: 0.65, metalness: 0.06, normalMap: featherNorm, normalScale: new THREE.Vector2(0.65, 0.65) });
+  const chestMat = new THREE.MeshStandardMaterial({ color: 0x5c402c, roughness: 0.75, normalMap: featherNorm, normalScale: new THREE.Vector2(0.6, 0.6) });
+  const primaryMat = new THREE.MeshStandardMaterial({ color: 0x261a12, roughness: 0.68, normalMap: featherNorm, normalScale: new THREE.Vector2(0.8, 0.8) });
+  const goldEdgeMat = new THREE.MeshStandardMaterial({ color: 0xc89242, roughness: 0.6, normalMap: featherNorm });
+  const cereMat = new THREE.MeshStandardMaterial({ color: 0xe6b832, roughness: 0.45 });
+  const beakMat = new THREE.MeshPhysicalMaterial({ color: 0x2a2622, roughness: 0.22, metalness: 0.1, clearcoat: 0.85 });
+  const talonMat = new THREE.MeshPhysicalMaterial({ color: 0x161412, roughness: 0.2, clearcoat: 0.9 });
+  const eyeMat = new THREE.MeshPhysicalMaterial({ color: 0xffb824, roughness: 0.1, clearcoat: 0.95 });
+
+  // 1. 连续流线型猛禽躯干（LatheGeometry 20环，胸肌饱满，尾柄收束）
+  const bodyPts = [];
+  for (let i = 0; i <= 18; i++) {
+    const u = i / 18; // 0=尾基(-Z), 1=胸前(+Z)
+    const r = Math.sin(Math.pow(u, 0.72) * Math.PI) * 1.48 + 0.12;
+    bodyPts.push(new THREE.Vector2(r, (u - 0.48) * 6.2));
+  }
+  const bodyGeo = new THREE.LatheGeometry(bodyPts, 18);
+  bodyGeo.rotateX(Math.PI / 2);
+  bodyGeo.scale(0.95, 0.88, 1.0);
+  const body = new THREE.Mesh(bodyGeo, darkPlumage);
+  body.castShadow = true; g.add(body);
+  // 胸腹斑驳浅羽
+  const breast = new THREE.Mesh(new THREE.SphereGeometry(1.22, 14, 12), chestMat);
+  breast.scale.set(0.92, 0.85, 1.8); breast.position.set(0, -0.32, 0.85); g.add(breast);
+
+  // 2. 金褐色颈部披肩羽 (Golden Hackles) + 威严猛禽头部 + 锐利眉骨 + 两段弯钩喙
+  const headGrp = new THREE.Group();
+  headGrp.position.set(0, 0.75, 2.55);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.95, 1.85, 14), hackleMat);
+  neck.rotation.x = 0.55; neck.position.set(0, 0.35, 0.35); headGrp.add(neck);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.76, 14, 12), hackleMat);
+  skull.scale.set(0.92, 0.88, 1.25); skull.position.set(0, 1.05, 1.05); headGrp.add(skull);
+  // 猛禽锐利眉骨 (Supraorbital Ridge) + 琥珀金虹膜与黑瞳孔
+  for (const s of [-1, 1]) {
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.56), darkPlumage);
+    brow.position.set(s * 0.44, 1.24, 1.22); brow.rotation.set(0.18, s * 0.25, -s * 0.22); headGrp.add(brow);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), eyeMat);
+    iris.position.set(s * 0.46, 1.1, 1.26); headGrp.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), talonMat);
+    pupil.position.set(s * 0.54, 1.1, 1.28); headGrp.add(pupil);
+  }
+  // 明黄蜡膜 + 两段式弯钩角质猛禽喙
+  const cere = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.36, 10), cereMat);
+  cere.rotation.x = Math.PI / 2; cere.position.set(0, 1.02, 1.78); headGrp.add(cere);
+  const beakBase = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.68, 10), beakMat);
+  beakBase.rotation.x = Math.PI / 2 + 0.18; beakBase.position.set(0, 0.96, 2.15); headGrp.add(beakBase);
+  const beakHook = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.48, 8), beakMat);
+  beakHook.rotation.x = Math.PI / 2 + 0.95; beakHook.position.set(0, 0.76, 2.48); headGrp.add(beakHook);
+  g.add(headGrp);
+
+  // 3. 覆羽大腿 + 鳞片跗跖 + 四趾弯曲利爪
+  for (const s of [-1, 1]) {
+    const legG = new THREE.Group();
+    legG.position.set(s * 0.72, -0.78, 0.15);
+    const thigh = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.25, 10), darkPlumage);
+    thigh.rotation.x = Math.PI; thigh.position.y = -0.35; legG.add(thigh);
+    const tarsus = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.95, 8), cereMat);
+    tarsus.position.set(0, -1.05, 0.15); tarsus.rotation.x = 0.22; legG.add(tarsus);
+    for (let ti = -1; ti <= 1; ti++) {
+      const toe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.55, 6), cereMat);
+      toe.rotation.set(Math.PI / 2 + 0.25, ti * 0.35, 0);
+      toe.position.set(ti * 0.14, -1.5, 0.42); legG.add(toe);
+      const claw = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.38, 6), talonMat);
+      claw.rotation.x = Math.PI / 2 + 0.85;
+      claw.position.set(ti * 0.22, -1.62, 0.68); legG.add(claw);
+    }
+    g.add(legG);
+  }
+
+  // 4. 11 枚层叠扇形尾羽
+  for (let i = -5; i <= 5; i++) {
+    const tMat = i % 2 === 0 ? darkPlumage : chestMat;
+    const tf = new THREE.Mesh(new THREE.ConeGeometry(0.58 - Math.abs(i) * 0.03, 4.6 - Math.abs(i) * 0.18, 5), tMat);
+    tf.scale.set(1.1, 1, 0.16);
+    tf.rotation.x = -Math.PI / 2 - 0.08;
+    tf.rotation.z = i * 0.11;
+    tf.position.set(i * 0.22, 0.12 - Math.abs(i) * 0.02, -3.3);
+    g.add(tf);
+  }
+
+  // 5. 双关节（肩-肘内翼 + 肘-腕外翼）多羽片逼真猛禽翅膀（总翼展 ~22m，翼尖分叉缝隙）
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const inner = new THREE.Group();
+    inner.position.set(s * 0.95, 0.55, 0.6);
+    // 内翼覆羽与次级飞羽
+    const patagium = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.28, 3.0), darkPlumage);
+    patagium.position.set(s * 2.8, 0, -0.3); inner.add(patagium);
+    const cov = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.22, 1.4), hackleMat);
+    cov.position.set(s * 2.7, 0.14, 0.85); inner.add(cov);
+    for (let si = 0; si < 7; si++) {
+      const sf = new THREE.Mesh(new THREE.ConeGeometry(0.68, 3.6, 5), si % 2 ? chestMat : darkPlumage);
+      sf.scale.set(1, 1, 0.14);
+      sf.rotation.x = -Math.PI / 2; sf.rotation.z = -s * 0.12;
+      sf.position.set(s * (0.8 + si * 0.72), -0.05, -1.8);
+      inner.add(sf);
+    }
+
+    // 外翼腕关节（肘-腕-翼尖：10枚独立扇形初级飞羽，带经典大雕翼尖分叉上翘！）
+    const outer = new THREE.Group();
+    outer.position.set(s * 5.4, 0.04, 0.1);
+    const carpal = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 1.5), darkPlumage);
+    carpal.position.set(s * 1.6, 0, 0.15); outer.add(carpal);
+    const primaries = [];
+    for (let pi = 0; pi < 9; pi++) {
+      const pLen = 5.4 - pi * 0.22;
+      const pf = new THREE.Mesh(new THREE.ConeGeometry(0.52 - pi * 0.02, pLen, 5), pi === 0 ? goldEdgeMat : primaryMat);
+      pf.scale.set(1, 1, 0.12);
+      const fanAng = -s * (Math.PI / 2 - 0.18 - pi * 0.085);
+      pf.rotation.z = fanAng;
+      pf.rotation.x = 0.06 * (8 - pi); // 翼尖自然上翘缝隙
+      pf.position.set(s * (2.6 + (8 - pi) * 0.42), (8 - pi) * 0.08, 0.35 - pi * 0.26);
+      outer.add(pf);
+      primaries.push(pf);
+    }
+    inner.add(outer);
+    g.add(inner);
+    wings.push({ inner, outer, s, primaries });
+  }
+
+  return { grp: g, wings, headGrp };
+}
+
+export function buildDalianBridge9(scene, brA, brB, deckYFn) {
+  const grp = new THREE.Group();
+  const dx = brB[0] - brA[0], dz = brB[1] - brA[1];
+  const brLen = Math.hypot(dx, dz), brAng = Math.atan2(dx, dz);
+  const nx = Math.cos(brAng), nz = -Math.sin(brAng);
+
+  const asphM = new THREE.MeshStandardMaterial({ color: 0x363c44, roughness: 0.85, metalness: 0.08 });
+  const lowerDeckM = new THREE.MeshStandardMaterial({ color: 0x2c323a, roughness: 0.88, metalness: 0.1 });
+  const trussRedM = new THREE.MeshStandardMaterial({ color: 0xc2382b, roughness: 0.45, metalness: 0.35 });
+  const pylonWhiteM = new THREE.MeshStandardMaterial({ color: 0xe8edf2, roughness: 0.42, metalness: 0.18 });
+  const pierConcM = new THREE.MeshStandardMaterial({ color: 0x7a828c, roughness: 0.85 });
+  const cableM = new THREE.MeshStandardMaterial({ color: 0xc8d2dc, roughness: 0.3, metalness: 0.72 });
+  const roadLineM = new THREE.MeshBasicMaterial({ color: 0xf6e6a8 });
+  const railM = new THREE.MeshStandardMaterial({ color: 0xc8d0d8, roughness: 0.4, metalness: 0.55 });
+  const lampGlowM = new THREE.MeshBasicMaterial({ color: 0xffe49c, fog: false });
+  const beaconRedM = new THREE.MeshBasicMaterial({ color: 0xff3b3b, fog: false });
+
+  // 1. 双层公路沥青桥面 + 道路标线 + 双层沃伦式红色钢桁架 (40跨)
+  const N = 40, segL = brLen / N + 0.35, trussH = 4.2, hw = 4.9;
+  for (let i = 0; i < N; i++) {
+    const t = (i + 0.5) / N;
+    const x = brA[0] + dx * t, z = brA[1] + dz * t;
+    const yTop = deckYFn(t);
+    const yBot = yTop - trussH;
+    const pitch = -Math.cos(t * Math.PI) * (6 * Math.PI / brLen);
+
+    // 上层行车沥青面 (保留与 deckY 完全一致的可行走高度)
+    const topDeck = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.55, segL), asphM);
+    topDeck.position.set(x, yTop - 0.1, z); topDeck.rotation.set(pitch, brAng, 0, 'YXZ');
+    topDeck.receiveShadow = true; grp.add(topDeck);
+
+    // 下层桥面
+    const botDeck = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.42, segL), lowerDeckM);
+    botDeck.position.set(x, yBot, z); botDeck.rotation.set(pitch, brAng, 0, 'YXZ');
+    grp.add(botDeck);
+
+    // 道路双黄中线 + 白色边线
+    const midLine = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, segL * 0.7), roadLineM);
+    midLine.position.set(x, yTop + 0.19, z); midLine.rotation.set(pitch, brAng, 0, 'YXZ');
+    grp.add(midLine);
+
+    for (const sgn of [-1, 1]) {
+      const rx = x + nx * hw * sgn, rz = z + nz * hw * sgn;
+      // 金属护栏
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.05, segL), railM);
+      rail.position.set(rx, yTop + 0.72, rz); rail.rotation.set(pitch, brAng, 0, 'YXZ');
+      grp.add(rail);
+      // 沃伦式红色钢桁架：上/下弦杆 + 竖杆 + 斜腹杆
+      const chordT = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, segL), trussRedM);
+      chordT.position.set(rx, yTop - 0.15, rz); chordT.rotation.set(pitch, brAng, 0, 'YXZ'); grp.add(chordT);
+      const chordB = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, segL), trussRedM);
+      chordB.position.set(rx, yBot, rz); chordB.rotation.set(pitch, brAng, 0, 'YXZ'); grp.add(chordB);
+      const vPost = new THREE.Mesh(new THREE.BoxGeometry(0.28, trussH, 0.28), trussRedM);
+      vPost.position.set(rx, yTop - trussH / 2, rz); vPost.rotation.set(pitch, brAng, 0, 'YXZ'); grp.add(vPost);
+      const diag = new THREE.Mesh(new THREE.BoxGeometry(0.22, Math.hypot(segL, trussH), 0.24), trussRedM);
+      diag.position.set(rx, yTop - trussH / 2, rz);
+      diag.rotation.set(pitch + (i % 2 === 0 ? 1 : -1) * Math.atan2(segL, trussH), brAng, 0, 'YXZ');
+      grp.add(diag);
+
+      // 每隔 2 跨设置海景双臂路灯
+      if (i % 2 === 0) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 4.2, 6), pylonWhiteM);
+        pole.position.set(rx, yTop + 2.3, rz); grp.add(pole);
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), lampGlowM);
+        lamp.position.set(rx - nx * 0.45 * sgn, yTop + 4.35, rz + nz * 0.45 * sgn); grp.add(lamp);
+      }
+    }
+  }
+
+  // 2. 两座高耸 H 形浅灰白主塔 (t = 0.28, 0.72) + 双横梁 + 海上承台桥墩
+  for (const tt of [0.28, 0.72]) {
+    const x = brA[0] + dx * tt, z = brA[1] + dz * tt;
+    // 海上六边形混凝土承台
+    const caisson = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 8.2, 6.5, 6), pierConcM);
+    caisson.position.set(x, -1.8, z); grp.add(caisson);
+    for (const sgn of [-1, 1]) {
+      const px = x + nx * 5.8 * sgn, pz = z + nz * 5.8 * sgn;
+      const col = new THREE.Mesh(new THREE.BoxGeometry(1.9, 46, 2.5), pylonWhiteM);
+      col.position.set(px, 21, pz); col.rotation.y = brAng; col.castShadow = true; grp.add(col);
+      const bcn = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 5), beaconRedM);
+      bcn.position.set(px, 44.4, pz); grp.add(bcn);
+    }
+    // 上/下门式横梁
+    for (const cy of [17.5, 38.5]) {
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(13.2, 2.1, 2.2), pylonWhiteM);
+      cross.position.set(x, cy, z); cross.rotation.y = brAng; cross.castShadow = true; grp.add(cross);
+    }
+  }
+  // 引桥辅助海墩
+  for (const tt of [0.10, 0.90]) {
+    const x = brA[0] + dx * tt, z = brA[1] + dz * tt;
+    const pier = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 3.0, 12, 8), pierConcM);
+    pier.position.set(x, deckYFn(tt) - trussH - 5.5, z); grp.add(pier);
+  }
+
+  // 3. 悬链线主缆 + 垂直钢吊索
+  const cableY = t => {
+    if (t <= 0.28) { const u = t / 0.28; return 5 + u * u * 37.5; }
+    if (t >= 0.72) { const u = (1 - t) / 0.28; return 5 + u * u * 37.5; }
+    const u = (t - 0.5) / 0.22;
+    return 11.5 + u * u * 31.0;
+  };
+  for (const sgn of [-1, 1]) {
+    const pts = [];
+    for (let i = 0; i <= 48; i++) {
+      const t = i / 48;
+      pts.push(new THREE.Vector3(brA[0] + dx * t + nx * 5.8 * sgn, cableY(t), brA[1] + dz * t + nz * 5.8 * sgn));
+    }
+    const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.34, 8, false), cableM);
+    grp.add(cable);
+
+    // 32 对垂直钢吊索
+    for (let si = 2; si <= 38; si++) {
+      const t = si / 40;
+      if (Math.abs(t - 0.28) < 0.03 || Math.abs(t - 0.72) < 0.03) continue;
+      const cy = cableY(t), dy = deckYFn(t);
+      const h = Math.max(0.5, cy - dy);
+      const susp = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, h, 5), cableM);
+      susp.position.set(brA[0] + dx * t + nx * 5.4 * sgn, dy + h / 2, brA[1] + dz * t + nz * 5.4 * sgn);
+      grp.add(susp);
+    }
+  }
+
+  scene.add(grp);
+  return { grp };
+}

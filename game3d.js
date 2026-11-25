@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9 } from './aaa-engine.js?v=13';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9 } from './aaa-engine.js?v=16';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -8156,31 +8156,12 @@ const boats = [];
 }
 /* —— 逍遥游 · 大鹏(可乘,扶摇直上环游诸岛) —— */
 const PENG_X = 78, PENG_Z = -52;
-let pengBird = null, pengWings = null, pengAura9 = null, pengTrail9 = null, pengCryT9 = 0;
+let pengBird = null, pengWings = null, pengHead9 = null, pengAura9 = null, pengTrail9 = null, pengCryT9 = 0;
 {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), lam(0x3a2a1e)); body.scale.set(1, .82, 2.3); g.add(body);
-  const neck = cyl(.5, .72, 1.7, lam(0x43301e)); neck.position.set(0, .8, 2.4); neck.rotation.x = -.55; g.add(neck);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.8, 10, 8), lam(0x4a3626)); head.position.set(0, 1.5, 3.2); g.add(head);
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.1, 6), lam(0xe0a02a)); beak.rotation.x = Math.PI / 2 + .3; beak.position.set(0, 1.4, 4.0); g.add(beak);
-  const crown = new THREE.Mesh(new THREE.ConeGeometry(.3, .9, 5), lam(0xc0392b)); crown.position.set(0, 2.2, 3.0); g.add(crown);
-  const cQuill9 = lam(0x43301e), cTail9 = lam(0x2e2018), cGold9 = lam(0xd9a24a);
-  for (let i9 = -2; i9 <= 2; i9++) {   // 🪶 尾羽:五片扇开
-    const tf9 = new THREE.Mesh(cong(.5, 4.8 - Math.abs(i9) * .5, 4), i9 % 2 ? cQuill9 : cTail9);
-    tf9.rotation.x = -Math.PI / 2 - .1; tf9.rotation.y = i9 * .17; tf9.position.set(0, .15, -3.4); tf9.scale.set(1, .3, 1); g.add(tf9);
-  }
-  pengWings = [];
-  for (const s of [-1, 1]) {
-    const wing = new THREE.Group();
-    const arm9 = box(11, .32, 3.2, cQuill9); arm9.position.set(s * 5.6, 0, -.2); wing.add(arm9);   // 翼骨主膜
-    for (let f9 = 0; f9 < 6; f9++) {   // 🪶 分层飞羽,由内向外递减、错落张开(其翼若垂天之云)
-      const fe9 = new THREE.Mesh(cong(1.5 - f9 * .12, 5.6 - f9 * .5, 4), f9 === 5 ? cGold9 : (f9 % 2 ? cTail9 : cQuill9));   // 最外缘晨金
-      fe9.rotation.z = -s * (Math.PI / 2 - .12); fe9.rotation.x = .05 * f9;
-      fe9.position.set(s * (3.2 + f9 * 1.95), 0, -1.2 + f9 * .36); fe9.scale.set(1, .34, .92); wing.add(fe9);
-    }
-    const cov9 = box(6.4, .3, 1.5, cTail9); cov9.position.set(s * 3.8, .14, 1.4); wing.add(cov9);   // 前缘覆羽
-    wing.position.set(0, .6, 0); g.add(wing); pengWings.push({ w: wing, s });
-  }
+  const eagle9 = buildRealisticEagle9();
+  const g = eagle9.grp;
+  pengWings = eagle9.wings;
+  pengHead9 = eagle9.headGrp;
   { // ✨ 仙气光晕(逆光暖金,飞行渐盛)
     const ac9 = document.createElement('canvas'); ac9.width = ac9.height = 64; const axx9 = ac9.getContext('2d');
     const ag9 = axx9.createRadialGradient(32, 32, 0, 32, 32, 32); ag9.addColorStop(0, 'rgba(255,228,156,.9)'); ag9.addColorStop(.42, 'rgba(232,182,92,.32)'); ag9.addColorStop(1, 'rgba(232,182,92,0)');
@@ -9092,6 +9073,7 @@ function setDiveSurfaceHidden9(hide) {
   if (typeof coastalBirds9 !== 'undefined' && coastalBirds9?.grp) coastalBirds9.grp.visible = !hide;
   if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !hide;
   if (typeof airportSys9 !== 'undefined' && airportSys9?.grp) airportSys9.grp.visible = !hide;
+  if (typeof dalianBridge9 !== 'undefined' && dalianBridge9?.grp) dalianBridge9.grp.visible = !hide;
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
@@ -11406,45 +11388,7 @@ function bridgeHeight(x, z) {
   const d = Math.hypot(x - (BR_A[0] + brDX * t), z - (BR_A[1] + brDZ * t));
   return d < 4.6 ? deckY(t) : null;
 }
-{
-  const N = 30, segL = brLen / N + .6;
-  for (let i = 0; i < N; i++) {
-    const t = (i + .5) / N;
-    const x = BR_A[0] + brDX * t, z = BR_A[1] + brDZ * t;
-    const pitch = -Math.cos(t * Math.PI) * (6 * Math.PI / brLen);
-    const seg = box(9.4, .7, segL, M.wood);
-    seg.position.set(x, deckY(t), z); seg.rotation.y = brAng; seg.rotation.x = pitch;
-    scene.add(seg);
-    for (const sgn of [-1, 1]) {
-      const rail = box(.35, 1.2, segL, M.woodDark);
-      rail.position.set(x + Math.cos(brAng) * 4.5 * sgn, deckY(t) + .95, z - Math.sin(brAng) * 4.5 * sgn);
-      rail.rotation.y = brAng; rail.rotation.x = pitch;
-      scene.add(rail);
-    }
-  }
-  for (const tt of [.28, .72]) {   // 双塔
-    const x = BR_A[0] + brDX * tt, z = BR_A[1] + brDZ * tt;
-    for (const sgn of [-1, 1]) {
-      const py = cyl(.9, 1.4, 42, lam(0xb03a2e));
-      py.position.set(x + Math.cos(brAng) * 5.6 * sgn, 12, z - Math.sin(brAng) * 5.6 * sgn);
-      scene.add(py);
-    }
-    const cross = box(14, 1.3, 1.3, lam(0xb03a2e)); cross.position.set(x, 30, z); cross.rotation.y = brAng + Math.PI / 2; scene.add(cross);
-  }
-  for (const sgn of [-1, 1]) {     // 主缆
-    const pts = [];
-    for (let i = 0; i <= 24; i++) {
-      const t = i / 24;
-      const x = BR_A[0] + brDX * t + Math.cos(brAng) * 5.6 * sgn;
-      const z = BR_A[1] + brDZ * t - Math.sin(brAng) * 5.6 * sgn;
-      const dt = Math.min(Math.abs(t - .28), Math.abs(t - .72));
-      const y = 32 - Math.min(dt / .28, 1) ** 2 * 21;
-      pts.push(new THREE.Vector3(x, y, z));
-    }
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, .28, 5), lam(0x8c2f24));
-    scene.add(tube);
-  }
-}
+const dalianBridge9 = buildDalianBridge9(scene, BR_A, BR_B, deckY);
 /* --- 灯塔屿 --- */
 let lightLamp = null, beacon = null, beamGrp9 = null, LH_POS9 = null;
 {
@@ -12919,13 +12863,63 @@ function makePlane9(s9) {
         hr.position.set(sx, 2.28, rz - 0.34); cabinGrp9.add(hr);
       }
     }
-    // 前方驾驶舱仪表台 + 航电双屏 + 操纵杆 + 后舱壁
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.1, 1.1), cDashM);
-    dash.position.set(0, 1.5, 4.9); cabinGrp9.add(dash);
-    for (const sx of [-0.75, 0.75]) {
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.56), cGlowM);
-      scr.position.set(sx, 1.85, 4.33); scr.rotation.y = Math.PI; cabinGrp9.add(scr);
+    // 前方驾驶舱仪表台 + 真实航电 PFD/ND/ECAM 液晶屏 + 遮光罩 + 推力杆 + 侧杆 + 顶板 + 挡风玻璃支柱
+    const mkAvionics = kind => {
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 192;
+      const c = cv.getContext('2d');
+      c.fillStyle = '#07131e'; c.fillRect(0, 0, 256, 192);
+      if (kind === 'pfd') {
+        c.fillStyle = '#1b76c8'; c.fillRect(36, 18, 184, 78);
+        c.fillStyle = '#7a4b24'; c.fillRect(36, 96, 184, 78);
+        c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(36, 96); c.lineTo(220, 96); c.stroke();
+        c.strokeStyle = '#5eff7a'; c.lineWidth = 2;
+        for (let py = 36; py <= 156; py += 20) { c.beginPath(); c.moveTo(106, py); c.lineTo(150, py); c.stroke(); }
+        c.fillStyle = '#0a1622'; c.fillRect(4, 18, 28, 156); c.fillRect(224, 18, 28, 156);
+        c.fillStyle = '#5eff7a'; c.font = 'bold 13px monospace'; c.fillText('280', 5, 98); c.fillText('FL13', 225, 98);
+      } else if (kind === 'nd') {
+        c.strokeStyle = '#4ad4ff'; c.lineWidth = 2;
+        c.beginPath(); c.arc(128, 118, 68, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
+        c.strokeStyle = '#ff5ef4'; c.setLineDash([6, 4]);
+        c.beginPath(); c.moveTo(128, 165); c.lineTo(128, 32); c.stroke();
+        c.setLineDash([]); c.fillStyle = '#5eff7a'; c.font = 'bold 12px monospace';
+        c.fillText('HDG 042  GS 460KT', 48, 22);
+      } else {
+        c.fillStyle = '#5eff7a'; c.font = 'bold 13px monospace';
+        c.fillText('N1  94.2%   94.1%', 36, 48);
+        c.fillText('EGT  612C    610C', 36, 84);
+        c.fillStyle = '#4ad4ff'; c.fillText('CAB ALT  1800 FT', 36, 126);
+        c.fillStyle = '#ffd84d'; c.fillText('A/THR   AP1   FD', 36, 162);
+      }
+      return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) });
+    };
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.05, 1.15), cDashM);
+    dash.position.set(0, 1.48, 4.95); cabinGrp9.add(dash);
+    const glare = new THREE.Mesh(new THREE.BoxGeometry(3.65, 0.14, 1.35), new THREE.MeshStandardMaterial({ color: 0x101418, roughness: 0.75 }));
+    glare.position.set(0, 2.04, 4.88); glare.rotation.x = 0.08; cabinGrp9.add(glare);
+    // 左座 PFD + ND, 中央 ECAM, 右座 PFD
+    for (const [sx, kind] of [[-1.08, 'pfd'], [-0.52, 'nd'], [0.02, 'ecam'], [0.75, 'pfd']]) {
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.36), mkAvionics(kind));
+      scr.position.set(sx, 1.78, 4.36); scr.rotation.y = Math.PI; scr.rotation.x = 0.18; cabinGrp9.add(scr);
     }
+    // 中央控制台 + 双推力杆 + 机长侧杆
+    const ped = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.75, 1.45), cDashM);
+    ped.position.set(0, 1.15, 4.15); cabinGrp9.add(ped);
+    for (const tx of [-0.1, 0.1]) {
+      const thr = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.32, 6), new THREE.MeshStandardMaterial({ color: 0xadb8c4, metalness: 0.8 }));
+      thr.position.set(tx, 1.62, 4.15); thr.rotation.x = 0.35; cabinGrp9.add(thr);
+    }
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), cDashM);
+    stick.position.set(-1.38, 1.45, 3.95); stick.rotation.x = 0.2; cabinGrp9.add(stick);
+    // 驾驶舱顶板 + 全景挡风玻璃框柱 (A350 墨镜窗框)
+    const ovh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.16, 1.5), cDashM);
+    ovh.position.set(0, 3.22, 4.25); ovh.rotation.x = 0.28; cabinGrp9.add(ovh);
+    const frameM = new THREE.MeshStandardMaterial({ color: 0x161c22, roughness: 0.45, metalness: 0.5 });
+    for (const sx of [-1.82, 0, 1.82]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.55, 0.14), frameM);
+      post.position.set(sx, 2.68, 5.05); post.rotation.x = -0.36; cabinGrp9.add(post);
+    }
+    const topBar = new THREE.Mesh(new THREE.BoxGeometry(3.75, 0.18, 0.18), frameM);
+    topBar.position.set(0, 3.28, 4.82); cabinGrp9.add(topBar);
     const backBulk = new THREE.Mesh(new THREE.BoxGeometry(3.8, 2.9, 0.2), cWallM);
     backBulk.position.set(0, 2.2, -5.0); cabinGrp9.add(backBulk);
   }
@@ -15008,12 +15002,21 @@ function loop() {
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
     camera.position.lerp(v3.set(player.position.x - fx * 4.2, player.position.y + 1.6 + camPitch * 2, player.position.z - fz * 4.2), Math.min(1, dt * 9));
     camera.lookAt(player.position.x + fx * 6, player.position.y - camPitch * 3, player.position.z + fz * 6);
-  } else if (flight && flight.air && planeGrp9) {   // ✈️ 鲸航 A350 客舱/驾驶舱内部第一人称视角
+  } else if (flight && flight.air && planeGrp9) {   // ✈️ 鲸航 A350 机长驾驶舱第一人称视角
     const yaw9 = faceYaw + (camYaw - faceYaw) * 0.35;
-    const fx9 = Math.sin(faceYaw), fz9 = Math.cos(faceYaw);
+    const fx9 = Math.sin(faceYaw), fz9 = Math.cos(faceYaw), rx9 = Math.cos(faceYaw), rz9 = -Math.sin(faceYaw);
     const lx9 = Math.sin(yaw9), lz9 = Math.cos(yaw9);
-    camera.position.set(planeGrp9.position.x - fx9 * 1.4, planeGrp9.position.y + 2.45, planeGrp9.position.z - fz9 * 1.4);
-    camera.lookAt(planeGrp9.position.x + lx9 * 14, planeGrp9.position.y + 2.0 + (camPitch - 0.22) * 8, planeGrp9.position.z + lz9 * 14);
+    // 机长席眼点：驾驶舱左侧 (-0.68, 2.28, +3.18)，越过遮光罩与 PFD/ND 屏望向全景挡风玻璃
+    camera.position.set(
+      planeGrp9.position.x + fx9 * 3.18 - rx9 * 0.68,
+      planeGrp9.position.y + 2.28,
+      planeGrp9.position.z + fz9 * 3.18 - rz9 * 0.68
+    );
+    camera.lookAt(
+      camera.position.x + lx9 * 18,
+      camera.position.y - 0.16 + (camPitch - 0.22) * 8,
+      camera.position.z + lz9 * 18
+    );
   } else if (restState9) {
     const rfx9 = Math.sin(faceYaw), rfz9 = Math.cos(faceYaw);
     if (restState9 === 2) {   // 🛌 躺平看天:相机贴地略仰望天空
@@ -15805,10 +15808,20 @@ function loop() {
       const msg2 = flight.msg || '🧞 飞毯轻轻把你放下,一溜烟飞回了巴格达'; flight = null; toast(msg2); blip(660);
     }
   }
-  /* 大鹏振翅(骑乘时快扇,栖息时缓扇) */
+  /* 大鹏振翅(双关节内/外翼气动弯曲，栖息时警觉扫视) */
   const pengFly9 = flight && (flight.orbit || flight.sky);
-  if (pengWings) { const fl = pengFly9 ? Math.sin(t * 6) * .55 : Math.sin(t * 1.1) * .16;
-    for (const { w: wg, s } of pengWings) wg.rotation.z = s * fl; }
+  if (pengWings) {
+    const fl = pengFly9 ? Math.sin(t * 5.2) * .48 : Math.sin(t * 1.1) * .12;
+    const flOut = pengFly9 ? Math.sin(t * 5.2 - 0.85) * .36 : -0.14;
+    for (const w of pengWings) {
+      if (w.inner) { w.inner.rotation.z = w.s * fl; w.outer.rotation.z = w.s * flOut; }
+      else if (w.w) w.w.rotation.z = w.s * fl;
+    }
+  }
+  if (pengHead9) {
+    pengHead9.rotation.y = pengFly9 ? 0 : Math.sin(t * 0.7) * 0.28;
+    pengHead9.rotation.x = pengFly9 ? -0.18 : Math.sin(t * 1.3) * 0.08;
+  }
   if (pengAura9) pengAura9.material.opacity += ((pengFly9 ? .78 : 0) - pengAura9.material.opacity) * Math.min(1, dt * 3);   // ✨ 仙气随飞行渐显
   if (pengTrail9) { pengTrail9.visible = pengFly9 || pengTrail9.children[0].material.opacity > .02;
     for (const sp9 of pengTrail9.children) sp9.material.opacity += ((pengFly9 ? sp9.userData.base : 0) - sp9.material.opacity) * Math.min(1, dt * 3); }
@@ -16367,7 +16380,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
