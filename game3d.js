@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9 } from './aaa-engine.js?v=18';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9 } from './aaa-engine.js?v=19';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -151,7 +151,7 @@ const SHJ = { x: -520, z: -1020, r: 140 };  // 山海经·异兽之野
 const THY = { x: 1060, z: -180, r: 115 };   // 桃花源(隐藏秘境,无航线)
 const ANH = { x: -1020, z: 640, r: 130 };   // 一千零一夜·巴格达
 const NEM = { x: 720, z: 1060, r: 90 };     // 海底两万里·鹦鹉螺锚地
-const B612 = { x: 1120, z: 330, r: 62 };    // 小王子·B-612
+const B612 = { x: 1120, z: 330, r: 34, y: 265 };    // 小王子·B-612(外太空悬浮小行星)
 const JUR = { x: 1020, z: 920, r: 140 };    // 侏罗纪公园
 /* —— 名著十岛(路线图 ISLANDS-ROADMAP.md) —— */
 const HGS = { x: 150, z: -1250, r: 150 };   // 西游记·花果山
@@ -303,7 +303,6 @@ function islandMask(x, z) {
   m = Math.max(m, isleM9(x, z, THY.x, THY.z, THY.r, 1.8));  // 桃花源
   m = Math.max(m, isleM9(x, z, ANH.x, ANH.z, ANH.r, 1.8));  // 一千零一夜
   m = Math.max(m, isleM9(x, z, NEM.x, NEM.z, NEM.r, 1.8));  // 鹦鹉螺锚地
-  m = Math.max(m, isleM9(x, z, B612.x, B612.z, B612.r, 2.0)); // B-612
   m = Math.max(m, isleM9(x, z, JUR.x, JUR.z, JUR.r, 1.8));  // 侏罗纪
   m = Math.max(m, isleM9(x, z, HGS.x, HGS.z, HGS.r, 1.8));
   m = Math.max(m, isleM9(x, z, ALC.x, ALC.z, ALC.r, 1.8));
@@ -485,9 +484,6 @@ function height(x, z) {
   q(ANH.x, ANH.z - 112, 16, 2.2, .95);
   q(NEM.x, NEM.z, 46, 5);                                                                    // 鹦鹉螺岩台
   q(NEM.x, NEM.z - 76, 15, 2.2, .95);
-  h += smooth01(clamp(1 - Math.hypot(x - B612.x, z - B612.z) / 55, 0, 1)) ** 1.4 * 15;       // B-612 圆丘
-  q(B612.x, B612.z, 14, 21, .9);
-  q(B612.x, B612.z - 54, 12, 2.2, .95);
   { const dar = Math.hypot(x - ARRAKIS.x, z - ARRAKIS.z);
     if (dar < ARRAKIS.r) {
       const fall = smooth01(clamp(1 - dar / ARRAKIS.r, 0, 1));
@@ -1221,6 +1217,8 @@ function loreCard(k) {
     : '<button class="again" data-marlin>🦈 抄起鱼叉,和鲨鱼拼了!</button>';
   if (k === 'peng') btn = '<button class="again" data-peng>🕊️ 乘大鹏,扶摇直上九万里</button> <button class="again" data-pengsky style="margin-top:8px">🏯 乘大鹏,直上天空之城</button>';
   if (k === 'skyback') btn = '<button class="again" data-skyback>🕊️ 呼唤大鹏,乘风归海</button>';
+  if (k === 'rocketUp') btn = '<button class="again" data-rocketup>🚀 点火升空 · 前往外太空 B-612</button>';
+  if (k === 'rocketDown') btn = '<button class="again" data-rocketdown>🚀 启动返航 · 返回地球收藏之岛</button>';
   if (k === 'harp9') btn = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">' +
     [0, 1, 2, 3, 4, 5, 6].map(i9 => `<button class="again" data-note="${i9}" style="min-width:40px">${'哆来咪发索拉西'[i9]}</button>`).join('') + '</div>'
     + (PSTORE.getItem('w1001.harp9') === '1' ? '<div style="text-align:center;color:#8a7c62;font-size:12px;padding-top:6px">琴已记得你。</div>' : '');
@@ -1715,6 +1713,24 @@ function openCard(s) {
     closeModals();
     toast('🕊️ 纵身一跃——大鹏接住了你,乘风归海!');
     pengCry9(); blip(880); setTimeout(() => blip(659), 130); setTimeout(() => blip(523), 260);
+  });
+  cardBody.querySelector('[data-rocketup]')?.addEventListener('click', () => {
+    const tx = B612.x - 10, tz = B612.z + 10;
+    const ty = (typeof b612Height9 === 'function' ? b612Height9(tx, tz) : null) ?? B612.y;
+    flight = { rocket: 1, t: 0, dur: 14, from: [player.position.x, player.position.z], to: [tx, tz],
+      y0: player.position.y, y1: ty + 0.5, msg: '🌹 火箭平稳着陆！欢迎来到外太空轨道上的 B-612 小行星。' };
+    closeModals();
+    toast('🚀 3、2、1 点火！冲出大气层，飞向 B-612 小行星！');
+    blip(330); setTimeout(() => blip(494), 120); setTimeout(() => blip(740), 240);
+  });
+  cardBody.querySelector('[data-rocketdown]')?.addEventListener('click', () => {
+    const tx = 28, tz = -42;
+    const ty = Math.max(height(tx, tz), 0.2);
+    flight = { rocket: 1, t: 0, dur: 14, from: [player.position.x, player.position.z], to: [tx, tz],
+      y0: player.position.y, y1: ty + 0.5, msg: '🌍 星际火箭平稳降落回地球收藏之岛！' };
+    closeModals();
+    toast('🚀 返航引擎点火！告别 B-612，重返地球！');
+    blip(740); setTimeout(() => blip(494), 120); setTimeout(() => blip(330), 240);
   });
   cardBody.querySelector('[data-chainx]')?.addEventListener('click', ev => { chainStart9(ev.currentTarget.dataset.chainx); });
   cardBody.querySelector('[data-ubuild]')?.addEventListener('click', () => {   // 🏝️ 建/更新我的岛
@@ -7257,57 +7273,64 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   const neSign = makeSign('海底两万里', 6.4, '#12242e', '#8ae0d8');
   neSign.position.set(gx + 10, height(gx + 10, gz - 56) + 4.4, gz - 56); scene.add(neSign);
 }
-/* —— B-612 小行星 —— */
+/* —— B-612 小行星（外太空悬浮星球 + 星际穿梭火箭） —— */
+const b612Ast9 = buildSpaceAsteroidB612(scene, B612);
+function b612Height9(x, z) { return b612Ast9 ? b612Ast9.surfaceY(x, z) : null; }
+const rocketPadEarth9 = buildSpaceRocket9(scene, 28, Math.max(height(28, -42), 0.2), -42);
+const rocketPadB6129 = buildSpaceRocket9(scene, B612.x - 10, b612Height9(B612.x - 10, B612.z + 10) ?? B612.y, B612.z + 10);
+const rocketFly9 = buildSpaceRocket9(scene, 0, -200, 0);
+rocketFly9.grp.children.forEach(c => { if (c !== rocketFly9.ship) c.visible = false; });
+rocketFly9.grp.visible = false;
 {
-  const gx = B612.x, gz = B612.z, top = height(gx, gz);
+  const gx = B612.x, gz = B612.z;
+  const bh = (x, z) => b612Height9(x, z) ?? B612.y;
+  addSpot(28, -42, 'lore', 'rocketUp', { r: 7 });
+  addSpot(gx - 10, gz + 10, 'lore', 'rocketDown', { r: 7, y: bh(gx - 10, gz + 10) });
   // 玫瑰与玻璃罩
-  const stem = cyl(.06, .06, 1.4, lam(0x3e7a3a)); stem.position.set(gx + 3, top + .7, gz); scene.add(stem);
-  const bloom = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), lam(0xc2185b)); bloom.position.set(gx + 3, top + 1.5, gz); scene.add(bloom);
+  const rTop = bh(gx + 3, gz);
+  const stem = cyl(.06, .06, 1.4, lam(0x3e7a3a)); stem.position.set(gx + 3, rTop + .7, gz); scene.add(stem);
+  const bloom = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 8), lam(0xc2185b)); bloom.position.set(gx + 3, rTop + 1.5, gz); scene.add(bloom);
   const dome2 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
     new THREE.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: .3 }));
-  dome2.position.set(gx + 3, top, gz); scene.add(dome2);
-  addSpot(gx + 3, gz + 2.6, 'lore', 'rose', { r: 5 });
+  dome2.position.set(gx + 3, rTop, gz); scene.add(dome2);
+  addSpot(gx + 3, gz + 2.6, 'lore', 'rose', { r: 5, y: bh(gx + 3, gz + 2.6) });
   // 三棵猴面包树
   [[gx - 6, gz - 5], [gx - 2, gz + 6], [gx + 7, gz - 6]].forEach(([bx4, bz4]) => {
-    const bh6 = height(bx4, bz4);
+    const bh6 = bh(bx4, bz4);
     const trunk = cyl(1.1, 1.5, 4.4, M.wood); trunk.position.set(bx4, bh6 + 2.2, bz4); scene.add(trunk);
     const cano = new THREE.Mesh(new THREE.CylinderGeometry(3, 2.2, 1.2, 10), lam(0x5a8a44)); cano.position.set(bx4, bh6 + 5.2, bz4); scene.add(cano);
-    cirObs.push({ x: bx4, z: bz4, r: 1.8 });
   });
-  addSpot(gx - 6, gz - 2, 'lore', 'baobab', { r: 5 });
+  addSpot(gx - 6, gz - 2, 'lore', 'baobab', { r: 5, y: bh(gx - 6, gz - 2) });
   // 路灯与点灯人
   {
-    const lx = gx - 1, lz = gz - 9, lh2 = height(lx, lz);
+    const lx = gx - 1, lz = gz - 9, lh2 = bh(lx, lz);
     const pole = cyl(.12, .16, 4, lam(0x2a5a3a)); pole.position.set(lx, lh2 + 2, lz); scene.add(pole);
     const lampG = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff2b0 }));
     lampG.position.set(lx, lh2 + 4.3, lz); scene.add(lampG);
     const lampLight = new THREE.PointLight(0xffe9a0, 0, 40, 2);
     lampLight.position.set(lx, lh2 + 4.3, lz); lampLight.userData.pow = 24; scene.add(lampLight);
     nightLamps.push(lampLight);
-    addSpot(lx, lz - 2.6, 'lore', 'lamppost', { r: 5 });
+    addSpot(lx, lz - 2.6, 'lore', 'lamppost', { r: 5, y: bh(lx, lz - 2.6) });
   }
   {   // 四十四次日落的椅子 + 金蛇的沙地
-    const chH = height(gx + 12, gz - 14);
+    const chH = bh(gx + 12, gz - 14);
     const chair = box(.9, .14, .9, M.wood); chair.position.set(gx + 12, chH + .6, gz - 14); scene.add(chair);
     const chBk = box(.9, 1, .12, M.wood); chBk.position.set(gx + 12, chH + 1.15, gz - 14.4); scene.add(chBk);
-    addSpot(gx + 12, gz - 11, 'lore', 'b612sunset', { r: 6 });
-    const snH = height(gx - 16, gz + 14);
+    addSpot(gx + 12, gz - 11, 'lore', 'b612sunset', { r: 6, y: bh(gx + 12, gz - 11) });
+    const snH = bh(gx - 16, gz + 14);
     const snake6 = new THREE.Mesh(new THREE.TorusGeometry(.8, .12, 6, 14, 4.4), M.gold); snake6.rotation.x = -Math.PI / 2; snake6.position.set(gx - 16, snH + .18, gz + 14); scene.add(snake6);
-    addSpot(gx - 16, gz + 17, 'lore', 'b612snake', { r: 6 });
+    addSpot(gx - 16, gz + 17, 'lore', 'b612snake', { r: 6, y: bh(gx - 16, gz + 17) });
   }
-  addNpc({ x: gx + 10, z: gz - 18, name: '飞行员', body: 0x8a6a3a, hat: 0x5a4426, opts: { tall: 1.02 },
+  addNpc({ x: gx + 10, z: gz - 12, y: bh(gx + 10, gz - 12), name: '飞行员', body: 0x8a6a3a, hat: 0x5a4426, opts: { tall: 1.02 },
     lines: ['我六岁画的蟒蛇吞象,大人们都说:是顶帽子。', '"请你,给我画一只羊。"——我们就是这样认识的。', '如果有人路过撒哈拉,看见一个金发的小人……请立刻写信告诉我:他回来了。'] });
-  addNpc({ x: gx - 4, z: gz + 3, name: '小王子', body: 0x2e86ab, hat: 0xf2d13c, opts: { tall: .85 },
-    lines: ['真正重要的东西,用眼睛是看不见的。', '你在你的玫瑰身上花费的时间,让她变得如此重要。', '我的星球上,一天可以看四十四次日落。'] });
-  addNpc({ x: gx + 2, z: gz - 11, name: '点灯人', body: 0x4a4a52, hat: 0xd9b26a,
+  addNpc({ x: gx - 4, z: gz + 3, y: bh(gx - 4, gz + 3), name: '小王子', body: 0x2e86ab, hat: 0xf2d13c, opts: { tall: .85 },
+    lines: ['真正重要的东西,用眼睛是看不见的。', '你在你的玫瑰身上花费的时间,让她变得如此重要。', '我的星球不在地球上——一天可以看四十四次日落。'] });
+  addNpc({ x: gx + 2, z: gz - 11, y: bh(gx + 2, gz - 11), name: '点灯人', body: 0x4a4a52, hat: 0xd9b26a,
     lines: ['早上好。——为什么熄灯?——命令。晚上好。', '从前这里一分钟一昼夜,我连打盹的工夫都没有。', '在所有星球的人里,只有他不显得可笑。小王子这么说过我。'] });
-  addNpc({ x: gx + 8, z: gz + 5, name: '狐狸', body: 0xe07b28, hat: 0xc25e18, opts: { tall: .7 },
+  addNpc({ x: gx + 8, z: gz + 5, y: bh(gx + 8, gz + 5), name: '狐狸', body: 0xe07b28, hat: 0xc25e18, opts: { tall: .7 },
     lines: ['请你……驯养我吧。', '对我而言,你还只是一个小男孩,和其他千万个小男孩一样。', '如果你驯养了我,我们就彼此需要了。'] });
-  const dk4 = height(gx, gz - 50);
-  const plank4 = box(4.4, .5, 8, M.wood); plank4.position.set(gx, dk4 + .9, gz - 48); scene.add(plank4);
-  addSpot(gx, gz - 46, 'ferry', 'ferry', { r: 8 });
-  const bSign = makeSign('B-612', 3.6, '#1c2440', '#f2d13c');
-  bSign.position.set(gx + 7, height(gx + 7, gz - 40) + 3.6, gz - 40); scene.add(bSign);
+  const bSign = makeSign('B-612 · 外太空', 4.2, '#1c2440', '#f2d13c');
+  bSign.position.set(gx + 7, bh(gx + 7, gz - 16) + 3.6, gz - 16); scene.add(bSign);
 }
 /* —— 侏罗纪公园 —— */
 {
@@ -8512,7 +8535,7 @@ const WORLD_TOUR_STOPS9 = [
   { name: '霍格沃茨魔法城堡', x: HOG.x, z: HOG.z + 30, dist: 50, pitch: 0.26 },
   { name: '体育岛 · 红色梦剧场', x: SPT.x, z: SPT.z + 20, dist: 48, pitch: 0.30 },
   { name: '桃花源秘境', x: THY.x, z: THY.z + 20, dist: 36, pitch: 0.24 },
-  { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18, dist: 28, pitch: 0.24 },
+  { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18, y: B612.y + 1.2, dist: 34, pitch: 0.24 },
   { name: '红楼梦 · 大观园', x: DGY.x, z: DGY.z + 26, dist: 42, pitch: 0.26 },
   { name: '沙丘 · 厄拉科斯 (沙虫与堡垒)', x: ARRAKIS.x, z: ARRAKIS.z + 25, dist: 42, pitch: 0.24 },
   { name: '侏罗纪公园', x: JUR.x, z: JUR.z + 26, dist: 44, pitch: 0.25 },
@@ -9133,6 +9156,10 @@ function setDiveSurfaceHidden9(hide) {
   if (typeof airportSys9 !== 'undefined' && airportSys9?.grp) airportSys9.grp.visible = !hide;
   if (typeof dalianBridge9 !== 'undefined' && dalianBridge9?.grp) dalianBridge9.grp.visible = !hide;
   if (typeof suoStadium9 !== 'undefined' && suoStadium9?.grp) suoStadium9.grp.visible = !hide;
+  if (typeof b612Ast9 !== 'undefined' && b612Ast9?.grp) b612Ast9.grp.visible = !hide;
+  if (typeof rocketPadEarth9 !== 'undefined' && rocketPadEarth9?.grp) rocketPadEarth9.grp.visible = !hide;
+  if (typeof rocketPadB6129 !== 'undefined' && rocketPadB6129?.grp) rocketPadB6129.grp.visible = !hide;
+  if (typeof rocketFly9 !== 'undefined' && rocketFly9?.grp) rocketFly9.grp.visible = !hide && !!(flight && flight.rocket);
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
@@ -12317,6 +12344,7 @@ function surfaceGround9(x, z, curY) {
   const sth = stadiumHeight(x, z); if (sth != null && curY > sth - 2.4) g = Math.max(g, sth);
   const uth = unjTowerHeight(x, z); if (uth != null && curY > uth - 2.4) g = Math.max(g, uth);
   const skh = skyHeight(x, z); if (skh != null && curY > skh - 2.4) g = Math.max(g, skh);
+  const b6h = typeof b612Height9 === 'function' ? b612Height9(x, z) : null; if (b6h != null && curY > b6h - 3.5) g = Math.max(g, b6h);
   const lhh = lighthouseHeight9(x, z); if (lhh != null && curY > lhh - 2.4) g = Math.max(g, lhh);
   const uih = uisleHeight9(x, z); if (uih != null && curY > uih - 2.4) g = Math.max(g, uih);
   return g;
@@ -13697,7 +13725,8 @@ try {
   const tpq = (qp.get('tp') || '').split(',').map(Number);
   const hasTp9 = tpq.length >= 2 && tpq.every(Number.isFinite);
   if (hasTp9) {
-    player.position.set(tpq[0], Math.max(height(tpq[0], tpq[1]), 0) + 1.2, tpq[1]);
+    const b6Tp = typeof b612Height9 === 'function' ? b612Height9(tpq[0], tpq[1]) : null;
+    player.position.set(tpq[0], (b6Tp != null ? b6Tp : Math.max(height(tpq[0], tpq[1]), 0)) + 1.2, tpq[1]);
   } else if (!iq) {
     // 🎲 每次进入游戏随机降临一座岛屿（含全部经典名著/奇观岛）
     const rndIsles9 = [
@@ -13715,7 +13744,7 @@ try {
       { name: '山海经 · 异兽之野', x: SHJ.x, z: SHJ.z + 24 },
       { name: '桃花源秘境', x: THY.x, z: THY.z + 20 },
       { name: '一千零一夜 · 巴格达', x: ANH.x, z: ANH.z + 24 },
-      { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18 },
+      { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18, y: B612.y + 1.2 },
       { name: '侏罗纪公园', x: JUR.x, z: JUR.z + 26 },
       { name: '西游记 · 花果山', x: HGS.x, z: HGS.z + 26 },
       { name: '红楼梦 · 大观园', x: DGY.x, z: DGY.z + 26 },
@@ -15821,7 +15850,33 @@ function loop() {
     } else spray.material.opacity = 0;
   }
   /* 飞毯航线(巴格达 → 收藏之岛) */
-  if (flight && flight.sky) {   // 🏯 大鹏直航:侧向弧线爬升/俯冲(上天空之城/归海通用)
+  if (b612Ast9) b612Ast9.update(t);
+  if (flight && flight.rocket) {   // 🚀 星际穿梭火箭航线（地球 ↔ 外太空 B-612 小行星）
+    flight.t += dt;
+    const k2 = Math.min(1, flight.t / flight.dur), e2 = k2 * k2 * (3 - 2 * k2);
+    const px9 = flight.from[0] + (flight.to[0] - flight.from[0]) * e2;
+    const pz9 = flight.from[1] + (flight.to[1] - flight.from[1]) * e2;
+    const fy2 = flight.y0 + (flight.y1 - flight.y0) * e2 + Math.sin(k2 * Math.PI) * 58;
+    if (flight.lx != null) {
+      const mvx = px9 - flight.lx, mvz = pz9 - flight.lz;
+      if (mvx * mvx + mvz * mvz > 1e-6) faceYaw = Math.atan2(mvx, mvz);
+    }
+    flight.lx = px9; flight.lz = pz9;
+    player.position.set(px9, fy2, pz9); vy = 0;
+    if (rocketFly9) {
+      rocketFly9.grp.visible = true;
+      rocketFly9.grp.position.set(px9, fy2 - 3.2, pz9);
+      rocketFly9.ship.rotation.y = faceYaw;
+      const pitchAmt = Math.cos(k2 * Math.PI) * 0.45;
+      rocketFly9.ship.rotation.x = pitchAmt;
+      rocketFly9.flame.scale.set(1.1 + Math.sin(t * 28) * 0.25, 1.8 + Math.cos(t * 32) * 0.45, 1.1 + Math.sin(t * 28) * 0.25);
+    }
+    if (k2 >= 1) {
+      player.position.set(flight.to[0], flight.y1 + 0.1, flight.to[1]);
+      if (rocketFly9) { rocketFly9.grp.visible = false; rocketFly9.ship.rotation.set(0, 0, 0); }
+      toast(flight.msg); blip(784); flight = null;
+    }
+  } else if (flight && flight.sky) {   // 🏯 大鹏直航:侧向弧线爬升/俯冲(上天空之城/归海通用)
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur), e2 = k2 * k2 * (3 - 2 * k2);
     const fx2 = flight.from[0] + (flight.to[0] - flight.from[0]) * e2;
@@ -16170,12 +16225,13 @@ function loop() {
   const onArrakis = Math.hypot(player.position.x - ARRAKIS.x, player.position.z - ARRAKIS.z) < ARRAKIS.r + 15;
   const isl = ISLES.find(z3 => Math.hypot(player.position.x - z3.c.x, player.position.z - z3.c.z) < z3.c.r + 20);
   const onSky9 = player.position.y > 140 && Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z) < SKY.r + 60;
-  const mz2 = onSky9 ? 'sky' : (swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (isl ? isl.theme : (onTruman ? 'truman' : (hereKey || 'street')))))))));
+  const onB612Space = player.position.y > 200 && Math.hypot(player.position.x - B612.x, player.position.z - B612.z) < 70;
+  const mz2 = onB612Space ? 'b612' : onSky9 ? 'sky' : (swimming ? 'fish' : (onMordor ? 'mordor' : (onMid ? 'shire' : (onHog ? 'hogwarts' : (onMob ? 'mobydick' : (onSpt ? 'stadium' : (isl ? isl.theme : (onTruman ? 'truman' : (hereKey || 'street')))))))));
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onArrakis ? '🪱' : (onSuo ? '🏟️' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))))));
-  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onArrakis ? '厄拉科斯 · 沙丘' : (onSuo ? '大连梭鱼湾足球场' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))))));
+  $('zoneIcon').textContent = onB612Space ? '🌹' : onSky9 ? '🏯' : swimming ? '🌊' : (onArrakis ? '🪱' : (onSuo ? '🏟️' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))))));
+  const baseZone9 = onB612Space ? 'B-612 小行星 · 外太空轨道' : onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onArrakis ? '厄拉科斯 · 沙丘' : (onSuo ? '大连梭鱼湾足球场' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))))));
   $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthRegion9(player.position.x, player.position.z)} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
@@ -16472,7 +16528,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

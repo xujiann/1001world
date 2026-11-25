@@ -2107,3 +2107,108 @@ export function buildAlexandriaLibrary9(scene, zn, addSpot, boxObs, cirObs, make
     }
   };
 }
+
+export function buildSpaceAsteroidB612(scene, B612) {
+  const grp = new THREE.Group();
+  const R = 30;
+  const cx = B612.x, cy = B612.y - R, cz = B612.z; // 球顶位于 B612.y (265m 外太空)
+  grp.position.set(cx, cy, cz);
+
+  // 1. 雕塑感外太空陨石星球主体（陨石坑 + 金褐星尘岩壳）
+  const astGeo = new THREE.IcosahedronGeometry(R, 3);
+  const pos = astGeo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const cTop = new THREE.Color(0x9a7b56), cCrater = new THREE.Color(0x4b3b2c), cDust = new THREE.Color(0xc8a46e);
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+    const n = Math.sin(vx * 0.22) * Math.cos(vy * 0.24) * Math.sin(vz * 0.21);
+    const crater = vy < R * 0.65 ? Math.max(0, Math.sin(vx * 0.35 + vz * 0.3)) * 1.4 : 0;
+    const scale = 1 + n * 0.045 - crater * 0.03;
+    pos.setXYZ(i, vx * scale, vy * scale, vz * scale);
+    const c = vy > R * 0.72 ? cDust : (crater > 0.5 ? cCrater : cTop);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  astGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  astGeo.computeVertexNormals();
+  const astMesh = new THREE.Mesh(astGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.06 }));
+  astMesh.castShadow = true; astMesh.receiveShadow = true;
+  grp.add(astMesh);
+
+  // 2. 3座小火山（两座喷发微红熔岩，一座熄灭）
+  for (let vi = 0; vi < 3; vi++) {
+    const va = vi * 2.1 + 0.5, vr = 10 + vi * 2;
+    const vx = Math.cos(va) * vr, vz = Math.sin(va) * vr;
+    const vy = Math.sqrt(Math.max(1, R * R - vx * vx - vz * vz));
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0x4a382c, roughness: 0.9 }));
+    cone.position.set(vx, vy + 0.8, vz);
+    grp.add(cone);
+    if (vi < 2) {
+      const lava = new THREE.Mesh(new THREE.SphereGeometry(0.75, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff6b2b, fog: false }));
+      lava.position.set(vx, vy + 2.35, vz); grp.add(lava);
+    }
+  }
+
+  // 3. 外太空星环碎石带 + 金色星尘光环
+  const belt = new THREE.Group();
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x7c6a58, roughness: 0.88 });
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2;
+    const rr = R + 12 + (i % 4) * 3.5;
+    const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + (i % 3) * 0.45, 0), rockMat);
+    rk.position.set(Math.cos(a) * rr, (i % 5 - 2) * 1.4, Math.sin(a) * rr);
+    rk.rotation.set(i, i * 0.7, 0);
+    belt.add(rk);
+  }
+  const orbitRing = new THREE.Mesh(new THREE.TorusGeometry(R + 16, 0.16, 6, 64), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.45, fog: false }));
+  orbitRing.rotation.x = Math.PI / 2.2; belt.add(orbitRing);
+  grp.add(belt);
+
+  const starGlow = new THREE.PointLight(0xffe099, 2.2, 95, 1.2);
+  starGlow.position.set(0, R + 12, 0); grp.add(starGlow);
+
+  scene.add(grp);
+  return {
+    grp,
+    surfaceY(x, z) {
+      const dx = x - cx, dz = z - cz, d2 = dx * dx + dz * dz;
+      if (d2 > (R - 2) * (R - 2)) return null;
+      return cy + Math.sqrt(Math.max(0, R * R - d2)) + 0.15;
+    },
+    update(t) {
+      belt.rotation.y = t * 0.12;
+      belt.rotation.z = Math.sin(t * 0.25) * 0.08;
+    }
+  };
+}
+
+export function buildSpaceRocket9(scene, px, py, pz) {
+  const grp = new THREE.Group();
+  grp.position.set(px, py, pz);
+  const bodyM = new THREE.MeshStandardMaterial({ color: 0xf4f7fa, roughness: 0.3, metalness: 0.25 });
+  const redM = new THREE.MeshStandardMaterial({ color: 0xd6382b, roughness: 0.4, metalness: 0.2 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x262e38, roughness: 0.5, metalness: 0.6 });
+  const winM = new THREE.MeshPhysicalMaterial({ color: 0x5ce8ff, roughness: 0.1, clearcoat: 0.9 });
+
+  // 火箭主体 + 整流罩尖锥 + 舷窗 + 三片尾翼 + 发射架 + 等离子尾焰
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, 0.5, 12), darkM);
+  pad.position.y = 0.25; grp.add(pad);
+  const ship = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.45, 5.6, 14), bodyM);
+  hull.position.y = 3.4; hull.castShadow = true; ship.add(hull);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 14), redM);
+  nose.position.y = 7.4; ship.add(nose);
+  const port = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), winM);
+  port.position.set(0, 4.6, 1.05); ship.add(port);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.2, 1.4), redM);
+    fin.position.set(Math.cos(a) * 1.45, 1.4, Math.sin(a) * 1.45);
+    fin.rotation.y = -a + Math.PI / 2; ship.add(fin);
+  }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.85, 3.6, 10), new THREE.MeshBasicMaterial({ color: 0x5ce8ff, transparent: true, opacity: 0, fog: false }));
+  flame.rotation.x = Math.PI; flame.position.y = -0.8; ship.add(flame);
+  grp.add(ship);
+
+  scene.add(grp);
+  return { grp, ship, flame };
+}
