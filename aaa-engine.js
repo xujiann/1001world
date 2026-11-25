@@ -1816,3 +1816,203 @@ export function buildDalianBridge9(scene, brA, brB, deckYFn) {
   scene.add(grp);
   return { grp };
 }
+
+export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
+  const grp = new THREE.Group();
+  grp.position.set(cx, yBase, cz);
+
+  const pw = 54, pd = 36; // 专业绿茵场尺寸
+  // 1. 专业高清条纹草坪 (512×512 CanvasTexture: 交替割草纹 + 标准白线 + 禁区 + 中圈)
+  const pCv = document.createElement('canvas'); pCv.width = 512; pCv.height = 384;
+  const pc = pCv.getContext('2d');
+  for (let i = 0; i < 12; i++) {
+    pc.fillStyle = i % 2 === 0 ? '#2b8a3e' : '#359c4a';
+    pc.fillRect((i / 12) * 512, 0, 512 / 12 + 1, 384);
+  }
+  pc.strokeStyle = 'rgba(248,252,250,0.92)'; pc.lineWidth = 3;
+  pc.strokeRect(18, 18, 476, 348);
+  pc.beginPath(); pc.moveTo(256, 18); pc.lineTo(256, 366); pc.stroke();
+  pc.beginPath(); pc.arc(256, 192, 46, 0, Math.PI * 2); pc.stroke();
+  pc.fillStyle = '#fff'; pc.beginPath(); pc.arc(256, 192, 4, 0, Math.PI * 2); pc.fill();
+  for (const sx of [18, 494 - 74]) { pc.strokeRect(sx, 96, 74, 192); }
+  for (const sx of [18, 494 - 28]) { pc.strokeRect(sx, 144, 28, 96); }
+  const pitchTex = new THREE.CanvasTexture(pCv);
+  const pitch = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd), new THREE.MeshStandardMaterial({ map: pitchTex, roughness: 0.85 }));
+  pitch.rotation.x = -Math.PI / 2; pitch.position.y = 0.08; pitch.receiveShadow = true; grp.add(pitch);
+
+  // 2. 真实 3D 球门（门柱/横梁/球网）+ 替补席 + 角旗
+  const postM = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.3, metalness: 0.4 });
+  const netM = new THREE.MeshBasicMaterial({ color: 0xdce8f0, wireframe: true, transparent: true, opacity: 0.45 });
+  for (const sgn of [-1, 1]) {
+    const gx = sgn * (pw / 2 - 1.8);
+    const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), postM); gl.position.set(gx, 1.3, -2.8); grp.add(gl);
+    const gr = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), postM); gr.position.set(gx, 1.3, 2.8); grp.add(gr);
+    const gb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.76, 6), postM); gb.rotation.x = Math.PI / 2; gb.position.set(gx, 2.6, 0); grp.add(gb);
+    const net = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 5.5), netM); net.position.set(gx + sgn * 0.75, 1.28, 0); grp.add(net);
+  }
+  const dugout = new THREE.Mesh(new THREE.BoxGeometry(10, 1.6, 1.8), new THREE.MeshPhysicalMaterial({ color: 0x3898e8, transparent: true, opacity: 0.65, roughness: 0.1 }));
+  dugout.position.set(0, 0.85, pd / 2 + 1.8); grp.add(dugout);
+
+  // 3. 双层梭鱼湾标志性“海蓝-冰白”渐变专业看台碗 + 360° 环场 LED 广告屏
+  const bowlMat = new THREE.MeshStandardMaterial({ color: 0x165ca8, roughness: 0.55 });
+  const tier2Mat = new THREE.MeshStandardMaterial({ color: 0x36a2eb, roughness: 0.5 });
+  const concMat = new THREE.MeshStandardMaterial({ color: 0xdce4ec, roughness: 0.72 });
+  // 四周双层看台（矩形圆角布局）
+  for (const [bx, bz, bw, bd, ry] of [
+    [0, -pd / 2 - 9.5, pw + 14, 12, 0],
+    [0, pd / 2 + 9.5, pw + 14, 12, Math.PI],
+    [-pw / 2 - 9.5, 0, pd + 8, 12, Math.PI / 2],
+    [pw / 2 + 9.5, 0, pd + 8, 12, -Math.PI / 2],
+  ]) {
+    const sg = new THREE.Group(); sg.position.set(bx, 0, bz); sg.rotation.y = ry;
+    for (let st = 0; st < 7; st++) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(bw, 1.15, 1.45), st < 4 ? bowlMat : tier2Mat);
+      step.position.set(0, 0.6 + st * 1.1, 4.5 - st * 1.35);
+      step.castShadow = true; step.receiveShadow = true; sg.add(step);
+    }
+    const backW = new THREE.Mesh(new THREE.BoxGeometry(bw, 9.5, 1.2), concMat);
+    backW.position.set(0, 4.8, -5.2); sg.add(backW);
+    grp.add(sg);
+  }
+  // 环场 LED 滚动广告屏
+  const ledCv = document.createElement('canvas'); ledCv.width = 512; ledCv.height = 64;
+  const lc = ledCv.getContext('2d');
+  lc.fillStyle = '#061a36'; lc.fillRect(0, 0, 512, 64);
+  lc.fillStyle = '#4ad4ff'; lc.font = 'bold 28px system-ui,sans-serif';
+  lc.fillText('DALIAN BARRACUDA BAY  ·  大连梭鱼湾专业足球场  ·  海风主场', 18, 42);
+  const ledTex = new THREE.CanvasTexture(ledCv); ledTex.wrapS = THREE.RepeatWrapping;
+  const ledMat = new THREE.MeshBasicMaterial({ map: ledTex });
+  for (const [lx, lz, lw, ry] of [
+    [0, -pd / 2 - 2.6, pw + 4, 0], [0, pd / 2 + 2.6, pw + 4, Math.PI],
+    [-pw / 2 - 2.6, 0, pd + 2, Math.PI / 2], [pw / 2 + 2.6, 0, pd + 2, -Math.PI / 2]
+  ]) {
+    const lm = new THREE.Mesh(new THREE.PlaneGeometry(lw, 1.1), ledMat);
+    lm.position.set(lx, 0.72, lz); lm.rotation.y = ry; grp.add(lm);
+  }
+
+  // 4. 梭鱼湾招牌“炫彩叠浪”蓝白螺旋膜结构外立面 + 悬挑采光罩棚 (40组螺旋海浪肋架)
+  const etfeMat = new THREE.MeshPhysicalMaterial({ color: 0xe6f6ff, roughness: 0.16, metalness: 0.12, clearcoat: 0.92, transparent: true, opacity: 0.76, side: THREE.DoubleSide });
+  const ribBlueMat = new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.35, metalness: 0.45 });
+  const ribWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f7fc, roughness: 0.35, metalness: 0.25 });
+  const roofRing = new THREE.Mesh(new THREE.RingGeometry(24, 46, 48), etfeMat);
+  roofRing.rotation.x = -Math.PI / 2; roofRing.position.y = 14.5; roofRing.scale.set(1.22, 0.92, 1); grp.add(roofRing);
+  const N_RIBS = 40;
+  for (let i = 0; i < N_RIBS; i++) {
+    const a = (i / N_RIBS) * Math.PI * 2;
+    const rx = Math.cos(a) * 44.5 * 1.22, rz = Math.sin(a) * 44.5 * 0.92;
+    const waveH = 13.5 + Math.sin(a * 4) * 2.2;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.65, waveH, 2.2), i % 2 === 0 ? ribWhiteMat : ribBlueMat);
+    rib.position.set(rx, waveH / 2, rz);
+    rib.rotation.y = -a;
+    rib.rotation.z = 0.22; // 标志性外倾叠浪弧度
+    rib.castShadow = true; grp.add(rib);
+    // 顶部内挑悬臂钢梁
+    const cant = new THREE.Mesh(new THREE.BoxGeometry(16, 0.45, 0.55), ribWhiteMat);
+    cant.position.set(Math.cos(a) * 35 * 1.22, 14.2 + Math.sin(a * 4) * 0.8, Math.sin(a) * 35 * 0.92);
+    cant.rotation.y = -a; grp.add(cant);
+  }
+  // 发光海浪氛围灯带（绕场一圈）
+  const neonRing = new THREE.Mesh(new THREE.TorusGeometry(43, 0.28, 6, 64), new THREE.MeshBasicMaterial({ color: 0x4ad4ff, fog: false }));
+  neonRing.rotation.x = Math.PI / 2; neonRing.position.y = 11.2; neonRing.scale.set(1.22, 0.92, 1); grp.add(neonRing);
+
+  // 5. 四角泛光照明灯塔 + 巨型悬吊计分牌 (Jumbotron)
+  const scoreCv = document.createElement('canvas'); scoreCv.width = 256; scoreCv.height = 128;
+  const sc = scoreCv.getContext('2d');
+  const scoreTex = new THREE.CanvasTexture(scoreCv);
+  let scoreA = 2, scoreB = 1;
+  const drawScore = (min) => {
+    sc.fillStyle = '#07162a'; sc.fillRect(0, 0, 256, 128);
+    sc.strokeStyle = '#38c8ff'; sc.lineWidth = 4; sc.strokeRect(4, 4, 248, 120);
+    sc.fillStyle = '#4ad4ff'; sc.font = 'bold 16px system-ui,sans-serif'; sc.textAlign = 'center';
+    sc.fillText('大连梭鱼湾 · BARRACUDA BAY', 128, 28);
+    sc.fillStyle = '#fff'; sc.font = 'bold 34px monospace';
+    sc.fillText(`${scoreA}  :  ${scoreB}`, 128, 76);
+    sc.fillStyle = '#ffd84d'; sc.font = 'bold 14px system-ui,sans-serif';
+    sc.fillText(`大连英博 vs 上海申花  ${min}'`, 128, 108);
+    scoreTex.needsUpdate = true;
+  };
+  drawScore(68);
+  const jMat = new THREE.MeshBasicMaterial({ map: scoreTex });
+  for (const sx of [-1, 1]) {
+    const jb = new THREE.Mesh(new THREE.PlaneGeometry(11, 5.5), jMat);
+    jb.position.set(sx * (pw / 2 + 2.5), 11.5, 0); jb.rotation.y = -sx * Math.PI / 2; grp.add(jb);
+  }
+  const pitchLight = new THREE.PointLight(0xeef8ff, 3.2, 120, 1.2);
+  pitchLight.position.set(0, 22, 0); grp.add(pitchLight);
+
+  // 6. 2,000 名 InstancedMesh 荧光海蓝球迷（随比赛人浪起伏）
+  const FANS = 1600;
+  const fanGeo = new THREE.CylinderGeometry(0.22, 0.28, 0.85, 5);
+  const fanMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const fanInst = new THREE.InstancedMesh(fanGeo, fanMat, FANS);
+  const fm4 = new THREE.Matrix4(), fCol = new THREE.Color();
+  const fanBase = [];
+  for (let i = 0; i < FANS; i++) {
+    const side = i % 4, row = (i >> 2) % 7, u = ((i * 73) % 1000) / 1000 - 0.5;
+    let fx = 0, fz = 0;
+    const fy = 1.25 + row * 1.1;
+    if (side < 2) { fx = u * (pw + 10); fz = (side === 0 ? -1 : 1) * (pd / 2 + 5.2 + row * 1.35); }
+    else { fz = u * (pd + 4); fx = (side === 2 ? -1 : 1) * (pw / 2 + 5.2 + row * 1.35); }
+    fanBase.push({ fx, fy, fz, ph: i * 0.23 });
+    fm4.makeTranslation(fx, fy, fz);
+    fanInst.setMatrixAt(i, fm4);
+    fCol.setHex(i % 5 === 0 ? 0xf6f8fa : i % 3 === 0 ? 0x4ad4ff : 0x1672d8);
+    fanInst.setColorAt(i, fCol);
+  }
+  fanInst.instanceMatrix.needsUpdate = true;
+  if (fanInst.instanceColor) fanInst.instanceColor.needsUpdate = true;
+  grp.add(fanInst);
+
+  // 7. 14 名场上球员 + 实时足球比赛
+  const players = [];
+  const teamBlueM = new THREE.MeshStandardMaterial({ color: 0x1878e8, roughness: 0.5 });
+  const teamRedM = new THREE.MeshStandardMaterial({ color: 0xe63b3b, roughness: 0.5 });
+  const skinM = new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.6 });
+  for (let i = 0; i < 14; i++) {
+    const pg = new THREE.Group();
+    const tM = i < 7 ? teamBlueM : teamRedM;
+    const bd = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.75, 4, 6), tM); bd.position.y = 0.75; pg.add(bd);
+    const hd = new THREE.Mesh(new THREE.SphereGeometry(0.24, 6, 5), skinM); hd.position.y = 1.48; pg.add(hd);
+    const bx = (i < 7 ? -1 : 1) * (4 + (i % 7) * 2.8), bz = ((i % 3) - 1) * 8;
+    pg.position.set(bx, 0.12, bz);
+    grp.add(pg);
+    players.push({ m: pg, bx, bz, ph: i * 0.9, team: i < 7 ? 0 : 1 });
+  }
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 }));
+  ball.position.set(0, 0.42, 0); grp.add(ball);
+
+  scene.add(grp);
+  let lastMin = 68;
+  return {
+    grp,
+    update(t) {
+      ledTex.offset.x = (t * 0.08) % 1;
+      // 足球在场内连续传球射门轨迹
+      const bpx = Math.sin(t * 0.85) * 19 + Math.cos(t * 1.9) * 4;
+      const bpz = Math.cos(t * 1.15) * 12;
+      const bpy = 0.4 + Math.abs(Math.sin(t * 3.8)) * 0.9;
+      ball.position.set(bpx, bpy, bpz);
+      ball.rotation.x += 0.12; ball.rotation.z += 0.09;
+      for (const pl of players) {
+        const tx = pl.bx * 0.55 + bpx * 0.45 + Math.sin(t * 1.4 + pl.ph) * 3.2;
+        const tz = pl.bz * 0.55 + bpz * 0.45 + Math.cos(t * 1.2 + pl.ph) * 2.6;
+        pl.m.position.set(Math.max(-pw / 2 + 2, Math.min(pw / 2 - 2, tx)), 0.12 + Math.abs(Math.sin(t * 8 + pl.ph)) * 0.12, Math.max(-pd / 2 + 2, Math.min(pd / 2 - 2, tz)));
+        pl.m.lookAt(cx + bpx, yBase + 0.12, cz + bpz);
+      }
+      // 球迷人浪
+      for (let i = 0; i < FANS; i += 4) {
+        const fb = fanBase[i];
+        const wave = Math.max(0, Math.sin(t * 3.2 - fb.fx * 0.12 + fb.fz * 0.1)) * 0.45;
+        fm4.makeTranslation(fb.fx, fb.fy + wave, fb.fz);
+        fanInst.setMatrixAt(i, fm4);
+      }
+      fanInst.instanceMatrix.needsUpdate = true;
+      const curMin = (68 + Math.floor(t / 12)) % 90 + 1;
+      if (curMin !== lastMin) {
+        lastMin = curMin;
+        if (curMin % 15 === 0) scoreA = (scoreA + 1) % 6;
+        drawScore(curMin);
+      }
+    }
+  };
+}

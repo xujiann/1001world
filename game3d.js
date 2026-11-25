@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9 } from './aaa-engine.js?v=16';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9 } from './aaa-engine.js?v=17';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -168,6 +168,7 @@ const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
 const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,七层螺旋)
 const UNJ = { x: 350, z: 620, r: 115 };     // 未竟之都(人工几何岛:世界交流中心遗址)
 const ARRAKIS = { x: 1550, z: -100, r: 150 }; // 沙丘·厄拉科斯(Dune Arrakis 沙漠奇观岛)
+const SUO = { x: 325, z: 220, r: 62 }; // 大连梭鱼湾足球场(主岛东南三面环海半岛)
 /* —— 海洋文学带:外环诸岛(数据驱动,内容见 NI_CONTENT)—— */
 const NISLES = [
   { key: 'mys', x: -1500, z: -1400, r: 92, mask: 2.0, h: 7, peak: { r: 52, hh: 30 }, dock: [-1434, -1339] }, // 神秘岛(火山)
@@ -317,6 +318,7 @@ function islandMask(x, z) {
   m = Math.max(m, isleM9(x, z, PUR.x, PUR.z, PUR.r, 2.0));  // 炼狱山
   m = Math.max(m, isleM9(x, z, UNJ.x, UNJ.z, UNJ.r, 2.2));  // 未竟之都(人工岛)
   m = Math.max(m, isleM9(x, z, ARRAKIS.x, ARRAKIS.z, ARRAKIS.r, 2.1)); // 厄拉科斯·沙丘
+  m = Math.max(m, isleM9(x, z, SUO.x, SUO.z, SUO.r, 2.2)); // 梭鱼湾三面环海半岛
   for (const s of nislesNear(x, z)) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带(空间索引)
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
     if (Math.abs(lx) < 78 && Math.abs(lz) < 92) {
@@ -542,6 +544,12 @@ function height(x, z) {
   h -= smooth01(clamp(1 - bd2 / WHALE_BLOW.r, 0, 1)) * 11;
   // 海岸柔化:抬高 -3.5..+3.5 过渡带(修复新噪声下沉的栈桥,滩涂也更自然)
   if (h > -3.5 && h < 3.5) h += (3.5 - Math.abs(h)) / 3.5 * 2.2;
+  { const ds = Math.hypot(x - SUO.x, z - SUO.z);
+    if (ds < SUO.r + 6) {
+      const ws = smooth01(clamp(1 - Math.max(0, ds - 54) / 14, 0, 1));
+      h = h * (1 - ws) + 4.5 * ws;
+    }
+  }
   if (_apReady9) {
     for (let i = 0; i < AIRPORTS.length; i++) {
       const dx = Math.abs(x - AIRPORTS[i][2]), dz = Math.abs(z - AIRPORTS[i][3]);
@@ -4899,6 +4907,7 @@ function instEzTrees9(treeList) {
 }
 
 function makeTree(x, z, scale, birdCol, speciesIdx = null) {
+  if (Math.hypot(x - SUO.x, z - SUO.z) < 62) return { grp: null, bird: null };
   const h = height(x, z);
   if (!birdCol) { LATE_TREES9.push([x, z, h, scale, speciesIdx]); cirObs.push({ x, z, r: 1.1 * scale }); return { grp: null, bird: null }; }
   if (scale >= 0.85) TALL_TREES9.push({ x, z, h, sc: scale });
@@ -8514,6 +8523,7 @@ if (EVENT === 'kites') {
 
 const AIR_KEYS = new Set(AIRPORTS.filter(a => !a[4] && a[0] !== 'main').map(a => a[0]));   // 可通航的岛(渡口下架名单)
 const airportSys9 = new AirportSystems9(scene, height, AIRPORTS, cirObs);
+const suoStadium9 = buildBarracudaBayStadium9(scene, SUO.x, SUO.z, 4.5);
 for (const [k3, nm3, ax, az] of AIRPORTS) {
   addSpot(ax + 5.6, az + 8.5, 'air', 'airport', { r: 8, airKey: k3 });
 }
@@ -9074,6 +9084,7 @@ function setDiveSurfaceHidden9(hide) {
   if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !hide;
   if (typeof airportSys9 !== 'undefined' && airportSys9?.grp) airportSys9.grp.visible = !hide;
   if (typeof dalianBridge9 !== 'undefined' && dalianBridge9?.grp) dalianBridge9.grp.visible = !hide;
+  if (typeof suoStadium9 !== 'undefined' && suoStadium9?.grp) suoStadium9.grp.visible = !hide;
 }
 let suitMode9 = 'land';
 function updateAutoSuit9() {
@@ -12396,7 +12407,7 @@ const NO_GRASS = [
   { x: ARRAKIS.x, z: ARRAKIS.z, r: ARRAKIS.r + 10 }, // 厄拉科斯·沙丘(纯沙海无草)
 ];
 function inAirport9(x, z) { for (const [,, ax, az] of AIRPORTS) if (Math.abs(x - ax) < 17 && Math.abs(z - az) < 27) return true; return false; }
-function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; if (inAirport9(x, z)) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
+function grassOK(x, z) { if ((x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 56 * 56) return false; if (inStadium9(x, z) || inAirport9(x, z)) return false; for (const g of NO_GRASS) if ((x - g.x) ** 2 + (z - g.z) ** 2 < g.r * g.r) return false; return true; }
 /* 世界锚定的抖动网格散布:位置由世界格坐标 hash 决定 → 随玩家移动只在圆盘边缘增减,
    圈内格保持原位不动 = 草地平滑铺开、不再整体重洗;颜色也按格 hash 稳定(免闪) */
 const _sgM4 = new THREE.Matrix4(), _sgQ = new THREE.Quaternion(), _sgS = new THREE.Vector3(), _sgP = new THREE.Vector3(), _sgE = new THREE.Euler();
@@ -12463,7 +12474,7 @@ let fireflies = null, ffCx = 1e9, ffCz = 1e9;
   fireflies.userData = { FF, R: 34, rnd: r0, base: new Float32Array(FF * 3), ph };
   scene.add(fireflies);
 }
-const inStadium9 = (x, z) => (x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 58 * 58;
+const inStadium9 = (x, z) => (x - SPT.x) ** 2 + (z - SPT.z) ** 2 < 58 * 58 || (x - SUO.x) ** 2 + (z - SUO.z) ** 2 < 60 * 60;
 function redistributeFireflies(cx, cz) {
   ffCx = cx; ffCz = cz;
   const u = fireflies.userData, b = u.base;
@@ -14985,6 +14996,7 @@ function loop() {
   coastalBirds9.update(t, dt);
   oceanMarine9.update(t, dt);
   airportSys9.update(t, dt);
+  suoStadium9.update(t);
   biomeMood9.update(t, dt, player.position, skyCol, scene.fog, typeof bloomPass9 !== 'undefined' ? bloomPass9 : null, b => toast(b.msg));
 
   /* 草地:移动超 7m 重铺一次,风摆逐帧 */
@@ -16075,6 +16087,7 @@ function loop() {
   const onHog = Math.hypot(player.position.x - HOG.x, player.position.z - HOG.z) < HOG.r + 20;
   const onMob = Math.hypot(player.position.x - MOB.x, player.position.z - MOB.z) < MOB.r + 20;
   const onSpt = Math.hypot(player.position.x - SPT.x, player.position.z - SPT.z) < SPT.r + 20;
+  const onSuo = Math.hypot(player.position.x - SUO.x, player.position.z - SUO.z) < SUO.r + 12;
   const onArrakis = Math.hypot(player.position.x - ARRAKIS.x, player.position.z - ARRAKIS.z) < ARRAKIS.r + 15;
   const isl = ISLES.find(z3 => Math.hypot(player.position.x - z3.c.x, player.position.z - z3.c.z) < z3.c.r + 20);
   const onSky9 = player.position.y > 140 && Math.hypot(player.position.x - SKY.x, player.position.z - SKY.z) < SKY.r + 60;
@@ -16082,8 +16095,8 @@ function loop() {
   if (mz2 !== musicZone) { musicZone = mz2; melIdx = 3; }
   const onIsle2 = Math.hypot(player.position.x - IS2.x, player.position.z - IS2.z) < IS2.r + 10;
   const onBridge = !swimming && bh != null && Math.abs(player.position.y - bh) < 3;
-  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onArrakis ? '🪱' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭')))))))))));
-  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onArrakis ? '厄拉科斯 · 沙丘' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野')))))))))));
+  $('zoneIcon').textContent = onSky9 ? '🏯' : swimming ? '🌊' : (onArrakis ? '🪱' : (onSuo ? '🏟️' : (onMordor ? '🌋' : (onMid ? '💍' : (onHog ? '⚡' : (onMob ? '🐳' : (onSpt ? '⚽' : (isl ? isl.icon : (onTruman ? '📺' : (hereKey ? CATS[hereKey].icon : (onBridge ? '🌉' : (onIsle2 ? '🗼' : '🧭'))))))))))));
+  const baseZone9 = onSky9 ? '天空之城 · 勒皮他' : swimming ? '大海' : (onArrakis ? '厄拉科斯 · 沙丘' : (onSuo ? '大连梭鱼湾足球场' : (onMordor ? '中土 · 魔多' : (onMid ? '中土 · 夏尔' : (onHog ? '霍格沃茨' : (onMob ? '南塔开特 · 捕鲸港' : (onSpt ? '体育岛 · 梦剧场' : (isl ? isl.name : (onTruman ? '楚门的世界 · 桃源岛' : (hereKey ? CATS[hereKey].name : (onBridge ? '跨海大桥' : (onIsle2 ? '灯塔屿' : '鲸背旷野'))))))))))));
   $('zoneName').textContent = diving ? baseZone9 : `${baseZone9} · ${earthRegion9(player.position.x, player.position.z)} · ${earthCoord9(player.position.x, player.position.z)} · ${Math.max(0, Math.round(player.position.y))}m`;
   if (BUFF.run > 0) BUFF.run -= dt;
   if (BUFF.ride > 0) BUFF.ride -= dt;
@@ -16380,7 +16393,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
