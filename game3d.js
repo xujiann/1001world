@@ -4875,6 +4875,7 @@ function instEzTrees9(treeList) {
   const buckets = EZ_PROTOS9.map(() => []);
   const greenCount = Math.min(4, EZ_PROTOS9.length);
   treeList.forEach((item, idx) => {
+    if (Math.hypot(item[0] - SUO.x, item[1] - SUO.z) < 70 || Math.hypot(item[0] - SPT.x, item[1] - SPT.z) < 68) return;
     const sp = (item[4] != null && EZ_PROTOS9[item[4]]) ? item[4] : (Math.abs(Math.floor(item[0] * 0.13 + item[1] * 0.17) + idx) % greenCount);
     buckets[sp].push(item);
   });
@@ -4908,7 +4909,7 @@ function instEzTrees9(treeList) {
 }
 
 function makeTree(x, z, scale, birdCol, speciesIdx = null) {
-  if (Math.hypot(x - SUO.x, z - SUO.z) < 62) return { grp: null, bird: null };
+  if (Math.hypot(x - SUO.x, z - SUO.z) < 70 || Math.hypot(x - SPT.x, z - SPT.z) < 68) return { grp: null, bird: null };
   const h = height(x, z);
   if (!birdCol) { LATE_TREES9.push([x, z, h, scale, speciesIdx]); cirObs.push({ x, z, r: 1.1 * scale }); return { grp: null, bird: null }; }
   if (scale >= 0.85) TALL_TREES9.push({ x, z, h, sc: scale });
@@ -5413,6 +5414,7 @@ let fieldGrassInst9 = null, fieldGrassMat9 = null;
     const x = rnd() * 900 - 450, z = rnd() * 900 - 450;
     const h = height(x, z);
     if (h < 3 || h > 26) continue;
+    if (Math.hypot(x - SUO.x, z - SUO.z) < 70 || Math.hypot(x - SPT.x, z - SPT.z) < 68) continue;
     if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r + 8)) continue;
     treePts.push([x, z, h, .8 + rnd() * .7]);
     cirObs.push({ x, z, r: 1 });
@@ -5424,6 +5426,7 @@ let fieldGrassInst9 = null, fieldGrassMat9 = null;
   for (let i = 0; i < 40; i++) {
     const x = rnd() * 1000 - 500, z = rnd() * 1000 - 500, h = height(x, z);
     if (h < -1 || (h > 3 && h < 24)) continue;
+    if (Math.hypot(x - SUO.x, z - SUO.z) < 70 || Math.hypot(x - SPT.x, z - SPT.z) < 68) continue;
     const rk = new THREE.Mesh(rockG, M.stone);
     rk.position.set(x, h + .8, z); rk.scale.setScalar(.7 + rnd() * 1.8); rk.rotation.y = rnd() * 3;
     scene.add(rk);
@@ -5432,6 +5435,7 @@ let fieldGrassInst9 = null, fieldGrassMat9 = null;
   for (let i = 0; i < 130; i++) {
     const x = rnd() * 800 - 400, z = rnd() * 800 - 400, h = height(x, z);
     if (h < 2.5 || h > 20) continue;
+    if (Math.hypot(x - SUO.x, z - SUO.z) < 70 || Math.hypot(x - SPT.x, z - SPT.z) < 68) continue;
     if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r * .6)) continue;
     const f = new THREE.Mesh(flG, lam(['#e8b4c8', '#ffd76a', '#ffffff', '#d94f6b'][i % 4]));
     f.position.set(x, h + .35, z); f.rotation.y = (i * 1.37) % 6.28; scene.add(f);
@@ -16940,6 +16944,7 @@ if (LATE_TREES9.length) {
     const tx = Math.cos(ang) * rad, tz = Math.sin(ang) * rad;
     const th = height(tx, tz);
     if (th < 3.2 || th > 22) continue;
+    if (Math.hypot(tx - SUO.x, tz - SUO.z) < 70 || Math.hypot(tx - SPT.x, tz - SPT.z) < 68) continue;
     if (ZONES3D.some(zn => Math.hypot(tx - zn.x, tz - zn.z) < zn.r * 0.65)) continue;
     LATE_TREES9.push([tx, tz, th, 0.95 + ezRng9() * 0.45]);
     cirObs.push({ x: tx, z: tz, r: 0.85 });
