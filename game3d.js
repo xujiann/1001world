@@ -550,6 +550,7 @@ const $ = id => document.getElementById(id);
 const modal = $('modal'), cardBody = $('cardBody'), hintEl = $('hint'), toastEl = $('toast');
 let toastTimer = 0;
 function toast(msg) {
+  if (diving && (msg.includes('今日事件') || msg.includes('今日岛报'))) return;
   toastEl.textContent = msg; toastEl.classList.remove('hidden');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.add('hidden'), 2200);
 }
@@ -3857,7 +3858,7 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
   const da = dayAmount(p);
   const dusk = clamp(1 - Math.abs(p - .64) / .09, 0, 1) + clamp(1 - Math.abs(p - .95) / .05, 0, 1);
   skyCol.copy(cNightSky).lerp(cDaySky, da).lerp(cDuskSky, Math.min(dusk, 1) * .55);
-  scene.background.copy(skyCol); scene.fog.color.copy(skyCol);
+  if (!diving) { scene.background.copy(skyCol); scene.fog.color.copy(skyCol); }
   skyDim9.value = 1 - .46 * da;   // 🔆 白日压穹顶(保色),夜里不压
   if (airPass9) {   // 🌫️ 空气透视:随天色/日向/天气变
     const u9 = airPass9.uniforms;
@@ -8661,6 +8662,7 @@ const _zfog = new THREE.Color();
 const diveGroup = new THREE.Group(); diveGroup.visible = false; scene.add(diveGroup);
 const ropeGroup = new THREE.Group(); scene.add(ropeGroup); ropeGroup.visible = false;
 const portalBeacons = [];
+const diveFish9 = [], diveJellies9 = [];
 {
   const V = i => new THREE.Vector3(MAZE_NODES[i][0], MAZE_NODES[i][1], MAZE_NODES[i][2]);
   const up = new THREE.Vector3(0, 1, 0);
@@ -8671,8 +8673,47 @@ const portalBeacons = [];
   MAZE_EDGES.forEach(([a, b], ei) => {
     const A = V(a), B = V(b), len = A.distanceTo(B), mid = A.clone().add(B).multiplyScalar(.5);
     const q = new THREE.Quaternion().setFromUnitVectors(up, B.clone().sub(A).normalize());
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R, TUBE_R, len + 2, 16, 1, true), ei === 0 ? glassMat : zoneMats[NODE_ZONE[a]]);   // 首段=玻璃观景廊,其余按分区配色
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R, TUBE_R, len + 2, 18, 1, true), ei === 0 ? glassMat : zoneMats[NODE_ZONE[a]]);   // 首段=玻璃观景廊,其余按分区配色
     tube.position.copy(mid); tube.quaternion.copy(q); diveGroup.add(tube);
+    if (ei === 0) {
+      // 观景廊钢骨环肋 + 底部防滑步道与发光导引灯带 + 弱指引光点
+      const ribMat = new THREE.MeshStandardMaterial({ color: 0x1e3848, roughness: .45, metalness: .7 });
+      const stripMat = new THREE.MeshBasicMaterial({ color: 0x5ce8ff, fog: false });
+      const nRibs = Math.max(3, Math.floor(len / 9));
+      for (let ri = 1; ri < nRibs; ri++) {
+        const rp = A.clone().lerp(B, ri / nRibs);
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(TUBE_R - .12, .22, 6, 20), ribMat);
+        rib.position.copy(rp); rib.quaternion.copy(q); rib.rotateX(Math.PI / 2); diveGroup.add(rib);
+        const wp = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6), stripMat);
+        wp.position.set(rp.x, rp.y - 1.5, rp.z); diveGroup.add(wp);
+      }
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(3.6, .28, len), new THREE.MeshStandardMaterial({ color: 0x132634, roughness: .7 }));
+      deck.position.copy(mid).add(new THREE.Vector3(0, -TUBE_R + 1.1, 0)); deck.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), B.clone().sub(A).normalize()); diveGroup.add(deck);
+      for (const sx of [-1.6, 1.6]) {
+        const st = new THREE.Mesh(new THREE.BoxGeometry(.14, .08, len), stripMat);
+        st.position.copy(mid).add(new THREE.Vector3(0, -TUBE_R + 1.28, sx * .1)); st.quaternion.copy(deck.quaternion);
+        st.translateX(sx); diveGroup.add(st);
+      }
+      // 深海海面柔光穹顶 + 深海沙床 + 游动鱼群与发光水母
+      const canopy = new THREE.Mesh(new THREE.CircleGeometry(280, 24), new THREE.MeshBasicMaterial({ color: 0x0b3a54, transparent: true, opacity: .45, side: THREE.DoubleSide, fog: false }));
+      canopy.rotation.x = Math.PI / 2; canopy.position.set(mid.x, -12, mid.z); diveGroup.add(canopy);
+      const bed = new THREE.Mesh(new THREE.CircleGeometry(240, 24), new THREE.MeshLambertMaterial({ color: 0x092230 }));
+      bed.rotation.x = -Math.PI / 2; bed.position.set(mid.x, -98, mid.z); diveGroup.add(bed);
+      const fishMat = new THREE.MeshBasicMaterial({ color: 0x7ad8ff, fog: false });
+      for (let fi = 0; fi < 18; fi++) {
+        const f = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.3, 4), fishMat);
+        f.rotation.x = Math.PI / 2;
+        diveGroup.add(f);
+        diveFish9.push({ m: f, base: mid.clone(), r: 12 + (fi % 5) * 4, sp: .35 + (fi % 4) * .12, ph: fi * .7, dy: (fi % 3 - 1) * 4 });
+      }
+      const jMat = new THREE.MeshBasicMaterial({ color: 0xff88df, transparent: true, opacity: .72, fog: false });
+      for (let ji = 0; ji < 8; ji++) {
+        const j = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), jMat);
+        j.position.set(mid.x + (ji - 3.5) * 10, mid.y + (ji % 2 ? 12 : -10), mid.z + (ji % 2 ? 16 : -16));
+        diveGroup.add(j);
+        diveJellies9.push({ m: j, y0: j.position.y, ph: ji * .9 });
+      }
+    }
     const rope = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, len, 5), ropeMat);
     rope.position.copy(mid); rope.quaternion.copy(q); ropeGroup.add(rope);
   });
@@ -8944,8 +8985,8 @@ const portalBeacons = [];
 }
 {   // 潜水 HUD:气瓶条 + 提示
   const d = document.createElement('div'); d.id = 'diveHud'; d.className = 'hidden';
-  Object.assign(d.style, { position: 'fixed', left: '50%', bottom: '96px', transform: 'translateX(-50%)', zIndex: '7', textAlign: 'center', pointerEvents: 'none', font: '13px system-ui,sans-serif', color: '#cfeeff', textShadow: '0 1px 3px #000' });
-  d.innerHTML = '<div id="diveAirBar" style="width:220px;height:12px;border:1px solid #4a7a9a;border-radius:7px;background:#0a1f2c;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveNav" style="margin-top:4px;font-size:12px;color:#7fc4e8;opacity:.32;letter-spacing:.4px;min-height:15px"></div><div id="diveHint" style="margin-top:3px">🫧 空格上浮 · Shift下潜 · WASD 游动 · E 从浮标处出水面</div>';
+  Object.assign(d.style, { position: 'fixed', left: '50%', bottom: '92px', transform: 'translateX(-50%)', zIndex: '7', textAlign: 'center', pointerEvents: 'none', font: '13px system-ui,sans-serif', color: '#e6f7ff', textShadow: '0 1px 3px rgba(0,0,0,.85)', background: 'rgba(4,18,32,.84)', backdropFilter: 'blur(8px)', padding: '10px 18px', borderRadius: '14px', border: '1px solid rgba(100,215,255,.38)', boxShadow: '0 8px 24px rgba(0,0,0,.45)' });
+  d.innerHTML = '<div id="diveAirBar" style="width:240px;height:12px;border:1px solid #5ac8f0;border-radius:7px;background:#071926;margin:0 auto;overflow:hidden"><i id="diveAirFill" style="display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ad0ff,#7affd0)"></i></div><div id="diveNav" style="margin-top:6px;font-size:12.5px;font-weight:600;color:#9be2ff;opacity:.92;letter-spacing:.4px;min-height:16px"></div><div id="diveHint" style="margin-top:4px;font-size:12px;color:#cde8f6">🫧 空格上浮 · Shift下潜 · Q 声呐 · G 观光胶囊直达 · E 浮标出水</div>';
   document.body.appendChild(d);
   { const dg9 = document.createElement('div'); dg9.id = 'diveDanger9';   // 🆘 低氧红色暗角(中心透空,只压边缘,不挡视野)
     dg9.style.cssText = 'position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 42%,rgba(182,14,14,.9) 100%)';
@@ -9032,25 +9073,45 @@ function fireSonar() {
   if (bi >= 0) { const n = MAZE_NODES[MAZE_PORTALS[bi].n]; const ang = Math.atan2(n[0] - player.position.x, n[2] - player.position.z) * 180 / Math.PI; const dir = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'][((Math.round(ang / 45) + 8) % 8)]; toast(`🔊 声呐回声:最近的出口(${MAZE_PORTALS[bi].isle})在${dir}方,约 ${Math.round(best)} 米`); }
   if (actx && musicOn) { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(880, actx.currentTime); o.frequency.exponentialRampToValueAtTime(220, actx.currentTime + .5); g.gain.setValueAtTime(.12, actx.currentTime); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + .6); o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + .6); }
 }
+let preDiveCam9 = null;
+function setDiveSurfaceHidden9(hide) {
+  if (typeof TCHUNKS !== 'undefined') TCHUNKS.forEach(c => { c.visible = !hide; });
+  if (typeof BUCKETS !== 'undefined') BUCKETS.forEach(b => { b.g.visible = !hide; });
+  if (typeof sky !== 'undefined' && sky) sky.visible = !hide;
+  if (typeof clouds !== 'undefined') clouds.forEach(c => { c.visible = !hide; });
+  if (typeof weenie9 !== 'undefined' && weenie9?.grp) weenie9.grp.visible = !hide;
+  if (typeof arrakis9 !== 'undefined' && arrakis9?.grp) arrakis9.grp.visible = !hide;
+}
 function enterDive(pi) {
   if (diving) return;
   diving = true; diveEntry = pi; diveAir = gearOn('mask') ? 200 : 100; modalOpen = false;
   vehicle = 0; bikeGrp.visible = boatGrp.visible = carGrp9.visible = false;
-  const n = MAZE_NODES[MAZE_PORTALS[pi].n];
+  const nIdx = MAZE_PORTALS[pi].n, n = MAZE_NODES[nIdx];
   player.position.set(n[0], n[1], n[2]); vy = 0;
+  preDiveCam9 = { dist: camDist, pitch: camPitch };
+  camDist = 6.2; camPitch = 0.08;
+  const edge0 = MAZE_EDGES.find(([a, b]) => a === nIdx || b === nIdx);
+  if (edge0) {
+    const nb = MAZE_NODES[edge0[0] === nIdx ? edge0[1] : edge0[0]];
+    camYaw = Math.atan2(-(nb[0] - n[0]), -(nb[2] - n[2]));
+    faceYaw = camYaw;
+  }
+  setDiveSurfaceHidden9(true);
   diveGroup.visible = true; diveLight.visible = true;
   if (causticLight) causticLight.visible = true;
   ropeGroup.visible = gearOn('rope');
-  scene.fog.near = 3; scene.fog.far = gearOn('rope') ? 90 : 46; scene.fog.color.setHex(0x04121c);
-  scene.background.setHex(0x04121c);
+  scene.fog.near = 3; scene.fog.far = gearOn('rope') ? 105 : 68; scene.fog.color.setHex(0x031320);
+  scene.background.setHex(0x031320);
   $('diveHud').classList.remove('hidden');
   if (matchMedia('(pointer: coarse)').matches) { $('btnDiveUp').classList.remove('hidden'); $('btnDiveDown').classList.remove('hidden'); }
-  toast(gearOn('rope') ? '🤿 潜入蓝洞——顺着发光导绳,游向任意海岛的出口' : '☠️ 没有导绳,你潜进漆黑蓝洞——看不清路、耗氧更快,一旦在深处憋死就再难生还。想活着穿到别的岛,先去装备行买条导绳。');
+  toast(gearOn('rope') ? '🤿 潜入蓝洞——顺着发光导绳,游向任意海岛的出口' : '🤿 潜入玻璃观景廊——按 W 向前滑流穿行,按 Q 探测最近出口,按 G 乘坐观光胶囊直达');
 }
 function surfaceDive(pi) {
   const p = MAZE_PORTALS[pi], [sx, sz] = p.surf;
   const closeCall9 = diveAir > 0 && diveAir < (gearOn('mask') ? 200 : 100) * .15;   // 😮‍💨 低氧自主出水=死里逃生
   diving = false; diveGroup.visible = false; ropeGroup.visible = false; diveLight.visible = false; diveZoneLast9 = -1;
+  setDiveSurfaceHidden9(false);
+  if (preDiveCam9) { camDist = preDiveCam9.dist; camPitch = preDiveCam9.pitch; preDiveCam9 = null; }
   if (causticLight) causticLight.visible = false;
   scene.fog.near = 560; scene.fog.far = 2600; scene.fog.color.copy(skyCol); scene.background.copy(skyCol);
   $('diveHud').classList.add('hidden'); if (dangerEl9) dangerEl9.style.opacity = '0';
@@ -13480,6 +13541,13 @@ addEventListener('keydown', e => {
   }
   if (k === 'm') { if (diving) { openMazeMap9(); return; } mapKey(false); return; }
   if (k === 'n') { mapKey(true); return; }
+  if (k === 'g' && diving && !freeDive9 && !modalOpen) {
+    const destNode = MAZE_NODES[1];
+    player.position.set(destNode[0] - 8, destNode[1], destNode[2] - 1);
+    camYaw = Math.atan2(-(destNode[0] - player.position.x), -(destNode[2] - player.position.z)); faceYaw = camYaw;
+    toast('🚤 观光胶囊已沿玻璃观景廊滑流直达「节点1 · 珊瑚/沉船交汇厅」!'); blip(720);
+    return;
+  }
   if (k === 'g' && !MOBILE) { quality = (quality + 2) % 3; applyQuality(); toast('🖥️ 画质:' + ['低(最流畅)', '中', '高(GTAO 环境光遮蔽)'][quality]); return; }
   if (k === 'u' && !MOBILE) { style9 = STYLE_ORD9[(STYLE_ORD9.indexOf(style9) + 1) % STYLE_ORD9.length]; applyStyle9(); toast('🎨 视觉风格:' + ST9().nm + '(U 键继续切换)'); return; }
   if (k === 'v') { tryPhantom(); return; }   // 蓝图幻影(未竟之都)
@@ -14267,7 +14335,9 @@ function loop() {
       let mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
       let mz = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
       if (joy.on) { mx = joy.vx; mz = joy.vy; }
-      const sp = (gearOn('swim') ? 13 : 9) * dt;
+      const inGlass9 = !freeDive9 && player.position.x > -10 && player.position.x < 85 && Math.abs(player.position.z) < 25;
+      const sp = (gearOn('swim') ? 13 : 9) * (inGlass9 ? 1.7 : 1) * dt;
+      if (!freeDive9 && camDist > TUBE_R - 0.8) camDist = TUBE_R - 0.8;
       const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = -fz, rz = fx;
       player.position.x += (fx * -mz + rx * mx) * sp;
       player.position.z += (fz * -mz + rz * mx) * sp;
@@ -14379,6 +14449,16 @@ function loop() {
     // 潮汐之心搏动 + 巨鲸掠过玻璃观景廊
     if (tidalHeart) { const s = 1 + Math.sin(t * 1.6) * .12; tidalHeart.children[1].scale.setScalar(s); tidalHeart.rotation.y = t * .3; }
     if (mazeWhale) { const m = mazeWhale.userData.mid, ph = (t * .06) % 1, wz = -60 + ph * 120; mazeWhale.position.set(m.x + 24, m.y + 4, m.z + wz); mazeWhale.rotation.y = Math.PI / 2; }
+    for (const f of diveFish9) {
+      const a = t * f.sp + f.ph;
+      f.m.position.set(f.base.x + Math.cos(a) * f.r * 1.8, f.base.y + f.dy + Math.sin(t * 1.4 + f.ph) * 1.2, f.base.z + Math.sin(a) * f.r);
+      f.m.rotation.y = -a;
+    }
+    for (const j of diveJellies9) {
+      j.m.position.y = j.y0 + Math.sin(t * 1.2 + j.ph) * 2.2;
+      const p = 1 + Math.sin(t * 3.0 + j.ph) * 0.14;
+      j.m.scale.set(p, 2 - p, p);
+    }
     if (sonarT > 0) { sonarT -= dt; sonarRing.scale.setScalar(1 + (1.4 - sonarT) * 30); sonarRing.material.opacity = Math.max(0, sonarT / 1.4) * .5; if (sonarT <= 0) sonarRing.visible = false; }
     if (sonarCD > 0) sonarCD -= dt;
     // 所在主题区(最近节点)→ 雾色渐变 + HUD 区名
@@ -15825,7 +15905,7 @@ function loop() {
   bucketT -= dt;
   if (bucketT <= 0) {
     bucketT = .5;
-    for (const b of BUCKETS) b.g.visible = ((player.position.x - b.x) ** 2 + (player.position.z - b.z) ** 2) < 1210000;   // 1100²
+    if (!diving) for (const b of BUCKETS) b.g.visible = ((player.position.x - b.x) ** 2 + (player.position.z - b.z) ** 2) < 1210000;   // 1100²
     cullLights();   // 💡 灯光同频剔除
     for (const ch of TCHUNKS) {   // 🏔️ 地形 LOD 换档(近满档,中 1/4,远 1/25 三角形)
       const d9 = Math.hypot(ch.userData.ccx - player.position.x, ch.userData.ccz - player.position.z);
@@ -16002,7 +16082,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
