@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9, buildSolarSystemAndMoon9 } from './aaa-engine.js?v=19';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9, buildSolarSystemAndMoon9, buildShanhaiUpgrade9 } from './aaa-engine.js?v=19';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -6784,6 +6784,17 @@ let ghostFire = null; const laolaoEyes = [];   // 兰若寺:鬼火 / 姥姥红�
   const dk = height(gx, gz + 114);
   const plank = box(5, .5, 9, M.wood); plank.position.set(gx, dk + .9, gz + 112); scene.add(plank);
   addSpot(gx, gz + 110, 'ferry', 'ferry', { r: 8 });
+}
+const shjUpgrade9 = buildShanhaiUpgrade9(scene, SHJ, height);
+{
+  const gx = SHJ.x, gz = SHJ.z;
+  addSpot(gx - 34, gz - 10, 'lore', 'shjjianmu', { r: 8 });
+  addSpot(gx, gz + 34, 'lore', 'shjhetu', { r: 8 });
+  addSpot(gx + 14, gz + 26, 'lore', 'shjyinglong', { r: 7 });
+  addNpc({ x: gx + 10, z: gz + 38, name: '大禹', body: 0x3b5c4f, hat: 0xc9a84e, opts: { tall: 1.12 },
+    lines: ['应龙以尾画地成江,助我疏通九州百川。', '三过家门而不入,只为天下苍生再无水患。'] });
+  addNpc({ x: gx - 26, z: gz - 8, name: '西王母', body: 0x5c2b6e, hat: 0xf4c44e, opts: { tall: 1.04 },
+    lines: ['昆仑之巅,建木通天。', '三青鸟常在此为我衔来远方的消息。'] });
 }
 /* —— 桃花源(隐藏秘境) —— */
 {
@@ -15950,6 +15961,7 @@ function loop() {
   /* 飞毯航线(巴格达 → 收藏之岛) */
   if (b612Ast9) b612Ast9.update(t);
   if (mars9) mars9.update(t);
+  if (shjUpgrade9) shjUpgrade9.update(t);
   if (flight && flight.rocket) {   // 🚀 SpaceX 星际穿梭火箭航线（地球 ↔ B-612 ↔ 火星）
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur), e2 = k2 * k2 * (3 - 2 * k2);
@@ -16502,6 +16514,7 @@ function loop() {
     if (typeof coastalBirds9 !== 'undefined' && coastalBirds9?.grp) coastalBirds9.grp.visible = !diving && !inSpace9;
     if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !diving && !inSpace9;
     if (typeof alexLib9 !== 'undefined' && alexLib9?.grp) alexLib9.grp.visible = !diving && !inSpace9;
+    if (typeof shjUpgrade9 !== 'undefined' && shjUpgrade9?.grp) shjUpgrade9.grp.visible = !diving && !inSpace9;
     if (typeof rocketPadEarth9 !== 'undefined' && rocketPadEarth9?.grp) rocketPadEarth9.grp.visible = !diving && !inSpace9;
     if (typeof solarSys9 !== 'undefined' && solarSys9) {
       solarSys9.update(t, 1 - curDA, inSpace9);
@@ -16668,7 +16681,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, solarSys9?.moon3D, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, shjUpgrade9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, solarSys9?.moon3D, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

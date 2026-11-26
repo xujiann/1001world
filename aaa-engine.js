@@ -2559,3 +2559,142 @@ export function buildSolarSystemAndMoon9(scene, starField) {
     }
   };
 }
+
+export function buildShanhaiUpgrade9(scene, SHJ, heightFn) {
+  const grp = new THREE.Group();
+  const gx = SHJ.x, gz = SHJ.z;
+
+  const bronzeM = new THREE.MeshStandardMaterial({ color: 0x3b4d44, roughness: 0.36, metalness: 0.65 });
+  const goldM = new THREE.MeshStandardMaterial({ color: 0xf4c44e, roughness: 0.24, metalness: 0.85, emissive: 0x5c3e08, emissiveIntensity: 0.35 });
+  const jadeM = new THREE.MeshPhysicalMaterial({ color: 0x4de8c2, roughness: 0.14, metalness: 0.1, clearcoat: 0.9, emissive: 0x0d6e58, emissiveIntensity: 0.5 });
+  const rockM = new THREE.MeshStandardMaterial({ color: 0x3f4c46, roughness: 0.88, metalness: 0.06 });
+  const mossM = new THREE.MeshStandardMaterial({ color: 0x3c7d52, roughness: 0.82 });
+
+  // 1. 建木通天圣树（太古神树 + 灵气光柱 + 翡翠金叶华盖）
+  const jx = gx - 34, jz = gz - 14, jh = heightFn(jx, jz);
+  const jianmu = new THREE.Group();
+  jianmu.position.set(jx, jh, jz);
+  const jTrunk = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 3.6, 26, 12), new THREE.MeshStandardMaterial({ color: 0x4b382a, roughness: 0.85 }));
+  jTrunk.position.y = 13; jTrunk.castShadow = true; jianmu.add(jTrunk);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.3;
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 1.4, 7.5, 8), new THREE.MeshStandardMaterial({ color: 0x4b382a, roughness: 0.88 }));
+    root.position.set(Math.cos(a) * 3.1, 2.6, Math.sin(a) * 3.1);
+    root.rotation.z = Math.cos(a) * 0.55; root.rotation.x = -Math.sin(a) * 0.55;
+    jianmu.add(root);
+  }
+  const canopyMat = new THREE.MeshStandardMaterial({ color: 0x2a7a5c, roughness: 0.65, emissive: 0x0a3828, emissiveIntensity: 0.3 });
+  [[0, 27, 0, 9.5], [-4.5, 22, 3.2, 6.2], [4.8, 23.5, -2.8, 6.6], [0, 32.5, 0, 5.4]].forEach(([cx, cy, cz, cr]) => {
+    const c = new THREE.Mesh(new THREE.SphereGeometry(cr, 14, 10), canopyMat);
+    c.scale.set(1.25, 0.52, 1.25); c.position.set(cx, cy, cz); jianmu.add(c);
+  });
+  const spiritBeam = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.1, 2.4, 46, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x5effd8, transparent: true, opacity: 0.16, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
+  );
+  spiritBeam.position.y = 23; jianmu.add(spiritBeam);
+  grp.add(jianmu);
+
+  // 2. 河图洛书太古星盘祭坛（三层旋转青铜金环 + 悬浮玉圭）
+  const ax = gx, az = gz + 34, ah = heightFn(ax, az);
+  const altar = new THREE.Group();
+  altar.position.set(ax, ah, az);
+  const base1 = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 9.8, 0.9, 8), bronzeM);
+  base1.position.y = 0.45; altar.add(base1);
+  const base2 = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 7.0, 0.7, 8), rockM);
+  base2.position.y = 1.2; altar.add(base2);
+  const altarRings = [];
+  [3.6, 2.6, 1.7].forEach((rr, idx) => {
+    const rMesh = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.14, 8, 36), idx === 1 ? jadeM : goldM);
+    rMesh.position.y = 4.6;
+    rMesh.rotation.x = idx * 0.55;
+    altar.add(rMesh); altarRings.push(rMesh);
+  });
+  const jadeCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.95, 0), jadeM);
+  jadeCore.position.y = 4.6; altar.add(jadeCore);
+  const altarLight = new THREE.PointLight(0x5effd8, 2.2, 28, 1.4);
+  altarLight.position.y = 5.2; altar.add(altarLight);
+  grp.add(altar);
+
+  // 3. 三座浮空仙山与垂落灵泉光幕
+  const floatIsles = [];
+  [[-48, -56, 36, 7.5], [46, -62, 40, 8.5], [0, -108, 44, 9.5]].forEach(([fx, fz, fy, fr], idx) => {
+    const fGrp = new THREE.Group();
+    const baseY = heightFn(gx + fx, gz + fz) + fy;
+    fGrp.position.set(gx + fx, baseY, gz + fz);
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(fr, fr * 2.1, 7), rockM);
+    spire.rotation.x = Math.PI; spire.position.y = -fr * 0.9; fGrp.add(spire);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(fr * 1.02, fr * 0.85, 1.8, 8), mossM);
+    cap.position.y = 0.5; fGrp.add(cap);
+    const waterfall = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.6, 26),
+      new THREE.MeshBasicMaterial({ color: 0x8cf4ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, fog: false })
+    );
+    waterfall.position.set(0, -12, fr * 0.72); fGrp.add(waterfall);
+    grp.add(fGrp);
+    floatIsles.push({ g: fGrp, baseY, ph: idx * 2.1 });
+  });
+
+  // 4. 盘旋天际的应龙（黄金有翼神龙 · 12 节柔性躯干 + 振翅金翼）
+  const yinglong = new THREE.Group();
+  const ySegs = [];
+  for (let i = 0; i < 12; i++) {
+    const rSeg = 1.05 - i * 0.065;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(rSeg, 10, 8), i === 0 ? goldM : (i % 2 ? goldM : jadeM));
+    seg.position.z = -i * 1.35;
+    yinglong.add(seg); ySegs.push(seg);
+  }
+  const yWingL = new THREE.Mesh(new THREE.ConeGeometry(1.6, 5.2, 5), goldM);
+  yWingL.scale.set(0.22, 1, 0.55); yWingL.rotation.z = Math.PI / 2.2; yWingL.position.set(-2.4, 0.5, -2.0);
+  const yWingR = yWingL.clone(); yWingR.rotation.z = -Math.PI / 2.2; yWingR.position.x = 2.4;
+  yinglong.add(yWingL, yWingR);
+  grp.add(yinglong);
+
+  // 5. 昆仑神鹿（夫诸 · 雪白四角祥瑞）
+  const fx2 = gx + 14, fz2 = gz + 26, fh2 = heightFn(fx2, fz2);
+  const fuzhu = new THREE.Group(); fuzhu.position.set(fx2, fh2, fz2);
+  const fWhite = new THREE.MeshStandardMaterial({ color: 0xf4f8ff, roughness: 0.45 });
+  const fBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.35, 8, 10), fWhite);
+  fBody.rotation.z = Math.PI / 2; fBody.position.y = 1.35; fuzhu.add(fBody);
+  for (const [lx, lz] of [[-0.55, -0.3], [0.55, -0.3], [-0.55, 0.3], [0.55, 0.3]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 1.2, 6), fWhite);
+    leg.position.set(lx, 0.6, lz); fuzhu.add(leg);
+  }
+  const fHead = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), fWhite);
+  fHead.position.set(1.05, 2.05, 0); fuzhu.add(fHead);
+  for (const sgn of [-1, 1]) {
+    const h1 = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.85, 6), goldM);
+    h1.position.set(1.0, 2.55, sgn * 0.16); h1.rotation.z = -0.25; fuzhu.add(h1);
+    const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.65, 6), jadeM);
+    h2.position.set(0.82, 2.45, sgn * 0.24); h2.rotation.z = 0.25; fuzhu.add(h2);
+  }
+  grp.add(fuzhu);
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t) {
+      altarRings.forEach((r, i) => {
+        r.rotation.y = t * (0.45 + i * 0.22) * (i % 2 ? -1 : 1);
+        r.rotation.x += 0.004 * (i + 1);
+      });
+      jadeCore.rotation.y = t * 0.9;
+      jadeCore.position.y = 4.6 + Math.sin(t * 2.1) * 0.32;
+      spiritBeam.material.opacity = 0.13 + Math.sin(t * 2.4) * 0.04;
+
+      floatIsles.forEach(fi => {
+        fi.g.position.y = fi.baseY + Math.sin(t * 0.65 + fi.ph) * 1.4;
+      });
+
+      const ya = t * 0.32;
+      const yR = 46;
+      const yx = gx + Math.cos(ya) * yR, yz = gz - 34 + Math.sin(ya) * yR;
+      const yy = heightFn(gx, gz - 34) + 28 + Math.sin(t * 1.1) * 4.5;
+      yinglong.position.set(yx, yy, yz);
+      yinglong.rotation.y = -ya;
+      yWingL.rotation.x = Math.sin(t * 5.2) * 0.45;
+      yWingR.rotation.x = Math.sin(t * 5.2) * 0.45;
+      ySegs.forEach((seg, i) => { seg.position.x = Math.sin(t * 4.2 - i * 0.55) * (0.28 + i * 0.08); });
+    }
+  };
+}
