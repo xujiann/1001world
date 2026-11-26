@@ -2445,3 +2445,117 @@ export function buildMainSphericalEarth9(scene, mapCanvas) {
     }
   };
 }
+
+export function buildSolarSystemAndMoon9(scene, starField) {
+  const grp = new THREE.Group();
+  grp.position.set(0, 420, -1250);
+  grp.rotation.x = 0.28; // 沿黄道面倾角展示行星轨道与土星环
+
+  // 1. 太阳（耀斑光球 + 日冕辉光）
+  const sunM = new THREE.Mesh(
+    new THREE.SphereGeometry(42, 32, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffd25a, fog: false })
+  );
+  const sunCorona = new THREE.Mesh(
+    new THREE.SphereGeometry(58, 28, 20),
+    new THREE.MeshBasicMaterial({ color: 0xff8c2b, transparent: true, opacity: 0.28, side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  grp.add(sunM, sunCorona);
+
+  // 2. 八大行星轨道与行星主体（水、金、地、火、木、土含光环、天王、海王）
+  const planetDefs = [
+    { name: '☿ 水星 Mercury', r: 4.2, orbit: 78, speed: 1.6, col: 0xa69f98, ph: 0.4 },
+    { name: '♀ 金星 Venus', r: 6.4, orbit: 108, speed: 1.15, col: 0xe8c47a, ph: 1.9 },
+    { name: '🌍 地球 Earth', r: 7.2, orbit: 145, speed: 0.85, col: 0x3b82f6, ph: 3.1, hasMoon: true },
+    { name: '♂ 火星 Mars', r: 5.4, orbit: 184, speed: 0.65, col: 0xd95b38, ph: 4.5 },
+    { name: '♃ 木星 Jupiter', r: 17.5, orbit: 252, speed: 0.36, col: 0xd8a878, ph: 0.9, bands: true },
+    { name: '♄ 土星 Saturn', r: 14.5, orbit: 332, speed: 0.24, col: 0xe6cf98, ph: 2.6, ring: true },
+    { name: '♅ 天王星 Uranus', r: 9.8, orbit: 405, speed: 0.16, col: 0x7de3f4, ph: 5.1, tiltRing: true },
+    { name: '♆ 海王星 Neptune', r: 9.4, orbit: 468, speed: 0.12, col: 0x3b66f5, ph: 3.8 }
+  ];
+
+  const planets = [];
+  const orbitMat = new THREE.MeshBasicMaterial({ color: 0x6ba6ff, transparent: true, opacity: 0.34, fog: false, depthWrite: false });
+  planetDefs.forEach(pd => {
+    const oRing = new THREE.Mesh(new THREE.TorusGeometry(pd.orbit, 0.55, 6, 96), orbitMat);
+    oRing.rotation.x = Math.PI / 2;
+    grp.add(oRing);
+
+    const pHolder = new THREE.Group();
+    const pMat = new THREE.MeshBasicMaterial({ color: pd.col, fog: false });
+    const pMesh = new THREE.Mesh(new THREE.SphereGeometry(pd.r, 20, 14), pMat);
+    pHolder.add(pMesh);
+
+    if (pd.bands) {
+      const band = new THREE.Mesh(
+        new THREE.TorusGeometry(pd.r * 0.99, 1.3, 6, 32),
+        new THREE.MeshBasicMaterial({ color: 0xb86f42, fog: false })
+      );
+      band.rotation.x = Math.PI / 2;
+      pHolder.add(band);
+    }
+    if (pd.ring) {
+      const sRing = new THREE.Mesh(
+        new THREE.RingGeometry(pd.r * 1.35, pd.r * 2.25, 48),
+        new THREE.MeshBasicMaterial({ color: 0xecdcb4, transparent: true, opacity: 0.78, side: THREE.DoubleSide, fog: false })
+      );
+      sRing.rotation.x = Math.PI / 2.4;
+      pHolder.add(sRing);
+    }
+    if (pd.tiltRing) {
+      const uRing = new THREE.Mesh(
+        new THREE.RingGeometry(pd.r * 1.35, pd.r * 1.65, 36),
+        new THREE.MeshBasicMaterial({ color: 0xa6f0ff, transparent: true, opacity: 0.52, side: THREE.DoubleSide, fog: false })
+      );
+      uRing.rotation.y = Math.PI / 2.2;
+      pHolder.add(uRing);
+    }
+    let miniMoon = null;
+    if (pd.hasMoon) {
+      miniMoon = new THREE.Mesh(
+        new THREE.SphereGeometry(2.1, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0xe6e8ee, fog: false })
+      );
+      pHolder.add(miniMoon);
+    }
+    grp.add(pHolder);
+    planets.push({ ...pd, holder: pHolder, miniMoon });
+  });
+
+  starField.add(grp);
+
+  // 3. 真实 3D 陨石坑月亮（在夜空与外太空中绕地球运行）
+  const mCv = document.createElement('canvas');
+  mCv.width = 256; mCv.height = 128;
+  const mctx = mCv.getContext('2d');
+  mctx.fillStyle = '#d8dce6'; mctx.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 65; i++) {
+    const cx = (Math.sin(i * 12.7) * 0.5 + 0.5) * 256;
+    const cy = (Math.cos(i * 7.3) * 0.5 + 0.5) * 128;
+    const rr = 3 + (i % 7) * 2.2;
+    mctx.fillStyle = i % 3 === 0 ? 'rgba(130,138,155,0.48)' : 'rgba(165,172,188,0.4)';
+    mctx.beginPath(); mctx.arc(cx, cy, rr, 0, Math.PI * 2); mctx.fill();
+  }
+  const moonTex = new THREE.CanvasTexture(mCv);
+  const moon3D = new THREE.Mesh(
+    new THREE.SphereGeometry(24, 24, 18),
+    new THREE.MeshStandardMaterial({ map: moonTex, roughness: 0.88, metalness: 0.04, emissive: 0x3b4254, emissiveIntensity: 0.55, fog: false })
+  );
+  scene.add(moon3D);
+
+  return {
+    grp,
+    moon3D,
+    planets,
+    update(t, nightVis, inSpace) {
+      grp.visible = inSpace || nightVis > 0.05;
+      const op = inSpace ? 1 : Math.min(1, nightVis * 1.35);
+      orbitMat.opacity = 0.34 * op;
+      planets.forEach(p => {
+        const a = p.ph + t * p.speed * 0.25;
+        p.holder.position.set(Math.cos(a) * p.orbit, 0, Math.sin(a) * p.orbit);
+        if (p.miniMoon) p.miniMoon.position.set(Math.cos(t * 1.4) * 13, 1.5, Math.sin(t * 1.4) * 13);
+      });
+    }
+  };
+}

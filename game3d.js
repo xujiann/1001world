@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9 } from './aaa-engine.js?v=19';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9, buildSolarSystemAndMoon9 } from './aaa-engine.js?v=19';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -3301,10 +3301,15 @@ let starField, milkyWay9 = null;
     starField.add(milkyWay9);
   }
 }
-/* --- 星座系统:全 88 IAU 星座 → constellations.js;连线成图,夜间显现,随天旋 --- */
-let constStars = null, constLines = null, constDirs = [];
+/* --- 星座系统:全 88 IAU 星座 + 黄道十二宫金环 + 太阳系与 3D 月亮 --- */
+let constStars = null, constLines = null, zodiacStars = null, zodiacLines = null, eclipticRing9 = null, constDirs = [];
+const ZODIAC_MAP9 = {
+  '白羊座': '♈', '金牛座': '♉', '双子座': '♊', '巨蟹座': '♋',
+  '狮子座': '♌', '室女座': '♍', '天秤座': '♎', '天蝎座': '♏',
+  '人马座': '♐', '摩羯座': '♑', '宝瓶座': '♒', '双鱼座': '♓'
+};
 {
-  const R = 980, S = .045, starPos = [], linePos = [];
+  const R = 980, S = .045, starPos = [], linePos = [], zStarPos = [], zLinePos = [], zCentroids = [];
   const Dv = new THREE.Vector3(), Ev = new THREE.Vector3(), Uv = new THREE.Vector3(), tmp = new THREE.Vector3();
   for (const cst of CONSTELLATIONS) {
     const az = cst.az * Math.PI / 180, el = cst.el * Math.PI / 180;
@@ -3313,17 +3318,36 @@ let constStars = null, constLines = null, constDirs = [];
     Uv.set(-Math.sin(el) * Math.cos(az), Math.cos(el), -Math.sin(el) * Math.sin(az));
     let mx = 0, my = 0; for (const s of cst.stars) { mx += s[0]; my += s[1]; } mx /= cst.stars.length; my /= cst.stars.length;
     const pts = cst.stars.map(([lx, ly]) => { tmp.copy(Dv).addScaledVector(Ev, (lx - mx) * S).addScaledVector(Uv, (ly - my) * S).normalize().multiplyScalar(R); return new THREE.Vector3(tmp.x, tmp.y + 40, tmp.z); });
-    for (const p of pts) starPos.push(p.x, p.y, p.z);
-    for (const [i, j] of cst.lines) { const a = pts[i], b = pts[j]; linePos.push(a.x, a.y, a.z, b.x, b.y, b.z); }
+    const zGlyph = ZODIAC_MAP9[cst.name];
+    const spArr = zGlyph ? zStarPos : starPos, lpArr = zGlyph ? zLinePos : linePos;
+    for (const p of pts) spArr.push(p.x, p.y, p.z);
+    for (const [i, j] of cst.lines) { const a = pts[i], b = pts[j]; lpArr.push(a.x, a.y, a.z, b.x, b.y, b.z); }
     const c = new THREE.Vector3(); for (const p of pts) c.add(p); c.multiplyScalar(1 / pts.length);   // 质心=观星标签锚点
-    constDirs.push({ name: cst.name, c });
+    constDirs.push({ name: zGlyph ? `${zGlyph} 黄道·${cst.name}` : cst.name, c, zodiac: !!zGlyph });
+    if (zGlyph) zCentroids.push(c.clone());
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
   constStars = new THREE.Points(sg, new THREE.PointsMaterial({ map: softDot9, color: 0xeaf4ff, size: 7, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
   constLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x5f86bf, transparent: true, opacity: 0, fog: false, depthWrite: false }));
-  starField.add(constStars, constLines);
+
+  const zsg = new THREE.BufferGeometry(); zsg.setAttribute('position', new THREE.Float32BufferAttribute(zStarPos, 3));
+  zodiacStars = new THREE.Points(zsg, new THREE.PointsMaterial({ map: softDot9, color: 0xffe9a6, size: 9.5, transparent: true, opacity: 0, fog: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
+  const zlg = new THREE.BufferGeometry(); zlg.setAttribute('position', new THREE.Float32BufferAttribute(zLinePos, 3));
+  zodiacLines = new THREE.LineSegments(zlg, new THREE.LineBasicMaterial({ color: 0xffc857, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+
+  // 黄道十二宫闭合金色黄道带
+  const ecPos = [];
+  for (let zi = 0; zi < zCentroids.length; zi++) {
+    const a = zCentroids[zi], b = zCentroids[(zi + 1) % zCentroids.length];
+    ecPos.push(a.x, a.y, a.z, b.x, b.y, b.z);
+  }
+  const ecg = new THREE.BufferGeometry(); ecg.setAttribute('position', new THREE.Float32BufferAttribute(ecPos, 3));
+  eclipticRing9 = new THREE.LineSegments(ecg, new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+
+  starField.add(constStars, constLines, zodiacStars, zodiacLines, eclipticRing9);
 }
+const solarSys9 = buildSolarSystemAndMoon9(scene, starField);
 /* --- 观星模式(K):夜间把视野内星座名投影到屏幕;瞄准可「认得」 --- */
 let starGaze = false, constLabels = [], skyLabels = null, sgY = new THREE.Vector3(0, 1, 0), sgV = new THREE.Vector3();
 const constSeen = new Set((PSTORE.getItem('w1001.consts') || '').split(',').filter(Boolean).map(Number));
@@ -4015,7 +4039,13 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
   moonDirN.set(-Math.cos(mp * Math.PI), mElev, -.38).normalize();
   moonMesh.position.copy(player.position).addScaledVector(moonDirN, 820);
   moonGlow.position.copy(moonMesh.position);
-  moonMesh.visible = moonGlow.visible = night > .05;
+  moonMesh.visible = !solarSys9?.moon3D && night > .05;
+  moonGlow.visible = night > .05;
+  if (solarSys9?.moon3D) {
+    solarSys9.moon3D.position.copy(moonMesh.position);
+    solarSys9.moon3D.rotation.y = t * 0.08;
+    solarSys9.moon3D.visible = night > .05;
+  }
   moonGlow.material.opacity = night * (MOON_FULL ? .34 : .18);   // 满月更亮
   moonLight.intensity = night * (MOON_FULL ? .75 : .5);
   if (MOON_FULL && !springTideToldT && night > .4) { springTideToldT = 1; toast('🌕 满月大潮之夜——海水涨得比平日更高'); }
@@ -4046,6 +4076,7 @@ function updateDayNight(t, dt9v = .016) {   // dt9v:绿闪等秒级衰减用真�
   starField.rotation.y = t * .006;                                        // 缓慢天旋
   starField.position.copy(player.position);                               // 🌌 星穹以玩家为心(远岛夜空不偏斜;银河/星座随之)
   if (constStars) { constStars.material.opacity = night * .95; constLines.material.opacity = night * .32; }   // 星座随夜显现
+  if (zodiacStars) { zodiacStars.material.opacity = night * 1.0; zodiacLines.material.opacity = night * .68; eclipticRing9.material.opacity = night * .24; }
   if (!MOBILE && Math.abs(da - lastEnvDA9) > .14) { lastEnvDA9 = da; bakeEnv9(); }   // 🌇 环境贴图随昼夜重烘
   if (fireLight) fireLight.intensity = (1 - da) * 55 + Math.sin(t * 9) * 5 * (1 - da);
   if (lantern) lantern.intensity = (1 - da) * 16;   // 夜间提灯
@@ -16472,11 +16503,22 @@ function loop() {
     if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !diving && !inSpace9;
     if (typeof alexLib9 !== 'undefined' && alexLib9?.grp) alexLib9.grp.visible = !diving && !inSpace9;
     if (typeof rocketPadEarth9 !== 'undefined' && rocketPadEarth9?.grp) rocketPadEarth9.grp.visible = !diving && !inSpace9;
+    if (typeof solarSys9 !== 'undefined' && solarSys9) {
+      solarSys9.update(t, 1 - curDA, inSpace9);
+      if (inSpace9 && solarSys9.moon3D) {
+        solarSys9.moon3D.visible = true;
+        solarSys9.moon3D.position.set(Math.cos(t * 0.08) * 1650, 180, Math.sin(t * 0.08) * 1650 - 300);
+        if (moonMesh) moonMesh.visible = false;
+        if (moonGlow) moonGlow.visible = false;
+      }
+    }
     if (inSpace9) {
       scene.background.setHex(0x020612);
       if (scene.fog) { scene.fog.near = 4200; scene.fog.far = 16000; }
       if (starField) { starField.material.opacity = 0.96; starField.position.copy(camera.position); }
       if (milkyWay9) milkyWay9.material.opacity = 0.72;
+      if (constStars) { constStars.material.opacity = 0.9; constLines.material.opacity = 0.28; }
+      if (zodiacStars) { zodiacStars.material.opacity = 0.98; zodiacLines.material.opacity = 0.65; eclipticRing9.material.opacity = 0.28; }
     } else if (!diving && scene.fog && scene.fog.near > 2000) {
       scene.fog.near = 560; scene.fog.far = 2600;
     }
@@ -16626,7 +16668,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, solarSys9?.moon3D, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
