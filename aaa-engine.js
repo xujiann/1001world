@@ -2378,3 +2378,70 @@ export function buildSpaceMars9(scene, MARS) {
     }
   };
 }
+
+export function buildMainSphericalEarth9(scene, mapCanvas) {
+  const grp = new THREE.Group();
+  const R_E = 1400;
+  grp.position.set(0, -R_E, 0);
+
+  const tex = new THREE.CanvasTexture(mapCanvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  // 1. 主地球球体（真实烘焙 1001 世界大陆、海洋与岛屿）
+  const earthMat = new THREE.MeshStandardMaterial({
+    map: tex,
+    roughness: 0.76,
+    metalness: 0.08,
+    emissive: new THREE.Color(0x09182c),
+    emissiveIntensity: 0.28
+  });
+  const earthMesh = new THREE.Mesh(new THREE.SphereGeometry(R_E, 72, 48), earthMat);
+  earthMesh.rotation.z = Math.PI / 2; // 使地图中心 (0,0) 对准球顶 +Y
+  grp.add(earthMesh);
+
+  // 2. 3D 动态云层球壳
+  const cCv = document.createElement('canvas');
+  cCv.width = 512; cCv.height = 256;
+  const cctx = cCv.getContext('2d');
+  cctx.clearRect(0, 0, 512, 256);
+  for (let i = 0; i < 220; i++) {
+    const cx = Math.random() * 512, cy = Math.random() * 256;
+    const rx = 18 + Math.random() * 44, ry = 6 + Math.random() * 14;
+    const grd = cctx.createRadialGradient(cx, cy, 1, cx, cy, rx);
+    grd.addColorStop(0, 'rgba(255,255,255,0.42)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    cctx.fillStyle = grd;
+    cctx.beginPath(); cctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); cctx.fill();
+  }
+  const cloudTex = new THREE.CanvasTexture(cCv);
+  cloudTex.wrapS = THREE.RepeatWrapping; cloudTex.wrapT = THREE.ClampToEdgeWrapping;
+  const cloudSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(R_E + 24, 48, 32),
+    new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.62, depthWrite: false, fog: false })
+  );
+  grp.add(cloudSphere);
+
+  // 3. 瑞利散射蔚蓝大气辉光层（内外双层 BackSide 边缘光环）
+  const atmoInner = new THREE.Mesh(
+    new THREE.SphereGeometry(R_E + 58, 48, 32),
+    new THREE.MeshBasicMaterial({ color: 0x4db8ff, transparent: true, opacity: 0.26, side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  const atmoOuter = new THREE.Mesh(
+    new THREE.SphereGeometry(R_E + 125, 48, 32),
+    new THREE.MeshBasicMaterial({ color: 0x1a6ed8, transparent: true, opacity: 0.12, side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  grp.add(atmoInner, atmoOuter);
+
+  grp.visible = false;
+  scene.add(grp);
+  return {
+    grp,
+    R_E,
+    earthMesh,
+    cloudSphere,
+    update(t) {
+      cloudSphere.rotation.y = t * 0.008;
+    }
+  };
+}

@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9 } from './aaa-engine.js?v=19';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9 } from './aaa-engine.js?v=19';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -2653,6 +2653,8 @@ function startWorld9() {
   if (autoEnterT9) { clearInterval(autoEnterT9); autoEnterT9 = null; }
   $('btnStart').textContent = START_LABEL9;
   $('intro').classList.add('hidden');
+  const _qpIntro = new URLSearchParams(location.search);
+  if (typeof earthIntro9 !== 'undefined' && !_qpIntro.has('tp') && !_qpIntro.has('isle') && !REDUCE9) earthIntro9.start();
   initAudio();
   dailyStreak9();
   try { if (netOn() && RAWLS.getItem('w1001.cloudday') !== todayStr()) setTimeout(async () => { try { const r9 = await cloudUp9(); if (r9.ok) RAWLS.setItem('w1001.cloudday', todayStr()); } catch (e) {} }, 15000); } catch (e) {}   // ☁️ 每日静默云备份
@@ -2911,7 +2913,7 @@ if (!MOBILE) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THRE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4ee);
 scene.fog = new THREE.Fog(0x86c3e8, 560, 2600);
-const camera = new THREE.PerspectiveCamera(58, 1, .1, 2400);
+const camera = new THREE.PerspectiveCamera(58, 1, .1, 9500);
 let composer = null, bokehPass = null, gtaoPass = null, gradePass9 = null, godPass9 = null, photoPass9 = null, bloomPass9 = null, quality = 2;
 let sceneRT9 = null, depthTex9 = null, airPass9 = null, blitScene9 = null, blitCam9 = null;   // 🌫️ 深度管线
 let stylePass9 = null;
@@ -10202,6 +10204,16 @@ function setGlobe(on) {
   const b = document.getElementById('btnGlobe'); if (b) b.textContent = on ? '🗺️ 平面海图' : '🌐 地球仪';
   syncMapTitle();
 }
+let earthGlobe9 = null;
+const earthIntro9 = {
+  t: 0,
+  dur: 6.8,
+  start() {
+    this.t = this.dur;
+    introT9 = 0;
+    toast('🌍 Google Earth 卫星定位中——正在从外太空穿云降落…');
+  }
+};
 document.getElementById('btnGlobe')?.addEventListener('click', () => setGlobe(!globeOn));
 /* ===== 💌 明信片:照片模式里按 C / 点 📸 拍摄,帧末从渲染画布取图合成 ===== */
 let pcPending = false;
@@ -15195,7 +15207,26 @@ function loop() {
     const lookFwd9 = camDist < 7 ? 1.6 : 0;
     camera.lookAt(player.position.x - Math.sin(camYaw) * lookFwd9, player.position.y + lookUp9, player.position.z - Math.cos(camYaw) * lookFwd9);
   }
-  if (introT9 > 0 && !diving && !restState9) {   // 🎬 开场运镜覆盖
+  if (earthIntro9.t > 0 && !diving && !restState9) {   // 🌍 Google Earth 太空 3D 地球穿云俯冲开场
+    if (!modalOpen) earthIntro9.t = Math.max(0, earthIntro9.t - dt);
+    if (pMoving && earthIntro9.t > 1.0) earthIntro9.t = 1.0;
+    const p = 1 - earthIntro9.t / earthIntro9.dur;
+    const zoom = Math.pow(1 - p, 2.75);
+    const sweep = (1 - p) * 1.35;
+    const tgtX = player.position.x + Math.sin(camYaw) * camDist;
+    const tgtY = player.position.y + Math.sin(camPitch) * camDist + 1.8;
+    const tgtZ = player.position.z + Math.cos(camYaw) * camDist;
+    camera.position.set(
+      tgtX * (1 - zoom) + (-1100 * Math.cos(sweep)) * zoom,
+      tgtY + 2550 * zoom,
+      tgtZ * (1 - zoom) + (2400 * Math.sin(sweep + 0.55)) * zoom
+    );
+    camera.lookAt(
+      player.position.x * (1 - zoom),
+      player.position.y + 2 - 580 * zoom,
+      player.position.z * (1 - zoom)
+    );
+  } else if (introT9 > 0 && !diving && !restState9) {   // 🎬 开场运镜覆盖
     if (!modalOpen) introT9 = Math.max(0, introT9 - dt);
     if (pMoving && introT9 > 1.2) introT9 = 1.2;
     const k9 = smooth01(Math.min(1, introT9 / 6));
@@ -16423,6 +16454,33 @@ function loop() {
     csm9.lights.forEach(l => { l.color.copy(sun.color); l.intensity = sun.intensity * .36; });
     csm9.update();
   }
+  if (earthGlobe9) {
+    earthGlobe9.update(t);
+    const inSpace9 = !diving && ((earthIntro9.t > 0 && camera.position.y > 165) || camera.position.y > 195 || player.position.y > 190);
+    earthGlobe9.grp.visible = !diving && (earthIntro9.t > 0 || camera.position.y > 125 || player.position.y > 140);
+    if (oceanWater) oceanWater.visible = !diving && !inSpace9;
+    if (sky) sky.visible = !diving && !inSpace9;
+    if (typeof TCHUNKS !== 'undefined') TCHUNKS.forEach(c => { c.visible = !diving && !inSpace9; });
+    if (inSpace9 && typeof BUCKETS !== 'undefined') BUCKETS.forEach(b => { b.g.visible = false; });
+    if (typeof suoStadium9 !== 'undefined' && suoStadium9?.grp) suoStadium9.grp.visible = !diving && !inSpace9;
+    if (typeof airportSys9 !== 'undefined' && airportSys9?.grp) airportSys9.grp.visible = !diving && !inSpace9;
+    if (typeof dalianBridge9 !== 'undefined' && dalianBridge9?.grp) dalianBridge9.grp.visible = !diving && !inSpace9;
+    if (typeof weenie9 !== 'undefined' && weenie9?.grp) weenie9.grp.visible = !diving && !inSpace9;
+    if (typeof arrakis9 !== 'undefined' && arrakis9?.grp) arrakis9.grp.visible = !diving && !inSpace9;
+    if (typeof oceanWhales9 !== 'undefined' && oceanWhales9?.grp) oceanWhales9.grp.visible = !diving && !inSpace9;
+    if (typeof coastalBirds9 !== 'undefined' && coastalBirds9?.grp) coastalBirds9.grp.visible = !diving && !inSpace9;
+    if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !diving && !inSpace9;
+    if (typeof alexLib9 !== 'undefined' && alexLib9?.grp) alexLib9.grp.visible = !diving && !inSpace9;
+    if (typeof rocketPadEarth9 !== 'undefined' && rocketPadEarth9?.grp) rocketPadEarth9.grp.visible = !diving && !inSpace9;
+    if (inSpace9) {
+      scene.background.setHex(0x020612);
+      if (scene.fog) { scene.fog.near = 4200; scene.fog.far = 16000; }
+      if (starField) { starField.material.opacity = 0.96; starField.position.copy(camera.position); }
+      if (milkyWay9) milkyWay9.material.opacity = 0.72;
+    } else if (!diving && scene.fog && scene.fog.near > 2000) {
+      scene.fog.near = 560; scene.fog.far = 2600;
+    }
+  }
   if (composer && quality > 0) composer.render(); else renderer.render(scene, camera);
   if (pcPending) {
     pcPending = false; makePostcard();
@@ -16555,6 +16613,8 @@ function natureStep9(dt9) {
   }
 }
 /* ---------- 岛屿分桶距离显隐(性能:远岛整组不渲染) ---------- */
+renderBigMap();
+earthGlobe9 = buildMainSphericalEarth9(scene, bigBase);
 const BUCKETS = [
   { x: 0, z: 0 }, { x: IS2.x, z: IS2.z }, { x: TRU.x, z: TRU.z }, { x: MID.x, z: MID.z },
   { x: HOG.x, z: HOG.z }, { x: MOB.x, z: MOB.z }, { x: SPT.x, z: SPT.z }, { x: SHJ.x, z: SHJ.z },
@@ -16566,7 +16626,7 @@ const BUCKETS = [
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, mars9?.grp, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;
