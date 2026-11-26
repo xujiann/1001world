@@ -5496,6 +5496,7 @@ let fieldGrassInst9 = null, fieldGrassMat9 = null;
   while (gi < GN && guard++ < 9000) {
     const x = rnd() * 860 - 430, z = rnd() * 860 - 430, h = height(x, z);
     if (h < 2.2 || h > 24) continue;
+    if (Math.hypot(x - SUO.x, z - SUO.z) < 70 || Math.hypot(x - SPT.x, z - SPT.z) < 68 || Math.hypot(x - 60, z + 204) < 38 || Math.hypot(x - 458, z + 40) < 48 || Math.hypot(x - 28, z + 42) < 16) continue;
     if (ZONES3D.some(zn => Math.hypot(x - zn.x, z - zn.z) < zn.r * .55)) continue;
     q.setFromEuler(new THREE.Euler(rnd() * .22 - .11, rnd() * Math.PI, rnd() * .22 - .11));
     sc.setScalar(.7 + rnd() * .9);
@@ -7345,7 +7346,7 @@ const shjUpgrade9 = buildShanhaiUpgrade9(scene, SHJ, height);
 const b612Ast9 = buildSpaceAsteroidB612(scene, B612);
 function b612Height9(x, z) { return b612Ast9 ? b612Ast9.surfaceY(x, z) : null; }
 const rocketPadEarth9 = buildSpaceRocket9(scene, 28, Math.max(height(28, -42), 0.2), -42);
-const rocketPadB6129 = buildSpaceRocket9(scene, B612.x - 10, b612Height9(B612.x - 10, B612.z + 10) ?? B612.y, B612.z + 10);
+const rocketPadB6129 = buildSpaceRocket9(scene, B612.x - 6.5, (b612Height9(B612.x - 6.5, B612.z + 6.5) ?? B612.y) - 0.5, B612.z + 6.5);
 const rocketFly9 = buildSpaceRocket9(scene, 0, -200, 0);
 rocketFly9.grp.children.forEach(c => { if (c !== rocketFly9.ship) c.visible = false; });
 rocketFly9.grp.visible = false;
@@ -7353,7 +7354,7 @@ rocketFly9.grp.visible = false;
   const gx = B612.x, gz = B612.z;
   const bh = (x, z) => b612Height9(x, z) ?? B612.y;
   addSpot(28, -42, 'lore', 'rocketUp', { r: 7 });
-  addSpot(gx - 10, gz + 10, 'lore', 'rocketDown', { r: 7, y: bh(gx - 10, gz + 10) });
+  addSpot(gx - 6.5, gz + 6.5, 'lore', 'rocketDown', { r: 7, y: bh(gx - 6.5, gz + 6.5) });
   // 玫瑰与玻璃罩
   const rTop = bh(gx + 3, gz);
   const stem = cyl(.06, .06, 1.4, lam(0x3e7a3a)); stem.position.set(gx + 3, rTop + .7, gz); scene.add(stem);
@@ -9998,7 +9999,7 @@ const MAP_LABELS = [
   ['一千零一夜', ANH.x, ANH.z], ['鹦鹉螺锚地', NEM.x, NEM.z], ['B-612', B612.x, B612.z], ['侏罗纪公园', JUR.x, JUR.z],
   ['花果山', HGS.x, HGS.z], ['爱丽丝仙境', ALC.x, ALC.z], ['赤壁', CBI.x, CBI.z], ['兰若寺', LRS.x, LRS.z],
   ['梁山泊', LSP.x, LSP.z], ['风车原野', FCY.x, FCY.z], ['伊夫堡', YFB.x, YFB.z], ['绝望岛', RBX.x, RBX.z],
-  ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['未竟之都', UNJ.x, UNJ.z], ['厄拉科斯·沙丘', ARRAKIS.x, ARRAKIS.z], ['塞壬海域⚠', SIR.x, SIR.z],
+  ['大观园', DGY.x, DGY.z], ['炼狱山', PUR.x, PUR.z], ['未竟之都', UNJ.x, UNJ.z], ['厄拉科斯·沙丘', ARRAKIS.x, ARRAKIS.z], ['达尔文进化岛', DARWIN.x, DARWIN.z], ['塞壬海域⚠', SIR.x, SIR.z],
   ...NISLES.map(s => [NI_CONTENT[s.key].name, s.x, s.z]),
 ];
 function renderBigMap() {
@@ -16553,6 +16554,13 @@ function loop() {
     earthGlobe9.grp.visible = !diving && (earthIntro9.t > 0 || camera.position.y > 125 || player.position.y > 140);
     if (oceanWater) oceanWater.visible = !diving && !inSpace9;
     if (sky) sky.visible = !diving && !inSpace9;
+    if (typeof foamPts !== 'undefined' && foamPts) foamPts.visible = !diving && !inSpace9;
+    if (typeof shallowsMesh !== 'undefined' && shallowsMesh) shallowsMesh.visible = !diving && !inSpace9;
+    if (typeof clouds !== 'undefined') clouds.forEach(c => { c.visible = !diving && !inSpace9; });
+    if (typeof fieldGrassInst9 !== 'undefined' && fieldGrassInst9) fieldGrassInst9.visible = !diving && !inSpace9;
+    if (typeof BIOME !== 'undefined' && BIOME?.pts) BIOME.pts.visible = !diving && !inSpace9;
+    if (typeof skyCityFX9 !== 'undefined' && skyCityFX9?.grp) skyCityFX9.grp.visible = !diving && !inSpace9;
+    if (earthIntro9.t > 0 && typeof allNpcs !== 'undefined') allNpcs.forEach(n => n.bub?.classList.add('hidden'));
     if (typeof TCHUNKS !== 'undefined') TCHUNKS.forEach(c => { c.visible = !diving && !inSpace9; });
     if (inSpace9 && typeof BUCKETS !== 'undefined') BUCKETS.forEach(b => { b.g.visible = false; });
     if (typeof suoStadium9 !== 'undefined' && suoStadium9?.grp) suoStadium9.grp.visible = !diving && !inSpace9;

@@ -1486,12 +1486,12 @@ export class AirportSystems9 {
       if (!gltf.scene) return;
       const box = new THREE.Box3().setFromObject(gltf.scene);
       const sz = box.getSize(new THREE.Vector3());
-      const norm = 12.5 / Math.max(sz.x, sz.y, sz.z, 0.01);
-      // 停靠在主机场与主要枢纽停机坪
+      const norm = 10.5 / Math.max(sz.x, sz.y, sz.z, 0.01);
+      // 停靠在主机场与主要枢纽停机坪（与航站楼留出安全间距）
       pads.filter((_, i) => i % 3 === 0).forEach(p => {
         const m = SkeletonUtils.clone(gltf.scene);
         m.scale.setScalar(norm);
-        m.position.set(p.ax + 8.5, p.ah + 1.1, p.az - 4);
+        m.position.set(p.ax + 9.5, p.ah + 1.1, p.az - 7.5);
         m.rotation.y = Math.PI * 0.82;
         this.grp.add(m);
       });
@@ -2259,13 +2259,15 @@ export function buildSpaceRocket9(scene, px, py, pz) {
   );
   flame.rotation.x = Math.PI; flame.position.y = -1.6; ship.add(flame);
 
-  // 若存在外部 SpaceX .glb 资源则自动加载替换船体
-  new GLTFLoader().load('./assets/models/spacex_starship.glb', gltf => {
-    const ext = gltf.scene;
-    ext.scale.setScalar(1.2);
-    ship.children.forEach(c => { if (c !== flame) c.visible = false; });
-    ship.add(ext);
-  }, undefined, () => {});
+  // 若配置了外部 SpaceX .glb 资源则自动加载替换船体（避免未放置时触发 404 请求）
+  if (typeof window !== 'undefined' && window.__SPACEX_GLB_URL) {
+    new GLTFLoader().load(window.__SPACEX_GLB_URL, gltf => {
+      const ext = gltf.scene;
+      ext.scale.setScalar(1.2);
+      ship.children.forEach(c => { if (c !== flame) c.visible = false; });
+      ship.add(ext);
+    }, undefined, () => {});
+  }
 
   grp.add(ship);
   scene.add(grp);
@@ -2391,10 +2393,10 @@ export function buildMainSphericalEarth9(scene, mapCanvas) {
   // 1. 主地球球体（真实烘焙 1001 世界大陆、海洋与岛屿）
   const earthMat = new THREE.MeshStandardMaterial({
     map: tex,
-    roughness: 0.76,
-    metalness: 0.08,
+    roughness: 0.82,
+    metalness: 0.06,
     emissive: new THREE.Color(0x09182c),
-    emissiveIntensity: 0.28
+    emissiveIntensity: 0.16
   });
   const earthMesh = new THREE.Mesh(new THREE.SphereGeometry(R_E, 72, 48), earthMat);
   earthMesh.rotation.z = Math.PI / 2; // 使地图中心 (0,0) 对准球顶 +Y
