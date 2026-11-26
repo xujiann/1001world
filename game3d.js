@@ -14,7 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as YUKA from 'yuka';
-import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9, buildSolarSystemAndMoon9, buildShanhaiUpgrade9 } from './aaa-engine.js?v=19';
+import { AdaptivePerf9, RapierPhysics9, TrailEffects9, SpatialAudio9, applyHumanSlopeIK9, CinematicCamAndHud9, BiomeMoodSystem9, buildWeenieLandmarks9, ImmersiveMode9, CityTraffic9, CityTowersFX9, buildArrakis9, OceanWhales9, SkyCityFX9, CoastalBirds9, OceanMarineLife9, AirportSystems9, buildRealisticEagle9, buildDalianBridge9, buildBarracudaBayStadium9, buildAlexandriaLibrary9, buildSpaceAsteroidB612, buildSpaceRocket9, buildSpaceMars9, buildMainSphericalEarth9, buildSolarSystemAndMoon9, buildShanhaiUpgrade9, buildDarwinIsland9 } from './aaa-engine.js?v=19';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -169,6 +169,7 @@ const DGY = { x: 1250, z: -650, r: 130 };   // 红楼梦·大观园
 const PUR = { x: -1060, z: 960, r: 92 };    // 神曲·炼狱山(南海孤峰,七层螺旋)
 const UNJ = { x: 350, z: 620, r: 115 };     // 未竟之都(人工几何岛:世界交流中心遗址)
 const ARRAKIS = { x: 1550, z: -100, r: 150 }; // 沙丘·厄拉科斯(Dune Arrakis 沙漠奇观岛)
+const DARWIN = { x: -1480, z: 620, r: 120 };   // 达尔文进化岛(加拉帕戈斯·小猎犬号)
 const SUO = { x: 325, z: 220, r: 62 }; // 大连梭鱼湾足球场(主岛东南三面环海半岛)
 /* —— 海洋文学带:外环诸岛(数据驱动,内容见 NI_CONTENT)—— */
 const NISLES = [
@@ -318,6 +319,7 @@ function islandMask(x, z) {
   m = Math.max(m, isleM9(x, z, PUR.x, PUR.z, PUR.r, 2.0));  // 炼狱山
   m = Math.max(m, isleM9(x, z, UNJ.x, UNJ.z, UNJ.r, 2.2));  // 未竟之都(人工岛)
   m = Math.max(m, isleM9(x, z, ARRAKIS.x, ARRAKIS.z, ARRAKIS.r, 2.1)); // 厄拉科斯·沙丘
+  m = Math.max(m, isleM9(x, z, DARWIN.x, DARWIN.z, DARWIN.r, 1.9));   // 达尔文进化岛
   m = Math.max(m, isleM9(x, z, SUO.x, SUO.z, SUO.r, 2.2)); // 梭鱼湾三面环海半岛
   for (const s of nislesNear(x, z)) { if (s.key === 'gunkan' || s.key === 'fogjail' || s.key === 'atl' || s.key === 'wg') continue; m = Math.max(m, (1 - Math.hypot(x - s.x, z - s.z) / s.r) * (s.mask || 1.8)); }  // 海洋文学带(空间索引)
   { const lx = x - 1520, lz = z - 460;   // 🗾 端岛:真实海岸线多边形(© OSM),军舰形轮廓
@@ -520,6 +522,9 @@ function height(x, z) {
   q(MCD.x, MCD.z, 26, 5);                                                                    // 小基督山
   q(RBX.x, RBX.z, 66, 6); q(RBX.x, RBX.z - 104, 16, 2.2, .95);                               // 绝望岛
   q(DGY.x, DGY.z, 72, 7); q(DGY.x, DGY.z + 112, 16, 2.2, .95);                               // 大观园
+  q(DARWIN.x, DARWIN.z, 64, 7.5);                                                            // 达尔文进化岛腹地
+  h += smooth01(clamp(1 - Math.hypot(x - DARWIN.x, z - (DARWIN.z - 32)) / 42, 0, 1)) ** 2 * 16; // 火山穹顶
+  q(DARWIN.x, DARWIN.z + 96, 15, 2.2, .95);                                                  // 小猎犬号码头
   q(PUR.x, PUR.z, PUR.r, 3);                                                                 // 炼狱山·涤罪滩(环山基座)
   { const dpu = Math.hypot(x - PUR.x, z - PUR.z), R2 = PUR.r * .82;                          // 七层阶梯螺旋锥
     if (dpu < R2) { const lvl = (1 - dpu / R2) * 7, k = Math.min(6, Math.floor(lvl)), fr = lvl - k;
@@ -972,6 +977,7 @@ const WORLDS = [
   { key: 'mob', icon: '🐳', name: '莫比·迪克', en: 'Moby-Dick', open: true, desc: '南塔开特捕鲸港 · 白鲸在环岛海域出没' },
   { key: 'sport', icon: '⚽', name: '体育岛', en: 'Sports Isle', open: true, desc: '一万人红色梦剧场 · 曼联 vs 曼城进行中' },
   { key: 'shj', icon: '🐉', name: '山海经', en: 'Shan Hai Jing', open: true, desc: '异兽之野:九尾狐 · 烛龙 · 饕餮 · 帝江' },
+  { key: 'darwin', icon: '🧬', name: '达尔文进化岛', en: 'Galápagos · Darwin', open: true, desc: '小猎犬号 · 象龟 · 达尔文雀 · 生命演化树' },
   { key: 'anh', icon: '🪔', name: '一千零一夜', en: 'Arabian Nights', open: true, desc: '巴格达集市 · 神灯 · 飞毯 · 山鲁佐德' },
   { key: 'nem', icon: '🐚', name: '海底两万里', en: '20,000 Leagues', open: true, desc: '鹦鹉螺号锚地 · 尼摩船长' },
   { key: 'b612', icon: '🌹', name: 'B-612 小行星', en: 'The Little Prince', open: true, desc: '玫瑰 · 猴面包树 · 一盏路灯' },
@@ -1241,6 +1247,9 @@ function loreCard(k) {
   if (k === 'chstar') btn = PSTORE.getItem('w1001.chain2') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">信已送达,回信已投。夜里那颗星,格外亮。</span>'
     : '<button class="again" data-chainx="star">✨ 接下这份托付(流光引路)</button>';
+  if (k === 'fogg80') btn = PSTORE.getItem('w1001.chain80') === '1'
+    ? '<span style="color:#8a7c62;font-size:13px">🎩 你已完成《80天环绕地球》壮举！因为跨越了国际日期变更线，还提前一天抵达！</span>'
+    : '<button class="again" data-chainx="around80">🎩 开启《80天环绕地球》挑战(流光引路)</button>';
   if (k === 'gardener') btn = PSTORE.getItem('w1001.skyflower') === '1'
     ? '<span style="color:#8a7c62;font-size:13px">石碑前多了一朵花。园丁对你微微躬身,又转回它的花去。</span>'
     : '<button class="again" data-flower>🌼 摘一朵花,放在石碑前</button>';
@@ -8407,6 +8416,7 @@ const ISLES = [
   { c: MCD, name: '小基督山(宝藏屿)', icon: '💎', theme: 'chateau' },
   { c: RBX, name: '鲁滨逊 · 绝望岛', icon: '🏝️', theme: 'crusoe' },
   { c: DGY, name: '红楼梦 · 大观园', icon: '🏮', theme: 'daguan' },
+  { c: DARWIN, name: '达尔文进化岛', icon: '🧬', theme: 'shanhai' },
   { c: PUR, name: '神曲 · 炼狱山', icon: '⛰️', theme: 'purgatory' },
   { c: UNJ, name: '未竟之都', icon: '🏛️', theme: 'capital' },
 ];
@@ -8603,7 +8613,8 @@ const WORLD_TOUR_STOPS9 = [
   { name: '大连梭鱼湾专业足球场', x: 325, z: 220, dist: 64, pitch: 0.36 },
   { name: '大连星海湾跨海大桥', x: -498, z: -277, y: 12, dist: 56, pitch: 0.26 },
   { name: '鲸背国际机场 (A350 & 塔台)', x: 458, z: -40, dist: 34, pitch: 0.24 },
-  { name: '天空之城 · 勒皮他', x: SKY.x, z: SKY.z + 24, y: SKY.y + 1.5, dist: 46, pitch: 0.24 },
+  { name: '山海经 · 异兽之野', x: SHJ.x, z: SHJ.z + 24, dist: 50, pitch: 0.25 },
+  { name: '达尔文进化岛 · 小猎犬号', x: DARWIN.x, z: DARWIN.z + 24, dist: 46, pitch: 0.25 },
   { name: '灯塔屿', x: IS2.x, z: IS2.z + 24, dist: 42, pitch: 0.25 },
   { name: '中土 · 夏尔与末日火山', x: MID.x, z: MID.z + 30, dist: 52, pitch: 0.28 },
   { name: '霍格沃茨魔法城堡', x: HOG.x, z: HOG.z + 30, dist: 50, pitch: 0.26 },
@@ -11146,7 +11157,36 @@ const CHAINS9 = {
     { x: -550, z: 200, label: '天空之城', msg: '🏯 云端的乐师接过信,读罢一笑:"他还是没学会自己上来。回去告诉他:星星也在看他。"' },
     { x: 16, z: -2, label: '圆枢广场喷泉', msg: '⛲ 你把回信投进喷泉边的木箱。当晚,广场上空多了一颗特别亮的星。' },
   ] },
+  around80: { title: '80天环绕地球', done: 'chain80', steps: [
+    { x: ANH.x, z: ANH.z + 24, label: '第1站 · 苏伊士·巴格达驿站', msg: '🪔 第14天：穿过苏伊士运河抵达巴格达！下一站：乘船向东前往山海经大荒海岸！' },
+    { x: SHJ.x, z: SHJ.z + 40, label: '第2站 · 孟买与东行海岸', msg: '🐉 第32天：穿过东海异兽之野！继续向东前往横渡太平洋的港口（梭鱼湾海港）！' },
+    { x: 325, z: 220, label: '第3站 · 太平洋启航港', msg: '🏟️ 第50天：蒸汽邮轮加满煤，正式横渡太平洋——跨越国际日期变更线（x > 1960）即可抵达西半球加拉帕戈斯！' },
+    { x: DARWIN.x, z: DARWIN.z + 20, label: '第4站 · 加拉帕戈斯进化岛', msg: '🧬 第62天：抵达达尔文进化岛！象龟与小猎犬号为你送行，北上前往捕鲸港！' },
+    { x: MOB.x, z: MOB.z + 24, label: '第5站 · 大西洋横渡港', msg: '🐳 第74天：横渡美洲抵达南塔开特捕鲸港！最后冲刺横跨大西洋返回圆枢广场！' },
+    { x: -18, z: 28, label: '终点 · 福克热气球广场', msg: '🎩 第79天抵达！因为向东跨越国际日期变更线赚回了一整天，你提前完成了《80天环绕地球》壮举！' },
+  ] },
 };
+const darwin9 = buildDarwinIsland9(scene, DARWIN, height);
+{
+  const dx = DARWIN.x, dz = DARWIN.z;
+  addSpot(-18, 28, 'lore', 'fogg80', { r: 7 });
+  addNpc({ x: -14, z: 30, name: '斐利亚·福克', body: 0x222834, hat: 0x11141a, opts: { tall: 1.05 },
+    lines: ['两万英镑的赌约：80天环绕地球一周，一分不多，一分不少。', '向东航行跨越国际日期变更线，我们会神奇地"赚回一天"。', '去旁边的热气球点按 E，随时开启《80天环绕地球》故事线！'] });
+  addNpc({ x: -21, z: 26, name: '路路通', body: 0x6b4c35, hat: 0x3b2a1e, opts: { tall: .95 },
+    lines: ['主人！蒸汽船的煤已经装满，热气球随时可以起飞！'] });
+
+  addSpot(dx, dz + 6, 'lore', 'darwintree', { r: 8 });
+  addSpot(dx + 22, dz + 88, 'lore', 'darwinbeagle', { r: 9 });
+  addSpot(dx - 8, dz + 16, 'lore', 'darwinfinch', { r: 7 });
+  addSpot(dx + 14, dz - 8, 'lore', 'darwintortoise', { r: 7 });
+  addSpot(dx, dz + 94, 'ferry', 'ferry', { r: 8 });
+  const dSign = makeSign('达尔文进化岛', 6.5, '#1b3528', '#f0c24b');
+  dSign.position.set(dx, height(dx, dz + 82) + 3.6, dz + 82); scene.add(dSign);
+  addNpc({ x: dx + 6, z: dz + 4, name: '查尔斯·达尔文', body: 0x3b362e, hat: 0x221f1a, opts: { tall: 1.02 },
+    lines: ['物竞天择，适者生存。加拉帕戈斯每座岛的雀鸟喙形都独一无二。', '生命就像一棵不断分叉的大树，所有物种都拥有共同的祖先。'] });
+  addNpc({ x: dx + 18, z: dz + 84, name: '菲茨罗伊船长', body: 0x1d2d44, hat: 0x111926, opts: { tall: 1.05 },
+    lines: ['小猎犬号历时五年测绘大洋，船舱里装满了达尔文采集的岩石与标本。'] });
+}
 let chainAct9 = null, chainStep9 = 0;
 function chainNav9() {
   const st9 = CHAINS9[chainAct9].steps[chainStep9];
@@ -13831,6 +13871,7 @@ try {
       { name: '南塔开特 · 捕鲸港', x: MOB.x, z: MOB.z + 24 },
       { name: '体育岛 · 红色梦剧场', x: SPT.x, z: SPT.z + 20 },
       { name: '山海经 · 异兽之野', x: SHJ.x, z: SHJ.z + 24 },
+      { name: '达尔文进化岛 · 小猎犬号', x: DARWIN.x, z: DARWIN.z + 24 },
       { name: '桃花源秘境', x: THY.x, z: THY.z + 20 },
       { name: '一千零一夜 · 巴格达', x: ANH.x, z: ANH.z + 24 },
       { name: '小王子 · B-612 小行星', x: B612.x, z: B612.z + 18, y: B612.y + 1.2 },
@@ -15970,6 +16011,7 @@ function loop() {
   if (b612Ast9) b612Ast9.update(t);
   if (mars9) mars9.update(t);
   if (shjUpgrade9) shjUpgrade9.update(t);
+  if (typeof darwin9 !== 'undefined' && darwin9) darwin9.update(t);
   if (flight && flight.rocket) {   // 🚀 SpaceX 星际穿梭火箭航线（地球 ↔ B-612 ↔ 火星）
     flight.t += dt;
     const k2 = Math.min(1, flight.t / flight.dur), e2 = k2 * k2 * (3 - 2 * k2);
@@ -16523,6 +16565,7 @@ function loop() {
     if (typeof oceanMarine9 !== 'undefined' && oceanMarine9?.grp) oceanMarine9.grp.visible = !diving && !inSpace9;
     if (typeof alexLib9 !== 'undefined' && alexLib9?.grp) alexLib9.grp.visible = !diving && !inSpace9;
     if (typeof shjUpgrade9 !== 'undefined' && shjUpgrade9?.grp) shjUpgrade9.grp.visible = !diving && !inSpace9;
+    if (typeof darwin9 !== 'undefined' && darwin9?.grp) darwin9.grp.visible = !diving && !inSpace9;
     if (typeof rocketPadEarth9 !== 'undefined' && rocketPadEarth9?.grp) rocketPadEarth9.grp.visible = !diving && !inSpace9;
     if (typeof solarSys9 !== 'undefined' && solarSys9) {
       solarSys9.update(t, 1 - curDA, inSpace9);
@@ -16685,11 +16728,11 @@ const BUCKETS = [
   { x: JUR.x, z: JUR.z }, { x: HGS.x, z: HGS.z }, { x: ALC.x, z: ALC.z }, { x: CBI.x, z: CBI.z },
   { x: LRS.x, z: LRS.z }, { x: LSP.x, z: LSP.z }, { x: FCY.x, z: FCY.z }, { x: YFB.x, z: YFB.z },
   { x: MCD.x, z: MCD.z }, { x: RBX.x, z: RBX.z }, { x: DGY.x, z: DGY.z }, { x: SIR.x, z: SIR.z },
-  { x: PUR.x, z: PUR.z }, { x: UNJ.x, z: UNJ.z }, { x: ARRAKIS.x, z: ARRAKIS.z },
+  { x: PUR.x, z: PUR.z }, { x: UNJ.x, z: UNJ.z }, { x: ARRAKIS.x, z: ARRAKIS.z }, { x: DARWIN.x, z: DARWIN.z },
   ...NISLES.map(s => ({ x: s.x, z: s.z })),
 ].map(b => Object.assign(b, { g: new THREE.Group() }));
 {
-  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, shjUpgrade9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, solarSys9?.moon3D, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
+  const excl = new Set([player, blob, sky, starField, moonMesh, moonGlow, moonLight, moonLight.target, sun, sun.target, hemi, mobySpout, meteor, fireflies, pengBird, arrakis9.grp, weenie9.grp, oceanWhales9.grp, skyCityFX9.grp, coastalBirds9.grp, oceanMarine9.grp, airportSys9.grp, dalianBridge9.grp, suoStadium9.grp, alexLib9?.grp, shjUpgrade9?.grp, darwin9?.grp, b612Ast9?.grp, mars9?.grp, earthGlobe9?.grp, solarSys9?.moon3D, rocketPadEarth9?.grp, rocketPadB6129?.grp, rocketPadMars9?.grp, rocketFly9?.grp, diveGroup, ropeGroup, diveLight, causticLight]);
   clouds.forEach(c => excl.add(c));
   for (const o of [...scene.children]) {
     if (excl.has(o) || o.isInstancedMesh || o.isPoints) continue;

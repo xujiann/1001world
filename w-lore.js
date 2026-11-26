@@ -446,7 +446,15 @@ export function makeLORE({ D, esc, todayStr, mulberry32 }) {
     desc: '富家少爷哈维从邮轮跌进大西洋,被这条纽芬兰渔船捞起。船长不信他爸是百万富翁,只给他一份月薪十块半的水手活。三个月的鳕鱼、绳结与守夜之后——少年把"谢谢"和"值得"都学会了。《怒海余生》,吉卜林。' },
   grantbottle: { icon: '🍾', color: '#3a6a5a', title: '瓶中信', en: 'The Message in the Bottle', hint: '37°11′',
     desc: '鲨鱼肚里剖出的香槟瓶,三张被海水泡烂的纸:英语、法语、德语各一份,拼出半句坐标——"37°11′……格兰特船长"。邓肯号为这半句话沿着三十七度纬线绕了地球一整圈。一条纬线,用忠诚画成。' },
-  fogg80: { icon: '🎩', color: '#4a4a5a', title: '福克先生的邮轮', en: 'Around the World', hint: '八十天,一分不多',
-    desc: '"我用两万英镑打赌:八十天,环绕地球一周。"福克先生带着仆人路路通,火车、邮轮、大象、雪橇轮番上阵,自以为迟到了五分钟——却赢在一个没算到的地方:一路向东,他多赚了一整天。' },
+  fogg80: { icon: '🎩', color: '#4a4a5a', title: '《80天环绕地球》起点 · 福克热气球', en: 'Around the World in 80 Days', hint: '环球打赌开启',
+    desc: '儒勒·凡尔纳《80天环绕地球》:绅士斐利亚·福克与改良俱乐部立下两万英镑的赌约,携带仆人路路通向东环球一周!跨越东经180°国际日期变更线还可"赚回一天",提前抵达终点!' },
+  darwintree: { icon: '🧬', color: '#2b6b4f', title: '达尔文生命演化树', en: 'Tree of Life · "I Think"', hint: '《物种起源》',
+    desc: '1837年达尔文在笔记B本上画下第一棵生命演化树并在顶部写下"I think"。所有物种都从共同祖先经自然选择分化而来——金色枝桠连接着雀鸟、象龟、海鬣蜥与人类。' },
+  darwinbeagle: { icon: '⛵', color: '#3b5266', title: '小猎犬号 HMS Beagle', en: 'HMS Beagle', hint: '五年环球科考',
+    desc: '1831-1836年,22岁的达尔文搭乘小猎犬号皇家海军双桅横帆船环球航行五年。正是停靠加拉帕戈斯群岛的五周考察,孕育了改变现代生物学的《物种起源》。' },
+  darwinfinch: { icon: '🐦', color: '#6b5344', title: '达尔文雀与自然选择', en: "Darwin's Finches", hint: '喙形因岛而异',
+    desc: '群岛上每座岛屿的雀鸟喙形都恰好适应当地食物:吃坚果的粗壮、啄仙人掌的细长、捕虫的尖锐。物竞天择,适者生存。' },
+  darwintortoise: { icon: '🐢', color: '#4b5a36', title: '加拉帕戈斯巨型象龟', en: 'Galápagos Giant Tortoise', hint: '百岁活化石',
+    desc: '西班牙语 Galápagos 本意正是"象龟"。这些重达数百公斤的巨龟能活过150年,背甲形状同样因不同岛屿的植被高度而演化出穹顶型与鞍背型。' },
 };
 }

@@ -2698,3 +2698,132 @@ export function buildShanhaiUpgrade9(scene, SHJ, heightFn) {
     }
   };
 }
+
+export function buildDarwinIsland9(scene, DARWIN, heightFn) {
+  const grp = new THREE.Group();
+  const dx = DARWIN.x, dz = DARWIN.z;
+
+  const woodM = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.8 });
+  const sailM = new THREE.MeshStandardMaterial({ color: 0xf7f2e4, roughness: 0.72, side: THREE.DoubleSide });
+  const goldM = new THREE.MeshStandardMaterial({ color: 0xf0c24b, roughness: 0.25, metalness: 0.85, emissive: 0x4d3406, emissiveIntensity: 0.35 });
+  const rockM = new THREE.MeshStandardMaterial({ color: 0x2e3138, roughness: 0.9 });
+  const shellM = new THREE.MeshStandardMaterial({ color: 0x4b4636, roughness: 0.75 });
+  const skinM = new THREE.MeshStandardMaterial({ color: 0x6a6e54, roughness: 0.85 });
+
+  // 1. 达尔文生命演化树纪念碑 ("I think" 双螺旋分支金树)
+  const th0 = heightFn(dx, dz);
+  const treeGrp = new THREE.Group();
+  treeGrp.position.set(dx, th0, dz);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 6.4, 1.2, 12), rockM);
+  plinth.position.y = 0.6; treeGrp.add(plinth);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.75, 9.5, 10), goldM);
+  stem.position.y = 5.4; treeGrp.add(stem);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const br = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.28, 4.6, 8), goldM);
+    br.position.set(Math.cos(a) * 1.8, 7.6 + (i % 2) * 1.1, Math.sin(a) * 1.8);
+    br.rotation.z = -Math.cos(a) * 0.65; br.rotation.x = Math.sin(a) * 0.65;
+    treeGrp.add(br);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.52, 10, 8), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x6ce8ff : 0xffd76a, fog: false }));
+    orb.position.set(Math.cos(a) * 3.3, 9.3 + (i % 2) * 1.1, Math.sin(a) * 3.3);
+    treeGrp.add(orb);
+  }
+  grp.add(treeGrp);
+
+  // 2. 小猎犬号 HMS Beagle 三桅帆船（停泊南湾海面）
+  const beagle = new THREE.Group();
+  beagle.position.set(dx + 32, 0.2, dz + 98);
+  beagle.rotation.y = -0.45;
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.8, 16.5), woodM);
+  hull.position.y = 1.2; beagle.add(hull);
+  const bow = new THREE.Mesh(new THREE.ConeGeometry(2.6, 5.2, 4), woodM);
+  bow.rotation.x = Math.PI / 2; bow.rotation.y = Math.PI / 4; bow.position.set(0, 1.4, 10.6); beagle.add(bow);
+  [-4.5, 0.5, 5.2].forEach((mz, mi) => {
+    const mh = mi === 1 ? 14 : 11;
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, mh, 8), woodM);
+    mast.position.set(0, 2.2 + mh / 2, mz); beagle.add(mast);
+    const sail = new THREE.Mesh(new THREE.PlaneGeometry(4.8 - mi * 0.3, mh * 0.52), sailM);
+    sail.position.set(0, 3.2 + mh * 0.48, mz + 0.25); beagle.add(sail);
+  });
+  grp.add(beagle);
+
+  // 3. 加拉帕戈斯巨型象龟群 (3 只慢步巡游)
+  const tortoises = [];
+  for (let i = 0; i < 3; i++) {
+    const tg = new THREE.Group();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.45, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shellM);
+    dome.scale.set(1.25, 0.85, 1.0); dome.position.y = 0.65; tg.add(dome);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.1, 8), skinM);
+    neck.rotation.z = -0.65; neck.position.set(1.7, 0.95, 0); tg.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), skinM);
+    head.position.set(2.2, 1.25, 0); tg.add(head);
+    for (const [lx, lz] of [[-0.85, -0.65], [0.85, -0.65], [-0.85, 0.65], [0.85, 0.65]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.75, 7), skinM);
+      leg.position.set(lx, 0.38, lz); tg.add(leg);
+    }
+    grp.add(tg);
+    tortoises.push({ g: tg, a0: i * 2.1, r: 16 + i * 5 });
+  }
+
+  // 4. 达尔文雀群 (6 只不同喙形雀鸟绕树飞舞)
+  const finches = [];
+  const fCols = [0x6b5344, 0x3b3834, 0x8c7355, 0x52463a, 0x9c8260, 0x453e38];
+  for (let i = 0; i < 6; i++) {
+    const fg = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshStandardMaterial({ color: fCols[i], roughness: 0.7 }));
+    body.scale.set(1.3, 0.95, 0.9); fg.add(body);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.08 + (i % 3) * 0.05, 0.32, 6), new THREE.MeshStandardMaterial({ color: 0x22201e }));
+    beak.rotation.z = -Math.PI / 2; beak.position.set(0.42, 0.02, 0); fg.add(beak);
+    const wL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.48), body.material); wL.position.set(0, 0.06, 0.25);
+    const wR = wL.clone(); wR.position.z = -0.25;
+    fg.add(wL, wR);
+    grp.add(fg);
+    finches.push({ g: fg, wL, wR, ph: i * 1.05, r: 8 + (i % 3) * 3.5, yOff: 10 + (i % 2) * 2.5 });
+  }
+
+  // 5. 海岸玄武岩与海鬣蜥 (3 只伏在黑岩晒太阳)
+  for (let i = 0; i < 3; i++) {
+    const ix = dx - 28 + i * 12, iz = dz + 56 + (i % 2) * 6, ih = heightFn(ix, iz);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 0), rockM);
+    rock.scale.set(1.3, 0.55, 1.1); rock.position.set(ix, ih + 0.3, iz); grp.add(rock);
+    const ig = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 1.1, 6, 8), new THREE.MeshStandardMaterial({ color: 0x2b332c, roughness: 0.75 }));
+    ig.rotation.z = Math.PI / 2; ig.position.set(ix, ih + 1.05, iz); grp.add(ig);
+  }
+
+  // 6. 80天环游起点·热气球（停靠收藏之岛圆枢西侧 -18, 28）
+  const balloon = new THREE.Group();
+  const bx0 = -18, bz0 = 28, bh0 = heightFn(bx0, bz0);
+  balloon.position.set(bx0, bh0, bz0);
+  const basket = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 2.2), woodM);
+  basket.position.y = 0.7; balloon.add(basket);
+  const env = new THREE.Mesh(new THREE.SphereGeometry(4.6, 16, 12), new THREE.MeshStandardMaterial({ color: 0xd9483b, roughness: 0.55 }));
+  env.scale.set(1, 1.25, 1); env.position.y = 9.2; balloon.add(env);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(4.58, 0.35, 8, 24), goldM);
+  stripe.rotation.x = Math.PI / 2; stripe.position.y = 9.2; balloon.add(stripe);
+  grp.add(balloon);
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t) {
+      beagle.position.y = 0.2 + Math.sin(t * 1.1) * 0.28;
+      beagle.rotation.z = Math.sin(t * 0.9) * 0.04;
+      tortoises.forEach(tc => {
+        const a = tc.a0 + t * 0.045;
+        const tx = dx + Math.cos(a) * tc.r, tz = dz + Math.sin(a) * tc.r;
+        tc.g.position.set(tx, heightFn(tx, tz), tz);
+        tc.g.rotation.y = -a + Math.PI / 2;
+      });
+      finches.forEach(fc => {
+        const a = fc.ph + t * 0.85;
+        const fx = dx + Math.cos(a) * fc.r, fz = dz + Math.sin(a) * fc.r;
+        fc.g.position.set(fx, th0 + fc.yOff + Math.sin(t * 2.8 + fc.ph) * 0.8, fz);
+        fc.g.rotation.y = -a + Math.PI / 2;
+        const flap = Math.sin(t * 14 + fc.ph) * 0.6;
+        fc.wL.rotation.x = flap; fc.wR.rotation.x = -flap;
+      });
+      balloon.children[1].position.y = 9.2 + Math.sin(t * 1.4) * 0.25;
+      balloon.children[2].position.y = 9.2 + Math.sin(t * 1.4) * 0.25;
+    }
+  };
+}
