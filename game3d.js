@@ -15023,8 +15023,16 @@ function loop() {
       }
     }
     // 边界
-    // 世界边界:方形 ±1960(地形网格为 ±2000 方格,四角亦可驻岛)
-    player.position.x = Math.max(-1960, Math.min(1960, player.position.x));
+    // 世界边界:东西经 ±1960 无缝环球回绕(跨越国际日期变更线);南北极保留 ±1960 边界
+    if (player.position.x > 1960) {
+      player.position.x -= 3920;
+      camera.position.x -= 3920;
+      toast('🌐 跨越国际日期变更线（180°E → 180°W），继续航行可环球回到原地！');
+    } else if (player.position.x < -1960) {
+      player.position.x += 3920;
+      camera.position.x += 3920;
+      toast('🌐 跨越国际日期变更线（180°W → 180°E），继续航行可环球回到原地！');
+    }
     player.position.z = Math.max(-1960, Math.min(1960, player.position.z));
     // 障碍推离
     const pr = .9;
