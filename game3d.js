@@ -11561,6 +11561,9 @@ function pierHeight(x, z) {
 }
 /* 梦剧场纯平草坪(6.34m) + 矩形四面看台台阶(可拾级而上,14 层) */
 function stadiumHeight(x, z) {
+  const sdx = (x - SUO.x) / 1.22, sdz = (z - SUO.z) / 0.92;
+  const sr = Math.hypot(sdx, sdz);
+  if (sr >= 43.0 && sr <= 47.6) return 19.95;   // 大连梭鱼湾屋顶环绕观海步道
   const dx = Math.abs(x - SPT.x), dz = Math.abs(z - SPT.z);
   if (dx > 45 || dz > 38) return null;
   const rx = dx - 25.6, rz = dz - 18.6;

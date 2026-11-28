@@ -1934,12 +1934,46 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
     cant.rotation.y = -a; grp.add(cant);
   }
 
-  // 标志性“炫彩叠浪”5 层环绕海浪灯带
+  // 标志性“炫彩叠浪”5 层环绕海浪灯带 + 屋盖张拉钢索内环与辐射拉索
+  const waveBands = [];
   [2.8, 5.4, 8.0, 10.6, 13.0].forEach((wy, wi) => {
     const wCol = wi % 2 === 0 ? 0x4ad4ff : 0x1e88e5;
-    const waveBand = new THREE.Mesh(new THREE.TorusGeometry(45.5 - wi * 0.35, 0.26, 6, 64), new THREE.MeshBasicMaterial({ color: wCol, fog: false }));
+    const wMat = new THREE.MeshBasicMaterial({ color: wCol, fog: false });
+    const waveBand = new THREE.Mesh(new THREE.TorusGeometry(45.5 - wi * 0.35, 0.26, 6, 64), wMat);
     waveBand.rotation.x = Math.PI / 2; waveBand.position.y = wy; waveBand.scale.set(1.22, 0.92, 1); grp.add(waveBand);
+    waveBands.push({ m: wMat, base: wCol, idx: wi });
   });
+  const innerTensionRing = new THREE.Mesh(new THREE.TorusGeometry(23.5, 0.34, 8, 56), ribWhiteMat);
+  innerTensionRing.rotation.x = Math.PI / 2; innerTensionRing.position.y = 15.15; innerTensionRing.scale.set(1.22, 0.92, 1); grp.add(innerTensionRing);
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0xd8e6f2, roughness: 0.3, metalness: 0.8 });
+  for (let ci = 0; ci < 24; ci++) {
+    const a = (ci / 24) * Math.PI * 2;
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 22, 5), cableMat);
+    cable.position.set(Math.cos(a) * 34 * 1.22, 15.15, Math.sin(a) * 34 * 0.92);
+    cable.rotation.z = Math.PI / 2; cable.rotation.y = -a;
+    grp.add(cable);
+  }
+
+  // 三面环海滨海木栈道观海平台 + 北广场银色跃海梭鱼雕塑
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0x8d6342, roughness: 0.78 });
+  const silverMat = new THREE.MeshStandardMaterial({ color: 0xdce8f4, roughness: 0.2, metalness: 0.88 });
+  const floodMat = new THREE.MeshBasicMaterial({ color: 0xf4fbff, fog: false });
+  [[0, 58, 42, 7.5, 0], [66, 0, 7.5, 36, 0], [-66, 0, 7.5, 36, 0]].forEach(([bx, bz, bw, bd]) => {
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.45, bd), boardMat);
+    deck.position.set(bx, -0.05, bz); deck.receiveShadow = true; grp.add(deck);
+    for (let li = -2; li <= 2; li++) {
+      const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 1.1, 6), floodMat);
+      bollard.position.set(bx + (bw > bd ? li * 8 : 0), 0.65, bz + (bd > bw ? li * 7 : 0));
+      grp.add(bollard);
+    }
+  });
+  const fishSculpt = new THREE.Group();
+  fishSculpt.position.set(0, 1.2, -59);
+  const fBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.65, 4.2, 8, 12), silverMat);
+  fBody.rotation.z = Math.PI / 3.2; fBody.position.y = 2.6; fishSculpt.add(fBody);
+  const fTail = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.4, 4), silverMat);
+  fTail.position.set(-2.1, 0.9, 0); fTail.rotation.z = 0.6; fishSculpt.add(fTail);
+  grp.add(fishSculpt);
 
   // 真实世界标志性 2.2km 螺旋上升屋顶观光步道（1.35 圈珊瑚红坡道 + 玻璃护栏）
   const RAMP_SEGS = 72;
@@ -1962,7 +1996,6 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
   }
 
   // 内环马道泛光灯组（24 盏专业球场投光灯）
-  const floodMat = new THREE.MeshBasicMaterial({ color: 0xf4fbff, fog: false });
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     const pod = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.65, 0.9), floodMat);
@@ -2037,6 +2070,17 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 }));
   ball.position.set(0, 0.42, 0); grp.add(ball);
 
+  // 双方门将（守在球门线前横向移动扑救）
+  const keepers = [-1, 1].map((sgn, ki) => {
+    const kg = new THREE.Group();
+    const kM = new THREE.MeshStandardMaterial({ color: ki === 0 ? 0xffc83d : 0x4de88c, roughness: 0.45 });
+    const kb = new THREE.Mesh(new THREE.CapsuleGeometry(0.29, 0.78, 4, 6), kM); kb.position.y = 0.76; kg.add(kb);
+    const kh = new THREE.Mesh(new THREE.SphereGeometry(0.24, 6, 5), skinM); kh.position.y = 1.5; kg.add(kh);
+    kg.position.set(sgn * (pw / 2 - 2.6), 0.12, 0);
+    grp.add(kg);
+    return { m: kg, x: sgn * (pw / 2 - 2.6), sgn };
+  });
+
   scene.add(grp);
   let lastMin = 68;
   return {
@@ -2054,6 +2098,14 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
         const tz = pl.bz * 0.55 + bpz * 0.45 + Math.cos(t * 1.2 + pl.ph) * 2.6;
         pl.m.position.set(Math.max(-pw / 2 + 2, Math.min(pw / 2 - 2, tx)), 0.12 + Math.abs(Math.sin(t * 8 + pl.ph)) * 0.12, Math.max(-pd / 2 + 2, Math.min(pd / 2 - 2, tz)));
         pl.m.lookAt(cx + bpx, yBase + 0.12, cz + bpz);
+      }
+      for (const kp of keepers) {
+        kp.m.position.set(kp.x, 0.12, Math.max(-2.4, Math.min(2.4, bpz * 0.35)));
+        kp.m.lookAt(cx + bpx, yBase + 0.12, cz + bpz);
+      }
+      for (const wb of waveBands) {
+        const pulse = 0.65 + 0.35 * Math.sin(t * 2.2 - wb.idx * 0.7);
+        wb.m.color.setHex(wb.base).multiplyScalar(pulse);
       }
       // 球迷人浪
       for (let i = 0; i < FANS; i += 4) {
