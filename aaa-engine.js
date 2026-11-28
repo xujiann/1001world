@@ -2937,3 +2937,179 @@ export function buildDarwinIsland9(scene, DARWIN, heightFn) {
     }
   };
 }
+
+export function buildDaguanGarden9(scene, DGY, heightFn) {
+  const grp = new THREE.Group();
+  const gx = DGY.x, gz = DGY.z;
+
+  const marbleM = new THREE.MeshStandardMaterial({ color: 0xebe8e0, roughness: 0.65 });
+  const redM = new THREE.MeshStandardMaterial({ color: 0x9b2226, roughness: 0.45, metalness: 0.12 });
+  const wallM = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.82 });
+  const roofJadeM = new THREE.MeshStandardMaterial({ color: 0x1e5c4c, roughness: 0.35, metalness: 0.22 });
+  const roofGoldM = new THREE.MeshStandardMaterial({ color: 0xd99b26, roughness: 0.28, metalness: 0.65 });
+  const roofGreyM = new THREE.MeshStandardMaterial({ color: 0x3b4046, roughness: 0.68 });
+  const woodM = new THREE.MeshStandardMaterial({ color: 0x5c3620, roughness: 0.72 });
+  const lanternM = new THREE.MeshBasicMaterial({ color: 0xff5e3a, fog: false });
+  const winGlowM = new THREE.MeshBasicMaterial({ color: 0xffe29a, fog: false });
+
+  const makePlaque = (text, bg = '#2b1214', fg = '#ffd86b') => {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = fg; ctx.lineWidth = 4; ctx.strokeRect(4, 4, 248, 56);
+    ctx.fillStyle = fg; ctx.font = 'bold 26px system-ui,serif'; ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 42);
+    return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) });
+  };
+
+  // 1. 省亲别墅 · 大观楼（重檐歇山顶主殿 + 二层汉白玉须弥座）
+  const mx = gx, mz = gz - 34, mh = heightFn(mx, mz);
+  const palace = new THREE.Group();
+  palace.position.set(mx, mh, mz);
+  const plinth1 = new THREE.Mesh(new THREE.BoxGeometry(28, 1.4, 18), marbleM);
+  plinth1.position.y = 0.7; plinth1.receiveShadow = true; palace.add(plinth1);
+  const plinth2 = new THREE.Mesh(new THREE.BoxGeometry(24, 1.1, 14.5), marbleM);
+  plinth2.position.y = 1.95; plinth2.receiveShadow = true; palace.add(plinth2);
+  // 汉白玉台阶
+  for (let s = 0; s < 5; s++) {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.45, 0.95), marbleM);
+    st.position.set(0, 0.25 + s * 0.45, 9.6 - s * 0.85); palace.add(st);
+  }
+  // 一层殿身 + 朱漆廊柱 + 暖光雕花窗
+  const body1 = new THREE.Mesh(new THREE.BoxGeometry(19.5, 5.2, 10.5), wallM);
+  body1.position.y = 5.1; body1.castShadow = true; palace.add(body1);
+  const win1 = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.4), winGlowM);
+  win1.position.set(0, 5.0, 5.28); palace.add(win1);
+  for (let cx = -9.6; cx <= 9.6; cx += 3.2) {
+    for (const cz of [-5.8, 5.8]) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 5.4, 8), redM);
+      col.position.set(cx, 5.1, cz); palace.add(col);
+    }
+  }
+  // 一层飞檐
+  const eave1 = new THREE.Mesh(new THREE.ConeGeometry(16.2, 2.8, 4), roofGoldM);
+  eave1.rotation.y = Math.PI / 4; eave1.scale.set(1.28, 1, 0.82); eave1.position.y = 8.9; palace.add(eave1);
+  // 二层阁楼 + 重檐歇山金顶
+  const body2 = new THREE.Mesh(new THREE.BoxGeometry(14.2, 4.2, 7.8), redM);
+  body2.position.y = 11.2; body2.castShadow = true; palace.add(body2);
+  const win2 = new THREE.Mesh(new THREE.PlaneGeometry(10.5, 1.9), winGlowM);
+  win2.position.set(0, 11.2, 3.94); palace.add(win2);
+  const eave2 = new THREE.Mesh(new THREE.ConeGeometry(13.2, 3.6, 4), roofJadeM);
+  eave2.rotation.y = Math.PI / 4; eave2.scale.set(1.25, 1, 0.82); eave2.position.y = 14.8; palace.add(eave2);
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.55, 0.55), roofGoldM);
+  ridge.position.y = 16.5; palace.add(ridge);
+  const plaque1 = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), makePlaque('省亲别墅 · 大观楼'));
+  plaque1.position.set(0, 8.2, 6.2); palace.add(plaque1);
+  const palaceLight = new THREE.PointLight(0xffcf87, 2.2, 36, 1.4);
+  palaceLight.position.set(0, 6.5, 8); palace.add(palaceLight);
+  grp.add(palace);
+
+  // 2. 大观园正门五间牌楼（南侧主入口）
+  const gx0 = gx, gz0 = gz + 54, gh0 = heightFn(gx0, gz0);
+  const gate = new THREE.Group();
+  gate.position.set(gx0, gh0, gz0);
+  [-7.5, -3.2, 3.2, 7.5].forEach((px, pi) => {
+    const h = (pi === 1 || pi === 2) ? 8.2 : 6.4;
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, h, 8), redM);
+    col.position.set(px, h / 2, 0); col.castShadow = true; gate.add(col);
+    const drum = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.9, 1.3), marbleM);
+    drum.position.set(px, 0.45, 0); gate.add(drum);
+  });
+  const beamTop = new THREE.Mesh(new THREE.BoxGeometry(17.5, 0.9, 1.2), woodM);
+  beamTop.position.set(0, 6.5, 0); gate.add(beamTop);
+  const gateRoofC = new THREE.Mesh(new THREE.ConeGeometry(4.8, 2.2, 4), roofGoldM);
+  gateRoofC.rotation.y = Math.PI / 4; gateRoofC.scale.set(1.3, 1, 0.55); gateRoofC.position.set(0, 9.1, 0); gate.add(gateRoofC);
+  for (const sx of [-5.4, 5.4]) {
+    const gr = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.6, 4), roofJadeM);
+    gr.rotation.y = Math.PI / 4; gr.scale.set(1.25, 1, 0.55); gr.position.set(sx, 7.4, 0); gate.add(gr);
+  }
+  const gPlaque = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.1), makePlaque('大  观  园'));
+  gPlaque.position.set(0, 7.3, 0.65); gate.add(gPlaque);
+  grp.add(gate);
+
+  // 3. 沁芳湖 + 汉白玉九曲桥 + 荷花睡莲
+  const lx = gx + 4, lz = gz + 16, lh = heightFn(lx, lz);
+  const lake = new THREE.Mesh(
+    new THREE.CircleGeometry(15.5, 28),
+    new THREE.MeshPhysicalMaterial({ color: 0x2a769c, roughness: 0.12, metalness: 0.1, clearcoat: 0.9, transparent: true, opacity: 0.86 })
+  );
+  lake.rotation.x = -Math.PI / 2; lake.scale.set(1.35, 1, 0.88);
+  lake.position.set(lx, lh + 0.18, lz); grp.add(lake);
+  // 九曲石桥横跨沁芳湖
+  [[-10, 4, 7.5, 0.2], [-4, 1, 7.5, -0.35], [2, -1, 7.5, 0.3], [8, 2, 7.5, -0.25]].forEach(([bx, bz, bl, ry]) => {
+    const bSeg = new THREE.Mesh(new THREE.BoxGeometry(bl, 0.35, 2.2), marbleM);
+    bSeg.position.set(lx + bx, lh + 0.72, lz + bz); bSeg.rotation.y = ry; bSeg.receiveShadow = true; grp.add(bSeg);
+  });
+  // 荷叶与粉荷花
+  const padM = new THREE.MeshStandardMaterial({ color: 0x3b8c47, roughness: 0.7 });
+  const lotusM = new THREE.MeshStandardMaterial({ color: 0xf698b8, roughness: 0.5 });
+  for (let i = 0; i < 14; i++) {
+    const a = i * 1.37, rr = 4 + (i % 4) * 2.5;
+    const fx = lx + Math.cos(a) * rr * 1.2, fz = lz + Math.sin(a) * rr * 0.8;
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.62, 10), padM);
+    pad.rotation.x = -Math.PI / 2; pad.position.set(fx, lh + 0.24, fz); grp.add(pad);
+    if (i % 2 === 0) {
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.42, 6), lotusM);
+      fl.rotation.x = Math.PI; fl.position.set(fx, lh + 0.48, fz); grp.add(fl);
+    }
+  }
+
+  // 4. 潇湘馆正院（粉墙黛瓦闺阁 + 翠竹林）
+  const xx = gx - 34, xz = gz + 2, xh = heightFn(xx, xz);
+  const xiao = new THREE.Group(); xiao.position.set(xx, xh, xz);
+  const xBase = new THREE.Mesh(new THREE.BoxGeometry(12, 0.7, 9), marbleM); xBase.position.y = 0.35; xiao.add(xBase);
+  const xBody = new THREE.Mesh(new THREE.BoxGeometry(10.5, 4.0, 7.2), wallM); xBody.position.y = 2.7; xBody.castShadow = true; xiao.add(xBody);
+  const xRoof = new THREE.Mesh(new THREE.ConeGeometry(8.2, 2.8, 4), roofGreyM);
+  xRoof.rotation.y = Math.PI / 4; xRoof.scale.set(1.25, 1, 0.85); xRoof.position.y = 6.0; xiao.add(xRoof);
+  const xWin = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.8), winGlowM); xWin.position.set(0, 2.7, 3.63); xiao.add(xWin);
+  const xPlaque = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.85), makePlaque('潇  湘  馆', '#1b2b22', '#bde8c8'));
+  xPlaque.position.set(0, 4.4, 3.65); xiao.add(xPlaque);
+  grp.add(xiao);
+
+  // 5. 怡红院主阁（朱红暖阁 + 游廊 + 西府海棠）
+  const yx = gx + 34, yz = gz - 6, yh = heightFn(yx, yz);
+  const yihong = new THREE.Group(); yihong.position.set(yx, yh, yz);
+  const yBase = new THREE.Mesh(new THREE.BoxGeometry(13, 0.8, 9.5), marbleM); yBase.position.y = 0.4; yihong.add(yBase);
+  const yBody = new THREE.Mesh(new THREE.BoxGeometry(11.2, 4.4, 7.6), redM); yBody.position.y = 3.0; yBody.castShadow = true; yihong.add(yBody);
+  const yRoof = new THREE.Mesh(new THREE.ConeGeometry(8.8, 3.0, 4), roofJadeM);
+  yRoof.rotation.y = Math.PI / 4; yRoof.scale.set(1.25, 1, 0.85); yRoof.position.y = 6.5; yihong.add(yRoof);
+  const yWin = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.9), winGlowM); yWin.position.set(0, 3.0, 3.84); yihong.add(yWin);
+  const yPlaque = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.85), makePlaque('怡  红  院', '#3b1218', '#ffd8e4'));
+  yPlaque.position.set(0, 4.8, 3.86); yihong.add(yPlaque);
+  grp.add(yihong);
+
+  // 6. 东西游廊 + 大红宫灯串 + 飘落桃花瓣
+  const lanterns = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const lx2 = gx + Math.cos(a) * 32, lz2 = gz + Math.sin(a) * 28, lh2 = heightFn(lx2, lz2);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.4, 6), redM);
+    pole.position.set(lx2, lh2 + 1.7, lz2); grp.add(pole);
+    const lan = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), lanternM);
+    lan.scale.set(1, 1.25, 1); lan.position.set(lx2, lh2 + 3.45, lz2); grp.add(lan);
+    lanterns.push({ m: lan, baseX: lx2, ph: i * 0.8 });
+  }
+
+  const petals = [];
+  const pMat = new THREE.MeshBasicMaterial({ color: 0xf7b2cb, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < 36; i++) {
+    const pm = new THREE.Mesh(new THREE.CircleGeometry(0.18, 5), pMat);
+    const px = gx + ((i * 37) % 70) - 35, pz = gz + ((i * 53) % 70) - 35;
+    pm.position.set(px, heightFn(px, pz) + 2 + (i % 6), pz);
+    grp.add(pm);
+    petals.push({ m: pm, bx: px, bz: pz, bh: heightFn(px, pz), ph: i * 0.7 });
+  }
+
+  scene.add(grp);
+  return {
+    grp,
+    update(t) {
+      lanterns.forEach(l => { l.m.position.x = l.baseX + Math.sin(t * 1.8 + l.ph) * 0.08; });
+      petals.forEach(pt => {
+        const drop = ((t * 0.9 + pt.ph) % 5.5);
+        pt.m.position.set(pt.bx + Math.sin(t * 1.4 + pt.ph) * 1.4, pt.bh + 5.8 - drop, pt.bz + Math.cos(t * 1.1 + pt.ph) * 1.2);
+        pt.m.rotation.set(t * 1.5 + pt.ph, t * 2.1, pt.ph);
+      });
+    }
+  };
+}
