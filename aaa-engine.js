@@ -1840,24 +1840,29 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
   const pitch = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd), new THREE.MeshStandardMaterial({ map: pitchTex, roughness: 0.85 }));
   pitch.rotation.x = -Math.PI / 2; pitch.position.y = 0.08; pitch.receiveShadow = true; grp.add(pitch);
 
-  // 2. 真实 3D 球门（门柱/横梁/球网）+ 替补席 + 角旗
+  // 2. 真实 3D 球门（门柱/横梁/球网）+ 四角角旗 + 替补席
   const postM = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.3, metalness: 0.4 });
   const netM = new THREE.MeshBasicMaterial({ color: 0xdce8f0, wireframe: true, transparent: true, opacity: 0.45 });
+  const flagM = new THREE.MeshBasicMaterial({ color: 0xff3b3b, side: THREE.DoubleSide });
   for (const sgn of [-1, 1]) {
     const gx = sgn * (pw / 2 - 1.8);
     const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), postM); gl.position.set(gx, 1.3, -2.8); grp.add(gl);
     const gr = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), postM); gr.position.set(gx, 1.3, 2.8); grp.add(gr);
     const gb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.76, 6), postM); gb.rotation.x = Math.PI / 2; gb.position.set(gx, 2.6, 0); grp.add(gb);
     const net = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 5.5), netM); net.position.set(gx + sgn * 0.75, 1.28, 0); grp.add(net);
+    for (const fz of [-pd / 2 + 1.4, pd / 2 - 1.4]) {
+      const fp = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 5), postM); fp.position.set(gx, 0.7, fz); grp.add(fp);
+      const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.32), flagM); fl.position.set(gx - sgn * 0.22, 1.22, fz); grp.add(fl);
+    }
   }
   const dugout = new THREE.Mesh(new THREE.BoxGeometry(10, 1.6, 1.8), new THREE.MeshPhysicalMaterial({ color: 0x3898e8, transparent: true, opacity: 0.65, roughness: 0.1 }));
   dugout.position.set(0, 0.85, pd / 2 + 1.8); grp.add(dugout);
 
-  // 3. 双层梭鱼湾标志性“海蓝-冰白”渐变专业看台碗 + 360° 环场 LED 广告屏
-  const bowlMat = new THREE.MeshStandardMaterial({ color: 0x165ca8, roughness: 0.55 });
-  const tier2Mat = new THREE.MeshStandardMaterial({ color: 0x36a2eb, roughness: 0.5 });
+  // 3. 三层专业看台碗（下层看台 + 中层发光 VIP 包厢环带 + 上层陡峭看台 + 360° LED 广告屏）
+  const bowlMat = new THREE.MeshStandardMaterial({ color: 0x1254a0, roughness: 0.55 });
+  const tier2Mat = new THREE.MeshStandardMaterial({ color: 0x38a8f0, roughness: 0.48 });
+  const vipGlassM = new THREE.MeshPhysicalMaterial({ color: 0x7ce0ff, emissive: 0x165e9e, emissiveIntensity: 0.45, roughness: 0.12, transparent: true, opacity: 0.85 });
   const concMat = new THREE.MeshStandardMaterial({ color: 0xdce4ec, roughness: 0.72 });
-  // 四周双层看台（矩形圆角布局）
   for (const [bx, bz, bw, bd, ry] of [
     [0, -pd / 2 - 9.5, pw + 14, 12, 0],
     [0, pd / 2 + 9.5, pw + 14, 12, Math.PI],
@@ -1870,8 +1875,10 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
       step.position.set(0, 0.6 + st * 1.1, 4.5 - st * 1.35);
       step.castShadow = true; step.receiveShadow = true; sg.add(step);
     }
-    const backW = new THREE.Mesh(new THREE.BoxGeometry(bw, 9.5, 1.2), concMat);
-    backW.position.set(0, 4.8, -5.2); sg.add(backW);
+    const vipRibbon = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.96, 0.75, 0.45), vipGlassM);
+    vipRibbon.position.set(0, 4.45, -0.3); sg.add(vipRibbon);
+    const backW = new THREE.Mesh(new THREE.BoxGeometry(bw, 10.2, 1.2), concMat);
+    backW.position.set(0, 5.1, -5.2); sg.add(backW);
     grp.add(sg);
   }
   // 环场 LED 滚动广告屏
@@ -1890,30 +1897,79 @@ export function buildBarracudaBayStadium9(scene, cx, cz, yBase) {
     lm.position.set(lx, 0.72, lz); lm.rotation.y = ry; grp.add(lm);
   }
 
-  // 4. 梭鱼湾招牌“炫彩叠浪”蓝白螺旋膜结构外立面 + 悬挑采光罩棚 (40组螺旋海浪肋架)
-  const etfeMat = new THREE.MeshPhysicalMaterial({ color: 0xe6f6ff, roughness: 0.16, metalness: 0.12, clearcoat: 0.92, transparent: true, opacity: 0.76, side: THREE.DoubleSide });
+  // 4. 真实梭鱼湾标志：“炫彩叠浪”ETFE 膜壳 + 多层海浪横纹 + 2.2km 红色螺旋屋顶观光步道 + 内环泛光灯带
+  const etfeMat = new THREE.MeshPhysicalMaterial({ color: 0xe6f6ff, roughness: 0.14, metalness: 0.12, clearcoat: 0.94, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
+  const shellEtfeMat = new THREE.MeshPhysicalMaterial({ color: 0x9ad8ff, roughness: 0.18, metalness: 0.1, clearcoat: 0.9, transparent: true, opacity: 0.34, side: THREE.DoubleSide });
   const ribBlueMat = new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.35, metalness: 0.45 });
   const ribWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f7fc, roughness: 0.35, metalness: 0.25 });
-  const roofRing = new THREE.Mesh(new THREE.RingGeometry(24, 46, 48), etfeMat);
-  roofRing.rotation.x = -Math.PI / 2; roofRing.position.y = 14.5; roofRing.scale.set(1.22, 0.92, 1); grp.add(roofRing);
-  const N_RIBS = 40;
+  const rampRedMat = new THREE.MeshStandardMaterial({ color: 0xd94b38, roughness: 0.55, metalness: 0.12 });
+  const railGlassMat = new THREE.MeshPhysicalMaterial({ color: 0xc2eeff, transparent: true, opacity: 0.55, roughness: 0.1 });
+
+  // 滨海基座环岛观海平台
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(58, 60, 0.45, 48), concMat);
+  plaza.scale.set(1.16, 1, 0.92); plaza.position.y = -0.18; plaza.receiveShadow = true; grp.add(plaza);
+
+  // 屋顶 ETFE 悬挑采光罩棚 + 屋顶环绕观光平台
+  const roofRing = new THREE.Mesh(new THREE.RingGeometry(23, 47, 56), etfeMat);
+  roofRing.rotation.x = -Math.PI / 2; roofRing.position.y = 15.2; roofRing.scale.set(1.22, 0.92, 1); grp.add(roofRing);
+  const skywalkTop = new THREE.Mesh(new THREE.RingGeometry(43.5, 47.2, 56), rampRedMat);
+  skywalkTop.rotation.x = -Math.PI / 2; skywalkTop.position.y = 15.35; skywalkTop.scale.set(1.22, 0.92, 1); grp.add(skywalkTop);
+
+  // ETFE 半透明海螺外幕墙与 48 组螺旋海浪肋架
+  const outerShell = new THREE.Mesh(new THREE.CylinderGeometry(44.2, 46.5, 14.4, 48, 1, true), shellEtfeMat);
+  outerShell.position.y = 7.4; outerShell.scale.set(1.22, 1, 0.92); grp.add(outerShell);
+
+  const N_RIBS = 48;
   for (let i = 0; i < N_RIBS; i++) {
     const a = (i / N_RIBS) * Math.PI * 2;
-    const rx = Math.cos(a) * 44.5 * 1.22, rz = Math.sin(a) * 44.5 * 0.92;
-    const waveH = 13.5 + Math.sin(a * 4) * 2.2;
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.65, waveH, 2.2), i % 2 === 0 ? ribWhiteMat : ribBlueMat);
+    const rx = Math.cos(a) * 45.2 * 1.22, rz = Math.sin(a) * 45.2 * 0.92;
+    const waveH = 14.2 + Math.sin(a * 4) * 2.1;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.62, waveH, 2.0), i % 2 === 0 ? ribWhiteMat : ribBlueMat);
     rib.position.set(rx, waveH / 2, rz);
     rib.rotation.y = -a;
-    rib.rotation.z = 0.22; // 标志性外倾叠浪弧度
+    rib.rotation.z = 0.24;
     rib.castShadow = true; grp.add(rib);
-    // 顶部内挑悬臂钢梁
-    const cant = new THREE.Mesh(new THREE.BoxGeometry(16, 0.45, 0.55), ribWhiteMat);
-    cant.position.set(Math.cos(a) * 35 * 1.22, 14.2 + Math.sin(a * 4) * 0.8, Math.sin(a) * 35 * 0.92);
+    const cant = new THREE.Mesh(new THREE.BoxGeometry(17, 0.42, 0.52), ribWhiteMat);
+    cant.position.set(Math.cos(a) * 35 * 1.22, 14.9 + Math.sin(a * 4) * 0.7, Math.sin(a) * 35 * 0.92);
     cant.rotation.y = -a; grp.add(cant);
   }
-  // 发光海浪氛围灯带（绕场一圈）
-  const neonRing = new THREE.Mesh(new THREE.TorusGeometry(43, 0.28, 6, 64), new THREE.MeshBasicMaterial({ color: 0x4ad4ff, fog: false }));
-  neonRing.rotation.x = Math.PI / 2; neonRing.position.y = 11.2; neonRing.scale.set(1.22, 0.92, 1); grp.add(neonRing);
+
+  // 标志性“炫彩叠浪”5 层环绕海浪灯带
+  [2.8, 5.4, 8.0, 10.6, 13.0].forEach((wy, wi) => {
+    const wCol = wi % 2 === 0 ? 0x4ad4ff : 0x1e88e5;
+    const waveBand = new THREE.Mesh(new THREE.TorusGeometry(45.5 - wi * 0.35, 0.26, 6, 64), new THREE.MeshBasicMaterial({ color: wCol, fog: false }));
+    waveBand.rotation.x = Math.PI / 2; waveBand.position.y = wy; waveBand.scale.set(1.22, 0.92, 1); grp.add(waveBand);
+  });
+
+  // 真实世界标志性 2.2km 螺旋上升屋顶观光步道（1.35 圈珊瑚红坡道 + 玻璃护栏）
+  const RAMP_SEGS = 72;
+  for (let i = 0; i < RAMP_SEGS; i++) {
+    const u = i / RAMP_SEGS;
+    const a = u * Math.PI * 2 * 1.35 - 0.6;
+    const ry = 0.5 + u * 14.85;
+    const rr = 48.2 - u * 1.8;
+    const px = Math.cos(a) * rr * 1.22, pz = Math.sin(a) * rr * 0.92;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.36, 5.6), rampRedMat);
+    seg.position.set(px, ry, pz);
+    seg.rotation.y = -a;
+    seg.rotation.x = -0.14;
+    seg.castShadow = true; seg.receiveShadow = true;
+    grp.add(seg);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.95, 5.6), railGlassMat);
+    rail.position.set(Math.cos(a) * (rr + 1.55) * 1.22, ry + 0.62, Math.sin(a) * (rr + 1.55) * 0.92);
+    rail.rotation.y = -a; rail.rotation.x = -0.14;
+    grp.add(rail);
+  }
+
+  // 内环马道泛光灯组（24 盏专业球场投光灯）
+  const floodMat = new THREE.MeshBasicMaterial({ color: 0xf4fbff, fog: false });
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const pod = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.65, 0.9), floodMat);
+    pod.position.set(Math.cos(a) * 26 * 1.22, 14.7, Math.sin(a) * 26 * 0.92);
+    pod.rotation.y = -a + Math.PI / 2; pod.rotation.x = 0.45;
+    grp.add(pod);
+  }
 
   // 5. 四角泛光照明灯塔 + 巨型悬吊计分牌 (Jumbotron)
   const scoreCv = document.createElement('canvas'); scoreCv.width = 256; scoreCv.height = 128;
