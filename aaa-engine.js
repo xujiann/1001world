@@ -3100,6 +3100,83 @@ export function buildDaguanGarden9(scene, DGY, heightFn) {
     petals.push({ m: pm, bx: px, bz: pz, bh: heightFn(px, pz), ph: i * 0.7 });
   }
 
+  // 7. 按《红楼梦》大观园平面图补充核心院落与名胜：
+  // 7a. 曲径通幽 · 太湖石假山障景（正门内侧 gz + 40）
+  const rockeryM = new THREE.MeshStandardMaterial({ color: 0x6b7075, roughness: 0.92 });
+  const rx0 = gx, rz0 = gz + 40, rh0 = heightFn(rx0, rz0);
+  [[-2.2, 1.4, -0.4, 2.2], [0, 2.5, 0, 2.8], [2.4, 1.3, 0.5, 2.0], [-1.0, 3.8, 0.2, 1.5], [1.2, 3.4, -0.3, 1.4]].forEach(([ox, oy, oz, rr]) => {
+    const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 1), rockeryM);
+    rk.scale.set(1.1, 1.35, 0.9); rk.position.set(rx0 + ox, rh0 + oy, rz0 + oz); rk.castShadow = true; grp.add(rk);
+  });
+
+  // 7b. 蘅芜苑（东北：薛宝钗居所 · 奇石清藤素雅石院）
+  const hx = gx + 34, hz = gz - 34, hh = heightFn(hx, hz);
+  const heng = new THREE.Group(); heng.position.set(hx, hh, hz);
+  const hBody = new THREE.Mesh(new THREE.BoxGeometry(10.5, 3.8, 7.2), wallM); hBody.position.y = 1.9; hBody.castShadow = true; heng.add(hBody);
+  const hRoof = new THREE.Mesh(new THREE.ConeGeometry(8.0, 2.4, 4), roofGreyM);
+  hRoof.rotation.y = Math.PI / 4; hRoof.scale.set(1.25, 1, 0.85); hRoof.position.y = 5.0; heng.add(hRoof);
+  const hVine = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), padM);
+  hVine.scale.set(1.4, 0.8, 1.2); hVine.position.set(-4.2, 2.2, 3.2); heng.add(hVine);
+  const hPlaque = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.85), makePlaque('蘅  芜  苑', '#252a2e', '#e8eef2'));
+  hPlaque.position.set(0, 3.6, 3.65); heng.add(hPlaque);
+  grp.add(heng);
+
+  // 7c. 稻香村（西北：李纨居所 · 茅舍竹篱农家水车）
+  const dx0 = gx - 38, dz0 = gz - 34, dh0 = heightFn(dx0, dz0);
+  const dao = new THREE.Group(); dao.position.set(dx0, dh0, dz0);
+  const thatchM = new THREE.MeshStandardMaterial({ color: 0xc8a96e, roughness: 0.9 });
+  const mudWallM = new THREE.MeshStandardMaterial({ color: 0xd9cbb0, roughness: 0.88 });
+  const dBody = new THREE.Mesh(new THREE.BoxGeometry(9.8, 3.4, 6.8), mudWallM); dBody.position.y = 1.7; dBody.castShadow = true; dao.add(dBody);
+  const dRoof = new THREE.Mesh(new THREE.ConeGeometry(7.8, 2.8, 4), thatchM);
+  dRoof.rotation.y = Math.PI / 4; dRoof.scale.set(1.25, 1, 0.85); dRoof.position.y = 4.8; dao.add(dRoof);
+  const dPlaque = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.85), makePlaque('稻  香  村', '#3d2c1a', '#f7e4b4'));
+  dPlaque.position.set(0, 3.3, 3.45); dao.add(dPlaque);
+  for (let fi = -4; fi <= 4; fi++) {
+    const fPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.1, 5), woodM);
+    fPost.position.set(fi * 1.3, 0.55, 5.2); dao.add(fPost);
+  }
+  const fRail = new THREE.Mesh(new THREE.BoxGeometry(10.8, 0.12, 0.12), woodM);
+  fRail.position.set(0, 0.85, 5.2); dao.add(fRail);
+  grp.add(dao);
+
+  // 7d. 秋爽斋（东中：贾探春居所 · 三间阔轩与梧桐）
+  const qx = gx + 40, qz = gz + 18, qh = heightFn(qx, qz);
+  const qiu = new THREE.Group(); qiu.position.set(qx, qh, qz);
+  const qBody = new THREE.Mesh(new THREE.BoxGeometry(11.5, 4.0, 7.0), wallM); qBody.position.y = 2.0; qBody.castShadow = true; qiu.add(qBody);
+  const qRoof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 2.6, 4), roofJadeM);
+  qRoof.rotation.y = Math.PI / 4; qRoof.scale.set(1.3, 1, 0.82); qRoof.position.y = 5.3; qiu.add(qRoof);
+  const qPlaque = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.85), makePlaque('秋  爽  斋', '#1c3329', '#d8f5e0'));
+  qPlaque.position.set(0, 3.8, 3.55); qiu.add(qPlaque);
+  grp.add(qiu);
+
+  // 7e. 藕香榭（西水畔：贾惜春居所 · 临水竹轩）
+  const ox = gx - 24, oz = gz + 16, oh = heightFn(ox, oz);
+  const oux = new THREE.Group(); oux.position.set(ox, oh, oz);
+  const oDeck = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.5, 6.2), woodM); oDeck.position.y = 0.6; oux.add(oDeck);
+  for (const [cx, cz] of [[-2.8, -2.2], [2.8, -2.2], [-2.8, 2.2], [2.8, 2.2]]) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 3.2, 6), woodM);
+    col.position.set(cx, 2.2, cz); oux.add(col);
+  }
+  const oRoof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 2.2, 4), roofGreyM);
+  oRoof.rotation.y = Math.PI / 4; oRoof.scale.set(1.15, 1, 0.95); oRoof.position.y = 4.9; oux.add(oRoof);
+  const oPlaque = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.75), makePlaque('藕  香  榭', '#26201c', '#f4d9c6'));
+  oPlaque.position.set(0, 3.7, 2.6); oux.add(oPlaque);
+  grp.add(oux);
+
+  // 7f. 凸碧山庄 & 凹晶溪馆（北东、北西中秋赏月双胜）
+  [[gx + 24, gz - 52, '凸  碧  山  庄', roofGoldM], [gx - 24, gz - 52, '凹  晶  溪  馆', roofJadeM]].forEach(([tx, tz, lbl, rMat]) => {
+    const th = heightFn(tx, tz);
+    const tg = new THREE.Group(); tg.position.set(tx, th, tz);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 3.4, 6), redM);
+      c.position.set(Math.cos(a) * 2.8, 1.7, Math.sin(a) * 2.8); tg.add(c);
+    }
+    const tr = new THREE.Mesh(new THREE.ConeGeometry(4.2, 2.4, 6), rMat); tr.position.y = 4.5; tg.add(tr);
+    const tp = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.75), makePlaque(lbl)); tp.position.set(0, 3.3, 2.85); tg.add(tp);
+    grp.add(tg);
+  });
+
   scene.add(grp);
   return {
     grp,

@@ -8194,10 +8194,17 @@ const dgy9 = buildDaguanGarden9(scene, DGY, height);
   const gx = DGY.x, gz = DGY.z;
   addSpot(gx, gz - 24, 'lore', 'daguanlou', { r: 9 });
   addSpot(gx, gz + 54, 'lore', 'daguanyuanmen', { r: 8 });
+  addSpot(gx + 34, gz - 30, 'lore', 'hengwuyuan', { r: 7 });
+  addSpot(gx - 38, gz - 30, 'lore', 'daoxiangcun', { r: 7 });
+  addSpot(gx + 40, gz + 22, 'lore', 'qiushuangzhai', { r: 7 });
   addNpc({ x: gx + 6, z: gz - 22, name: '王熙凤', body: 0xb8293d, hat: 0xf4c44e, opts: { tall: 1.0 },
     lines: ['粉面含春威不露，丹唇未启笑先闻。', '这省亲别墅上下千百号人，全靠我一手照管！'] });
-  addNpc({ x: gx - 10, z: gz + 16, name: '薛宝钗', body: 0xf0dcd8, hat: 0xd4a5b8, opts: { tall: .96 },
-    lines: ['好风凭借力，送我上青云。', '沁芳湖畔荷风清凉，正宜作诗联句。'] });
+  addNpc({ x: gx + 32, z: gz - 28, name: '薛宝钗', body: 0xf0dcd8, hat: 0xd4a5b8, opts: { tall: .96 },
+    lines: ['好风凭借力，送我上青云。', '蘅芜苑清静素雅，最宜品茗读诗。'] });
+  addNpc({ x: gx + 38, z: gz + 24, name: '贾探春', body: 0xd96b43, hat: 0xf2c97d, opts: { tall: .97 },
+    lines: ['秋爽斋前梧桐疏朗，正合在此起个海棠诗社！'] });
+  addNpc({ x: gx - 35, z: gz - 28, name: '李纨', body: 0x7c8c78, hat: 0x525e4f, opts: { tall: .95 },
+    lines: ['稻香村竹篱茅舍，虽在大观园中，却别有一番田园真味。'] });
 }
 /* —— 神曲 · 炼狱山(南海孤峰,七层螺旋涤七罪,山巅地上乐园) —— */
 {
