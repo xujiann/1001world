@@ -503,6 +503,11 @@ function height(x, z) {
       const dxC = Math.abs(lx), dzC = lz + 46;
       const inHall = clamp(1 - Math.max(dxC - 18, Math.abs(dzC) - 18) / 10, 0, 1);
       if (inHall > 0) h = h * (1 - smooth01(inHall)) + 21.5 * smooth01(inHall);
+      // ARRAKEEN RESIDENCY 厄拉奇恩总督府平坦台基 (15.5m) + ⑦⑧地下层下挖基坑 (11.5m)
+      const inRes = clamp(1 - Math.max(Math.abs(lx + 42) - 26, Math.abs(lz - 28) - 20) / 8, 0, 1);
+      if (inRes > 0) h = h * (1 - smooth01(inRes)) + 15.5 * smooth01(inRes);
+      const inSub = clamp(1 - Math.max(Math.abs(lx + 30) - 12, Math.abs(lz - 45) - 7) / 4, 0, 1);
+      if (inSub > 0) h -= smooth01(inSub) * 4.2;
     }
     q(ARRAKIS.x, ARRAKIS.z + ARRAKIS.r + 14, 16, 2.2, .95);
   }
@@ -12078,6 +12083,12 @@ const weenie9 = buildWeenieLandmarks9(scene, heightMesh);
 const cityTraffic9 = new CityTraffic9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const cityTowers9 = new CityTowersFX9(scene, UNJ.x, UNJ.z, Math.max(height(UNJ.x, UNJ.z), 7.2) + .18);
 const arrakis9 = buildArrakis9(scene, height, ARRAKIS.x, ARRAKIS.z, boxObs);
+const resSign9 = makeSign('ARRAKEEN RESIDENCY · 厄拉奇恩总督府', 6.4, '#2b1b12', '#ffd88a');
+resSign9.position.set(ARRAKIS.x - 56, height(ARRAKIS.x - 56, ARRAKIS.z + 39) + 7.2, ARRAKIS.z + 39);
+scene.add(resSign9);
+addSpot(ARRAKIS.x - 56, ARRAKIS.z + 39, 'lore', 'arrakeen_residency', { r: 9 });
+addNpc({ x: ARRAKIS.x - 42, z: ARRAKIS.z + 24, name: '雷托·厄崔迪公爵', body: 0x26382b, hat: 0x1a261e, opts: { tall: 1.08 },
+  lines: ['这里就是厄拉奇恩总督府：中庭的椰枣树，比整座城市更需要珍贵的水。', '护盾发生器已就绪，地下蓄水池足够整座府邸度过沙暴。'] });
 const oceanWhales9 = new OceanWhales9(scene, height);
 const skyCityFX9 = new SkyCityFX9(scene, SKY);
 const coastalBirds9 = new CoastalBirds9(scene);

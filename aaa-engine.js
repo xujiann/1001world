@@ -778,10 +778,143 @@ export function buildArrakis9(scene, heightFn, cx, cz, boxObs = []) {
     grp.add(spire);
   }
 
+  // 5. 1:1 复现《ARRAKEEN RESIDENCY 厄拉奇恩总督府》双层宫殿建筑群 (①中庭+停机坪 ②宴会厅 ③玻璃温室 ④家族寝宫 ⑤医疗室 ⑥护盾发生器 ⑦地下掩体 ⑧地下蓄水池)
+  const resX = cx - 44, resZ = cz + 28, resY = 15.5;
+  const resGrp = new THREE.Group();
+  resGrp.position.set(resX, resY, resZ);
+  const plasterM = new THREE.MeshStandardMaterial({ color: 0xdfb98a, roughness: 0.76 });
+  const trimM = new THREE.MeshStandardMaterial({ color: 0xa87748, roughness: 0.78 });
+  const woodDarkM = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.72 });
+  const carpetM = new THREE.MeshStandardMaterial({ color: 0x9b2c2c, roughness: 0.85 });
+  const glassGreenM = new THREE.MeshPhysicalMaterial({ color: 0xbef0e4, transparent: true, opacity: 0.42, roughness: 0.1, clearcoat: 0.9 });
+  const leafPalmM = new THREE.MeshStandardMaterial({ color: 0x3b7a3e, roughness: 0.72, side: THREE.DoubleSide });
+  const copperM = new THREE.MeshStandardMaterial({ color: 0xc87438, roughness: 0.35, metalness: 0.75 });
+  const cisWaterM = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, emissive: 0x0e6b99, emissiveIntensity: 0.55, roughness: 0.1, transparent: true, opacity: 0.82 });
+
+  // 深基座托底（防止沙丘坡度悬空）
+  const resPlinth = new THREE.Mesh(new THREE.BoxGeometry(52, 8, 36), sandStoneM);
+  resPlinth.position.set(4, -4.05, 0); resPlinth.receiveShadow = true; resGrp.add(resPlinth);
+
+  // ① 中庭 Courtyard (-12, 0) + 圆形角楼堡垒 (-23, -2) + 斜扶壁 + 大门 + 椰枣树
+  const addResWall = (wx, wy, wz, w, h, d, mat = sandStoneM) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(wx, wy, wz); m.castShadow = true; m.receiveShadow = true; resGrp.add(m);
+  };
+  addResWall(-12, 2.8, -11, 22, 5.6, 1.4); // 中庭北墙
+  addResWall(-22, 2.8, 0, 1.4, 5.6, 22);   // 中庭西墙
+  addResWall(-18, 2.8, 11, 10, 5.6, 1.4);  // 南墙左段
+  addResWall(-6, 2.8, 11, 10, 5.6, 1.4);   // 南墙右段
+  const gateDoor = new THREE.Mesh(new THREE.BoxGeometry(4.2, 4.4, 0.5), woodDarkM);
+  gateDoor.position.set(-12, 2.2, 11); resGrp.add(gateDoor);
+  // 外墙斜扶壁 (Sloped Buttresses)
+  [[-18, 12.1], [-8, 12.1], [-23.1, -6], [-23.1, 6], [-16, -12.1], [-8, -12.1]].forEach(([bx, bz]) => {
+    const but = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.1, 5.2, 4), trimM);
+    but.rotation.y = Math.PI / 4; but.position.set(bx, 2.6, bz); but.castShadow = true; resGrp.add(but);
+  });
+  // 西侧圆形堡垒角楼
+  const bastion = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 6.6, 6.2, 16), sandStoneM);
+  bastion.position.set(-24.5, 3.1, -1); bastion.castShadow = true; resGrp.add(bastion);
+  const bastionRim = new THREE.Mesh(new THREE.TorusGeometry(5.1, 0.45, 6, 20), trimM);
+  bastionRim.rotation.x = Math.PI / 2; bastionRim.position.set(-24.5, 6.2, -1); resGrp.add(bastionRim);
+  // 中庭沙地 + 5 棵椰枣树 (Date Palms)
+  [[-17, -6], [-15, 5], [-7, -7], [-6, 4], [-11, -1]].forEach(([px, pz], pi) => {
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.36, 4.8 + (pi % 2) * 0.8, 7), woodDarkM);
+    tr.position.set(px, 2.4, pz); tr.rotation.z = (pi % 2 ? 0.08 : -0.08); resGrp.add(tr);
+    for (let fi = 0; fi < 5; fi++) {
+      const fa = (fi / 5) * Math.PI * 2;
+      const frond = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.8, 4), leafPalmM);
+      frond.scale.set(0.35, 1, 0.9);
+      frond.position.set(px + Math.cos(fa) * 1.1, 5.0 + (pi % 2) * 0.6, pz + Math.sin(fa) * 1.1);
+      frond.rotation.z = -Math.cos(fa) * 1.15; frond.rotation.x = Math.sin(fa) * 1.15;
+      resGrp.add(frond);
+    }
+  });
+  // 南侧圆形扑翼机停机坪 (Ornithopter Landing Pad)
+  const opPad = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 7.6, 0.28, 24), plasterM);
+  opPad.position.set(-14, 0.14, 21.5); opPad.receiveShadow = true; resGrp.add(opPad);
+  const opRing = new THREE.Mesh(new THREE.RingGeometry(5.8, 6.3, 28), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide }));
+  opRing.rotation.x = -Math.PI / 2; opRing.position.set(-14, 0.3, 21.5); resGrp.add(opRing);
+
+  // ② 宴会厅 Banquet Hall (4, -4)
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.9, 13), plasterM);
+  bFloor.position.set(5, 0.45, -4); bFloor.receiveShadow = true; resGrp.add(bFloor);
+  addResWall(5, 3.2, -10.5, 16, 5.8, 1.0, plasterM);
+  addResWall(-2.5, 3.2, -4, 1.0, 5.8, 13, plasterM);
+  addResWall(12.5, 3.2, -4, 1.0, 5.8, 13, plasterM);
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.08, 5.4), carpetM);
+  rug.position.set(5, 0.94, -4); resGrp.add(rug);
+  const bTable = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.85, 2.2), woodDarkM);
+  bTable.position.set(5, 1.35, -4); resGrp.add(bTable);
+  const hearth = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.2, 1.2), trimM);
+  hearth.position.set(5, 2.4, -9.8); resGrp.add(hearth);
+  for (const bx of [1.2, 8.8]) {
+    const hawk = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.4), new THREE.MeshBasicMaterial({ color: 0x2a6b48, side: THREE.DoubleSide }));
+    hawk.position.set(bx, 3.6, -9.9); resGrp.add(hawk);
+  }
+
+  // ③ 玻璃温室花房 Glass Conservatory (17, -11)
+  const cFloor = new THREE.Mesh(new THREE.BoxGeometry(11, 0.5, 9), plasterM);
+  cFloor.position.set(17, 0.25, -11); resGrp.add(cFloor);
+  const cGlass = new THREE.Mesh(new THREE.BoxGeometry(10.5, 4.4, 8.5), glassGreenM);
+  cGlass.position.set(17, 2.6, -11); resGrp.add(cGlass);
+  for (let pi = 0; pi < 6; pi++) {
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.95, 7, 6), leafPalmM);
+    p.scale.set(1, 1.5, 1);
+    p.position.set(14 + (pi % 3) * 3, 1.4, -13 + Math.floor(pi / 3) * 3.8);
+    resGrp.add(p);
+  }
+
+  // ④ 厄崔迪家族寝宫 Atreides Quarters (21, 1) & ⑤ 医疗室 Medical Wing (14, 1)
+  const qFloor = new THREE.Mesh(new THREE.BoxGeometry(14, 0.7, 11), plasterM);
+  qFloor.position.set(20, 0.35, 1); resGrp.add(qFloor);
+  addResWall(20, 2.6, -4.5, 14, 4.6, 0.8, plasterM);
+  addResWall(26.8, 2.6, 1, 0.8, 4.6, 11, plasterM);
+  addResWall(20, 2.6, 6.2, 14, 4.6, 0.8, plasterM);
+  // 寝宫床榻与案几
+  [[17, -1], [23, -1], [23, 3.5]].forEach(([bx, bz]) => {
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.65, 1.6), carpetM);
+    bed.position.set(bx, 1.0, bz); resGrp.add(bed);
+  });
+
+  // ⑥ 护盾发生器室 Shield Generator (8, 8)
+  const sFloor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 8), trimM);
+  sFloor.position.set(8, 0.35, 8); resGrp.add(sFloor);
+  addResWall(8, 2.6, 11.8, 10, 4.6, 0.8, trimM);
+  const shieldCoils = [];
+  for (const sx of [6, 10]) {
+    const coil = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.34, 10, 20), copperM);
+    coil.position.set(sx, 2.1, 8); resGrp.add(coil);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8), spiceGlowM);
+    core.position.set(sx, 2.1, 8); resGrp.add(core);
+    shieldCoils.push(coil);
+  }
+
+  // ⑦ 地下掩体 Sleeping Bunker & ⑧ 地下蓄水池 Water Cisterns (东侧下沉露天台阶层 y = -2.8)
+  for (let si = 0; si < 7; si++) {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.45, 1.0), trimM);
+    step.position.set(2, -0.35 * si, 11 + si * 0.9); resGrp.add(step);
+  }
+  const subFloor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.6, 13), darkBasaltM);
+  subFloor.position.set(14, -2.9, 17); resGrp.add(subFloor);
+  // ⑦ 掩体防爆门与补给箱
+  addResWall(7, -0.8, 10.6, 8, 4.0, 1.0, darkBasaltM);
+  const blastDoor = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, 0.45), copperM);
+  blastDoor.position.set(7, -1.1, 11.2); resGrp.add(blastDoor);
+  // ⑧ 地下拱顶蓄水池
+  const cisternWater = new THREE.Mesh(new THREE.BoxGeometry(10, 0.8, 10), cisWaterM);
+  cisternWater.position.set(19, -2.35, 17); resGrp.add(cisternWater);
+  for (const az of [14, 17, 20]) {
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(4.6, 0.4, 8, 18, Math.PI), trimM);
+    arch.position.set(19, -2.5, az); resGrp.add(arch);
+  }
+
+  grp.add(resGrp);
+
   scene.add(grp);
   return {
     grp,
     update(t) {
+      for (const sc of shieldCoils) sc.rotation.y = t * 1.4;
       // 扑翼机悬停微振翼 + 圣殿全息星图与风阱叶轮旋转
       thop.position.y = padH + 4.0 + Math.sin(t * 2.2) * 0.45;
       for (const w of thopWings) {

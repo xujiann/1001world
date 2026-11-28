@@ -223,6 +223,8 @@ export function makeLORE({ D, esc, todayStr, mulberry32 }) {
     desc: '炎帝的小女儿女娃,游于东海,溺而不返,化为文首、白喙、赤足之鸟,名曰精卫。它衔西山的木石,要填平东海——一只鸟对一片海的战争,打了几千年,还没停。' },
   shjbuzhou: { icon: '⛰️', color: '#5a5248', title: '不周山残柱', en: 'Mount Buzhou', hint: '天柱折断处',
     desc: '共工怒触不周山,天柱折,地维绝——天倾西北,故日月星辰移焉;地不满东南,故百川水潦归焉。眼前这半截石柱,据说就是那场脾气留下的遗迹。' },
+  arrakeen_residency: { icon: '🏰', color: '#b57c42', title: '厄拉奇恩总督府 · Arrakeen Residency', en: 'Arrakeen Residency', hint: '厄崔迪家族沙丘宫殿',
+    desc: '完全复现总督府平面图：外有圆形扑翼机停机坪与斜扶壁角楼、中庭二十株椰枣树；内设宴会厅、玻璃温室花房、家族寝宫、医疗室、霍尔兹曼护盾发生器，以及地下防空掩体与拱顶蓄水池。' },
   shjjianmu: { icon: '🌳', color: '#1b6b52', title: '建木通天圣树', en: 'Jianmu World Tree', hint: '天地梯阶',
     desc: '《山海经·海内南经》:有木,其状如牛,引之有皮,若缨、黄蛇。太古伏羲与众神皆循建木往来天地之间,树冠直入云海灵脉。' },
   shjhetu: { icon: '☯️', color: '#2b4a42', title: '河图洛书星盘', en: 'Hetu & Luoshu Altar', hint: '太古定星盘',
